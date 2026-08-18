@@ -34,9 +34,11 @@
 
 ## 当前阶段
 
-**Stage 0（Project Bootstrap）**：Git + Trellis 初始化、工程规范沉淀完成。业务代码为零。
+**Stage 1.1（整体架构骨架）**：Stage 0 的 Git、Trellis 与工程规范已完成；当前已沉淀 Data Plane + Query Plane 的架构 Draft，业务代码仍为零。
 
-**下一阶段**：接收正式 Architecture Specification 后进入 Stage 1，在此之前不实现任何业务功能。
+当前架构文档为 `Draft / In Progress`。Retrieval、Evidence、Trace、Database Schema 等细节仍为 Pending，不能视为最终 Architecture Specification。
+
+**下一阶段**：Stage 1.2（Data Model + Ingestion）。在对应架构细节确认前不实现业务功能。
 
 ## 演进目标
 

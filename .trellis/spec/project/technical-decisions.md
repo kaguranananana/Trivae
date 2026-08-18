@@ -55,4 +55,9 @@ Regression
 
 ## 当前记录
 
-（暂无 — 等待 Architecture Specification 与真实 Failure Case）
+### Stage 1.1：整体架构骨架
+
+- 状态：Draft / In Progress，不是最终 Architecture Specification。
+- 内容：Data Plane + Query Plane、Query 主链路、Router / Planner / Agent Runtime / Tool Layer / Retrieval / Evidence 的一级职责边界。
+- 记录位置：[architecture.md](./architecture.md)。
+- 后续：Stage 1.2-1.11 分别确认剩余细节，完成后再统一升级文档状态。

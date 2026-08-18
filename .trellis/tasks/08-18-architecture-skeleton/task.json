@@ -1,0 +1,31 @@
+{
+  "id": "architecture-skeleton",
+  "name": "architecture-skeleton",
+  "title": "Stage 1.1: Architecture Skeleton",
+  "description": "沉淀 Stage 1.1 已确认的 Data Plane + Query Plane 架构骨架，不实现业务代码",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "anontokyo",
+  "assignee": "anontokyo",
+  "createdAt": "2026-08-18",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/spec/project/architecture.md",
+    ".trellis/spec/project/overview.md",
+    ".trellis/spec/project/workflow.md",
+    ".trellis/spec/project/technical-decisions.md"
+  ],
+  "notes": "Lightweight documentation task. Do not decide Pending architecture items or create business code.",
+  "meta": {}
+}
