@@ -170,6 +170,10 @@ Trivae Internal Message ID（Trivae 内部 ID）
 Platform / Source Message ID（平台原始 ID，如 QQ message_id）
 ```
 
+Canonicalization 必须保持查询、证据追溯和未来重新处理所需的信息，不应因为 normalization 丢失关键原始语义（如 URL、代码、@mention、图片 / 文件、reply / forward、富文本 message segments）。具体 structured content / raw payload / source locator 表示在后续 Data Schema 阶段确定，当前 Pending。
+
+Canonical timestamp 必须能够表达一个确定的时间点，且不因 Source 的 timezone、timestamp precision 或转换规则导致跨 Source 时间语义不一致。具体数据库类型与存储格式（UTC datetime / Unix 毫秒 / TIMESTAMPTZ 等）保持 Pending。
+
 后续 Evidence / Citation 应能够通过 Message 追溯到原始聊天记录：
 
 ```text
@@ -243,7 +247,7 @@ Parser 负责"读懂源格式"（例如 `sender.uin` → `senderPlatformId`）�
 - 成员更新逻辑
 - 索引写入逻辑
 
-数据源差异应在 Adapter / Parser 层被消化；新增 WeChat / Discord / Telegram 等来源不影响 Importer。
+数据源差异应在 Adapter / Parser 层被消化；新增**能够映射到现有 Canonical Model**的数据源不应要求下游增加 source-specific branches。
 
 ### Identity & Deduplication
 
@@ -255,7 +259,9 @@ Deduplication 优先级：
 - Priority 2：Canonical Message Fingerprint
 - 否则：视为新消息
 
-Fingerprint 不能只使用 content hash，应至少结合具有区分度的字段：
+Stable Message ID 用于识别**同一逻辑消息**；当相同 identity 对应的 canonical payload 发生变化（编辑、撤回 / 状态变化、Source 数据纠正、Parser 版本变化、数据冲突）时，其 update / mutation / conflict resolution semantics 当前保持 Pending，不应直接等同于 duplicate skip。
+
+Fingerprint 不能只使用 content hash，应基于 canonicalized stable attributes 构造；session、sender、timestamp、message type、normalized content、reply relationship（如适用）是**候选组成字段**：
 
 ```text
 session
@@ -266,7 +272,7 @@ normalized content
 reply relationship（如适用）
 ```
 
-避免因为"哈哈""好的"等重复文本造成误去重。
+具体字段组合、时间精度、canonicalization 与 hash algorithm 保持 Pending，并通过真实重复数据验证（例如"哈哈""好的"等高频重复文本不得误去重）。
 
 #### Chat Identity
 
@@ -450,6 +456,11 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 - 最终 Database Schema、表数量、字段类型与具体索引，SQLite / PostgreSQL 具体实现
 - Vector Store 实现、Chunking 策略、Embedding 模型、Indexing Pipeline 具体执行方式
 - Ingestion 具体实现细节：Deduplicator 的 fingerprint 算法、失败处理与幂等执行方式
+- ChatSession / UserIdentity 缺少 authoritative stable ID 时的 fallback identity / matching strategy
+- 相同 stable message identity 对应 canonical payload 变化时的 update / mutation / conflict resolution semantics
+- Canonical Message Fingerprint 的具体字段组合、时间精度、canonicalization 与 hash algorithm
+- raw payload / source locator / structured content 的具体表示
+- Canonical timestamp 的 timezone / precision / 存储类型与转换实现
 - Retrieval architecture
 - Keyword / Semantic / Hybrid Retrieval 选型
 - 时间过滤、成员过滤、上下文扩展、Rerank 与召回策略

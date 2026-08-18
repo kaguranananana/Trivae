@@ -16,7 +16,7 @@
 - **Message Identity 区分两个 ID**：Trivae Internal Message ID 与 Platform / Source Message ID 是两个概念，Message 需能通过 source message id 追溯到原始聊天记录（Evidence / Citation 依赖此能力）。
 - **逻辑实体**：`Source`、`ChatSession`、`UserIdentity`、`Membership`、`Message`、`ImportBatch` 是已确认的逻辑数据模型，不等同于最终表设计；表数量、字段与索引待 Storage Architecture 阶段决定。
 - **稳定身份优先**：ChatSession 以 `platform + external_chat_id` 为稳定身份，UserIdentity 以 `platform + platform_user_id` 为稳定身份；群名、昵称等可变字段不能作为身份判断依据。
-- **去重优先级**：stable platform/source message id 优先，Canonical Message Fingerprint fallback；fingerprint 不能只使用 content hash。
+- **去重优先级**：stable platform/source message id 优先，Canonical Message Fingerprint fallback；fingerprint 不能只使用 content hash，具体字段组合与算法保持 Pending。Stable Message ID 用于识别"同一逻辑消息"；相同 identity 对应 canonical payload 变化时的 update / conflict semantics 保持 Pending，不应直接等同于 duplicate skip。
 
 ## 未来填写内容（架构到达后）
 
