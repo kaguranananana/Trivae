@@ -32,3 +32,5 @@ logs/
 
 # 本地临时
 tmp/
+
+.obsidian/
