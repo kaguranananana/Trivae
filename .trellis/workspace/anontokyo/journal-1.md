@@ -75,3 +75,40 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Next Steps
 
 - 等待确认提交计划；随后进入 Stage 1.2 Data Model + Ingestion
+
+
+## Session 3: Docs cleanup before Stage 1.2
+
+**Date**: 2026-08-18
+**Task**: Docs cleanup before Stage 1.2
+**Branch**: `main`
+
+### Summary
+
+清理 Stage 1.1 完成后的文档状态和术语歧义，更新为 Stage 1.2 pending/next；分离 Retrieval Query/Candidates/Results、Evidence Selection、Final Evidence；简化 Query Plane 图；放宽测试修改与技术决策证据规则。
+
+### Main Changes
+
+- 统一 architecture/overview/workflow 的 Stage 状态
+- 清理 backend Stage 0 残留
+- 更新 engineering-principles/logging 的 Retrieval 与 Evidence 字段
+- 修正 technical-decisions 状态矛盾和证据要求
+- 创建 docs cleanup Trellis task
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] git diff --check 通过
+- [OK] task.py validate 通过
+- [OK] 旧术语与模板占位符检查无匹配
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 进入 Stage 1.2：Data Model + Ingestion
