@@ -49,4 +49,4 @@
 
 ## 当前记录
 
-（暂无 — Stage 0 无业务代码，无 Failure Case）
+（暂无 — 当前无业务代码，无需要长期沉淀的 Failure Case）

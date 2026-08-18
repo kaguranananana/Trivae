@@ -1,7 +1,7 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：**无已确认决策**，全部等待 Architecture Specification。
+> 当前状态：**暂无独立 ADR**。Stage 1.1 已确认的一级架构方向记录于 architecture.md；具体技术选型与实现级决策仍在后续 Stage 中确认。
 
 ---
 
@@ -9,16 +9,18 @@
 
 正式决策文档：`.trellis/spec/project/technical-decisions/<slug>.md`，本文件作为索引。
 
-## 决策问题链（必须保留完整链路）
+## 决策问题链
+
+以下链路按决策类型取舍；`Problem / Constraint`、`Root Cause` 或 `Regression` 不适用时应明确标注，而不是强行制造 Failure Case。
 
 ```
-Initial Design
+Initial Design / Context
 ↓
-Observed Problem
+Problem / Constraint (if applicable)
 ↓
-Evidence / Failure Case
+Evidence / Rationale
 ↓
-Root Cause
+Root Cause (if applicable)
 ↓
 Candidate Solutions
 ↓
@@ -37,8 +39,8 @@ Regression
 
 ## 来源分级
 
-- 来自「框架默认 / ChatLab 如此 / 某开源项目如此」的方案视为 **Initial hypothesis / reference design**，不是已验证的最终结论。
-- 后续必须通过真实数据和 Failure Case 验证后才升级为决策记录。
+- 来自「框架默认 / ChatLab 如此 / 某开源项目如此」的方案视为 **Initial hypothesis / reference design**，不能直接视为最终结论。
+- 应根据决策类型，通过项目约束、复杂度分析、Prototype、Test、Benchmark、Evaluation 或真实 Failure Case 等证据确认方案，再升级为决策记录。
 
 ## 重点关注清单
 

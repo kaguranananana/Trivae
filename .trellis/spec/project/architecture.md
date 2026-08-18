@@ -2,7 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录 Stage 1.1 已确认的整体架构骨架，不是完整且最终的 Architecture Specification。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion pending / next。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -11,9 +12,9 @@
 
 | 项 | 状态 |
 |----|------|
-| 当前阶段 | Stage 1.1：整体架构骨架 |
+| 当前阶段 | Stage 1.1 completed；Stage 1.2 pending / next |
 | 文档成熟度 | Draft / In Progress |
-| 业务实现 | 禁止（本任务仅做文档映射） |
+| 业务实现 | 当前无业务代码；后续按已确认架构与 Trellis task 实施 |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成 |
 
 ## Goals
@@ -87,20 +88,16 @@ Data Model、Canonical Message 字段、持久化方式、Database Schema、导�
 ```text
 User Query + Query Context
     -> Router
-       |-- direct / simple path       (exact behavior pending)
-       |-- tool-assisted path         (exact behavior pending)
-       `-- planned path
-              -> Planner
-              -> Agent Runtime
+    -> [Planner] (complex requests only; soft guidance)
     -> Agent Runtime
-    -> Tool Layer
-    -> Retrieval / Analysis
-    -> Evidence
-    -> Answer Generation
-    -> Evidence + Citation
+       <-> Tool Layer
+           -> Retrieval / Analysis
+           -> Evidence
+           -> Answer Generation
+           -> Evidence + Citation
 ```
 
-`direct_response`、`tool_assisted`、`planned_execution` 是当前参考架构中的路径词汇；Trivae 是否采用这些名称、分类规则、置信度和边界条件，仍属于 Router 具体策略的 Pending 项。
+Router 的具体路径名称、分类规则、置信度和边界条件仍属于 Pending 项。`direct_response`、`tool_assisted`、`planned_execution` 仅作为 ChatLab 的参考词汇，不表示 Trivae 已确定三个独立执行流水线或固定的绕行关系。
 
 ## Module Boundaries
 
@@ -167,12 +164,22 @@ Planner schema、步骤上限、suggested tools 校验和失败处理待后续�
 - Retrieval Result 与 Evidence 分离：召回候选不等同于最终引用证据。
 - Keyword、Semantic、Hybrid、时间/成员过滤、上下文扩展、Rerank 和召回策略均未定。
 
+概念边界保持为：
+
+```text
+Retrieval Query
+    -> Retrieval Candidates / Results
+    -> Evidence Selection / Organization
+    -> Final Evidence
+    -> Answer
+```
+
 ### Evidence
 
 **Responsibility**：将检索和分析结果组织成可支撑回答结论的证据，并连接原始聊天消息与最终引用。
 
 - Evidence 是 Trivae 的业务核心之一。
-- Evidence 不等同于原始 Retrieval Result；需要独立表达选中、排除或不确定的证据语义（具体状态模型待定）。
+- Evidence 不等同于原始 Retrieval Result；需要独立表达证据来源、选择结果和完整性等语义（具体状态模型待定）。
 - Evidence / Citation 数据模型、完整性状态、来源字段和引用格式待 Stage 1.8 确定。
 
 ### Answer Generation
@@ -202,7 +209,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 ## Confirmed Decisions
 
-以下是 Stage 1.1 已确认的架构方向：
+以下是已完成的 Stage 1.1 所确认的架构方向：
 
 1. **Two-plane architecture**：系统一级划分为 Data Plane 与 Query Plane。
 2. **Data / Agent decoupling**：Data Plane 不包含 Agent；Agent 只能通过 Tool Layer 访问数据能力。

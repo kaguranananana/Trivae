@@ -18,7 +18,10 @@
 - Router Decision
 - Plan / State
 - Tool Calls（参数与结果）
-- Retrieved Evidence
+- Retrieval Query
+- Retrieval Candidates / Results
+- Evidence Selection
+- Final Evidence
 - Context
 - Final Answer
 

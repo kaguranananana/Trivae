@@ -1,0 +1,33 @@
+{
+  "id": "docs-cleanup-stage-1-2",
+  "name": "docs-cleanup-stage-1-2",
+  "title": "Docs cleanup before Stage 1.2",
+  "description": "清理 Stage 1.1 完成后的文档状态、术语和规则歧义，不改变架构方向，不生成业务代码",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "anontokyo",
+  "assignee": "anontokyo",
+  "createdAt": "2026-08-18",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/spec/project/architecture.md",
+    ".trellis/spec/project/overview.md",
+    ".trellis/spec/project/workflow.md",
+    ".trellis/spec/project/engineering-principles.md",
+    ".trellis/spec/project/technical-decisions.md",
+    ".trellis/spec/backend/"
+  ],
+  "notes": "Documentation-only cleanup before Stage 1.2. No business code, dependency, or architecture direction changes.",
+  "meta": {}
+}

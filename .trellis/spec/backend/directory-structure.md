@@ -1,6 +1,6 @@
 # Directory Structure
 
-> 目录与文件组织约定。**当前阶段（Stage 0）：无业务代码。**
+> 目录与文件组织约定。**当前阶段（Stage 1.2 开始前）：无业务代码。**
 
 ---
 
@@ -14,12 +14,12 @@
 └── .gitattributes
 ```
 
-## 约定（Stage 0 生效）
+## 约定（当前架构阶段生效）
 
 - **不创建未经确认的业务模块结构**：Python package 布局、`src/` 或顶层包等一律等待 Architecture Specification。
 - 业务代码尚未出现（验收标准之一）。
 
-## 后续阶段（架构到达后补充）
+## 后续阶段（架构继续确认后补充）
 
 - Python package / module boundary → 由 Architecture Specification 定义后填入本文件。
-- 测试目录布局 → 随首份业务代码的确定落地（预计 pytest 结构，工具链在进入 Stage 1 时确定）。
+- 测试目录布局 → 随首份业务代码的确定落地（预计 pytest 结构，具体工具链在业务实现任务启动前确定）。

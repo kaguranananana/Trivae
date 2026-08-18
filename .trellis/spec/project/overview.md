@@ -1,6 +1,6 @@
 # Project Overview
 
-> 简短说明，不展开架构细节（架构见 architecture.md，当前 Pending）。
+> 简短说明，不展开架构细节（架构见 architecture.md，当前 Draft / In Progress）。
 
 ---
 
@@ -34,9 +34,9 @@
 
 ## 当前阶段
 
-**Stage 1.1（整体架构骨架）**：Stage 0 的 Git、Trellis 与工程规范已完成；当前已沉淀 Data Plane + Query Plane 的架构 Draft，业务代码仍为零。
+**Stage 1.1 已完成**：Stage 0 的 Git、Trellis 与工程规范已完成；Data Plane + Query Plane 的架构骨架已沉淀，业务代码仍为零。
 
-当前架构文档为 `Draft / In Progress`。Retrieval、Evidence、Trace、Database Schema 等细节仍为 Pending，不能视为最终 Architecture Specification。
+当前架构文档为 `Draft / In Progress`。Stage 1.2（Data Model + Ingestion）为下一阶段；Retrieval、Evidence、Trace、Database Schema 等细节仍为 Pending，不能视为最终 Architecture Specification。
 
 **下一阶段**：Stage 1.2（Data Model + Ingestion）。在对应架构细节确认前不实现业务功能。
 

@@ -35,7 +35,7 @@
 
 进入 Agent 开发阶段后，重要 Agent Run 应逐步具备可追踪能力（按实际架构记录）：
 
-- request_id、User Query、Router Decision、Plan/State、Tool Calls（含参数与结果）、Retrieved Evidence、Context、Final Answer；
+- request_id、User Query、Router Decision、Plan/State、Tool Calls（含参数与结果）、Retrieval Query、Retrieval Candidates / Results、Evidence Selection、Final Evidence、Context、Final Answer；
 - 指标：Latency、Token Usage、Tool Call Count、Retry Count、Error Type、Model、Prompt Version。
 
 具体 Trace Schema 由正式架构决定，当前阶段不实现。
@@ -53,7 +53,7 @@
 1. **Responsibility**：解决什么问题？为什么需要？职责边界？输入输出？
 2. **Failure Cases**：可能怎么失败？哪些输入易失败？边界情况？模型不稳定时的表现？
 3. **Observability**：出错后如何发现？日志在哪？有无 Trace？能否看到中间状态？
-4. **Failure Attribution**：错误属于哪一层（Router / Retrieval / Tool Selection / Tool Arguments / Planning / Context / Evidence / Answer Generation / External Service）？
+4. **Failure Attribution**：错误属于哪一层（Router / Retrieval / Tool Selection / Tool Arguments / Planning / Context / Evidence Selection / Evidence / Answer Generation / External Service）？
 5. **Technical Decision**：原方案？问题？候选？为何选择？适不适合当前规模？trade-off？
 6. **Verification**：通过 Test / Evaluation / Metric / Regression 证明改善，避免仅凭主观感觉。
 7. **Regression**：重要修复后保存 Failure Case、加入测试集、增加 Regression Test，必要时增加 observability / validation / guardrail。
