@@ -1,6 +1,6 @@
 # Backend Development Guidelines
 
-> Python 后端工程规范（Stage 1.1 已完成、Stage 1.2 待开始；当前仍无业务代码）。
+> Python 后端工程规范（Stage 1.1 已完成、Stage 1.2 Data Model + Ingestion 已完成、Stage 1.3 Retrieval 待开始；当前仍无业务代码）。
 > 具体代码模式在正式架构与首份业务代码落地后补充。
 
 ---
@@ -18,7 +18,7 @@
 | [Error Handling](./error-handling.md) | 错误处理原则 | 已填 |
 | [Logging Guidelines](./logging-guidelines.md) | 日志与可观测性原则 | 已填 |
 | [Quality Guidelines](./quality-guidelines.md) | 测试与质量要求 | 已填 |
-| [Database Guidelines](./database-guidelines.md) | 数据库相关规范 | Pending architecture specification |
+| [Database Guidelines](./database-guidelines.md) | 数据库相关规范 | 部分已填（数据库无关原则）；选型 / Schema / 表设计仍 Pending architecture specification |
 
 ---
 

@@ -2,20 +2,20 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion pending / next。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架与 Stage 1.2 Data Model + Ingestion 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture pending / next。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
 
 ## Status
 
-| 项 | 状态 |
-|----|------|
-| 当前阶段 | Stage 1.1 completed；Stage 1.2 pending / next |
-| 文档成熟度 | Draft / In Progress |
-| 业务实现 | 当前无业务代码；后续按已确认架构与 Trellis task 实施 |
-| 最终架构评审 | 等待 Stage 1.1-1.11 全部完成 |
+| 项      | 状态                                                         |
+| ------ | ---------------------------------------------------------- |
+| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture pending / next |
+| 文档成熟度  | Draft / In Progress                                        |
+| 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                          |
+| 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                     |
 
 ## Goals
 
@@ -75,7 +75,7 @@ Raw QQ / Export Data
 
 #### Pending
 
-Data Model、Canonical Message 字段、持久化方式、Database Schema、导入协议、幂等性、索引实现和错误处理策略均待后续阶段确定。
+Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），但持久化方式、Database Schema、字段类型与具体索引、Vector Store、Chunking、Embedding 模型与 Indexing Pipeline 的具体执行方式仍待后续阶段确定。
 
 ### Query Plane
 
@@ -98,6 +98,208 @@ User Query + Query Context
 ```
 
 Router 的具体路径名称、分类规则、置信度和边界条件仍属于 Pending 项。`direct_response`、`tool_assisted`、`planned_execution` 仅作为 ChatLab 的参考词汇，不表示 Trivae 已确定三个独立执行流水线或固定的绕行关系。
+
+## Stage 1.2: Data Model + Ingestion
+
+> 本节为 Stage 1.2 已确认内容：只定义逻辑数据模型与概念管线边界，不包含数据库表设计、字段类型或任何技术选型。
+
+### Canonical Data Model
+
+所有外部聊天来源都先经过 Adapter / Parser，统一转换为 Trivae 的 Canonical Model；后续 Importer、Storage、Retrieval 不感知具体源格式（NapCat、QQ Export 或未来其他来源）。
+
+当前确认的逻辑实体：
+
+- `Source`
+- `ChatSession`
+- `UserIdentity`
+- `Membership`
+- `Message`
+- `ImportBatch`
+
+> 注意：这些是**逻辑数据模型**，不等同于最终数据库表设计；表数量、字段与索引待 Storage Architecture 阶段决定。
+
+### Entity Responsibilities
+
+#### ChatSession
+
+表示一个逻辑聊天空间。无论数据从哪个源、哪个批次进入，同一个群只对应一个 ChatSession。
+
+稳定身份优先使用：
+
+```text
+platform + external_chat_id
+```
+
+群名等可变字段不能作为主要身份判断依据：名称会变化，平台 ID 才是稳定身份。仅使用群名匹配会导致"同一个群被重复创建"这一类问题。
+
+#### UserIdentity
+
+表示跨聊天空间稳定的平台用户身份（支持后续跨群人物分析）。
+
+优先使用：
+
+```text
+platform + platform_user_id
+```
+
+#### Membership
+
+表示 UserIdentity 在某个 ChatSession 中的局部身份，例如群昵称、角色、alias 等。
+
+平台用户身份（UserIdentity）与群内显示身份（Membership）必须分离：同一个人在群 A、群 B、群 C 可能使用不同昵称。
+
+#### Message
+
+逻辑层至少表达：
+
+```text
+internal id
+session
+author
+source / platform message id
+timestamp
+message type
+normalized content
+reply relationship
+```
+
+必须明确区分两个 ID：
+
+```text
+Trivae Internal Message ID（Trivae 内部 ID）
+Platform / Source Message ID（平台原始 ID，如 QQ message_id）
+```
+
+后续 Evidence / Citation 应能够通过 Message 追溯到原始聊天记录：
+
+```text
+Evidence
+  → Message (internal id)
+  → source / platform message id
+  → 原始聊天
+```
+
+因此 Message Identity 从项目第一天起就必须认真设计，不能在 Evidence / Citation 阶段再补。
+
+#### Source
+
+记录聊天数据的来源与 provenance，例如：
+
+- NapCat
+- QQ Export
+- 其他未来 Adapter
+
+Source 主要服务于数据来源追踪、问题定位和可观测性。正常 Retrieval 不需要关心它；但当某批数据出现问题（例如时间戳错误）时，通过 Source 可以定位到应排查的 Parser / Adapter 层。
+
+#### ImportBatch
+
+记录一次 ingestion 行为，逻辑层至少考虑：
+
+```text
+source
+session
+start / finish
+received count
+inserted count
+duplicate count
+error count
+status
+```
+
+用于观测一次数据导入到底发生了什么，符合 Stage 0 的 Observable / Failure Attribution 原则（例如收到 1000 条、插入 823、重复 175、错误 2）。
+
+### Unified Ingestion Pipeline
+
+```text
+Raw Source
+→ Adapter / Parser
+→ Normalizer
+→ Canonical Model
+→ Validator
+→ Deduplicator
+→ Canonical Store
+→ Indexing Pipeline
+```
+
+职责边界：
+
+| 层           | 职责                     |
+| ----------- | ---------------------- |
+| Parser      | 理解外部源格式（字段含义、原始结构）     |
+| Normalizer  | 转换成 Trivae Canonical Model |
+| Validator   | 验证规范化数据是否合法             |
+| Deduplicator | 判断数据是否已经存在              |
+| Store       | 保存 canonical data        |
+| Indexing    | 构建可重建的搜索派生数据            |
+
+Parser 负责"读懂源格式"（例如 `sender.uin` → `senderPlatformId`），Normalizer 之后的 Importer 不应再出现 `if qq_exporter:` 之类的源格式分支。
+
+### Shared Importer
+
+所有数据源共享统一 Importer。禁止每个 Adapter / Parser 各自实现独立的：
+
+- 去重逻辑
+- 数据库写入逻辑
+- 成员更新逻辑
+- 索引写入逻辑
+
+数据源差异应在 Adapter / Parser 层被消化；新增 WeChat / Discord / Telegram 等来源不影响 Importer。
+
+### Identity & Deduplication
+
+#### Message Identity
+
+Deduplication 优先级：
+
+- Priority 1：稳定的 platform / source message id（如 `platform + session + source_message_id`）
+- Priority 2：Canonical Message Fingerprint
+- 否则：视为新消息
+
+Fingerprint 不能只使用 content hash，应至少结合具有区分度的字段：
+
+```text
+session
+sender
+timestamp
+message type
+normalized content
+reply relationship（如适用）
+```
+
+避免因为"哈哈""好的"等重复文本造成误去重。
+
+#### Chat Identity
+
+稳定平台 ID 优先于群名、标题等可变字段：
+
+```text
+platform + external_chat_id
+```
+
+#### User Identity
+
+稳定平台用户 ID 优先于昵称：
+
+```text
+platform + platform_user_id
+```
+
+### Source of Truth
+
+Canonical Message Store 是聊天数据的 Source of Truth。
+
+以下内容属于 **Derived Data**：
+
+```text
+Keyword Index
+Embedding
+Vector Index
+Chunk
+Topic / Summary Index
+其他未来搜索索引
+```
+
+Derived Data 必须可以基于 Canonical Store 重建（例如更换 Embedding 模型时只需重建派生数据，不需要重新导入原始聊天数据）。不要让搜索索引成为原始事实来源。
 
 ## Module Boundaries
 
@@ -223,6 +425,18 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 这些决策只描述一级边界和方向，不等同于最终模块接口、数据模型或依赖锁定。
 
+### Stage 1.2：Data Model + Ingestion
+
+1. **Canonical Model 隔离**：所有数据源先经 Adapter / Parser 统一转换为 Canonical Model，Importer / Storage / Retrieval 不感知具体源格式。
+2. **Stable Platform Identity 优先**：ChatSession 用 `platform + external_chat_id`，UserIdentity 用 `platform + platform_user_id`；群名、昵称等可变字段不作为身份判断依据。
+3. **Platform Identity 与 Session Membership 分离**：UserIdentity（跨群稳定身份）与 Membership（群内局部身份）是两个概念。
+4. **Shared Importer**：所有数据源共用同一套 Importer；去重、写入、成员更新、索引写入逻辑不按数据源重复实现。
+5. **Stable Message ID 优先、Fingerprint fallback**：去重先按稳定 platform/source message id，缺失时用结合 session / sender / timestamp / type / content / reply 的 fingerprint，不能只做 content hash。
+6. **Canonical Store 为 Source of Truth**：搜索索引是 Derived Data，必须可基于 Canonical Store 重建。
+7. **Ingestion Observability**：ImportBatch 记录一次导入的 received / inserted / duplicate / error 与状态。
+
+这些决策只定义逻辑数据模型与概念边界；Database Schema、技术选型与实现细节仍待后续阶段确认。
+
 ## Reference Designs, Not Final Decisions
 
 - ChatLab 的 `direct_response / tool_assisted / planned_execution` 路径和 Planner 行为是参考设计；Trivae 的路由名称与策略仍待确认。
@@ -233,9 +447,9 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 以下事项仍为 **Pending architecture specification**，不得在本阶段自行补齐或实现：
 
-- Data Model 与 Canonical Message 字段
-- Ingestion architecture、输入格式、Normalizer、幂等性与失败处理
-- Database / 持久化 / Snapshot / Schema / Migration 设计
+- 最终 Database Schema、表数量、字段类型与具体索引，SQLite / PostgreSQL 具体实现
+- Vector Store 实现、Chunking 策略、Embedding 模型、Indexing Pipeline 具体执行方式
+- Ingestion 具体实现细节：Deduplicator 的 fingerprint 算法、失败处理与幂等执行方式
 - Retrieval architecture
 - Keyword / Semantic / Hybrid Retrieval 选型
 - 时间过滤、成员过滤、上下文扩展、Rerank 与召回策略

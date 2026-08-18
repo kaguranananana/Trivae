@@ -1,7 +1,7 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：**暂无独立 ADR**。Stage 1.1 已确认的一级架构方向记录于 architecture.md；具体技术选型与实现级决策仍在后续 Stage 中确认。
+> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)。
 
 ---
 
@@ -63,3 +63,10 @@ Regression
 - 内容：Data Plane + Query Plane、Query 主链路、Router / Planner / Agent Runtime / Tool Layer / Retrieval / Evidence 的一级职责边界。
 - 记录位置：[architecture.md](./architecture.md)。
 - 后续：Stage 1.2-1.11 分别确认剩余细节，完成后再统一升级文档状态。
+
+### Stage 1.2：Data Model + Ingestion
+
+- 状态：Confirmed（逻辑数据模型与概念边界；Database Schema 与技术选型仍 Pending）。
+- 内容：Canonical Model 隔离、Stable Platform Identity 优先、Platform Identity 与 Membership 分离、Shared Importer、Stable Message ID 优先 + Fingerprint fallback、Canonical Store 为 Source of Truth、ImportBatch 观测。
+- 记录位置：[technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
+- 后续：Stage 1.3 Retrieval Architecture。
