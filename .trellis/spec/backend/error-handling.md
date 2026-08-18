@@ -19,7 +19,7 @@
 
 ## Retry / Fallback（默认不加）
 
-仅当真实 Failure Case 证明存在可恢复的 transient error（外部 API 短暂失败、网络抖动、模型偶发格式错误）时才引入。引入必须说明：
+当真实 Failure Case 证明存在可恢复的 transient error（外部 API 短暂失败、网络抖动、模型偶发格式错误）时才引入。引入必须说明：
 
 - 触发条件
 - 为什么主链路无法直接解决
