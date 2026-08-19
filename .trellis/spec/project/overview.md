@@ -38,7 +38,7 @@
 
 **Stage 1.2（Data Model + Ingestion）已完成**：Canonical Data Model（Source / ChatSession / UserIdentity / Membership / Message / ImportBatch）、统一 Ingestion Pipeline、Shared Importer、Identity 与去重原则、Canonical Store 为 Source of Truth 已沉淀（见 [architecture.md](./architecture.md)）。
 
-**Stage 1.3（Retrieval Architecture）已完成**：Retrieval 由 Retrieval Composition 与四个 Primitives（Structured / Lexical / Semantic / Context Expansion）组成；Hybrid 为组合策略；Semantic 索引单位为 Conversation Chunk（Time-aware Parent + Small Child）；Retrieval Strategy 由任务决定；Candidate provenance 与 Partial / Coverage 显式暴露已沉淀（见 [architecture.md](./architecture.md)）。Reranker、Fusion 权重、Chunk 参数等保持 Pending Evaluation。
+**Stage 1.3（Retrieval Architecture）已完成**：Retrieval 由 Retrieval Composition、三个 Primitives（Structured / Lexical / Semantic）与 Post-Retrieval Operator（Context Expansion）组成；Hybrid 为组合策略；集合确定后的确定性查询优先；Semantic 第一版 primary indexing unit 为 Conversation Chunk（Time-aware Parent + Small Child，Message-level 辅助索引 Pending Evaluation）；Retrieval Strategy 由任务决定；Retrieval Result provenance 与 Partial / Coverage 显式暴露已沉淀（见 [architecture.md](./architecture.md)）。Reranker、Fusion 权重、Chunk 参数等保持 Pending Evaluation。
 
 当前架构文档为 `Draft / In Progress`。Stage 1.4（Tool / Capability Layer）为下一阶段；Database Schema、Vector Store、Chunking 参数、Embedding、Evidence / Citation、Trace 等细节仍为 Pending，不能视为最终 Architecture Specification。
 

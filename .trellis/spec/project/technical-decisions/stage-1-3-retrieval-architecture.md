@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Multi-strategy Retrieval：Retrieval Composition + 四个 Primitives
+## 1. Multi-strategy Retrieval：Retrieval Composition + 三个 Primitives + Post-Retrieval Operator
 
 **Context**：Trivae 需要从大量高噪声群聊数据中找到"足够相关、足够完整、能够继续追溯"的候选信息。ChatLab 并非一个万能 `search()`，而是同时保留 Keyword Search、Semantic Search、只读 SQL 与 Evidence Retrieval 多条数据获取能力。
 
@@ -16,11 +16,24 @@
 1. 单一万能 `search()` 入口，内部自动切换。
 2. 一组可组合的 Retrieval Primitives + 一层 Composition。
 
-**Decision**：Retrieval 由一层 **Retrieval Composition** 与四个 **Retrieval Primitives**（Structured / Lexical / Semantic / Context Expansion）组成。Composition 根据当前任务选择并组合底层原语，输出结构化 Candidate Set。
+**Decision**：Retrieval 由一层 **Retrieval Composition**、三个 **Retrieval Primitives**（Structured / Lexical / Semantic）与一个 **Post-Retrieval Operator**（Context Expansion）组成，分为两类能力：
 
-**Reason**：不同问题对应不同的最佳信息获取方式（明确关键词 → Lexical，同义表述 → Semantic，统计聚合 → Structured，命中上下文不足 → Context Expansion）。把能力拆成可组合的原语，让"选哪种方式"成为一个显式的组合决策，而不是被藏在一个黑盒里。
+```text
+Retrieval
+├── Retrieval Composition        选择并组合原语
+├── Retrieval Primitives         召回候选（find candidates）
+│   ├── Structured
+│   ├── Lexical
+│   └── Semantic
+└── Post-Retrieval Operator      恢复上下文（recover surrounding context）
+    └── Context Expansion
+```
 
-**Result**：`Retrieval Request → Composition → 原语召回 → Candidate Set → Context Expansion → Retrieval Result`。
+Composition 根据当前任务选择并组合底层原语，输出候选集合；可选地在候选集上应用 Post-Retrieval Operator。
+
+**Reason**：不同问题对应不同的最佳信息获取方式（明确关键词 → Lexical，同义表述 → Semantic，统计聚合 → Structured，命中上下文不足 → Context Expansion）。把能力拆成可组合的原语，让"选哪种方式"成为一个显式的组合决策，而不是被藏在一个黑盒里。Context Expansion 与前三个不在同一层：前三个负责"找出候选"，它负责"拿已有命中恢复上下文"——`search something` 与 `expand this known hit` 天然属于两类 capability，这一区别在 Stage 1.4 Tool Layer 会直接影响如何封装。
+
+**Result**：`Retrieval Request → Composition → 原语召回 → Candidate Set →（Post-Retrieval Operator）Context Expansion → Retrieval Result`。
 
 **Trade-off**：多一层 Composition 需要定义组合语义与结果结构；换取每种问题都能走最合适的召回路径，且错误可归属到具体原语。
 
@@ -44,43 +57,53 @@ Lexical Candidates + Semantic Candidates → Merge → Dedup → Candidate Selec
 
 **Trade-off**：Hybrid 何时启用、如何组合成为显式决策（交给 Query-specific strategy），需要 Evaluation 验证，不默认生效。
 
-## 3. 确定性查询优先（Structured Retrieval）
+## 3. 集合确定后的确定性查询优先（Structured Retrieval）
 
 **Context**：ChatLab 把统计、聚合、结构化筛选独立出来（member activity、time stats、conversation between、keyword frequency、只读 SQL）。
 
-**Problem**：`过去半年一共有多少条 AI Agent 相关讨论？` 这类问题如果强行 Embedding → vector search → LLM 看几十条消息猜统计结论，可靠性差、成本高、无法追溯计算过程。
+**Problem**：`过去半年一共有多少条 AI Agent 相关讨论？` 这类问题混着两个独立子问题：`哪些聊天属于"AI Agent 相关讨论"`（语义判定）与 `这些讨论一共有多少条`（确定性聚合）。SQL 能可靠地算 `count / group by month / group by sender`，但前提是"哪些消息属于该讨论"的集合已经确定。若把整个问题强行 Embedding → vector search → LLM 猜统计结论，可靠性差、成本高、无法追溯计算过程。
 
-**Decision**：**能够由确定性查询计算的事实，优先使用 Structured Retrieval**，直接对 Canonical Store 执行 filter / aggregate / 确定性查询（具体查询接口由 Storage Architecture 决定，Pending）。
+**Decision**：**当目标数据集合可以由结构化条件确定时，优先使用 Structured Retrieval；当集合本身需要语义判断时，先通过 Lexical / Semantic Retrieval 确定候选集合，再进行确定性统计或聚合。** Structured Retrieval 只负责"集合确定之后的确定性计算"，不负责"哪些消息属于某类讨论"的语义判定。
 
-**Reason**：确定性查询可验证、可追溯、成本低；LLM 负责解释结果，不负责数数。
+```text
+"哪个成员发言最多？"          → Structured
+"8 月有多少条消息？"           → Structured
+"过去半年有多少次关于 AI Agent 的有效技术讨论？"
+    → Semantic / Lexical 定义集合
+    → Structured aggregate
+```
 
-**Trade-off**：需要为结构化查询定义清晰的能力边界（哪些问题属于"数据库能确定计算"），避免把语义问题误判为可计算问题。
+**Reason**：确定性查询可验证、可追溯、成本低；LLM 负责解释结果，不负责数数。把"语义判定"与"确定性聚合"分成两段，Tool Layer 才能清晰暴露"定义集合"与"聚合"两类能力。
 
-**Failure Case**：把可确定性计算的问题交给 Embedding + LLM 猜测，得到无法保证准确的结论且无法追溯。
+**Trade-off**：需要为结构化查询定义清晰的能力边界（哪些问题属于"集合已确定，可直接计算"），避免把语义分类误当成 SQL 能力。
+
+**Failure Case**：把"集合本身需要语义判定"的问题交给 Embedding + LLM 猜测，得到无法保证准确的结论且无法追溯。
 
 ## 4. Lexical Retrieval 保留
 
 **Context**：大量问题是"我已经大概知道自己在找什么字面内容"（`有没有人提过 "LangGraph"？` `谁讨论过 DeepSeek V4？` `8 月 15 日有没有说过 "MCP"？`）。
 
-**Decision**：保留 Lexical Retrieval 作为四个 Primitives 之一。目标词明确时，关键词检索精确、便宜、可解释，命中原因清楚（`match = "LangGraph"`）。
+**Decision**：保留 Lexical Retrieval 作为三个 Primitives 之一。目标词明确时，关键词检索精确、便宜、可解释，命中原因清楚（`match = "LangGraph"`）。
 
 **Reason**：目标词明确的场景下关键词检索是最优路径，无需语义开销。
 
 **Trade-off**：Lexical 单独使用有明确局限——群聊措辞随意，"Agent 框架太重"可能在聊天记录中完全不以该词出现（Keyword Recall = 0 但语义相关），因此不能作为唯一召回路径（见决策 5）。
 
-## 5. Semantic Retrieval 保留，且索引单位为 Conversation Chunk
+## 5. Semantic Retrieval 保留，第一版 primary indexing unit 为 Conversation Chunk
 
 **Context**：用户表达的是一个意思，聊天记录可能使用完全不同措辞（`大家对重型 Agent 框架有什么意见？` ↔ `封装太厚` `调试困难` `LangGraph 太重` `自己写 loop 反而简单`）。
 
 **Problem**：群聊大量单条消息语义残缺（`对` `确实` `哈哈哈` `这个可以` `我也是` `？`），真正的信息分布在多轮对话中。若 `Message → embedding` 逐条向量化，每条向量携带的信息不足以支撑语义召回。
 
-**Decision**：保留 Semantic Retrieval；**Semantic 索引单位是 Conversation Chunk，不是单独 Message**。采用 **Time-aware Parent + Small Child** 架构：Parent 表示相对连续的讨论区域（时间 gap 划分），Child 是用于向量化的较小语义单元。
+**Decision**：保留 Semantic Retrieval；**第一版 primary indexing unit 为 Conversation Chunk，默认不建立逐 Message 向量索引**。采用 **Time-aware Parent + Small Child** 架构：Parent 表示相对连续的讨论区域（时间 gap 划分），Child 是用于向量化的较小语义单元。
 
 ```text
 Query → 命中 Child → 定位所属 Parent → Context Expansion
 ```
 
-**Reason**：小 Chunk 保证定位准确，大 Parent 保证上下文完整；两者通过"命中 Child → 关联 Parent → 扩展上下文"衔接。
+这不封死 Message-level 语义检索的未来可能性：某些信息完整的长单条技术消息本身就是好的 semantic unit；若后续 Evaluation 证明 Message-level retrieval 对特定 Failure Case 有价值，再作为辅助索引引入（当前默认不建立，Pending Evaluation）。这也符合 ADR 原则——开源项目的默认设计只是 reference design，要经过 Trivae 自身约束或 Evaluation 才升级为最终技术判断。
+
+**Reason**：小 Chunk 保证定位准确，大 Parent 保证上下文完整；两者通过"命中 Child → 关联 Parent → 扩展上下文"衔接。以 Chunk 为 baseline、保留 Message-level 为可评估的辅助路径，避免提前封死尚未验证的可能性。
 
 **Trade-off**：Chunk 边界会切分对话，存在 Chunk Boundary Error（关键上下文被切开）的可能，需要 Context Expansion 与 Evaluation 验证边界参数。
 
@@ -96,13 +119,13 @@ Query → 命中 Child → 定位所属 Parent → Context Expansion
 
 **Regression**：若现在固定参数，会重复"从参考项目抄默认值而无依据"的错误，后续难改且无法定位问题。
 
-## 7. Context Expansion 是独立能力
+## 7. Context Expansion 是 Post-Retrieval Operator
 
 **Context**：命中一条"我现在觉得 LangGraph 真有点重"，只把这条交给 LLM 信息远远不够；真正重要的是附近李四的追问、张三对状态和调试的解释、王五换 SDK 的后续。
 
-**Decision**：**`retrieve` 与 `expand context` 是两个动作**。Context Expansion 是独立的第四个 Primitive，将命中扩展为完整的 Evidence Window（前后消息、回复链、同 Parent 范围等）。
+**Decision**：**`retrieve` 与 `expand context` 是两个动作**。Context Expansion 是 **Post-Retrieval Operator**，与前三个 Primitives 不在同一层：前三个负责"找出候选"（find candidates），Context Expansion 负责"拿已有命中，恢复其所在上下文"（recover surrounding context），将命中扩展为完整的 Evidence Window（前后消息、回复链、同 Parent 范围等）。该层级区别直接影响 Stage 1.4——`search something` 与 `expand this known hit` 天然属于两类 capability。
 
-**Reason**：命中与扩展的成功率、失败模式完全不同，必须分开观察和归因（Context Expansion Error 单独可定位）。
+**Reason**：命中与扩展的成功率、失败模式完全不同，必须分开观察和归因（Context Expansion Error 单独可定位）；在 Tool Layer 它们也应作为两类 capability 封装。
 
 **Trade-off**：扩展需要定义范围边界（扩展多少、是否越界进入无关话题），由 Evaluation 校准。
 
@@ -112,7 +135,7 @@ Query → 命中 Child → 定位所属 Parent → Context Expansion
 
 **Context**：很多 RAG 项目让所有查询走同一条 `BM25 + Vector → RRF → Reranker → LLM` 固定流水线。
 
-**Problem**：系统提前规定完整检索流程，Agent 失去根据任务选择信息获取方式的能力（GroupMemory 的旧问题）。不同问题需要的策略不同：明确关键词 → Lexical；同义表述 → Semantic；时间趋势 → 多轮 Semantic + Lexical verification + Structured 统计；计数类 → Evidence-oriented Hybrid。
+**Problem**：系统提前规定完整检索流程，Agent 失去根据任务选择信息获取方式的能力（GroupMemory 的旧问题）。不同问题需要的策略不同：明确关键词 → Lexical；同义表述 → Semantic；时间趋势 → 多轮 Semantic + Lexical verification + Structured 统计；字面计数 → Lexical 定义集合 + 确定性计数。
 
 **Decision**：**Retrieval Strategy 由任务决定，不默认所有 Query 执行同一个固定 Pipeline。**
 
@@ -121,7 +144,9 @@ Query → 命中 Child → 定位所属 Parent → Context Expansion
 | 有没有说过 LangGraph？ | Lexical |
 | 大家为什么觉得一些 Agent 框架太重？ | Semantic |
 | 过去半年 Agent 框架讨论发生了什么变化？ | 多轮 Semantic + Lexical verification + Structured 时间统计 |
-| 今年到底有几次明确提到面试 OC？ | Evidence-oriented Hybrid |
+| 今年到底有几次明确提到面试 OC？ | Lexical recall → dedup / verification → deterministic count |
+
+"明确提到面试 OC" 是字面条件，用 Lexical 定义集合再确定性计数即可；只有当"拿 OC / 拿 offer / 过面 / 收到意向"等语义表达也要纳入时，Semantic 才有意义。**不能把"计数题"默认等同于 Hybrid。**
 
 **Reason**：让策略适配任务，而不是任务适配流水线；保留 Agent 选择信息获取方式的能力，避免回到"系统替 Agent 规定一切"的老路。
 
@@ -139,25 +164,26 @@ Query → 命中 Child → 定位所属 Parent → Context Expansion
 
 **Trade-off**：第一版可能承担一定排序质量损失，换取简单可验证的 baseline。
 
-## 10. 不提前设计复杂 Fusion Score；Candidate provenance 必须保留
+## 10. 不提前设计复杂 Fusion Score；Retrieval Result 保留 provenance
 
 **Context**：第一版 Hybrid 不采用 `0.45 * semantic + 0.35 * BM25 + 0.1 * recency + 0.1 * sender_authority` 这类带权打分——这些权重没有任何依据。
 
-**Decision**：第一版 Candidate 保留来源 provenance：
+**Decision**：第一版不把"所有 Retrieval 结果压成同一个 Candidate 类型"。Retrieval Result 概念上分两类，共同保留 provenance 与 trace metadata：
 
 ```text
-Candidate {
-    source         # semantic | lexical | structured
-    score
-    message_range
-    timestamp
-    matched_terms
-}
+Retrieval Result
+├── Message Candidates            # source: lexical | semantic
+│       score / message_range / timestamp / matched_terms
+└── Structured Results            # 标量 / 聚合 / 记录
+        count = 372
+        month × count 分组
 ```
+
+Structured Results（scalar / aggregate / records）不一定有 `score` / `message_range` / `matched_terms`，不能强行套入 Message Candidate 结构。具体数据结构 Pending（Stage 1.4 / Data Schema 联动）。
 
 **Fusion 权重 = Pending Evaluation**，等 Evaluation 指出具体问题后再设计。
 
-**Reason**：保留来源是归因与调优的前提；没有证据的权重只会掩盖问题（等 Evaluation 告诉我们哪里出了问题）。
+**Reason**：保留来源与结果类型是归因与调优的前提；没有证据的权重只会掩盖问题（等 Evaluation 告诉我们哪里出了问题）。
 
 **Trade-off**：第一版不做加权融合，Hybrid 结果可能不如"精心调权"的方案漂亮，但可解释、可归因。
 
@@ -181,6 +207,8 @@ Candidate {
 **Reason**：Failure Attribution 是答案纠错的入口——不同 Failure 的根因与修复方式完全不同。
 
 **Trade-off**：需要额外输出完整性字段，换取"0 结果 ≠ 不存在"的语义正确性与可归因性。
+
+**后续口径**：Coverage 的语义需在 Stage 1.9 进一步明确为 **query-scope coverage**——当查询限定在某个 session / time range 时，有意义的是"请求范围内的覆盖率"（requested scope coverage），而不是全局索引覆盖率。当前仅确认"必须显式暴露 coverage / partial / truncated"，具体口径与字段 Pending。
 
 ## 12. Evidence 判断不在 Retrieval 层硬编码
 
@@ -232,10 +260,12 @@ Candidate {
 - Reranker（Pending Evaluation，第一版不引入）
 - Fusion 权重与 merge / dedup / candidate selection 具体算法（Pending Evaluation）
 - Chunk 具体参数：时间 gap、有效字符数、消息数、token 上限、overlap（Pending Evaluation，不复制 ChatLab 默认值）
+- Message-level 辅助语义索引（Pending Evaluation，第一版默认不建立；Evaluation 证明其对特定 Failure Case 有价值后再引入）
 - Query-specific strategy 的决策机制：Agent 自主选择 vs 规则 / Router 引导（Stage 1.4 / 1.10 边界）
 - Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式
 - Retrieval Trace Schema、事件模型、存储与采集方式（仅观察需求已确认）
 - Tool / Capability Layer：Agent 看到哪些 Tool、如何命名与封装（Stage 1.4）
 - Evidence Judge 设计（Question-specific Criteria，Stage 1.8）
+- Coverage 的具体口径与字段（Stage 1.9 明确 query-scope coverage）
 - Candidate / Retrieval Result 的具体数据结构（与 Storage / Data Schema 联动）

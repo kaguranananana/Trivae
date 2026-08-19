@@ -73,7 +73,7 @@ Regression
 
 ### Stage 1.3：Retrieval Architecture
 
-- 状态：Confirmed（Retrieval 内部能力与组合策略；Tool 暴露方式、Reranker、Fusion 权重、Chunk 参数、Trace Schema、Vector Store / Embedding 仍 Pending）。
-- 内容：Multi-strategy Retrieval（Composition + 四个 Primitives）、Hybrid 为组合策略、确定性查询优先、Conversation Chunk 为 Semantic 索引单位（Time-aware Parent + Small Child）、Context Expansion 独立能力、Query-specific strategy、Candidate provenance、Partial / Coverage 显式暴露、Failure Attribution 分类、Evidence 判断不硬编码、Retrieval Trace 观察需求（Schema 不提前实现）。
+- 状态：Confirmed（Retrieval 内部能力与组合策略；Tool 暴露方式、Reranker、Fusion 权重、Chunk 参数、Message-level 辅助索引、Trace Schema、Vector Store / Embedding 仍 Pending）。
+- 内容：Multi-strategy Retrieval（Composition + 三个 Primitives + Post-Retrieval Operator）、Hybrid 为组合策略、集合确定后的确定性查询优先、Conversation Chunk 为第一版 Semantic primary indexing unit（Time-aware Parent + Small Child，Message-level 辅助索引 Pending Evaluation）、Context Expansion 为 Post-Retrieval Operator、Query-specific strategy、Retrieval Result provenance（Message Candidates + Structured Results 分列）、Partial / Coverage 显式暴露（口径 Stage 1.9 细化）、Failure Attribution 分类、Evidence 判断不硬编码、Retrieval Trace 观察需求（Schema 不提前实现）。
 - 记录位置：[technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
 - 后续：Stage 1.4 Tool / Capability Layer。

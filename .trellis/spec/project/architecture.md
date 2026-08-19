@@ -320,9 +320,9 @@ Retrieval 的核心职责：
 - Retrieval 输出的是 Candidate Data（候选集合），**不是最终 Evidence**；候选仍需经过 Evidence Selection / Organization（Stage 1.8）才能成为引用证据。
 - Retrieval 上承 Query Plane（Agent 发起检索请求），下接 Data Plane（Canonical Message Store + Derived Indexes）。
 
-### 整体结构：Retrieval Composition + 四个 Retrieval Primitives
+### 整体结构：Retrieval Composition + Retrieval Primitives + Post-Retrieval Operator
 
-Trivae 的 Retrieval 由一层 **Retrieval Composition** 与四个 **Retrieval Primitives** 组成：
+Trivae 的 Retrieval 由一层 **Retrieval Composition**、三个 **Retrieval Primitives**（Structured / Lexical / Semantic）与一个 **Post-Retrieval Operator**（Context Expansion）组成，分为两类能力：
 
 ```text
                  Retrieval Request
@@ -334,45 +334,62 @@ Trivae 的 Retrieval 由一层 **Retrieval Composition** 与四个 **Retrieval P
           ▼             ▼             ▼
      Structured      Lexical       Semantic
      Retrieval       Retrieval      Retrieval
+      (Primitive)    (Primitive)    (Primitive)
           │             │             │
           └─────────────┼─────────────┘
                         ▼
                  Candidate Set
                         │
                         ▼
-                Context Expansion
+      Post-Retrieval Operator
+            Context Expansion
                         │
                         ▼
                Retrieval Result
 ```
 
+对应的能力分层：
+
+```text
+Retrieval
+├── Retrieval Composition        选择并组合原语
+├── Retrieval Primitives         召回候选（find candidates）
+│   ├── Structured
+│   ├── Lexical
+│   └── Semantic
+└── Post-Retrieval Operator      恢复上下文（recover surrounding context）
+    └── Context Expansion
+```
+
+**Context Expansion 与前三个 Primitives 不在同一层**：前三个负责"找出候选"，Context Expansion 负责"拿已有命中，恢复其所在上下文"。这个区别对 Stage 1.4 Tool Layer 有直接影响——`search something` 与 `expand this known hit` 天然属于两类 capability。
+
 #### Retrieval Composition
 
-- 位于四个 Primitives 之上，根据当前任务选择并组合底层原语，输出结构化 Candidate Set。
+- 位于 Retrieval Primitives 之上，根据当前任务选择并组合底层原语，输出候选集合；可选地在候选集上应用 Post-Retrieval Operator。
 - **Hybrid 属于组合策略，不单独成为一种底层搜索引擎**：不会演化出一个"什么问题都往里面塞"的 `hybrid_search()`。
 - 具体组合规则（merge / dedup / candidate selection 的实现方式）与 Fusion 权重保持 Pending Evaluation，由 Trivae 自己的 Evaluation Set 决定。
 
-#### 四个 Retrieval Primitives
+#### 三个 Retrieval Primitives
 
 | Primitive | 解决的问题 | 触发场景示例 |
 | --- | --- | --- |
-| Structured Retrieval | 数据库能够确定计算的问题 | 过去半年多少条 AI Agent 相关讨论；谁发言最多；每月讨论量变化 |
+| Structured Retrieval | 目标集合已由结构化条件确定时的确定性计算 | 谁发言最多；8 月有多少条消息；每月讨论量变化 |
 | Lexical Retrieval | 已经大概知道自己在找什么字面内容 | 有没有人提过 "LangGraph"；谁讨论过 DeepSeek V4；8 月 15 日有没有说过 "MCP" |
 | Semantic Retrieval | 用户表达的是一个意思，聊天记录使用完全不同的措辞 | 大家对重型 Agent 框架有什么意见 |
-| Context Expansion | 命中的候选信息上下文不完整 | 命中单条消息，但真正信息在其前后多轮对话中 |
 
-### 通用原则：确定性查询优先
+### 通用原则：集合确定后的确定性查询优先
 
-> **能够由确定性查询计算的事实，优先使用 Structured Retrieval。**
+> **当目标数据集合可以由结构化条件确定时，优先使用 Structured Retrieval；当集合本身需要语义判断时，先通过 Lexical / Semantic Retrieval 确定候选集合，再进行确定性统计或聚合。**
 
-把可确定性计算的问题（统计、聚合、结构化筛选）强行 Embedding → vector search → LLM 猜结论，可靠性差、成本高、无法追溯。正确路径是对 Canonical Store 直接执行确定性查询；**LLM 负责解释结果，不负责数数**。
+把"哪些消息属于某类讨论"这类需要语义判定的集合问题强行 Embedding → vector search → LLM 猜结论，可靠性差、成本高、无法追溯。Structured Retrieval 的前提是目标集合已由结构化条件确定；对集合的确定性聚合（count / group by 等）直接由 Canonical Store 执行；**LLM 负责解释结果，不负责数数**。
 
 ### Structured Retrieval
 
-职责：解决"数据库能够确定计算的问题"，直接对 Canonical Store 执行 filter / aggregate / 确定性查询（具体 SQL / 查询接口由 Storage Architecture 决定，当前 Pending）。
+职责：在**目标数据集合已由结构化条件确定**的前提下，直接对 Canonical Store 执行 filter / aggregate / 确定性查询（具体 SQL / 查询接口由 Storage Architecture 决定，当前 Pending）。Structured Retrieval 解决的是"集合确定之后的确定性计算"，**不负责"哪些消息属于某类讨论"的语义判定**。
 
-- 示例问题：`过去半年一共有多少条 AI Agent 相关讨论？` `哪个成员发言最多？` `每个月讨论量如何变化？` `A 和 B 回复彼此多少次？` `过去三个月活跃成员数量怎么变化？`
-- Failure Case：把这类问题交给 Embedding + LLM 看几十条消息后猜一个统计结论，无法保证准确，也无法追溯计算过程。
+- 纯结构化（集合可直接由条件确定）：`哪个成员发言最多？` `8 月有多少条消息？` `A 和 B 回复彼此多少次？` `过去三个月活跃成员数量怎么变化？` `每个月讨论量如何变化？`
+- 需要先定义集合再聚合：`过去半年有多少次关于 AI Agent 的有效技术讨论？` 应先由 Lexical / Semantic Retrieval 确定"属于 AI Agent 讨论"的候选集合，再对集合做确定性聚合。
+- Failure Case：把"集合本身需要语义判定"的问题交给 Embedding + LLM 看几十条消息后猜一个统计结论，无法保证准确，也无法追溯计算过程。
 
 ### Lexical Retrieval
 
@@ -385,9 +402,9 @@ Trivae 的 Retrieval 由一层 **Retrieval Composition** 与四个 **Retrieval P
 
 职责：用户表达的是一个意思，而聊天记录使用完全不同措辞时的语义召回。例如 Query "大家对重型 Agent 框架有什么意见？" 可召回 "封装太厚""调试困难""LangGraph 太重""自己写 loop 反而简单" 等。
 
-**索引单位是 Conversation Chunk，不是单条 Message。**
+**第一版 primary indexing unit 为 Conversation Chunk；默认不建立逐 Message 向量索引。**
 
-不采用 `Message → embedding` 的原因：群聊里大量消息语义残缺（"对""确实""哈哈哈""这个可以""我也是""？"），真正的信息分布在多轮对话中：
+不采用 `Message → embedding` 作为主索引的原因：群聊里大量消息语义残缺（"对""确实""哈哈哈""这个可以""我也是""？"），真正的信息分布在多轮对话中：
 
 ```text
 A：我觉得 LangGraph 现在封装太厚了
@@ -397,7 +414,7 @@ C：我现在都直接用 SDK
 B：简单一点反而好维护
 ```
 
-因此 semantic unit 必须是 **Conversation Chunk** 而不是单独 Message。
+因此第一版 semantic unit 以 **Conversation Chunk** 为 primary。这不封死 Message-level 语义检索的未来可能性：某些信息完整的长单条技术消息本身就是好的 semantic unit；若后续 Evaluation 证明 Message-level retrieval 对特定 Failure Case 有价值，再作为辅助索引引入（当前默认不建立，Pending Evaluation）。
 
 采用 **Time-aware Parent + Small Child** 架构（参考 ChatLab 的 Parent / Child 思路）：
 
@@ -415,12 +432,13 @@ Query → 命中 Child → 定位所属 Parent → Context Expansion（大 Paren
 
 - 具体切分参数（时间 gap、有效字符数、消息数、token 上限、overlap 等）**保持 Tunable，由 Trivae 自己的 Evaluation Set 决定**，不复制 ChatLab 的默认数字（30 min / 360 chars / 消息数 / overlap 等均不自动继承）。
 
-### Context Expansion
+### Context Expansion（Post-Retrieval Operator）
 
-职责：命中之后的独立上下文扩展能力。**`retrieve` 与 `expand context` 是两个动作。**
+Context Expansion 是 **Post-Retrieval Operator**，与前三个 Retrieval Primitives 不在同一层：前三个负责"找出候选"（find candidates），Context Expansion 负责"拿已有命中，恢复其所在上下文"（recover surrounding context）。因此 **`retrieve` 与 `expand context` 是两个动作**。
 
 - Failure Case：Semantic Search 命中张三一句"我现在觉得 LangGraph 真有点重"，只把这一条交给 LLM 信息远远不够；真正重要的是附近李四的追问、张三对状态和调试的解释、王五换 SDK 的后续。命中的关键句必须扩展为其所在 Evidence Window。
 - 通过扩展命中附近消息（如前后多轮、回复链、同 Parent 范围内的消息）得到足够完整的上下文。
+- 该层级区别直接影响 Stage 1.4：`search something` 与 `expand this known hit` 天然属于两类 capability。
 
 ### Hybrid 的定位
 
@@ -449,7 +467,9 @@ Semantic Candidates
 | 有没有说过 LangGraph？ | Lexical |
 | 大家为什么觉得一些 Agent 框架太重？ | Semantic |
 | 过去半年 Agent 框架讨论发生了什么变化？ | 多轮 Semantic + Lexical verification + Structured 时间统计 |
-| 今年到底有几次明确提到面试 OC？ | Evidence-oriented Hybrid |
+| 今年到底有几次明确提到面试 OC？ | Lexical recall → dedup / verification → deterministic count |
+
+"明确提到面试 OC" 是字面条件，直接用 Lexical 定义集合再确定性计数；只有当"拿 OC / 拿 offer / 过面 / 收到意向"等语义表达也要纳入时，Semantic 才有意义。**不能把"计数题"默认等同于 Hybrid。**
 
 > **Retrieval Strategy 应该由任务决定，而不是所有 Query 固定执行同一个 Pipeline。**
 
@@ -459,17 +479,18 @@ Semantic Candidates
 
 遵循 Stage 0 原则：**先建立 baseline → 出现 Failure Case → 证明排序有问题 → 再评估 Reranker**。当前没有证据证明 Trivae 需要 `Embedding + BM25 + RRF + Cross-Encoder Reranker` 的完整流水线。
 
-第一版 Candidate 保留来源 provenance，不做带权重的复杂 Fusion Score：
+第一版不把"所有 Retrieval 结果压成同一个 Candidate 类型"。Retrieval Result 概念上分两类：
 
 ```text
-Candidate {
-    source         # semantic | lexical | structured
-    score
-    message_range
-    timestamp
-    matched_terms
-}
+Retrieval Result
+├── Message Candidates            # source: lexical | semantic
+│       score / message_range / timestamp / matched_terms
+└── Structured Results            # 标量 / 聚合 / 记录
+        count = 372
+        month × count 分组
 ```
+
+Message Candidates 与 Structured Results 共同保留 provenance 与 trace metadata。Structured 结果（scalar / aggregate / records）不一定有 `score` / `message_range` / `matched_terms`，不能强行套入 Message Candidate 结构。具体数据结构 Pending（Stage 1.4 / Data Schema 联动）。
 
 等 Evaluation 指出具体问题（例如 Ranking Error 成为主导 Failure Case）后再决定是否引入 Reranker 与 Fusion 权重。
 
@@ -500,6 +521,8 @@ partial = true
 
 结论只能是：当前检索没有找到，但数据覆盖不足，无法确认不存在。因此 Semantic Retrieval 必须能显式暴露 coverage / partial / truncated 等完整性信息。
 
+> Coverage 的语义需要在后续阶段（Stage 1.9）进一步明确为 **query-scope coverage**：当查询限定在某个 session / time range 时，有意义的是"请求范围内的覆盖率"（requested scope coverage），而不是全局索引覆盖率（例如用户只查 2026 年 7 月某个群，全局索引覆盖 80% 没有意义，重要的是该范围内的覆盖 = 100%）。当前仅确认"必须显式暴露 coverage / partial / truncated"，具体口径与字段 Pending。
+
 ### Retrieval Trace（观察需求，非 Schema）
 
 本阶段只确定 **Retrieval 需要观察哪些信息及其目的**，**不实现具体存储格式或 Trace Schema**（Trace Schema、事件模型、存储与采集方式仍为 Pending 项）。
@@ -525,19 +548,19 @@ partial = true
 
 | 项目 | 决策 |
 | --- | --- |
-| Retrieval 总体 | Multi-strategy Retrieval（Retrieval Composition + 四个 Primitives） |
-| Structured Retrieval | 保留；确定性查询优先 |
+| Retrieval 总体 | Multi-strategy Retrieval（Retrieval Composition + 三个 Primitives + Post-Retrieval Operator） |
+| Structured Retrieval | 保留；目标集合确定后的确定性查询 / 聚合优先 |
 | Lexical Retrieval | 保留 |
 | Semantic Retrieval | 保留 |
-| Semantic 索引单位 | Conversation Chunk（不是单条 Message） |
+| Semantic 索引单位 | 第一版 primary unit 为 Conversation Chunk（不默认建立 Message 级向量索引） |
 | Chunk 架构 | Time-aware Parent + Small Child |
-| Context Expansion | 独立能力（`retrieve` 与 `expand context` 是两个动作） |
+| Context Expansion | Post-Retrieval Operator（`retrieve` 与 `expand context` 是两个动作） |
 | Hybrid | Composition Strategy，非底层搜索引擎 |
 | 所有问题默认 Hybrid | 否 |
 | Query-specific strategy | 是（由任务决定，不固定流水线） |
 | Semantic Index | Derived Data，可重建 |
-| Candidate provenance | 必须保留 |
-| Partial / Coverage | 必须显式暴露 |
+| Retrieval Result provenance | 必须保留（Message Candidates 与 Structured Results 共有） |
+| Partial / Coverage | 必须显式暴露（口径在 Stage 1.9 细化为 query-scope coverage） |
 | Evidence 判断 | 不在 Retrieval 层硬编码（Question-specific Criteria，Stage 1.8） |
 | Retrieval Trace | 观察需求已确认；存储格式 / Schema 不提前实现 |
 
@@ -548,6 +571,7 @@ partial = true
 | Reranker | Pending Evaluation（第一版不引入） |
 | Fusion 权重 | Pending Evaluation（第一版不设计加权打分） |
 | Chunk 具体参数（时间 gap / 字符数 / 消息数 / token 上限 / overlap） | Pending Evaluation（不复制 ChatLab 默认数字） |
+| Message-level 辅助语义索引 | Pending Evaluation（第一版默认不建立；Evaluation 证明其对特定 Failure Case 有价值后再引入） |
 | 组合 / 选择具体算法（merge / dedup / candidate selection） | Pending Evaluation |
 | Query-specific strategy 的决策机制（Agent 自主 vs 规则 / Router 引导） | Pending（Stage 1.4 / 1.10 边界） |
 
@@ -625,8 +649,8 @@ Planner schema、步骤上限、suggested tools 校验和失败处理待后续�
 
 - Retrieval 是 Trivae 的业务核心之一。
 - Retrieval Result 与 Evidence 分离：召回候选不等同于最终引用证据。
-- Stage 1.3 已确认：Retrieval 由 Retrieval Composition 与四个 Retrieval Primitives（Structured / Lexical / Semantic / Context Expansion）组成；Hybrid 是组合策略而非底层搜索引擎；Semantic 索引单位为 Conversation Chunk（Time-aware Parent + Small Child）；Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline；Candidate provenance 与 Partial / Coverage 必须显式暴露。
-- 仍未确定：Reranker、Fusion 权重、Chunk 具体参数、merge / dedup / candidate selection 的具体算法（Pending Evaluation）；Vector Store、Embedding 模型、Indexing Pipeline 具体实现（Pending architecture specification）；Retrieval Trace Schema（Pending）。
+- Stage 1.3 已确认：Retrieval 由 Retrieval Composition、三个 Retrieval Primitives（Structured / Lexical / Semantic）与 Post-Retrieval Operator（Context Expansion）组成；Hybrid 是组合策略而非底层搜索引擎；Semantic 第一版 primary indexing unit 为 Conversation Chunk（Time-aware Parent + Small Child）；Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline；Retrieval Result 的 provenance 与 Partial / Coverage 必须显式暴露。
+- 仍未确定：Reranker、Fusion 权重、Chunk 具体参数、merge / dedup / candidate selection 的具体算法、Message-level 辅助语义索引（Pending Evaluation）；Vector Store、Embedding 模型、Indexing Pipeline 具体实现（Pending architecture specification）；Retrieval Trace Schema（Pending）。
 
 概念边界保持为：
 
@@ -701,13 +725,13 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 ### Stage 1.3：Retrieval Architecture
 
-1. **Multi-strategy Retrieval**：Retrieval 由 Retrieval Composition 与四个 Retrieval Primitives（Structured / Lexical / Semantic / Context Expansion）组成，Context Expansion 是独立能力，`retrieve` 与 `expand context` 是两个动作。
+1. **Multi-strategy Retrieval**：Retrieval 由 Retrieval Composition、三个 Retrieval Primitives（Structured / Lexical / Semantic）与 Post-Retrieval Operator（Context Expansion）组成；Context Expansion 与前三个不在同一层，`retrieve` 与 `expand context` 是两个动作。
 2. **Hybrid 是组合策略**：Hybrid 属于 Retrieval Composition 层，不单独成为底层搜索引擎，不演化出"什么问题都往里面塞"的 `hybrid_search()`。
-3. **确定性查询优先**：能够由确定性查询计算的事实优先使用 Structured Retrieval；LLM 负责解释结果，不负责数数。
-4. **Semantic 索引单位为 Conversation Chunk**：不对单条 Message 做 embedding；采用 Time-aware Parent + Small Child 架构，命中 Child → 定位所属 Parent → Context Expansion。
+3. **集合确定后的确定性查询优先**：当目标数据集合可由结构化条件确定时优先使用 Structured Retrieval；集合本身需要语义判断时先经 Lexical / Semantic 确定候选集合再做确定性聚合；LLM 负责解释结果，不负责数数。
+4. **Semantic 第一版 primary indexing unit 为 Conversation Chunk**：默认不建立逐 Message 向量索引；采用 Time-aware Parent + Small Child 架构，命中 Child → 定位所属 Parent → Context Expansion。若 Evaluation 证明 Message-level retrieval 对特定 Failure Case 有价值，再作为辅助索引引入（Pending Evaluation）。
 5. **Query-specific strategy**：Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline。
-6. **Candidate provenance 保留**：Candidate 保留 source（semantic / lexical / structured）、score、message_range、timestamp、matched_terms。
-7. **Partial / Coverage 显式暴露**：不能"搜不到 = 不存在"；Semantic Retrieval 必须能表达 coverage / partial / truncated 等完整性信息。
+6. **Retrieval Result provenance 保留**：Retrieval Result 分 Message Candidates（lexical / semantic）与 Structured Results（scalar / aggregate / records），共同保留 provenance 与 trace metadata；不把所有结果压成单一 Candidate 类型。
+7. **Partial / Coverage 显式暴露**：不能"搜不到 = 不存在"；Semantic Retrieval 必须能表达 coverage / partial / truncated 等完整性信息（口径在 Stage 1.9 细化为 query-scope coverage）。
 8. **Reranker 与 Fusion 权重不提前设计**：先建立 baseline，出现 Failure Case 并证明排序问题后再评估；Chunk 具体参数同样保持 Tunable。
 9. **Evidence 判断不在 Retrieval 层硬编码**：不复制 ChatLab 固定关键词判断 Evidence Status 的方案；Evidence Judge 围绕 Question-specific Criteria 设计（Stage 1.8）。
 10. **Retrieval Trace 观察需求确定、Schema 不提前实现**：记录需要观察的检索信息（query / strategy / filters / lexical / semantic / context_expansion / final_candidates）及其目的；具体存储格式与 Trace Schema 保持 Pending。
