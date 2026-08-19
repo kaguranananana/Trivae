@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架与 Stage 1.2 Data Model + Ingestion 确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture pending / next。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer pending / next。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                         |
 | ------ | ---------------------------------------------------------- |
-| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture pending / next |
+| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer pending / next |
 | 文档成熟度  | Draft / In Progress                                        |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                          |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                     |
@@ -75,7 +75,7 @@ Raw QQ / Export Data
 
 #### Pending
 
-Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），但持久化方式、Database Schema、字段类型与具体索引、Vector Store、Chunking、Embedding 模型与 Indexing Pipeline 的具体执行方式仍待后续阶段确定。
+Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），Retrieval 架构已在 Stage 1.3 确认（见 [Stage 1.3: Retrieval Architecture](#stage-13-retrieval-architecture)，其中 Semantic 索引单位为 Conversation Chunk，且 Semantic / Lexical Index 均属 Derived Data）。但持久化方式、Database Schema、字段类型与具体索引、Vector Store 实现、Chunk 具体切分参数、Embedding 模型与 Indexing Pipeline 的具体执行方式仍待后续阶段确定。
 
 ### Query Plane
 
@@ -307,6 +307,261 @@ Topic / Summary Index
 
 Derived Data 必须可以基于 Canonical Store 重建（例如更换 Embedding 模型时只需重建派生数据，不需要重新导入原始聊天数据）。不要让搜索索引成为原始事实来源。
 
+## Stage 1.3: Retrieval Architecture
+
+> 本节为 Stage 1.3 已确认内容。Retrieval 连接 Data Plane 与 Query Plane：根据当前任务，从大量高噪声聊天数据中找到**足够相关、足够完整、能够继续追溯**的候选信息。本节只定义 Retrieval 内部能力；Agent 最终看到几个 Tool、Tool 如何命名由 Stage 1.4 Tool / Capability Layer 决定。
+
+### 职责定义
+
+Retrieval 的核心职责：
+
+> **根据当前任务，从大量高噪声聊天数据中找到足够相关、足够完整、能够继续追溯的候选信息。**
+
+- Retrieval 输出的是 Candidate Data（候选集合），**不是最终 Evidence**；候选仍需经过 Evidence Selection / Organization（Stage 1.8）才能成为引用证据。
+- Retrieval 上承 Query Plane（Agent 发起检索请求），下接 Data Plane（Canonical Message Store + Derived Indexes）。
+
+### 整体结构：Retrieval Composition + 四个 Retrieval Primitives
+
+Trivae 的 Retrieval 由一层 **Retrieval Composition** 与四个 **Retrieval Primitives** 组成：
+
+```text
+                 Retrieval Request
+                        │
+                        ▼
+              Retrieval Composition
+                        │
+          ┌─────────────┼─────────────┐
+          ▼             ▼             ▼
+     Structured      Lexical       Semantic
+     Retrieval       Retrieval      Retrieval
+          │             │             │
+          └─────────────┼─────────────┘
+                        ▼
+                 Candidate Set
+                        │
+                        ▼
+                Context Expansion
+                        │
+                        ▼
+               Retrieval Result
+```
+
+#### Retrieval Composition
+
+- 位于四个 Primitives 之上，根据当前任务选择并组合底层原语，输出结构化 Candidate Set。
+- **Hybrid 属于组合策略，不单独成为一种底层搜索引擎**：不会演化出一个"什么问题都往里面塞"的 `hybrid_search()`。
+- 具体组合规则（merge / dedup / candidate selection 的实现方式）与 Fusion 权重保持 Pending Evaluation，由 Trivae 自己的 Evaluation Set 决定。
+
+#### 四个 Retrieval Primitives
+
+| Primitive | 解决的问题 | 触发场景示例 |
+| --- | --- | --- |
+| Structured Retrieval | 数据库能够确定计算的问题 | 过去半年多少条 AI Agent 相关讨论；谁发言最多；每月讨论量变化 |
+| Lexical Retrieval | 已经大概知道自己在找什么字面内容 | 有没有人提过 "LangGraph"；谁讨论过 DeepSeek V4；8 月 15 日有没有说过 "MCP" |
+| Semantic Retrieval | 用户表达的是一个意思，聊天记录使用完全不同的措辞 | 大家对重型 Agent 框架有什么意见 |
+| Context Expansion | 命中的候选信息上下文不完整 | 命中单条消息，但真正信息在其前后多轮对话中 |
+
+### 通用原则：确定性查询优先
+
+> **能够由确定性查询计算的事实，优先使用 Structured Retrieval。**
+
+把可确定性计算的问题（统计、聚合、结构化筛选）强行 Embedding → vector search → LLM 猜结论，可靠性差、成本高、无法追溯。正确路径是对 Canonical Store 直接执行确定性查询；**LLM 负责解释结果，不负责数数**。
+
+### Structured Retrieval
+
+职责：解决"数据库能够确定计算的问题"，直接对 Canonical Store 执行 filter / aggregate / 确定性查询（具体 SQL / 查询接口由 Storage Architecture 决定，当前 Pending）。
+
+- 示例问题：`过去半年一共有多少条 AI Agent 相关讨论？` `哪个成员发言最多？` `每个月讨论量如何变化？` `A 和 B 回复彼此多少次？` `过去三个月活跃成员数量怎么变化？`
+- Failure Case：把这类问题交给 Embedding + LLM 看几十条消息后猜一个统计结论，无法保证准确，也无法追溯计算过程。
+
+### Lexical Retrieval
+
+职责：目标词明确时的关键词检索。目标词明确 → 关键词检索精确、便宜、可解释，命中原因非常清楚（`match = "LangGraph"`）。
+
+- 触发场景：`有没有人提过 "LangGraph"？` `找一下 "OpenAI Agents SDK"。` `8 月 15 日有没有说过 "MCP"？`
+- 局限（不能只靠 Keyword Search 的原因）：群聊语言随意。用户问"Agent 框架太重的问题"，聊天记录可能全是"封装太多了""排查起来是真麻烦""langchain 这一坨看得头疼"，一次都不出现"Agent 框架太重"。此时 Keyword Recall = 0，但语义高度相关。因此必须保留第二条主召回路径 Semantic Retrieval。
+
+### Semantic Retrieval
+
+职责：用户表达的是一个意思，而聊天记录使用完全不同措辞时的语义召回。例如 Query "大家对重型 Agent 框架有什么意见？" 可召回 "封装太厚""调试困难""LangGraph 太重""自己写 loop 反而简单" 等。
+
+**索引单位是 Conversation Chunk，不是单条 Message。**
+
+不采用 `Message → embedding` 的原因：群聊里大量消息语义残缺（"对""确实""哈哈哈""这个可以""我也是""？"），真正的信息分布在多轮对话中：
+
+```text
+A：我觉得 LangGraph 现在封装太厚了
+B：确实
+A：出了问题很难定位
+C：我现在都直接用 SDK
+B：简单一点反而好维护
+```
+
+因此 semantic unit 必须是 **Conversation Chunk** 而不是单独 Message。
+
+采用 **Time-aware Parent + Small Child** 架构（参考 ChatLab 的 Parent / Child 思路）：
+
+```text
+Conversation Parent（一个相对连续的讨论区域）
+│
+├── Child Chunk 1
+├── Child Chunk 2
+├── Child Chunk 3
+└── Child Chunk 4
+
+Child Chunk → Vector（小 Chunk → 定位准确）
+Query → 命中 Child → 定位所属 Parent → Context Expansion（大 Parent → 上下文完整）
+```
+
+- 具体切分参数（时间 gap、有效字符数、消息数、token 上限、overlap 等）**保持 Tunable，由 Trivae 自己的 Evaluation Set 决定**，不复制 ChatLab 的默认数字（30 min / 360 chars / 消息数 / overlap 等均不自动继承）。
+
+### Context Expansion
+
+职责：命中之后的独立上下文扩展能力。**`retrieve` 与 `expand context` 是两个动作。**
+
+- Failure Case：Semantic Search 命中张三一句"我现在觉得 LangGraph 真有点重"，只把这一条交给 LLM 信息远远不够；真正重要的是附近李四的追问、张三对状态和调试的解释、王五换 SDK 的后续。命中的关键句必须扩展为其所在 Evidence Window。
+- 通过扩展命中附近消息（如前后多轮、回复链、同 Parent 范围内的消息）得到足够完整的上下文。
+
+### Hybrid 的定位
+
+Hybrid 不是"更高级的 Vector Search"，而是：
+
+```text
+Lexical Candidates
+        +
+Semantic Candidates
+        ↓
+      Merge
+        ↓
+     Dedup
+        ↓
+  Candidate Selection
+```
+
+例如"最近半年群里对于 LangChain 是否适合做校招项目有什么看法？"：Keyword 命中 `LangChain / LangGraph / langchain`，Semantic 命中 `框架封装太重 / 简历里别堆框架 / 自己写 agent 更能体现能力`，二者互补。
+
+### Query-specific strategy（不默认所有问题 Hybrid）
+
+固定流水线（`query → BM25 + Vector → RRF → Reranker → LLM`）会让 Agent 失去根据任务选择信息获取方式的能力。Trivae 的策略：
+
+| 问题示例 | 策略 |
+| --- | --- |
+| 有没有说过 LangGraph？ | Lexical |
+| 大家为什么觉得一些 Agent 框架太重？ | Semantic |
+| 过去半年 Agent 框架讨论发生了什么变化？ | 多轮 Semantic + Lexical verification + Structured 时间统计 |
+| 今年到底有几次明确提到面试 OC？ | Evidence-oriented Hybrid |
+
+> **Retrieval Strategy 应该由任务决定，而不是所有 Query 固定执行同一个 Pipeline。**
+
+（具体策略如何被决定——Agent 自主选择还是由 Router / 规则引导——属于 Stage 1.4 Tool / Capability Layer 与 Stage 1.10 Evaluation 的边界，此处不提前决策。）
+
+### Reranker 与 Fusion 权重（第一版不提前设计）
+
+遵循 Stage 0 原则：**先建立 baseline → 出现 Failure Case → 证明排序有问题 → 再评估 Reranker**。当前没有证据证明 Trivae 需要 `Embedding + BM25 + RRF + Cross-Encoder Reranker` 的完整流水线。
+
+第一版 Candidate 保留来源 provenance，不做带权重的复杂 Fusion Score：
+
+```text
+Candidate {
+    source         # semantic | lexical | structured
+    score
+    message_range
+    timestamp
+    matched_terms
+}
+```
+
+等 Evaluation 指出具体问题（例如 Ranking Error 成为主导 Failure Case）后再决定是否引入 Reranker 与 Fusion 权重。
+
+### Retrieval Failure Attribution
+
+一次检索至少应能区分以下错误类型，这是 Retrieval 可观测性的基础：
+
+| Failure | 含义 |
+| --- | --- |
+| Lexical Miss | 关键词没有覆盖真实表达 |
+| Semantic Miss | 向量没有召回相关讨论 |
+| Chunk Boundary Error | 关键上下文被切开 |
+| Filter Error | 时间 / 成员过滤错误 |
+| Context Expansion Error | 命中了关键句，但上下文不完整 |
+| Ranking Error | 召回了，但正确结果排得太后 |
+| Coverage Error | Semantic Index 本身未完成 |
+| Retrieval Budget Error | 候选太多被截断 |
+
+关键可观测性约定：**不能"搜不到 = 不存在"。** 必须能够表达：
+
+```text
+0 results
++
+index coverage = 63%
++
+partial = true
+```
+
+结论只能是：当前检索没有找到，但数据覆盖不足，无法确认不存在。因此 Semantic Retrieval 必须能显式暴露 coverage / partial / truncated 等完整性信息。
+
+### Retrieval Trace（观察需求，非 Schema）
+
+本阶段只确定 **Retrieval 需要观察哪些信息及其目的**，**不实现具体存储格式或 Trace Schema**（Trace Schema、事件模型、存储与采集方式仍为 Pending 项）。
+
+目的：答案错误时，能够回答"到底是没召回，还是召回了但 Agent 没用？"——这两个 Failure Case 的根因完全不同。
+
+| 观察项 | 目的 |
+| --- | --- |
+| `query`、`strategy` | 知道本次检索任务与所选策略（校验 Query-specific strategy 是否按预期执行） |
+| `filters`（session / time_range / member） | 过滤条件是否正确应用（定位 Filter Error） |
+| `lexical`（keywords / hit_count / latency） | 关键词召回情况（定位 Lexical Miss） |
+| `semantic`（rewritten_query / index_version / model / coverage / candidate_count / top_scores / latency） | 语义召回与索引覆盖情况（定位 Semantic Miss / Coverage Error） |
+| `context_expansion`（source_hits / expanded_ranges） | 上下文扩展是否正确（定位 Context Expansion Error） |
+| `final_candidates`（ids / source / rank） | 最终候选集合、来源与排序（核对 provenance / 定位 Ranking Error） |
+
+### Evidence 判断不在 Retrieval 层硬编码
+
+不复制 ChatLab 用固定关键词（计划词 / 实际发生词）判断 `included / excluded / uncertain` 的方案。Trivae 面向技术情报，不同问题的"证据成立条件"完全不同（例如"最终有没有人真的把 OpenAI Agents SDK 用到项目里"可能出现"准备试一下""已经接进去了""昨天上线了""最后还是换回自己写"）。Evidence Judge 应围绕 **Question-specific Criteria** 设计，留到 Stage 1.8 Evidence / Citation 决定。
+
+### Stage 1.3 决策状态分类
+
+#### Confirmed Architecture Decisions
+
+| 项目 | 决策 |
+| --- | --- |
+| Retrieval 总体 | Multi-strategy Retrieval（Retrieval Composition + 四个 Primitives） |
+| Structured Retrieval | 保留；确定性查询优先 |
+| Lexical Retrieval | 保留 |
+| Semantic Retrieval | 保留 |
+| Semantic 索引单位 | Conversation Chunk（不是单条 Message） |
+| Chunk 架构 | Time-aware Parent + Small Child |
+| Context Expansion | 独立能力（`retrieve` 与 `expand context` 是两个动作） |
+| Hybrid | Composition Strategy，非底层搜索引擎 |
+| 所有问题默认 Hybrid | 否 |
+| Query-specific strategy | 是（由任务决定，不固定流水线） |
+| Semantic Index | Derived Data，可重建 |
+| Candidate provenance | 必须保留 |
+| Partial / Coverage | 必须显式暴露 |
+| Evidence 判断 | 不在 Retrieval 层硬编码（Question-specific Criteria，Stage 1.8） |
+| Retrieval Trace | 观察需求已确认；存储格式 / Schema 不提前实现 |
+
+#### Tunable / Pending Evaluation（由 Evaluation Set 决定）
+
+| 项目 | 状态 |
+| --- | --- |
+| Reranker | Pending Evaluation（第一版不引入） |
+| Fusion 权重 | Pending Evaluation（第一版不设计加权打分） |
+| Chunk 具体参数（时间 gap / 字符数 / 消息数 / token 上限 / overlap） | Pending Evaluation（不复制 ChatLab 默认数字） |
+| 组合 / 选择具体算法（merge / dedup / candidate selection） | Pending Evaluation |
+| Query-specific strategy 的决策机制（Agent 自主 vs 规则 / Router 引导） | Pending（Stage 1.4 / 1.10 边界） |
+
+#### Pending（后续阶段 / 架构实现前不决策）
+
+| 项目 | 状态 |
+| --- | --- |
+| Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式 | Pending architecture specification |
+| Semantic / Lexical Index 的具体存储与版本管理 | Pending architecture specification |
+| Retrieval Trace Schema、事件模型、存储与采集方式 | Pending（本阶段仅确认观察需求） |
+| Tool / Capability Layer（Agent 看到哪些 Tool、如何命名） | Pending（Stage 1.4） |
+| Evidence Judge 设计 | Pending（Stage 1.8） |
+| Candidate / Retrieval Result 具体数据结构 | Pending（与 Storage / Data Schema 联动） |
+
 ## Module Boundaries
 
 ### Router
@@ -370,7 +625,8 @@ Planner schema、步骤上限、suggested tools 校验和失败处理待后续�
 
 - Retrieval 是 Trivae 的业务核心之一。
 - Retrieval Result 与 Evidence 分离：召回候选不等同于最终引用证据。
-- Keyword、Semantic、Hybrid、时间/成员过滤、上下文扩展、Rerank 和召回策略均未定。
+- Stage 1.3 已确认：Retrieval 由 Retrieval Composition 与四个 Retrieval Primitives（Structured / Lexical / Semantic / Context Expansion）组成；Hybrid 是组合策略而非底层搜索引擎；Semantic 索引单位为 Conversation Chunk（Time-aware Parent + Small Child）；Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline；Candidate provenance 与 Partial / Coverage 必须显式暴露。
+- 仍未确定：Reranker、Fusion 权重、Chunk 具体参数、merge / dedup / candidate selection 的具体算法（Pending Evaluation）；Vector Store、Embedding 模型、Indexing Pipeline 具体实现（Pending architecture specification）；Retrieval Trace Schema（Pending）。
 
 概念边界保持为：
 
@@ -443,10 +699,28 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 这些决策只定义逻辑数据模型与概念边界；Database Schema、技术选型与实现细节仍待后续阶段确认。
 
+### Stage 1.3：Retrieval Architecture
+
+1. **Multi-strategy Retrieval**：Retrieval 由 Retrieval Composition 与四个 Retrieval Primitives（Structured / Lexical / Semantic / Context Expansion）组成，Context Expansion 是独立能力，`retrieve` 与 `expand context` 是两个动作。
+2. **Hybrid 是组合策略**：Hybrid 属于 Retrieval Composition 层，不单独成为底层搜索引擎，不演化出"什么问题都往里面塞"的 `hybrid_search()`。
+3. **确定性查询优先**：能够由确定性查询计算的事实优先使用 Structured Retrieval；LLM 负责解释结果，不负责数数。
+4. **Semantic 索引单位为 Conversation Chunk**：不对单条 Message 做 embedding；采用 Time-aware Parent + Small Child 架构，命中 Child → 定位所属 Parent → Context Expansion。
+5. **Query-specific strategy**：Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline。
+6. **Candidate provenance 保留**：Candidate 保留 source（semantic / lexical / structured）、score、message_range、timestamp、matched_terms。
+7. **Partial / Coverage 显式暴露**：不能"搜不到 = 不存在"；Semantic Retrieval 必须能表达 coverage / partial / truncated 等完整性信息。
+8. **Reranker 与 Fusion 权重不提前设计**：先建立 baseline，出现 Failure Case 并证明排序问题后再评估；Chunk 具体参数同样保持 Tunable。
+9. **Evidence 判断不在 Retrieval 层硬编码**：不复制 ChatLab 固定关键词判断 Evidence Status 的方案；Evidence Judge 围绕 Question-specific Criteria 设计（Stage 1.8）。
+10. **Retrieval Trace 观察需求确定、Schema 不提前实现**：记录需要观察的检索信息（query / strategy / filters / lexical / semantic / context_expansion / final_candidates）及其目的；具体存储格式与 Trace Schema 保持 Pending。
+
+详细 rationale 与 trade-off 见 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)。
+
 ## Reference Designs, Not Final Decisions
 
 - ChatLab 的 `direct_response / tool_assisted / planned_execution` 路径和 Planner 行为是参考设计；Trivae 的路由名称与策略仍待确认。
 - ChatLab 的 Planner 步骤上限等实现细节不自动继承到 Trivae。
+- ChatLab 的 Parent / Child Chunk 思路（Time-aware Parent + Small Child）是 Trivae Semantic 索引架构的参考；其具体切分参数（30 min / 360 chars / 消息数 / overlap 等）不自动继承，由 Trivae 的 Evaluation Set 决定。
+- ChatLab 的 `search_messages` / `semantic_search_current_chat` / `execute_sql` / `retrieve_chat_evidence` 分工是 Retrieval 能力的参考设计；Trivae 如何将这些能力暴露给 Agent（Tool 名称、数量、封装层级）由 Stage 1.4 Tool / Capability Layer 决定。
+- ChatLab 的固定关键词 Evidence 判断方案（计划词 / 实际发生词 → included / excluded / uncertain）不复制到 Trivae；Evidence Judge 围绕 Question-specific Criteria 设计。
 - OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向；具体版本、集成方式和适配契约仍需在 Stage 1.7 验证。
 
 ## Pending Decisions
@@ -454,22 +728,22 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 以下事项仍为 **Pending architecture specification**，不得在本阶段自行补齐或实现：
 
 - 最终 Database Schema、表数量、字段类型与具体索引，SQLite / PostgreSQL 具体实现
-- Vector Store 实现、Chunking 策略、Embedding 模型、Indexing Pipeline 具体执行方式
+- Vector Store 实现、Chunk 具体切分参数、Embedding 模型、Indexing Pipeline 具体执行方式
+- Reranker 是否引入、Fusion 权重、merge / dedup / candidate selection 的具体算法（Pending Evaluation，由 Evaluation Set 决定）
+- Semantic / Lexical Index 的具体存储、版本管理与重建执行方式（Derived Data 语义已确认，实现 Pending）
+- Retrieval Trace Schema、事件模型、存储与采集方式（仅观察需求已确认）
 - Ingestion 具体实现细节：Deduplicator 的 fingerprint 算法、失败处理与幂等执行方式
 - ChatSession / UserIdentity 缺少 authoritative stable ID 时的 fallback identity / matching strategy
 - 相同 stable message identity 对应 canonical payload 变化时的 update / mutation / conflict resolution semantics
 - Canonical Message Fingerprint 的具体字段组合、时间精度、canonicalization 与 hash algorithm
 - raw payload / source locator / structured content 的具体表示
 - Canonical timestamp 的 timezone / precision / 存储类型与转换实现
-- Retrieval architecture
-- Keyword / Semantic / Hybrid Retrieval 选型
-- 时间过滤、成员过滤、上下文扩展、Rerank 与召回策略
-- Tool Layer 的具体 Tool、签名、参数校验、权限与结果契约
+- Tool Layer 的具体 Tool、签名、参数校验、权限与结果契约（Stage 1.4）
+- Query-specific strategy 的决策机制（Agent 自主选择 vs 规则 / Router 引导）与其失败处理（Stage 1.4 / 1.10 边界）
 - Router 具体策略、分类规则、置信度、阈值与失败处理
 - Planner Schema、步骤上限、校验和执行约束
 - Agent Runtime 的具体 SDK 版本、Adapter 契约、Session、Streaming、Abort 与 Run Lifecycle 细节
-- Evidence / Citation model、证据状态、来源字段与引用格式
-- Trace Schema、事件模型、存储、指标与采集方式
+- Evidence / Citation model、证据状态、来源字段与引用格式（Stage 1.8）
 - Evaluation Set、指标口径、Evaluation architecture 与 Regression 执行方式
 - Context architecture 与上下文规模控制
 - Answer Generation 的模型、Prompt、输出契约与失败处理
@@ -480,7 +754,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 ## Evolution Rule
 
-- Stage 1.2-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.3-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 

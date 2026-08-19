@@ -1,6 +1,6 @@
 # Backend Development Guidelines
 
-> Python 后端工程规范（Stage 1.1 已完成、Stage 1.2 Data Model + Ingestion 已完成、Stage 1.3 Retrieval 待开始；当前仍无业务代码）。
+> Python 后端工程规范（Stage 1.1 已完成、Stage 1.2 Data Model + Ingestion 已完成、Stage 1.3 Retrieval Architecture 已完成、Stage 1.4 Tool / Capability Layer 待开始；当前仍无业务代码）。
 > 具体代码模式在正式架构与首份业务代码落地后补充。
 
 ---

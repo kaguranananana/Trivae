@@ -1,7 +1,7 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)。
+> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)。
 
 ---
 
@@ -70,3 +70,10 @@ Regression
 - 内容：Canonical Model 隔离、Stable Platform Identity 优先、Platform Identity 与 Membership 分离、Shared Importer、Stable Message ID 优先 + Fingerprint fallback、Canonical Store 为 Source of Truth、ImportBatch 观测、Canonicalization 保真、Canonical Timestamp 语义。
 - 记录位置：[technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
 - 后续：Stage 1.3 Retrieval Architecture。
+
+### Stage 1.3：Retrieval Architecture
+
+- 状态：Confirmed（Retrieval 内部能力与组合策略；Tool 暴露方式、Reranker、Fusion 权重、Chunk 参数、Trace Schema、Vector Store / Embedding 仍 Pending）。
+- 内容：Multi-strategy Retrieval（Composition + 四个 Primitives）、Hybrid 为组合策略、确定性查询优先、Conversation Chunk 为 Semantic 索引单位（Time-aware Parent + Small Child）、Context Expansion 独立能力、Query-specific strategy、Candidate provenance、Partial / Coverage 显式暴露、Failure Attribution 分类、Evidence 判断不硬编码、Retrieval Trace 观察需求（Schema 不提前实现）。
+- 记录位置：[technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
+- 后续：Stage 1.4 Tool / Capability Layer。
