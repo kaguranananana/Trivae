@@ -1,163 +1,428 @@
 # Stage 1.4: Tool / Capability Layer Decisions
 
-> 状态：**Stage 1.4 In Progress**
+> 状态：**Confirmed（Stage 1.4）**
 >
-> 本文所记录的决策均已 **Confirmed**；但 Stage 1.4 整体尚未完成——完整 Tool 列表、Structured Query 设计、Search Result Schema、Tool Contract 等主体设计仍 Pending，完成这些后 Stage 1.4 才算 completed。记录 Stage 1.4 已确认的架构原则及 rationale；尚未定稿的内容不在此文档内决定。
-> 参考 ChatLab 但不机械复制：所有参考仅作为 initial hypothesis / reference design，以 Trivae 的业务目标（高噪声群聊分析的垂直 Agent）与 Evaluation 为准。
+> 本文记录 Stage 1.4 已确认的 Tool / Capability Layer 架构决策、理由、边界与重新打开条件。Stage 1.4 已完成；具体经验参数仍由 Evaluation 校准，但不影响本阶段架构状态。
 
 ---
+
+## 0. Architecture Decision：ChatLab First Principle
+
+**Context**：ChatLab 是 Trivae 的主要参考基线，已经验证了 Agent Tool Surface、消息检索、SQLite 结构化查询等关键设计。若没有证据就重新设计同类能力，既会增加讨论成本，也会引入未经验证的复杂度。
+
+**Decision**：对于 ChatLab 已存在且适用于 Trivae 的架构设计，默认采用原方案。任何偏离都必须明确记录：
+
+1. ChatLab 方案为什么不适用于 Trivae；
+2. 遇到的具体业务问题、Failure Case、Evaluation 结果或技术约束；
+3. 新方案相对原方案的收益；
+4. 新增的复杂度与风险；
+5. 验证偏离是否有效的 Evaluation 方法。
+
+以下理由不足以改变已确认设计：
+
+- “感觉可以更简单”；
+- “感觉可以少一个 Tool”；
+- “LLM 现在能力很强”；
+- “可以封装起来”；
+- “代码看起来更优雅”。
+
+**Reason**：把 ChatLab 作为默认基线，可以让 Trivae 优先复用已验证设计；偏离必须由可观察的问题和验证结果驱动，而不是由偏好驱动。
+
+**Trade-off**：Trivae 不会为追求表面上的独特性而自由重构基线；换取决策连续性、较低的不确定性和明确的验证责任。
+
+### 决策状态
+
+- **Confirmed**：已经完成决策，默认冻结；后续讨论主要用于解释与理解，不直接重新设计。
+- **Pending**：尚未决定，可以继续比较方案。
+- **Experimental**：明确偏离已有方案，必须通过实验或 Evaluation 验证，尚不能视为稳定架构事实。
+
+重新打开 Confirmed 决策必须记录 **Reopen Reason**，且至少由以下一种新证据触发：
+
+- 新 Failure Case；
+- 新技术约束；
+- 新 Evaluation 结果；
+- 新业务需求。
 
 ## 1. Tool 与 Capability 分离
 
-**Context**：Agent Runtime 与底层 Retrieval / Data Layer 之间需要一个边界层：既要向 Agent 暴露少量、语义清晰、容易调用的工具，又要隔离 Agent SDK 与底层业务实现，使 Retrieval、Context、Identity 等核心能力不依赖具体 Agent Runtime。
-
-**Problem**：如果把底层每一步能力直接暴露为 Agent Tool，或让业务逻辑直接依赖 OpenAI Agents SDK 等 Runtime，会增加 Tool 数量与选择复杂度，把底层编排负担转移给 Agent，且核心能力被绑定到具体 SDK。
-
-**Decision**：区分两个概念：
-
-- **Capability**：项目自身提供的业务能力（Lexical Retrieval / Semantic Retrieval / Context Expansion / Structured Retrieval / Identity Resolution 等），**不依赖具体 Agent Runtime**。
-- **Tool**：提供给 LLM / Agent 的调用接口（如 `lexical_search` / `semantic_search`），负责参数验证 → 调用一个或多个 Capability → 标准化返回结果。
-
-**Reason**：Capability 保持 SDK 无关，业务能力可复用、可测试；Tool 面向 Agent 的调用习惯，负责适配层职责。
-
-**Result**：`Agent Runtime → Tool Layer → Capability Layer → Retrieval / Canonical Data / Index`。
-
-**Trade-off**：多一层适配（Tool → Capability 映射），换取核心能力与 Agent Runtime 的解耦。
-
-## 2. 一个 Tool 可组合多个 Capability
-
-**Context**：Trivae 是面向高噪声群聊分析的垂直 Agent，不需要把底层 Retrieval 的每一步都暴露给模型。
-
-**Problem**：为了模块边界纯粹而把每个内部步骤都暴露成独立 Tool，会导致 Agent 出现 `search → 裸 hit → expand → 阅读 → search → expand → 阅读` 的大量机械调用，增加 Token 与延迟，且 Agent 难以正确编排。
-
-**Decision**：**一个 Agent-facing Tool 可以在内部组合多个 Capability。** 设计 Tool 时优先考虑 Agent 是否容易理解、容易正确调用、是否减少机械 Tool Call、是否能直接获得足够信息进行判断。
-
-**Reason**：Agent 易用性优先于模块边界的展示纯度；模块边界在内部保持清晰，Agent-facing API 合并高频步骤。
-
-**Result**：内部保持 `Lexical Retrieval` 与 `Context Expansion` 等独立能力，Agent 看到的是合并后的 `lexical_search → hit + context`。
-
-**Trade-off**：Agent-facing API 不再与内部模块一一对应，需要靠 Tool 层维护组合逻辑与可观测性。
-
-**Failure Case**：若每个能力都暴露为独立 Tool，Agent 需要自己组合底层步骤，大量机械 Tool Call 抬高延迟与成本，且组合错误难以归因。
-
-## 3. Search 默认自动补充 bounded context
-
-**Context**：高噪声群聊中单条消息往往缺少足够语义。例如 `10:29 A：用了 LangGraph` 单独看价值很低；加入邻近上下文（`10:28 B：导演 Agent 最后用什么写的？` `10:30 A：后来换掉了` `10:32 A：状态复杂之后排查特别麻烦`）后，Agent 才能判断该命中是否值得继续调查。
-
-**Problem**：若 Search 只返回裸命中，Agent 每次都要显式扩展上下文才能判断命中价值，属于高频重复步骤。
-
-**Decision**：**Search 默认自动补充 bounded context，Local context 是 Search Result 的默认组成部分。** 对于 Lexical Search：`lexical_search → Lexical Retrieval → message hits → automatic bounded context expansion → hits + local context → Agent`。Agent 不需要在每次关键词命中后再显式调用 Context Expansion。（参考 ChatLab `search_messages`。）
-
-**Reason**：在群聊场景中，小范围邻近上下文具有很高的信息增益，且这是绝大多数 Search Hit 都需要执行的高频步骤，合并进 Search 降低 Agent 的执行复杂度。
-
-**Result**：Search Result 默认包含 hit + local context。
-
-**Trade-off**：Search 返回内容变多（token 成本上升），换取 Agent 判断效率与正确性。
-
-**Failure Case**：只返回裸命中 → Agent 缺乏上下文 → 误判命中价值，或被迫反复 expand 造成机械调用。
-
-## 4. 自动 Expand 必须是 bounded expansion
-
-**Context**：Search 自动补充上下文不意味着返回任意大的聊天范围。
-
-**Problem**：若自动扩展无界，`keyword hit → 整个 conversation` 或 `keyword hit → 很长时间范围全部聊天` 会带来 token 爆炸、上下文噪声、注意力稀释。
-
-**Decision**：正常 Search 的目标是"找到候选 + 给 Agent 足够的信息判断候选价值"，**不是一次性还原完整讨论**。默认只进行有限范围的 Context Expansion，例如未来可能采用：命中消息附近若干条消息 / 有限 token budget / 有限时间窗口 / Conversation Parent 的局部内容。具体策略暂不固定。
-
-**Reason**：bounded 才可预测成本与结果规模，避免无限扩大。
-
-**Trade-off**：bounded 可能牺牲部分长程上下文，换取可控的 token / latency / 噪声。
-
-## 5. 内部 Capability 保持独立可观测
-
-**Context**：Agent 看到的是合并后的 Tool（`lexical_search → hit + context`），内部依然保持 Lexical Retrieval 与 Context Expansion 两个独立能力。
+**Context**：Agent Runtime 与底层 Retrieval / Data Layer 之间需要一个稳定边界。核心业务能力不能绑定 OpenAI Agents SDK 等具体 Runtime，Agent 也不应直接操作底层实现。
 
 **Decision**：
 
+- **Capability** 是 Trivae 自身的业务能力，例如 Lexical Retrieval、Semantic Retrieval、Context Expansion、Structured Retrieval、Identity / Membership Lookup；不依赖具体 Agent Runtime / SDK。
+- **Tool** 是 Agent-facing 接口，负责参数校验、调用一个或多个 Capability，并将结果标准化为统一契约。
+
+**Result**：
+
 ```text
-lexical_search Tool
-        │
-        ├── LexicalRetriever.search()
-        └── ContextExpander.expand()
+Agent Runtime → Tool Layer → Capability Layer → Retrieval / Canonical Data / Index
 ```
 
-一次 Tool Call 内部仍可观察：`lexical retrieval（raw_hit_count）` 与 `context expansion（expanded_hit_count / returned_messages）`。
+**Reason**：Capability 可以独立测试、复用和演进；Tool 专注于模型易理解的交互契约以及 Runtime 适配。
 
-**Reason**：既减少 Agent Tool Call，也保留工程可观测性，从而能区分三种 Failure：Retrieval 没找到正确消息 / Retrieval 找到了但 Context Expansion 范围不合适 / 上下文正确但 Agent 最终分析错误。
+**Trade-off**：增加一层 Tool → Capability 映射，换取业务能力与 Agent Runtime 解耦。
 
-**Trade-off**：Tool 内部需要暴露分段状态（不能只返回合并结果），换取失败归因能力。
+## 2. 一个 Tool 可以组合多个 Capability
 
-## 6. Semantic Search 采用同样原则
+**Context**：Agent-facing API 的目标是让模型容易选择和正确调用，不是逐一展示内部模块边界。
 
-**Context**：Semantic Retrieval 已在 Stage 1.3 确定以 Child Chunk 作为主要召回单元。
+**Problem**：若把每个内部步骤都暴露成 Tool，Agent 会反复执行 `search → 裸 hit → expand → 阅读`，产生机械 Tool Call、额外延迟和编排错误。
 
-**Decision**：Agent-facing 设计不暴露完整内部两阶段过程（`child hit → Agent 再调用 expand`），第一版形式为：`semantic_search → Semantic Retrieval → Child Chunk hits → automatic bounded context recovery → candidate + context → Agent`。返回结果保留 Retrieval provenance：matched chunk / similarity or retrieval score / 对应 message range / context。
+**Decision**：一个 Tool 可以组合多个 Capability，不要求 Tool 与 Capability 一一对应。Agent-facing API 优先考虑模型是否容易理解、是否容易正确调用、是否能减少机械 Tool Call。
 
-**Reason**：与 Lexical 一致地降低机械调用；保留 provenance 以便 Evaluation 确认"到底是什么内容触发了召回"。
+**Result**：`lexical_search` 和 `semantic_search` 均可在一次调用中组合 Retrieval 与 bounded Context Expansion。
 
-**Trade-off**：Agent 无法看到原始 child hit 与扩展后结果的边界，换取调用简单；provenance 字段补足这一信息需求。
+**Trade-off**：Tool 封装需要维护组合逻辑；内部 Capability 仍必须独立可观测，不能因组合而失去 Failure Attribution。
 
-## 7. 不把"大上下文窗口"作为主要设计依据
+## 3. 第一版 Agent-facing Tool Surface
 
-**Context**：当前模型拥有较大的 context window，降低了适量补充聊天上下文的成本压力。
+**Decision**：第一版暴露以下 6 个核心 Tool：
 
-**Problem**：不能据此无限增加 Search Result。
+```text
+lexical_search
+semantic_search
+get_message_context
+find_members
+get_schema
+execute_sql
+```
 
-**Decision**：仍需考虑 token cost、latency、上下文中的噪声、模型注意力稀释、一次搜索返回过多结果。自动 bounded expansion 的主要理由是"小范围邻近上下文信息增益高且是高频步骤"，而不是"窗口够大"。
+整体映射：
 
-**Reason**：把大窗口当作设计依据会让 Search Result 规模失控，稀释注意力、抬高成本。
+```text
+Agent Runtime
+│
+├── lexical_search
+│      ├── Lexical Retrieval
+│      └── bounded Context Expansion
+│
+├── semantic_search
+│      ├── Semantic Retrieval
+│      └── bounded Context Recovery
+│
+├── get_message_context
+│      └── Context Expansion
+│
+├── find_members
+│      └── Identity / Membership Lookup
+│
+├── get_schema
+│      └── SQLite Schema Inspection
+│
+└── execute_sql
+       └── Read-only Structured Retrieval
+```
 
-**Trade-off**：放弃"尽量多塞上下文"的便利，换取结果可控。
+**Reason**：这组 Tool 覆盖字面检索、语义检索、深度上下文恢复、成员查询和确定性结构化查询，同时保持 Tool Surface 足够小。
 
-## 8. 参数先不写死，由 Evaluation 决定
+**Trade-off**：第一版不追求把每个内部 Capability 或每类分析动作都独立暴露；新增 Tool 必须由真实 Evaluation 或 Failure Case 驱动。
 
-**Context**：ChatLab 存在类似 `before = 2 / after = 2` 的默认上下文窗口。
+## 4. Message Search 默认自动补充 bounded context
 
-**Decision**：第一版只冻结"Search 默认带 bounded local context"；具体参数（前后多少条消息 / 最大 token 数 / 最大时间跨度 / 是否基于 reply chain / 是否使用 conversation parent）全部通过真实群聊 Evaluation 调整，不复制 ChatLab 默认值。
+**Context**：高噪声群聊中的单条消息通常语义不完整。裸命中不足以让 Agent 判断该候选是否值得继续调查。
 
-**Reason**：遵循此前确定的原则——先确定架构与职责，再通过 Evaluation 决定经验参数。
+**Decision**：`lexical_search` 与 `semantic_search` 默认进行 bounded context expansion / recovery，Search Result 默认包含命中与有限局部上下文。
 
-**Result**：架构确定，参数 Pending Evaluation。
+```text
+message retrieval
+      ↓
+raw hit / child chunk hit
+      ↓
+automatic bounded context expansion
+      ↓
+hit + local context
+```
 
-**Regression**：若现在固定参数，会重复"从参考项目抄默认值而无依据"的错误（与 Stage 1.3 决策 6 相同的回归风险）。
+自动扩展必须 bounded，不得演变为命中后返回整个 conversation 或很长时间范围内的全部聊天。具体前后消息数、token budget、时间窗口、reply chain 与 Parent 范围由 Evaluation 决定，不写成当前架构事实。
 
-## 9. Tool 内部不能使用 silent fallback 隐藏错误
+**Reason**：小范围邻近上下文在群聊中信息增益高，并且几乎每个候选判断都需要；合并该高频步骤可以减少机械 Tool Call。
 
-**Context**：Tool 可以组合 Capability，但不能因为组合而失去 Failure Attribution。
+**Trade-off**：Search Result 体积增加，换取候选判断的正确性和执行效率；bounded 限制控制 token、latency、噪声和注意力稀释。
 
-**Problem**：例如 Semantic Retrieval 不可用时，若 silently run lexical search 后返回普通结果，Agent 和 Evaluation 都无法知道 Semantic Retrieval 实际已失败。
+**Failure Case**：只返回裸命中会导致 Agent 误判候选价值，或被迫对每个结果追加一次 Context Tool Call。
 
-**Decision**：**禁止 silent fallback。** 需明确区分：`zero hits` / `index unavailable` / `invalid arguments` / `execution failure` / `partial / truncated result`。Tool 可以简化 Agent 的调用方式，但内部执行状态必须保持可观测。
+### 4.1 内部 Capability 保持独立可观测
 
-**Reason**：符合 Stage 0 的 Observable / Failure Attribution 原则——错误必须显式暴露，不能因封装组合而被吞掉。
+Agent 看到的是合并后的 Search Tool，内部仍保持 Retrieval 与 Context Expansion 两个独立 Capability。一次调用至少应能够分别观察 raw hit、扩展范围与返回消息规模，从而区分：Retrieval 没有找到正确消息、Retrieval 已命中但 Context Expansion 范围不合适、上下文正确但 Agent 最终分析错误。
 
-**Trade-off**：Agent 需要处理更明确的错误/状态信号，换取失败可定位。
+**Trade-off**：Tool 内部需要保留分段状态和 Trace，换取准确的 Failure Attribution。
 
-**Failure Case**：Semantic 索引未完成时 silent 回退 Lexical → 用户得到"貌似正常"的结果 → 实际覆盖不足 → 答案错误且无法归因。
+### 4.2 Semantic Search 保留 Retrieval provenance
 
-## 10. 第一版不引入复杂 Candidate State 设计
+Semantic Retrieval 以 Stage 1.3 的 Child Chunk 为主要召回单元；`semantic_search` 自动执行 bounded context recovery，但结果仍保留 matched chunk、retrieval-specific score / score type、对应 message range 与 context，使 Evaluation 能确认具体召回来源。
 
-**Context**：此前讨论过 `RetrievalCandidate / candidate_ref / expand_context(candidate_ref) / runtime candidate state` 这类候选引用状态机制。
+**Trade-off**：Agent-facing 调用隐藏内部两阶段编排，换取更少的机械调用；provenance 字段保留诊断所需边界。
 
-**Problem**：Search 默认返回**用于候选判断**的 bounded context，普通 Retrieval 无需为每个 hit 建立额外 Candidate State（`Search → 保存 Candidate → Agent 引用 Candidate → Expand Candidate`）。但我们并未确认 bounded context 一定足够回答最终问题——观点变化、长期争论、一次完整排错、某人前后态度变化等深度调查仍可能需要继续扩大上下文。
+### 4.3 不以大 Context Window 取消边界
 
-**Decision**：**第一版暂不采用 Candidate State 设计**，优先保持 Tool API 简单。若后续真实 Evaluation 证明复杂调查需要稳定 Candidate Reference，再单独设计。
+模型 Context Window 较大不是无限扩大 Search Result 的理由。设计仍需考虑 token cost、latency、噪声、注意力稀释与一次返回过多结果。当前只冻结“Message Search 默认带 bounded local context”；具体消息数、token、时间跨度、reply chain 和 Parent 范围全部保持 Tunable，由 Evaluation 决定。
 
-**Reason**：无需求证据的状态机制是无依据的复杂度（Stage 0 原则）。
+## 5. 保留独立的 `get_message_context`
 
-**Trade-off**：暂不具备"跨调用稳定引用某条候选并增量扩展"的能力，换取第一版 API 简单。
+**Context**：Search 自动附带的局部上下文只服务于“该命中是否值得继续调查”的候选判断，并不保证足以恢复完整讨论。
 
----
+**Decision**：保留独立的 `get_message_context`。它以稳定 `message_id` 为锚点，供 Agent 对已识别的重要消息继续恢复更大的上下文范围。
 
-## Pending（Stage 1.4 后续讨论，本阶段不定稿）
+```text
+lexical_search / semantic_search
+        ↓
+hit + bounded local context
+        ↓
+Agent 判断该命中重要
+        ↓
+get_message_context(message_id)
+        ↓
+获取更大的上下文范围
+```
 
-- Agent 最终暴露多少个 Tool，以及完整 Tool Registry
-- 是否独立暴露 `get_message_context` / `expand_context` 供深度调查
-- `get_scope_info` 是否独立存在
-- Member / Identity Resolution 应该如何暴露
-- Structured Retrieval 应采用 declarative query 还是 read-only SQL
-- Lexical Search 的具体上下文窗口参数（Pending Evaluation）
-- Semantic Parent / Context Recovery 具体策略（Pending Evaluation）
-- Search Result 的最终 Schema
-- Tool Result Envelope 的具体字段
-- 是否以及何时需要更高级的 Hybrid Search / Evidence Retrieval Tool
+第一版不为此引入 `candidate_ref` 或 Runtime Candidate State。
+
+**Reason**：Search 的自动上下文与深度调查的上下文恢复职责不同；使用已有稳定 `message_id` 即可完成跨调用锚定。
+
+**Trade-off**：Tool Surface 多保留一个上下文 Tool，换取对长程讨论、完整排错过程和观点变化的显式调查能力。
+
+**Failure Case**：若移除独立上下文 Tool，Agent 只能反复扩大所有 Search Result 或重新检索；前者造成结果膨胀，后者不能稳定恢复已确认命中的讨论范围。
+
+## 6. 不独立设计 `get_scope_info`
+
+**Decision**：当前 ChatSession、时间范围、用户选定数据范围及其他 Runtime Query Context 由 Agent Runtime 注入。第一版不增加 `get_scope_info`。
+
+**Reason**：这些信息是当前查询执行上下文，不需要 Agent 在每次任务开始前进行机械 Tool Call。
+
+**Trade-off**：第一版不支持 Agent 通过 Tool 主动探索动态数据源或 Scope；若未来出现真实业务需求，再以新 Failure Case 或业务需求重新评估。
+
+## 7. 人物查询采用 `find_members`
+
+**Context**：Stage 1.2 已将稳定平台身份 `UserIdentity` 与 ChatSession 内的局部身份 `Membership` 分离。群聊中的“老王”可能同时匹配群昵称、账号名、历史 alias、平台 ID 或不同 ChatSession 的 Membership。
+
+**Decision**：第一版使用 `find_members`，不使用 `resolve_member`。Tool 返回候选身份与匹配依据，由 Agent 根据 Query Context 判断。
+
+**Reason**：`resolve_member` 暗示一定能够唯一解析，而群聊身份查询天然可能有歧义；`find_members` 更准确地表达候选查找语义。
+
+**Trade-off**：Agent 需要处理多个候选，换取身份歧义的显式暴露，不制造虚假的唯一性。
+
+**Failure Case**：同名或 alias 冲突时强行 resolve 会把查询过滤到错误成员，且后续统计和证据都可能看似正常但对象错误。
+
+## 8. Structured Retrieval 直接采用 ChatLab 风格的 SQLite SQL
+
+**Context**：ChatLab 的 `get_schema` 读取 SQLite `sqlite_master` 中的真实表结构，`execute_sql` 直接对当前 SQLite 数据库执行只读 SQL；不存在额外的 Analysis Schema / Analysis View 层。
+
+**Decision**：Trivae 第一版采用相同结构：
+
+```text
+SQLite
+   │
+   ├── get_schema
+   │      └── Physical SQLite Schema
+   │
+   └── execute_sql
+          └── Read-only SQL against Physical SQLite Database
+```
+
+第一版不增加：
+
+```text
+Physical Schema → Analysis Views → Agent-facing Schema
+```
+
+**Reason**：当前没有 Failure Case 证明需要独立 Analysis Schema；如果 Physical Schema 足够清晰，直接暴露实现成本最低，也与 ChatLab 已验证设计一致。Analysis View 会增加额外 Schema 设计、同步与维护成本。
+
+**Trade-off**：Agent SQL 会依赖 Physical Schema，未来 Schema 重构可能影响已有查询；当前以最低实现复杂度换取第一版可用性。
+
+**Reopen Trigger**：只有出现以下真实问题时，才重新评估 Stable Analysis Views：
+
+- 内部表数量显著增加，Agent 经常选错表；
+- Physical Schema 经常重构，Agent SQL 大量失效；
+- Embedding / Chunk / Import / Sync 等内部实现表暴露后，Agent 经常错误查询内部数据；
+- 数据库实现细节开始严重污染 Tool 使用。
+
+若触发重新设计，应以 Evaluation 比较直接 Physical Schema 与 Stable Analysis Views 的正确率、维护成本和复杂度。
+
+## 9. `execute_sql` 的安全与执行边界
+
+**Decision**：`execute_sql` 只允许只读查询，至少保证 `SELECT / read-only only`，并通过 `max_rows` 或等价机制限制最大结果规模。必须显式阻止 `INSERT`、`UPDATE`、`DELETE`、`DROP`、`ALTER`、`CREATE` 等写入或 Schema 修改行为。
+
+只读判断优先使用 SQLite Driver 提供的 readonly statement 能力；只有 Driver 不具备该能力时，才设计明确的只读 SQL 校验方案。
+
+Tool 不得 silently 修改 Agent 提交的 SQL，也不得在 SQL 执行失败后自动切换为另一套 Retrieval。
+
+**Reason**：结构化查询只承担数据读取和确定性计算；写入不属于 Query Plane 权限。显式拒绝可保留原始错误与 Failure Attribution。
+
+**Trade-off**：复杂的多语句或非只读 SQL 会被拒绝，换取数据完整性、结果规模可控和错误透明。
+
+## 10. Structured Retrieval 的职责边界
+
+**Decision**：`execute_sql` 适用于目标集合能由结构化条件明确确定的问题，例如：
+
+- 8 月一共有多少条消息；
+- 哪个成员发言最多；
+- 某个成员每天的发言量；
+- 最近 100 条消息。
+
+当集合本身需要语义判断时，先通过 Lexical / Semantic Retrieval 确定候选集合，再进行确定性统计或聚合：
+
+```text
+Lexical / Semantic Retrieval
+        ↓
+确定语义候选集合
+        ↓
+需要时执行确定性统计 / 聚合
+```
+
+SQL Tool 不承担 Semantic Classification。
+
+**Failure Case**：`过去半年有多少次关于 AI Agent 的有效技术讨论？` 中“哪些消息属于有效技术讨论”不是 SQL 可以独立决定的结构化条件。直接交给 SQL 会把语义判定错误地隐藏为确定性查询。
+
+## 11. 暂不增加大量 Specialized Analysis Tools
+
+**Context**：ChatLab 还提供 `get_chat_overview`、`get_member_stats`、`get_time_stats`、`keyword_frequency`、`get_recent_messages` 等专用分析 Tool。
+
+**Decision**：Trivae 第一版不机械复制这些 Tool。能够可靠地通过 `get_schema + execute_sql` 完成的确定性分析，默认不提升为独立 Tool。
+
+只有 Evaluation 证明某类分析高频出现、Agent 经常写错 SQL、SQL 过程过于机械，且专用 Tool 能明显提高可靠性或降低成本时，才新增 Specialized Analysis Tool。
+
+**Trade-off**：Agent 需要自行生成部分 SQL，换取更小、更稳定的 Tool Surface；高频错误由 Evaluation 驱动后再封装。
+
+## 12. 第一版不暴露 `hybrid_search`
+
+**Context**：Stage 1.3 已确认 Hybrid 是 `Lexical Candidates + Semantic Candidates + Merge / Dedup / Selection` 的 Retrieval Composition Strategy，而不是新的 Retrieval Primitive。
+
+**Decision**：第一版继续分别暴露 `lexical_search` 与 `semantic_search`，由 Agent 针对复杂任务组合调用。不增加 `hybrid_search`、`universal_search` 或 `retrieve_evidence`。
+
+**Reason**：保持每条召回路径的语义与 provenance 清晰，避免把不同策略藏进万能 Tool。
+
+**Trade-off**：复杂任务可能需要多次 Tool Call；若 Evaluation 发现大量任务稳定重复完全相同的 lexical + semantic + merge 流程，再基于真实证据设计高级组合 Tool。
+
+## 13. Search Result Schema 原则
+
+**Decision**：Lexical Search 与 Semantic Search 共享统一外层结构，但保留各自 Retrieval provenance：
+
+```text
+SearchResult
+├── query
+├── hits[]
+│   ├── match
+│   │   ├── strategy
+│   │   ├── matched_message_ids
+│   │   ├── matched_terms?        # lexical
+│   │   ├── matched_chunk_id?     # semantic
+│   │   ├── score?                # retrieval specific
+│   │   └── score_type?
+│   │
+│   └── context
+│       └── messages[]
+│           ├── message_id
+│           ├── session_id
+│           ├── author_id
+│           ├── author_name
+│           ├── timestamp
+│           ├── content
+│           ├── reply_to?
+│           └── is_match
+│
+└── meta
+```
+
+BM25、FTS rank、cosine similarity 等 score 不能直接比较；若暴露 numeric score，必须同时提供 `score_type`。Context Message 必须保留结构化身份与稳定追溯字段，不得只返回拼接聊天文本；至少保留 `message_id`、`session_id`、author、timestamp、content。
+
+**Reason**：统一外层降低 Agent 理解成本；strategy-specific provenance 保留召回归因；结构化消息为后续 Evidence / Citation 提供稳定路径。
+
+**Trade-off**：不同检索策略无法被压成完全相同的 match 字段，换取语义正确与可观测性。
+
+## 14. 统一 Tool Result Envelope
+
+**Decision**：第一版所有 Tool 使用统一薄 Envelope：
+
+```text
+{
+  status: "ok" | "partial" | "error",
+  data: ...,
+  meta: {
+    truncated: true | false
+  },
+  error: {
+    code,
+    message
+  } | null
+}
+```
+
+状态语义：
+
+| 场景 | 表达 |
+| --- | --- |
+| Zero Hits | `status = ok`，`hits = []` |
+| Invalid Argument | `status = error`，`error.code = INVALID_ARGUMENT` |
+| Capability Unavailable | `status = error`，`error.code = CAPABILITY_UNAVAILABLE` |
+| Execution Failure | `status = error`，`error.code = EXECUTION_ERROR` |
+| Partial Result | `status = partial` |
+| Truncation | `meta.truncated = true` |
+
+Truncation 表示结果因规模上限被截断；Partial 表示只有部分内部步骤完成。两者不得混为同一概念。Capability Unavailable 不得 silent fallback 到其他 Capability。
+
+**Reason**：统一 Envelope 让 Agent 可以稳定处理正常结果、部分结果和错误；明确状态保留 Failure Attribution。
+
+## 15. 第一版统一 Tool Contract
+
+以下契约全部 Confirmed：
+
+1. Tool 参数必须有明确类型与边界。
+2. 所有可能返回大量数据的 Tool 都必须 bounded。
+3. Zero Hit 不属于 Error。
+4. Invalid Argument、Capability Unavailable、Execution Error 必须区分。
+5. 禁止 silent fallback。
+6. Tool 不得隐式扩大 Runtime Query Scope。
+7. Message-based Retrieval 必须返回稳定 `message_id`。
+8. Truncation 必须显式暴露。
+9. Tool 内部组合多个 Capability 时，各 Capability 仍保持独立可观测。
+10. Retrieval Tool 返回 Candidate Data，不在 Tool 内硬编码 Final Evidence 判断。
+11. 经验参数保持 Tunable，由 Evaluation 决定，不把当前默认值写成架构事实。
+12. Agent-facing API 保持简单；新增抽象和 Tool 需要真实 Failure Case 或 Evaluation 证据。
+
+## 16. 第一版明确不做
+
+第一版不引入：
+
+```text
+Analysis Schema / Analysis View 隔离层
+candidate_ref / Candidate State
+get_scope_info
+resolve_member
+hybrid_search
+universal_search
+retrieve_evidence
+大量 specialized analytics tools
+复杂的 Tool orchestration framework
+```
+
+其中 Analysis View、Hybrid Tool、Specialized Analysis Tool 等可以在满足 Reopen Reason 后重新评估，但不能因为“以后可能有用”提前加入。
+
+## 17. Stage 1.4 决策状态汇总
+
+### Confirmed
+
+| 项目 | 决策 |
+| --- | --- |
+| 架构治理 | ChatLab First Principle；偏离必须有问题、收益、复杂度、风险与 Evaluation 记录 |
+| Tool / Capability | 分离；Tool 可以组合多个 Capability |
+| 第一版 Tool Surface | `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` |
+| Message Search | 默认附带 bounded local context；内部 Retrieval / Expansion 独立可观测 |
+| 深度上下文恢复 | 保留 `get_message_context(message_id)`，不引入 Candidate State |
+| Query Scope | Runtime 注入，不提供 `get_scope_info` |
+| Member Lookup | 使用 `find_members` 返回候选与匹配依据 |
+| Structured Retrieval | `get_schema` 暴露 Physical SQLite Schema；`execute_sql` 直接执行只读 SQL |
+| SQL 边界 | read-only、bounded、显式拒绝写入、不改写 SQL、不自动切换 Retrieval |
+| Hybrid / Specialized Tools | 第一版不暴露；后续由 Evaluation / Failure Case 驱动 |
+| Search Result | 统一外层、保留 strategy provenance 与结构化 Message Identity |
+| Tool Envelope | `ok / partial / error`；Truncation 与 Partial 分离；错误码可区分 |
+
+### Pending Evaluation（不重新打开架构方向）
+
+- Lexical Search 的具体上下文窗口；
+- Semantic Parent / Context Recovery 的具体范围策略；
+- 各 bounded Tool 的具体默认上限；
+- Specialized Analysis Tool 或高级组合 Tool 是否满足新增条件。
+
+### Experimental
+
+当前没有已批准的 Experimental 偏离。任何未来偏离 ChatLab 或上述 Confirmed 决策的实验，都必须先记录 Reopen Reason、验证方法与退出条件。

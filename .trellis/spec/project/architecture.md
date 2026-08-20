@@ -2,20 +2,20 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture 确认内容，以及 Stage 1.4 Tool / Capability Layer 已确认的决策（Stage 1.4 整体仍 In Progress），不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer in progress（部分决策已 Confirmed，剩余 Tool Surface / Contract 等设计待完成）；Stage 1.5 pending（Stage 1.4 全部完成前不开始）。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture 与 Stage 1.4 Tool / Capability Layer 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 pending（尚未开始）。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
 
 ## Status
 
-| 项      | 状态                                                         |
-| ------ | ---------------------------------------------------------- |
-| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer in progress（部分决策已 Confirmed）；Stage 1.5 pending（Stage 1.4 全部完成前不开始） |
-| 文档成熟度  | Draft / In Progress                                        |
-| 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                          |
-| 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                     |
+| 项      | 状态                                                                                                                                                                                                             |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 pending（尚未开始） |
+| 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
+| 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
+| 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
 
 ## Goals
 
@@ -24,6 +24,20 @@
 - 生成能够追溯到原始聊天消息的证据型回答。
 - 将 Data Plane 与 Query Plane 解耦，避免 Agent 直接依赖原始数据格式或存储细节。
 - 为后续 Trace、Evaluation 和 Failure Attribution 保留清晰的阶段边界。
+
+## Architecture Decision Governance
+
+### ChatLab First Principle
+
+ChatLab 是 Trivae 的主要参考基线。对于 ChatLab 已存在且适用于 Trivae 的架构设计，默认采用原方案。偏离必须记录 ChatLab 方案不适用的原因、具体 Failure Case / Evaluation / 技术约束、新方案收益、新增复杂度与风险，以及验证方法。
+
+架构决策分为三种状态：
+
+- **Confirmed**：已经完成决策，默认冻结；解释性讨论不直接重新设计。
+- **Pending**：尚未决定，可以继续比较方案。
+- **Experimental**：明确偏离已有方案，必须通过实验或 Evaluation 验证。
+
+重新打开 Confirmed 决策必须记录 Reopen Reason，并由新 Failure Case、新技术约束、新 Evaluation 结果或新业务需求触发。仅凭“感觉更简单”“可以少一个 Tool”“LLM 能力更强”“可以封装”或“代码更优雅”不足以改变确认设计。
 
 ## High-Level Architecture
 
@@ -309,7 +323,7 @@ Derived Data 必须可以基于 Canonical Store 重建（例如更换 Embedding 
 
 ## Stage 1.3: Retrieval Architecture
 
-> 本节为 Stage 1.3 已确认内容。Retrieval 连接 Data Plane 与 Query Plane：根据当前任务，从大量高噪声聊天数据中找到**足够相关、足够完整、能够继续追溯**的候选信息。本节只定义 Retrieval 内部能力；Agent 最终看到几个 Tool、Tool 如何命名由 Stage 1.4 Tool / Capability Layer 决定。
+> 本节为 Stage 1.3 已确认内容。Retrieval 连接 Data Plane 与 Query Plane：根据当前任务，从大量高噪声聊天数据中找到**足够相关、足够完整、能够继续追溯**的候选信息。本节只定义 Retrieval 内部能力；Agent-facing Tool 暴露已由 Stage 1.4 Tool / Capability Layer 确认。
 
 ### 职责定义
 
@@ -361,7 +375,7 @@ Retrieval
     └── Context Expansion
 ```
 
-**Context Expansion 与前三个 Primitives 不在同一层**：前三个负责"找出候选"，Context Expansion 负责"拿已有命中，恢复其所在上下文"。这个区别对 Stage 1.4 Tool Layer 有直接影响——`search something` 与 `expand this known hit` 天然属于两类 capability。这里指**内部 Capability 边界**，不意味着必须分别暴露为两个 Agent-facing Tool；具体 Tool 封装由 Stage 1.4 决定（高频组合可由一个 search Tool 自动完成）。
+**Context Expansion 与前三个 Primitives 不在同一层**：前三个负责"找出候选"，Context Expansion 负责"拿已有命中，恢复其所在上下文"。这个区别对 Stage 1.4 Tool Layer 有直接影响——`search something` 与 `expand this known hit` 天然属于两类 capability。这里指**内部 Capability 边界**，不意味着必须分别暴露为两个 Agent-facing Tool；Stage 1.4 已确认 message search 自动组合 bounded expand，同时保留独立 `get_message_context(message_id)`。
 
 #### Retrieval Composition
 
@@ -385,7 +399,7 @@ Retrieval
 
 ### Structured Retrieval
 
-职责：在**目标数据集合已由结构化条件确定**的前提下，直接对 Canonical Store 执行 filter / aggregate / 确定性查询（具体 SQL / 查询接口由 Storage Architecture 决定，当前 Pending）。Structured Retrieval 解决的是"集合确定之后的确定性计算"，**不负责"哪些消息属于某类讨论"的语义判定**。
+职责：在**目标数据集合已由结构化条件确定**的前提下，直接对 Canonical Store 执行 filter / aggregate / 确定性查询。Stage 1.4 已确认第一版由 `get_schema` 暴露 Physical SQLite Schema，并由 `execute_sql` 执行 bounded read-only SQL；最终表结构仍由后续 Data Schema 设计决定。Structured Retrieval 解决的是"集合确定之后的确定性计算"，**不负责"哪些消息属于某类讨论"的语义判定**。
 
 - 纯结构化（集合可直接由条件确定）：`哪个成员发言最多？` `8 月有多少条消息？` `A 和 B 回复彼此多少次？` `过去三个月活跃成员数量怎么变化？` `每个月讨论量如何变化？`
 - 需要先定义集合再聚合：`过去半年有多少次关于 AI Agent 的有效技术讨论？` 应先由 Lexical / Semantic Retrieval 确定"属于 AI Agent 讨论"的候选集合，再对集合做确定性聚合。
@@ -438,7 +452,7 @@ Context Expansion 是 **Post-Retrieval Operator**，与前三个 Retrieval Primi
 
 - Failure Case：Semantic Search 命中张三一句"我现在觉得 LangGraph 真有点重"，只把这一条交给 LLM 信息远远不够；真正重要的是附近李四的追问、张三对状态和调试的解释、王五换 SDK 的后续。命中的关键句必须扩展为其所在 Evidence Window。
 - 通过扩展命中附近消息（如前后多轮、回复链、同 Parent 范围内的消息）得到足够完整的上下文。
-- 该层级区别直接影响 Stage 1.4：`search something` 与 `expand this known hit` 是两类内部 capability，但 Agent-facing 层可由一个 search Tool 自动组合高频的 expand（见 [Stage 1.4](#stage-14-tool--capability-layer)）。
+- Stage 1.4 已据此确认：`search something` 与 `expand this known hit` 是两类内部 capability；Agent-facing message search 自动组合高频 bounded expand，同时保留 `get_message_context(message_id)`（见 [Stage 1.4](#stage-14-tool--capability-layer)）。
 
 ### Hybrid 的定位
 
@@ -473,7 +487,7 @@ Semantic Candidates
 
 > **Retrieval Strategy 应该由任务决定，而不是所有 Query 固定执行同一个 Pipeline。**
 
-（具体策略如何被决定——Agent 自主选择还是由 Router / 规则引导——属于 Stage 1.4 Tool / Capability Layer 与 Stage 1.10 Evaluation 的边界，此处不提前决策。）
+（Stage 1.4 已确认第一版由 Agent 组合调用 `lexical_search` / `semantic_search`；具体策略指导机制与失败处理留给 Stage 1.10 Evaluation 验证。）
 
 ### Reranker 与 Fusion 权重（第一版不提前设计）
 
@@ -490,7 +504,7 @@ Retrieval Result
         month × count 分组
 ```
 
-Message Candidates 与 Structured Results 共同保留 provenance 与 trace metadata。Structured 结果（scalar / aggregate / records）不一定有 `score` / `message_range` / `matched_terms`，不能强行套入 Message Candidate 结构。具体数据结构 Pending（Stage 1.4 / Data Schema 联动）。
+Message Candidates 与 Structured Results 共同保留 provenance 与 trace metadata。Structured 结果（scalar / aggregate / records）不一定有 `score` / `message_range` / `matched_terms`，不能强行套入 Message Candidate 结构。Stage 1.4 已确认 Message Search Result 与 Tool Envelope 的概念契约；具体实现类型及 Structured Result 的 data schema 仍与后续 Data Schema 联动。
 
 等 Evaluation 指出具体问题（例如 Ranking Error 成为主导 Failure Case）后再决定是否引入 Reranker 与 Fusion 权重。
 
@@ -573,7 +587,7 @@ partial = true
 | Chunk 具体参数（时间 gap / 字符数 / 消息数 / token 上限 / overlap） | Pending Evaluation（不复制 ChatLab 默认数字） |
 | Message-level 辅助语义索引 | Pending Evaluation（第一版默认不建立；Evaluation 证明其对特定 Failure Case 有价值后再引入） |
 | 组合 / 选择具体算法（merge / dedup / candidate selection） | Pending Evaluation |
-| Query-specific strategy 的决策机制（Agent 自主 vs 规则 / Router 引导） | Pending（Stage 1.4 / 1.10 边界） |
+| Query-specific strategy 的具体指导机制与失败处理 | Pending（Stage 1.10 Evaluation） |
 
 #### Pending（后续阶段 / 架构实现前不决策）
 
@@ -582,13 +596,13 @@ partial = true
 | Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式 | Pending architecture specification |
 | Semantic / Lexical Index 的具体存储与版本管理 | Pending architecture specification |
 | Retrieval Trace Schema、事件模型、存储与采集方式 | Pending（本阶段仅确认观察需求） |
-| Tool / Capability Layer（Agent 看到哪些 Tool、如何命名） | Pending（Stage 1.4） |
+| Tool / Capability Layer（Agent 看到哪些 Tool、如何命名） | Confirmed（Stage 1.4） |
 | Evidence Judge 设计 | Pending（Stage 1.8） |
 | Candidate / Retrieval Result 具体数据结构 | Pending（与 Storage / Data Schema 联动） |
 
 ## Stage 1.4: Tool / Capability Layer
 
-> 本节为 Stage 1.4 已确认内容。Tool / Capability Layer 位于 Agent Runtime 与底层 Retrieval / Data Layer 之间，向 Agent 暴露**少量、语义清晰、容易调用**的工具，并隔离 Agent SDK 与底层业务实现。本节记录已经讨论并确认的架构原则；**Stage 1.4 整体仍 In Progress**——Tool 列表、Structured Query 设计、Search Result Schema、Tool Contract 等主体设计尚未定稿，不在此处固化。
+> 本节为 Stage 1.4 已确认内容。Tool / Capability Layer 位于 Agent Runtime 与底层 Retrieval / Data Layer 之间，向 Agent 暴露**少量、语义清晰、容易调用**的工具，并隔离 Agent SDK 与底层业务实现。Stage 1.4 已完成；详细 rationale、trade-off、Failure Case 与重新打开条件见对应 ADR。
 
 ### 职责与位置
 
@@ -610,178 +624,123 @@ Retrieval / Canonical Data / Index
 1. 向 Agent 暴露少量、语义清晰、容易调用的工具。
 2. 隔离 Agent SDK 与底层业务实现，使 Retrieval、Context、Identity 等核心能力不依赖具体 Agent Runtime。
 
-### Tool 与 Capability 分离
+### 核心职责边界
 
-- **Capability**：项目自身提供的业务能力，例如 Lexical Retrieval、Semantic Retrieval、Context Expansion、Structured Retrieval、Identity Resolution。Capability 不依赖 OpenAI Agents SDK 等具体 Agent Runtime。
-- **Tool**：提供给 LLM / Agent 的调用接口（例如 `lexical_search`、`semantic_search`），负责参数验证 → 调用一个或多个 Capability → 标准化返回结果。
+- **Capability** 是 Trivae 自身的业务能力，不依赖具体 Agent Runtime / SDK；**Tool** 是 Agent-facing 接口，负责参数校验、Capability 调用与结果标准化。
+- 一个 Tool 可以组合多个 Capability。Tool Surface 优先模型易理解与减少机械调用，内部 Capability 仍保持独立可观测。
+- `lexical_search` 与 `semantic_search` 默认组合 Retrieval + bounded Context Expansion；Local context 是 Search Result 的默认组成部分，但具体窗口参数由 Evaluation 决定。
+- bounded context 用于判断候选价值，不以模型 Context Window 较大为由无限扩大结果；深度调查由 `get_message_context(message_id)` 承担。
+- Tool 组合不得隐藏错误或执行状态，禁止 silent fallback。
 
-> **一个 Agent-facing Tool 可以在内部组合多个 Capability。** 不需要为了保持模块边界纯粹，把每一个内部步骤都暴露成独立 Tool。
+### 第一版 Agent-facing Tool Surface
 
-### Tool Surface 优先考虑 Agent 易用性
-
-Trivae 是面向高噪声群聊分析的垂直 Agent，不需要把底层 Retrieval 的每一步都暴露给模型。设计 Tool 时优先考虑：
-
-```text
-Agent 是否容易理解
-Agent 是否容易正确调用
-是否减少机械 Tool Call
-是否能直接获得足够的信息进行判断
-```
-
-内部模块仍然保持清晰边界，但 Agent-facing API 可以适当合并高频步骤。避免为了过度模块化而出现 `search → 裸 hit → expand → 阅读 → search → expand → 阅读` 这种大量机械调用。
-
-### Search 默认自动补充 bounded context（已确认的主要决策）
-
-对于 Lexical Search：
+第一版暴露 6 个核心 Tool：
 
 ```text
-lexical_search
-      │
-      ▼
-Lexical Retrieval
-      │
-      ▼
-message hits
-      │
-      ▼
-automatic bounded context expansion
-      │
-      ▼
-hits + local context
-      │
-      ▼
-Agent
+Agent Runtime
+│
+├── lexical_search
+│      ├── Lexical Retrieval
+│      └── bounded Context Expansion
+│
+├── semantic_search
+│      ├── Semantic Retrieval
+│      └── bounded Context Recovery
+│
+├── get_message_context
+│      └── Context Expansion
+│
+├── find_members
+│      └── Identity / Membership Lookup
+│
+├── get_schema
+│      └── SQLite Schema Inspection
+│
+└── execute_sql
+       └── Read-only Structured Retrieval
 ```
 
-Agent 不需要在每次关键词命中后再显式调用 Context Expansion。原因是高噪声群聊中单条消息往往缺少足够语义（例如 `10:29 A：用了 LangGraph` 单独看价值很低；加入邻近上下文后 Agent 才能判断该命中是否值得继续调查）。
+新增 Tool 必须由真实 Evaluation 或 Failure Case 驱动，不以能力完整度为由扩大第一版 Tool Surface。
 
-> **Local context 是 Search Result 的默认组成部分。**
+### Context、Scope 与 Identity 边界
 
-（参考 ChatLab 当前 `search_messages` 的设计。）
+- Search 自动附带的 bounded local context 用于候选判断；`get_message_context(message_id)` 用于 Agent 已识别重要消息后的深度上下文恢复。
+- Runtime Query Scope（当前 ChatSession、时间范围、用户选定数据范围等）由 Agent Runtime 注入；第一版不提供 `get_scope_info`，Tool 不得隐式扩大 Scope。
+- 人物查询使用 `find_members`，返回 `UserIdentity / Membership` 候选与匹配依据，不使用暗示唯一解析的 `resolve_member`。
 
-### 自动 Expand 必须是 bounded expansion
+### Structured Retrieval：Physical SQLite Schema + read-only SQL
 
-Search 自动补充上下文不意味着返回任意大的聊天范围。正常 Search 的目标是"找到候选 + 给 Agent 足够的信息判断候选价值"，**不是一次性还原完整讨论**。
-
-默认只进行有限范围的 Context Expansion，例如未来可能采用：命中消息附近若干条消息 / 有限 token budget / 有限时间窗口 / Conversation Parent 的局部内容。具体策略暂时不固定。
-
-明确避免：
+第一版沿用 ChatLab 已验证结构：`get_schema` 读取真实 Physical SQLite Schema，`execute_sql` 直接对当前 SQLite 数据库执行只读 SQL；不增加 Analysis Schema / Analysis View 隔离层。
 
 ```text
-keyword hit → 整个 conversation
-keyword hit → 很长时间范围内全部聊天
+SQLite
+   ├── get_schema   → Physical SQLite Schema
+   └── execute_sql  → bounded read-only SQL
 ```
 
-### Agent-facing Tool 合并，内部 Capability 仍然分离
+`execute_sql` 至少满足以下边界：
 
-Agent 看到的是 `lexical_search → hit + context`，内部依然保持 Lexical Retrieval 与 Context Expansion 两个独立能力：
+- 仅允许 `SELECT / read-only`，显式阻止 `INSERT / UPDATE / DELETE / DROP / ALTER / CREATE` 等写入或 Schema 修改；
+- 使用 `max_rows` 或等价机制限制结果规模；
+- 优先利用 SQLite Driver 的 readonly statement 判断；Driver 不支持时再设计明确的只读 SQL 校验；
+- 不 silently 修改 Agent SQL，也不在执行失败后自动切换其他 Retrieval。
+
+SQL 只处理目标集合已能由结构化条件确定的问题；需要 Semantic Classification 的集合，先由 Lexical / Semantic Retrieval 确定候选，再执行确定性统计或聚合。
+
+若未来出现 Agent 经常选错内部表、Physical Schema 重构导致 SQL 大量失效、内部实现表持续污染 Tool 使用等 Failure Case，再评估 Stable Analysis Views。
+
+### Search Result 与 Tool Result 契约
+
+Lexical / Semantic Search 共享统一外层 Search Result，但保留各自 provenance：`strategy`、`matched_message_ids`、lexical 的 `matched_terms`、semantic 的 `matched_chunk_id`，以及 retrieval-specific `score`。若暴露 numeric score，必须同时提供 `score_type`，禁止直接比较 BM25、FTS rank、cosine similarity 等不同体系的数字。
+
+Context Message 保留结构化 `message_id`、`session_id`、author、timestamp、content、reply 与 `is_match`，不得只返回拼接聊天文本。
+
+所有 Tool 使用统一薄 Envelope：
 
 ```text
-lexical_search Tool
-        │
-        ├── LexicalRetriever.search()
-        └── ContextExpander.expand()
+{
+  status: "ok" | "partial" | "error",
+  data: ...,
+  meta: { truncated: true | false },
+  error: { code, message } | null
+}
 ```
 
-这样既减少 Agent Tool Call，也保留工程可观测性。例如一次 Tool Call 内部仍可观察：
+- Zero Hits：`status = ok`，空结果；
+- Invalid Argument：`INVALID_ARGUMENT`；
+- Capability Unavailable：`CAPABILITY_UNAVAILABLE`；
+- Execution Failure：`EXECUTION_ERROR`；
+- Partial Result：`status = partial`；
+- Truncation：`meta.truncated = true`，与 Partial Execution 保持区分。
 
-```text
-lexical retrieval
-    raw_hit_count = 20
-context expansion
-    expanded_hit_count = 20
-    returned_messages = 76
-```
+所有可能返回大量数据的 Tool 必须 bounded；Message-based Retrieval 必须返回稳定 `message_id`；Retrieval Tool 返回 Candidate Data，不在 Tool 内硬编码 Final Evidence 判断。
 
-从而能区分三种 Failure：
+### 第一版不增加的 Tool 与抽象
 
-- Retrieval 没找到正确消息
-- Retrieval 找到了，但 Context Expansion 范围不合适
-- 上下文正确，但 Agent 最终分析错误
+第一版不引入 `Analysis Schema / Analysis View`、`candidate_ref / Candidate State`、`get_scope_info`、`resolve_member`、`hybrid_search`、`universal_search`、`retrieve_evidence`、大量 Specialized Analysis Tools 或复杂 Tool orchestration framework。
 
-### Semantic Search 采用同样原则
-
-Semantic Retrieval 已在 Stage 1.3 确定以 Child Chunk 作为主要召回单元。Agent-facing 设计不需要暴露完整的内部两阶段过程（`child hit → Agent 再调用 expand`），更适合第一版的形式：
-
-```text
-semantic_search
-      │
-      ▼
-Semantic Retrieval
-      │
-      ▼
-Child Chunk hits
-      │
-      ▼
-automatic bounded context recovery
-      │
-      ▼
-candidate + context
-      │
-      ▼
-Agent
-```
-
-返回结果仍保留 Retrieval provenance（matched chunk / similarity or retrieval score / 对应 message range / context），以便 Evaluation 和问题定位时确认"到底是什么内容触发了召回"。
-
-### 不把"大上下文窗口"作为主要设计依据
-
-当前模型拥有较大的 context window，降低了适量补充聊天上下文的成本压力，但不能据此无限增加 Search Result。仍需考虑 token cost、latency、上下文中的噪声、模型注意力稀释、一次搜索返回过多结果。
-
-采用自动 bounded expansion 的主要理由是：**在群聊场景中，小范围邻近上下文通常具有很高的信息增益，并且这是绝大多数 Search Hit 都需要执行的高频步骤**，因此合并进 Search 可以降低 Agent 的执行复杂度。
-
-### 参数先不写死，由 Evaluation 决定
-
-ChatLab 存在类似 `before = 2 / after = 2` 的默认上下文窗口。Trivae 第一版不直接复制这些参数。目前只冻结"Search 默认带 bounded local context"；具体参数（前后多少条消息 / 最大 token 数 / 最大时间跨度 / 是否基于 reply chain / 是否使用 conversation parent）全部通过真实群聊 Evaluation 调整。
-
-> **先确定架构与职责，再通过 Evaluation 决定经验参数。**
-
-### Tool 内部不能使用 silent fallback 隐藏错误
-
-Tool 可以组合 Capability，但不能因为组合而失去 Failure Attribution。例如 Semantic Retrieval 不可用时，不能 silently run lexical search 后返回普通结果——否则 Agent 和 Evaluation 都无法知道 Semantic Retrieval 实际已失败。
-
-需明确区分：
-
-```text
-zero hits
-index unavailable
-invalid arguments
-execution failure
-partial / truncated result
-```
-
-Tool 可以简化 Agent 的调用方式，但内部执行状态必须保持可观测。
-
-### 第一版不引入复杂 Candidate State 设计
-
-此前讨论过的 `RetrievalCandidate / candidate_ref / expand_context(candidate_ref) / runtime candidate state` 机制**暂不采用**。原因是 Search 默认返回**用于候选判断**的 bounded context，普通检索无需为每个 hit 建立额外 Candidate State；我们并未确认 bounded context 一定足够回答最终问题（观点变化、长期争论、一次完整排错等场景仍可能需要继续扩大上下文）。若后续真实 Evaluation 证明深度调查需要跨调用稳定引用或进一步扩展，再引入 Candidate Reference。第一版优先保持 Tool API 简单；"是否提供 get_message_context / expand_context" 仍为 Pending。
+Hybrid 仍是 Stage 1.3 的 Retrieval Composition Strategy。确定性分析优先通过 `get_schema + execute_sql` 完成；只有 Evaluation 证明某类分析高频、SQL 经常出错或过于机械，且专用 Tool 明显提高可靠性或降低成本时，才考虑新增 Tool。
 
 ### 冻结的整体方向
 
 ```text
-                         Agent Runtime
-                              │
-                              ▼
-                    Agent-facing Tools
-                              │
-               ┌──────────────┼──────────────┐
-               │              │              │
-               ▼              ▼              ▼
-        lexical_search  semantic_search   other tools
-               │              │
-               ▼              ▼
-        ┌─────────────────────────────┐
-        │      Capability Layer       │
-        │                             │
-        │ Lexical Retrieval           │
-        │ Semantic Retrieval          │
-        │ Context Expansion           │
-        │ Structured Retrieval        │
-        │ Identity / Scope            │
-        └──────────────┬──────────────┘
-                       │
-                       ▼
-        Canonical Store / Lexical Index / Vector Index
+Agent Runtime + injected Query Context
+        │
+        ▼
+Agent-facing Tools (6)
+        │
+        ├── lexical_search ─────┐
+        ├── semantic_search ────┼── Retrieval + bounded Context Expansion
+        ├── get_message_context ─── Context Expansion by message_id
+        ├── find_members ────────── Identity / Membership Lookup
+        ├── get_schema ──────────── Physical SQLite Schema
+        └── execute_sql ─────────── bounded read-only Structured Retrieval
+                                  │
+                                  ▼
+                         Capability Layer
+                                  │
+                                  ▼
+             Canonical Store / Lexical Index / Vector Index
 ```
 
 对于 Search（仅指 Lexical / Semantic 这类**面向消息候选**的 Search Tool）：
@@ -813,24 +772,28 @@ Retrieval 与 Context Expansion 保持独立可观测的 capability
 | 大上下文窗口作为设计依据 | 否（仍考虑 token / latency / 噪声 / 注意力稀释 / 结果过多） |
 | 参数冻结范围 | 仅冻结"Message Search 默认带 bounded context"；具体参数 Evaluation 决定 |
 | Silent Fallback | 禁止（Failure Attribution 不可被组合隐藏） |
-| 复杂 Candidate State | 第一版不引入（bounded context 仅用于候选判断；Evaluation 证明深度调查需要跨调用引用或扩展时再引入） |
+| 第一版 Tool Surface | `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` |
+| 深度上下文恢复 | 保留 `get_message_context(message_id)`；不引入复杂 Candidate State |
+| Query Scope | Runtime 注入；不提供 `get_scope_info`；Tool 不得隐式扩大 Scope |
+| Member Lookup | `find_members` 返回候选与匹配依据；不使用 `resolve_member` |
+| Structured Retrieval | 直接暴露 Physical SQLite Schema + bounded read-only SQL；不增加 Analysis View |
+| SQL 执行 | 显式拒绝写入；不改写 Agent SQL；失败后不自动切换 Retrieval |
+| Search Result | 统一外层结构；保留 strategy-specific provenance、`score_type` 与结构化 Message Identity |
+| Tool Result Envelope | `ok / partial / error`；Zero Hits 正常；Truncation 与 Partial 分离；错误码可区分 |
+| Hybrid / Specialized Tools | 第一版不暴露；新增由 Evaluation / Failure Case 驱动 |
 
-#### Pending / 后续讨论（Stage 1.4 尚未完成的主体设计）
+#### Pending Evaluation（不影响 Stage 1.4 completed）
 
-> 以下属于 Tool / Capability Layer 的主体设计而非实现参数，完成这些后 Stage 1.4 才算 completed；当前不提前固化。
+> 以下仅为经验参数或未来新增能力的 Evaluation，不重新打开已确认的架构方向。
 
 | 项目 | 状态 |
 | --- | --- |
-| Agent 最终暴露多少个 Tool、完整 Tool Registry | Pending |
-| 是否独立暴露 `get_message_context` / `expand_context` 供深度调查 | Pending |
-| `get_scope_info` 是否独立存在 | Pending |
-| Member / Identity Resolution 如何暴露 | Pending |
-| Structured Retrieval：declarative query 还是 read-only SQL | Pending |
 | Lexical Search 具体上下文窗口参数 | Pending Evaluation |
 | Semantic Parent / Context Recovery 具体策略 | Pending Evaluation |
-| Search Result 最终 Schema | Pending |
-| Tool Result Envelope 具体字段 | Pending |
-| 是否以及何时引入更高级的 Hybrid Search / Evidence Retrieval Tool | Pending |
+| 各 bounded Tool 的具体默认上限 | Pending Evaluation |
+| Specialized Analysis Tool / 高级组合 Tool 是否满足新增条件 | Pending Evaluation |
+
+当前没有已批准的 **Experimental** 偏离。重新打开任何 Confirmed 决策必须记录 Reopen Reason（新 Failure Case、新技术约束、新 Evaluation 结果或新业务需求）。
 
 ## Module Boundaries
 
@@ -884,11 +847,13 @@ Planner schema、步骤上限、suggested tools 校验和失败处理待后续�
 **Responsibility**：向 Agent 暴露少量、语义清晰、容易调用的工具，是 Query Plane 访问 Data Plane 的边界；同时隔离 Agent SDK 与底层业务实现，使 Retrieval、Context、Identity 等核心能力不依赖具体 Agent Runtime。
 
 - Stage 1.4 已确认 Tool 与 Capability 分离：Capability 是项目自身的业务能力（不依赖 Agent Runtime），Tool 是面向 Agent 的调用接口，一个 Tool 可在内部组合多个 Capability。
-- Search（lexical / semantic）默认自动补充 bounded local context，Local context 是 Search Result 的默认组成部分；内部 Retrieval 与 Context Expansion 仍保持独立可观测。
-- Tool 内部禁止 silent fallback 隐藏错误，执行状态必须可观测（zero hits / index unavailable / invalid arguments / execution failure / partial / truncated）。
-- 第一版不引入复杂 Candidate State（candidate_ref / expand_context(candidate_ref)）机制。
+- 第一版固定暴露 `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`。
+- Search（lexical / semantic）默认自动补充 bounded local context；内部 Retrieval 与 Context Expansion 仍保持独立可观测。深度调查通过稳定 `message_id` 调用 `get_message_context`，不引入 Candidate State。
+- Runtime Query Scope 由 Agent Runtime 注入；不提供 `get_scope_info`。Identity / Membership 查询使用 `find_members`，显式返回可能有歧义的候选。
+- Structured Retrieval 直接使用 Physical SQLite Schema + bounded read-only SQL，不增加 Analysis View；写入、SQL 静默改写和执行失败后的 Retrieval 自动切换均被禁止。
+- Tool 使用统一薄 Envelope，明确区分 zero hits / invalid arguments / capability unavailable / execution failure / partial / truncated；Truncation 与 Partial Execution 是不同概念。
 - Agent 不直接读取原始文件、Canonical Store 或索引。
-- 完整 Tool 列表、Tool Registry、签名、参数校验、权限、Structured Query 设计、Search Result Schema、Tool Result Envelope 字段、是否独立暴露 expand_context / get_scope_info 仍在 Stage 1.4 后续讨论（Pending），不在此处固化。
+- 第一版不暴露 `hybrid_search`、`universal_search`、`retrieve_evidence` 或大量 Specialized Analysis Tools；新增能力由真实 Evaluation 或 Failure Case 驱动。
 
 ### Retrieval
 
@@ -930,7 +895,7 @@ Retrieval Query
 
 Observability 与 Trace 横切 Query Plane，目标是支持 Failure Attribution。一次查询最终应能区分 Router、Planner、Agent、Tool、Retrieval、Evidence 和 Answer 等阶段的中间状态与结果。
 
-Stage 1.4 补充了 Tool 层内部可观测性要求：Tool 可以组合多个 Capability，但组合不得隐藏执行状态——一次 Tool Call 内部应能区分 Retrieval 未召回、Context Expansion 范围不合适、Agent 分析错误；Semantic 不可用时不得 silent fallback 为 Lexical 并返回普通结果。需明确区分 zero hits / index unavailable / invalid arguments / execution failure / partial / truncated。
+Stage 1.4 补充了 Tool 层内部可观测性要求：Tool 可以组合多个 Capability，但组合不得隐藏执行状态——一次 Tool Call 内部应能区分 Retrieval 未召回、Context Expansion 范围不合适、Agent 分析错误；Semantic 不可用时不得 silent fallback 为 Lexical 并返回普通结果。统一 Envelope 明确区分 zero hits / capability unavailable / invalid arguments / execution failure / partial / truncated，其中 Truncation 与 Partial Execution 保持独立。
 
 当前只确认逻辑覆盖范围，不确认具体 Trace Schema、存储、采集方式或指标命名。
 
@@ -996,17 +961,27 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 5. **Semantic Search 采用同样原则**：默认自动 bounded context recovery，返回结果保留 provenance（matched chunk / score / message range / context）。
 6. **不把大上下文窗口作为主要设计依据**：仍需考虑 token / latency / 噪声 / 注意力稀释 / 一次返回过多结果。
 7. **参数不写死，由 Evaluation 决定**：只冻结"Message Search 默认带 bounded local context"，具体窗口参数（消息数 / token / 时间跨度 / reply chain / conversation parent）Evaluation 校准。
-8. **禁止 silent fallback**：Tool 可以组合 Capability，但不能隐藏执行状态；需明确区分 zero hits / index unavailable / invalid arguments / execution failure / partial / truncated。
-9. **第一版不引入复杂 Candidate State**：暂不采用 candidate_ref / expand_context(candidate_ref) 机制；bounded context 仅用于候选判断，若 Evaluation 证明深度调查需要跨调用稳定引用或进一步扩展，再单独设计 Candidate Reference。
+8. **禁止 silent fallback**：Tool 可以组合 Capability，但不能隐藏执行状态；需明确区分 zero hits / capability unavailable / invalid arguments / execution failure / partial / truncated。
+9. **第一版 Tool Surface 固定为 6 个 Tool**：`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`；新增 Tool 由真实 Evaluation 或 Failure Case 驱动。
+10. **深度 Context 通过稳定 Message Identity 恢复**：保留 `get_message_context(message_id)`；第一版不采用 `candidate_ref / Candidate State`。
+11. **Query Scope 由 Runtime 注入**：不提供 `get_scope_info`，Tool 不得隐式扩大查询范围。
+12. **Member Lookup 返回候选**：使用 `find_members`，保留身份歧义与匹配依据，不使用暗示唯一解析的 `resolve_member`。
+13. **Structured Retrieval 采用 Physical SQLite Schema + read-only SQL**：`get_schema` 读取真实 Schema，`execute_sql` 执行 bounded read-only SQL；第一版不增加 Analysis View。
+14. **SQL 错误透明**：显式阻止写入，不 silently 改写 SQL，不在执行失败后自动切换 Retrieval；SQL 不承担 Semantic Classification。
+15. **Search Result 保留检索差异**：Lexical / Semantic 共享统一外层结构，同时保留 strategy-specific provenance；numeric score 必须带 `score_type`，Context Message 保留稳定结构化身份。
+16. **统一 Tool Result Envelope**：使用 `ok / partial / error`；Zero Hits 是正常结果；Invalid Argument、Capability Unavailable、Execution Error 可区分；Truncation 与 Partial Execution 分离。
+17. **第一版不暴露万能或大量专用 Tool**：不增加 `hybrid_search`、`universal_search`、`retrieve_evidence` 或大量 Specialized Analysis Tools。
 
 详细 rationale 与 trade-off 见 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)。
 
-## Reference Designs, Not Final Decisions
+## ChatLab Baseline and Recorded Differences
+
+ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
 - ChatLab 的 `direct_response / tool_assisted / planned_execution` 路径和 Planner 行为是参考设计；Trivae 的路由名称与策略仍待确认。
 - ChatLab 的 Planner 步骤上限等实现细节不自动继承到 Trivae。
 - ChatLab 的 Parent / Child Chunk 思路（Time-aware Parent + Small Child）是 Trivae Semantic 索引架构的参考；其具体切分参数（30 min / 360 chars / 消息数 / overlap 等）不自动继承，由 Trivae 的 Evaluation Set 决定。
-- ChatLab 的 `search_messages` / `semantic_search_current_chat` / `execute_sql` / `retrieve_chat_evidence` 分工是 Retrieval 能力的参考设计；Trivae 如何将这些能力暴露给 Agent（Tool 名称、数量、封装层级）由 Stage 1.4 后续讨论决定，当前 Pending。
+- Stage 1.4 已沿用 ChatLab 的消息搜索自动 bounded context、Physical SQLite Schema + read-only SQL 等设计，并确认 Trivae 第一版 6 个 Tool 的 Agent-facing Surface。Trivae 不机械复制 ChatLab 的大量 Specialized Analysis Tools；该偏离以 `get_schema + execute_sql` 可覆盖确定性分析为当前约束，是否新增由 Evaluation 验证。
 - ChatLab 的 `search_messages` 命中后自动扩展前后 context 是 Trivae "Search 默认带 bounded context" 决策的参考；其默认窗口参数（如 `before = 2 / after = 2`）不自动继承，由 Trivae 的 Evaluation Set 决定。
 - ChatLab 的固定关键词 Evidence 判断方案（计划词 / 实际发生词 → included / excluded / uncertain）不复制到 Trivae；Evidence Judge 围绕 Question-specific Criteria 设计。
 - OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向；具体版本、集成方式和适配契约仍需在 Stage 1.7 验证。
@@ -1015,7 +990,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 以下事项仍为 **Pending architecture specification**，不得在本阶段自行补齐或实现：
 
-- 最终 Database Schema、表数量、字段类型与具体索引，SQLite / PostgreSQL 具体实现
+- 第一版 SQLite Physical Schema 的表数量、字段类型、具体索引与持久化实现
 - Vector Store 实现、Chunk 具体切分参数、Embedding 模型、Indexing Pipeline 具体执行方式
 - Reranker 是否引入、Fusion 权重、merge / dedup / candidate selection 的具体算法（Pending Evaluation，由 Evaluation Set 决定）
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式（Derived Data 语义已确认，实现 Pending）
@@ -1026,12 +1001,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 - Canonical Message Fingerprint 的具体字段组合、时间精度、canonicalization 与 hash algorithm
 - raw payload / source locator / structured content 的具体表示
 - Canonical timestamp 的 timezone / precision / 存储类型与转换实现
-- Tool Layer 的完整 Tool 列表与 Tool Registry、签名、参数校验、权限与结果契约（Stage 1.4 后续讨论）
-- 是否独立暴露 `get_message_context` / `expand_context` / `get_scope_info`；Member / Identity Resolution 暴露方式（Stage 1.4 后续讨论）
-- Structured Retrieval 的暴露方式：declarative query 还是 read-only SQL（Stage 1.4 后续讨论）
-- Search Result Schema、Tool Result Envelope 具体字段（Stage 1.4 后续讨论）
-- 是否以及何时引入高级 Hybrid Search / Evidence Retrieval Tool（Stage 1.4 后续讨论）
-- Query-specific strategy 的决策机制（Agent 自主选择 vs 规则 / Router 引导）与其失败处理（Stage 1.4 / 1.10 边界）
+- Query-specific strategy 的具体指导机制与失败处理（Stage 1.10 Evaluation 边界）
 - Router 具体策略、分类规则、置信度、阈值与失败处理
 - Planner Schema、步骤上限、校验和执行约束
 - Agent Runtime 的具体 SDK 版本、Adapter 契约、Session、Streaming、Abort 与 Run Lifecycle 细节
@@ -1046,7 +1016,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 ## Evolution Rule
 
-- Stage 1.4-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.5-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 

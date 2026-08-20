@@ -39,8 +39,18 @@ Regression
 
 ## 来源分级
 
-- 来自「框架默认 / ChatLab 如此 / 某开源项目如此」的方案视为 **Initial hypothesis / reference design**，不能直接视为最终结论。
-- 应根据决策类型，通过项目约束、复杂度分析、Prototype、Test、Benchmark、Evaluation 或真实 Failure Case 等证据确认方案，再升级为决策记录。
+- **ChatLab First Principle**：ChatLab 是 Trivae 的主要参考基线。ChatLab 已存在且适用于 Trivae 的架构设计默认采用原方案，不因主观偏好重新设计。
+- 任何偏离 ChatLab 的设计都必须记录：原方案不适用的原因、具体业务问题 / Failure Case / Evaluation / 技术约束、新方案收益、新增复杂度与风险，以及验证方法。
+- “感觉可以更简单”“感觉可以少一个 Tool”“LLM 现在能力很强”“可以封装起来”“代码看起来更优雅”不足以改变 Confirmed 决策。
+- 对其他框架、开源项目或未经验证的默认值，仍视为 **Initial hypothesis / reference design**；应通过项目约束、Prototype、Test、Benchmark、Evaluation 或真实 Failure Case 确认。
+
+## 决策状态与重新打开规则
+
+- **Confirmed**：已经完成决策，默认冻结；后续讨论主要用于解释和理解，不直接重新设计。
+- **Pending**：尚未决定，可以继续比较方案。
+- **Experimental**：明确偏离已有方案，必须通过实验或 Evaluation 验证。
+
+重新打开 Confirmed 决策必须记录 **Reopen Reason**，且由新 Failure Case、新技术约束、新 Evaluation 结果或新业务需求触发。
 
 ## 重点关注清单
 
@@ -73,14 +83,14 @@ Regression
 
 ### Stage 1.3：Retrieval Architecture
 
-- 状态：Confirmed（Retrieval 内部能力与组合策略；Tool 暴露方式、Reranker、Fusion 权重、Chunk 参数、Message-level 辅助索引、Trace Schema、Vector Store / Embedding 仍 Pending）。
+- 状态：Confirmed（Retrieval 内部能力与组合策略；Tool 暴露方式已在 Stage 1.4 确认；Reranker、Fusion 权重、Chunk 参数、Message-level 辅助索引、Trace Schema、Vector Store / Embedding 仍 Pending）。
 - 内容：Multi-strategy Retrieval（Composition + 三个 Primitives + Post-Retrieval Operator）、Hybrid 为组合策略、集合确定后的确定性查询优先、Conversation Chunk 为第一版 Semantic primary indexing unit（Time-aware Parent + Small Child，Message-level 辅助索引 Pending Evaluation）、Context Expansion 为 Post-Retrieval Operator、Query-specific strategy、Retrieval Result provenance（Message Candidates + Structured Results 分列）、Partial / Coverage 显式暴露（口径 Stage 1.9 细化）、Failure Attribution 分类、Evidence 判断不硬编码、Retrieval Trace 观察需求（Schema 不提前实现）。
 - 记录位置：[technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
-- 后续：Stage 1.4 Tool / Capability Layer。
+- 后续：Stage 1.4 Tool / Capability Layer 已完成；Stage 1.5 尚未开始。
 
 ### Stage 1.4：Tool / Capability Layer
 
-- 状态：**本文所记录决策均已 Confirmed；Stage 1.4 整体 In Progress**（完整 Tool 列表、Structured Query 设计、Search Result Schema、Tool Contract 等仍 Pending）。
-- 内容：Tool 与 Capability 分离（Capability 不依赖 Agent Runtime）、一个 Tool 可组合多个 Capability、Tool Surface 优先 Agent 易用性、Message Search（Lexical / Semantic）默认自动补充 bounded context（Local context 为 Search Result 默认组成部分）、自动 Expand 必须 bounded、内部 Capability 独立可观测、Semantic Search 同原则且保留 provenance、不把大上下文窗口作为主要设计依据、参数由 Evaluation 决定、禁止 silent fallback、第一版不引入复杂 Candidate State。
+- 状态：**Confirmed / Completed（Stage 1.4）**。具体 bounded 参数仍 Pending Evaluation，但不影响本阶段架构完成状态。
+- 内容：ChatLab First Principle；Tool 与 Capability 分离且可组合；第一版 6 个 Tool（`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`）；Message Search 默认 bounded context；稳定 `message_id` 深度扩展；Runtime 注入 Scope；Member Lookup 返回候选；Physical SQLite Schema + bounded read-only SQL；统一 Search Result / Tool Envelope；禁止 silent fallback；第一版不引入 Analysis View、Candidate State、Hybrid / Universal / Evidence Tool 或大量 Specialized Analysis Tools。
 - 记录位置：[technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
-- 后续：继续 Stage 1.4，完成 Tool Surface / Contract 等剩余设计；Stage 1.5 暂不开始。
+- 后续：Stage 1.5 尚未开始；Stage 1.4 的经验参数由后续 Evaluation 校准，重新打开 Confirmed 决策必须记录 Reopen Reason。
