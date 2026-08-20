@@ -76,7 +76,7 @@ Regression
 
 ### Stage 1.2：Data Model + Ingestion
 
-- 状态：Confirmed（逻辑数据模型与概念边界；Database Schema 与技术选型仍 Pending）。
+- 状态：Confirmed（逻辑数据模型与概念边界；Stage 1.2 当时未决定存储技术，第一版 SQLite 后由 Stage 1.4 确认；Physical Schema 细节仍 Pending）。
 - 内容：Canonical Model 隔离、Stable Platform Identity 优先、Platform Identity 与 Membership 分离、Shared Importer、Stable Message ID 优先 + Fingerprint fallback、Canonical Store 为 Source of Truth、ImportBatch 观测、Canonicalization 保真、Canonical Timestamp 语义。
 - 记录位置：[technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
 - 后续：Stage 1.3 Retrieval Architecture。
@@ -91,6 +91,6 @@ Regression
 ### Stage 1.4：Tool / Capability Layer
 
 - 状态：**Confirmed / Completed（Stage 1.4）**。具体 bounded 参数仍 Pending Evaluation，但不影响本阶段架构完成状态。
-- 内容：ChatLab First Principle；Tool 与 Capability 分离且可组合；第一版 6 个 Tool（`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`）；Message Search 默认 bounded context；稳定 `message_id` 深度扩展；Runtime 注入 Scope；Member Lookup 返回候选；Physical SQLite Schema + bounded read-only SQL；统一 Search Result / Tool Envelope；禁止 silent fallback；第一版不引入 Analysis View、Candidate State、Hybrid / Universal / Evidence Tool 或大量 Specialized Analysis Tools。
+- 内容：ChatLab First Principle；Tool 与 Capability 分离且可组合；第一版 6 个 Tool（`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`）；Message Search 默认 bounded context；稳定 `message_id` 深度扩展；Runtime Query Scope 约束所有 Tool（包括 `execute_sql`）；Member Lookup 返回候选；第一版 structured / canonical persistent store 采用 SQLite，直接暴露 Physical Query Schema + bounded read-only SQL；统一 Search Result / Tool Envelope 语义契约但不冻结实现 Schema；禁止 silent fallback；第一版不引入 Analysis View、Candidate State、Hybrid / Universal / Evidence Tool 或大量 Specialized Analysis Tools。
 - 记录位置：[technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
 - 后续：Stage 1.5 尚未开始；Stage 1.4 的经验参数由后续 Evaluation 校准，重新打开 Confirmed 决策必须记录 Reopen Reason。

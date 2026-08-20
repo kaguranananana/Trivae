@@ -8,7 +8,7 @@
 
 ## 0. Architecture Decision：ChatLab First Principle
 
-**Context**：ChatLab 是 Trivae 的主要参考基线，已经验证了 Agent Tool Surface、消息检索、SQLite 结构化查询等关键设计。若没有证据就重新设计同类能力，既会增加讨论成本，也会引入未经验证的复杂度。
+**Context**：ChatLab 是 Trivae 的主要参考基线，已经落地了 Agent Tool Surface、消息检索、SQLite 结构化查询等关键设计，为 Trivae 提供成熟的 reference implementation。若没有证据就重新设计同类能力，既会增加讨论成本，也会引入未经验证的复杂度。
 
 **Decision**：对于 ChatLab 已存在且适用于 Trivae 的架构设计，默认采用原方案。任何偏离都必须明确记录：
 
@@ -26,7 +26,7 @@
 - “可以封装起来”；
 - “代码看起来更优雅”。
 
-**Reason**：把 ChatLab 作为默认基线，可以让 Trivae 优先复用已验证设计；偏离必须由可观察的问题和验证结果驱动，而不是由偏好驱动。
+**Reason**：把 ChatLab 作为默认基线，可以让 Trivae 优先复用已经真实实现并运行的设计；这不代表 ChatLab 方案天然是 Trivae 的最优解，偏离仍必须由可观察的问题和 Trivae 自身 Evaluation 驱动，而不是由偏好驱动。
 
 **Trade-off**：Trivae 不会为追求表面上的独特性而自由重构基线；换取决策连续性、较低的不确定性和明确的验证责任。
 
@@ -185,11 +185,15 @@ get_message_context(message_id)
 
 ## 6. 不独立设计 `get_scope_info`
 
-**Decision**：当前 ChatSession、时间范围、用户选定数据范围及其他 Runtime Query Context 由 Agent Runtime 注入。第一版不增加 `get_scope_info`。
+**Decision**：当前 ChatSession、时间范围、用户选定数据范围及其他 Runtime Query Context 由 Agent Runtime 注入。第一版不增加 `get_scope_info`。Runtime Query Scope 同时构成所有 Tool 的授权边界：包括 `execute_sql` 在内，任何 Tool 都不得读取当前授权 Scope 之外的数据。
+
+`execute_sql` 不能仅依赖模型自行在 SQL 中加入正确过滤条件。具体 enforcement 机制——物理数据库隔离、connection scope、SQL validation 或其他方式——由后续 Storage / Runtime Implementation 决定，本阶段不提前设计。
 
 **Reason**：这些信息是当前查询执行上下文，不需要 Agent 在每次任务开始前进行机械 Tool Call。
 
-**Trade-off**：第一版不支持 Agent 通过 Tool 主动探索动态数据源或 Scope；若未来出现真实业务需求，再以新 Failure Case 或业务需求重新评估。
+**Trade-off**：第一版不支持 Agent 通过 Tool 主动探索动态数据源或 Scope；同时需要后续实现一个可验证的 Scope enforcement 边界。若未来出现真实业务需求，再以新 Failure Case 或业务需求重新评估 `get_scope_info`。
+
+**Failure Case**：当前 Scope 仅授权 `session A` 时，Agent 提交无 session filter 的 `SELECT * FROM message`。若 `execute_sql` 直接访问包含 A / B / C 的数据库，就会越过 Runtime Query Scope；因此 Scope 不能只是 soft context。
 
 ## 7. 人物查询采用 `find_members`
 
@@ -207,7 +211,7 @@ get_message_context(message_id)
 
 **Context**：ChatLab 的 `get_schema` 读取 SQLite `sqlite_master` 中的真实表结构，`execute_sql` 直接对当前 SQLite 数据库执行只读 SQL；不存在额外的 Analysis Schema / Analysis View 层。
 
-**Decision**：Trivae 第一版采用相同结构：
+**Decision**：Trivae 第一版 structured / canonical persistent store 采用 SQLite，并采用以下查询结构：
 
 ```text
 SQLite
@@ -225,7 +229,9 @@ SQLite
 Physical Schema → Analysis Views → Agent-facing Schema
 ```
 
-**Reason**：当前没有 Failure Case 证明需要独立 Analysis Schema；如果 Physical Schema 足够清晰，直接暴露实现成本最低，也与 ChatLab 已验证设计一致。Analysis View 会增加额外 Schema 设计、同步与维护成本。
+SQLite vs PostgreSQL 的第一版技术选型已经确认；仍 Pending 的是 Physical Schema、表结构、字段类型、索引、migration、transaction、具体持久化实现，以及 Vector Storage 是否独立。
+
+**Reason**：当前没有 Failure Case 证明需要独立 Analysis Schema；如果 Physical Schema 足够清晰，直接暴露实现成本最低，也与 ChatLab 已落地的设计一致。Analysis View 会增加额外 Schema 设计、同步与维护成本。
 
 **Trade-off**：Agent SQL 会依赖 Physical Schema，未来 Schema 重构可能影响已有查询；当前以最低实现复杂度换取第一版可用性。
 
@@ -240,15 +246,24 @@ Physical Schema → Analysis Views → Agent-facing Schema
 
 ## 9. `execute_sql` 的安全与执行边界
 
-**Decision**：`execute_sql` 只允许只读查询，至少保证 `SELECT / read-only only`，并通过 `max_rows` 或等价机制限制最大结果规模。必须显式阻止 `INSERT`、`UPDATE`、`DELETE`、`DROP`、`ALTER`、`CREATE` 等写入或 Schema 修改行为。
+**Decision**：`execute_sql` 只允许被确认是 read-only 的 statement，并通过 `max_rows` 或等价机制限制最大结果规模。`INSERT`、`UPDATE`、`DELETE`、`DROP`、`ALTER`、`CREATE` 等只是非只读语句示例，不构成完整 denylist，也不能被实现为完整安全规则。
 
-只读判断优先使用 SQLite Driver 提供的 readonly statement 能力；只有 Driver 不具备该能力时，才设计明确的只读 SQL 校验方案。
+只读判断优先使用 SQLite Driver 提供的 readonly statement metadata；只有 Driver 不具备该能力时，才在实现阶段设计完整的只读 SQL validator。
 
 Tool 不得 silently 修改 Agent 提交的 SQL，也不得在 SQL 执行失败后自动切换为另一套 Retrieval。
 
 **Reason**：结构化查询只承担数据读取和确定性计算；写入不属于 Query Plane 权限。显式拒绝可保留原始错误与 Failure Attribution。
 
 **Trade-off**：复杂的多语句或非只读 SQL 会被拒绝，换取数据完整性、结果规模可控和错误透明。
+
+### 与 ChatLab 的有意差异：不自动改写 SQL
+
+ChatLab 会在 SQL 缺少 `LIMIT` 时自动追加限制。Trivae 选择不 silently 修改 Agent 提交的 SQL，而是在 Tool Contract / 执行边界中控制最大返回规模，并对不满足契约的请求显式返回错误。
+
+- **为什么偏离**：自动改写会让 Trace 中的提交 SQL 与实际执行语义不一致，削弱错误透明和 Failure Attribution。
+- **收益**：Agent 提交内容、实际执行行为与错误信息保持一致。
+- **复杂度与风险**：Agent 需要显式控制查询规模，Tool 需要以不改写 SQL 的方式实施结果上限；可能增加参数错误或拒绝次数。
+- **验证方式**：在 Tool Evaluation 中比较 SQL 执行成功率、越界结果率、参数错误率、返回规模与 Agent 修正成本；若该偏离成为主导 Failure Case，再按 Reopen Reason 重新评估。
 
 ## 10. Structured Retrieval 的职责边界
 
@@ -313,8 +328,8 @@ SearchResult
 │       └── messages[]
 │           ├── message_id
 │           ├── session_id
-│           ├── author_id
-│           ├── author_name
+│           ├── stable_author_identity
+│           ├── readable_author_display
 │           ├── timestamp
 │           ├── content
 │           ├── reply_to?
@@ -323,7 +338,9 @@ SearchResult
 └── meta
 ```
 
-BM25、FTS rank、cosine similarity 等 score 不能直接比较；若暴露 numeric score，必须同时提供 `score_type`。Context Message 必须保留结构化身份与稳定追溯字段，不得只返回拼接聊天文本；至少保留 `message_id`、`session_id`、author、timestamp、content。
+以上名称用于表达语义角色，不是最终字段名。BM25、FTS rank、cosine similarity 等 score 不能直接比较；若暴露 numeric score，必须同时说明 score type。Context Message 必须保留稳定 message identity、session identity、稳定作者身份、可读作者显示信息、timestamp、content 等必要信息，不得只返回拼接聊天文本。
+
+本阶段确认的是 Result 的语义结构与必要信息，不冻结最终 Python type、JSON serialization、字段命名或数据库字段映射。稳定作者身份最终映射 `UserIdentity` 还是 `Membership`、可读显示信息采用消息当时昵称还是其他 display semantics，留给 Data Schema / Implementation 阶段确定。
 
 **Reason**：统一外层降低 Agent 理解成本；strategy-specific provenance 保留召回归因；结构化消息为后续 Evidence / Citation 提供稳定路径。
 
@@ -362,6 +379,8 @@ Truncation 表示结果因规模上限被截断；Partial 表示只有部分内�
 
 **Reason**：统一 Envelope 让 Agent 可以稳定处理正常结果、部分结果和错误；明确状态保留 Failure Attribution。
 
+该 Envelope 同样是语义契约：本阶段冻结状态与错误语义，不冻结最终 Python type、JSON serialization、字段命名或与内部异常类型的映射。
+
 ## 15. 第一版统一 Tool Contract
 
 以下契约全部 Confirmed：
@@ -371,7 +390,7 @@ Truncation 表示结果因规模上限被截断；Partial 表示只有部分内�
 3. Zero Hit 不属于 Error。
 4. Invalid Argument、Capability Unavailable、Execution Error 必须区分。
 5. 禁止 silent fallback。
-6. Tool 不得隐式扩大 Runtime Query Scope。
+6. Runtime Query Scope 是所有 Tool 的授权边界；包括 `execute_sql` 在内，Tool 不得读取当前授权 Scope 之外的数据，具体 enforcement 机制由后续 Storage / Runtime Implementation 决定。
 7. Message-based Retrieval 必须返回稳定 `message_id`。
 8. Truncation 必须显式暴露。
 9. Tool 内部组合多个 Capability 时，各 Capability 仍保持独立可观测。
@@ -408,19 +427,21 @@ retrieve_evidence
 | 第一版 Tool Surface | `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` |
 | Message Search | 默认附带 bounded local context；内部 Retrieval / Expansion 独立可观测 |
 | 深度上下文恢复 | 保留 `get_message_context(message_id)`，不引入 Candidate State |
-| Query Scope | Runtime 注入，不提供 `get_scope_info` |
+| Query Scope | Runtime 注入，不提供 `get_scope_info`；所有 Tool（包括 `execute_sql`）不得读取授权 Scope 外数据；enforcement 机制后续决定 |
 | Member Lookup | 使用 `find_members` 返回候选与匹配依据 |
-| Structured Retrieval | `get_schema` 暴露 Physical SQLite Schema；`execute_sql` 直接执行只读 SQL |
-| SQL 边界 | read-only、bounded、显式拒绝写入、不改写 SQL、不自动切换 Retrieval |
+| Persistent Store / Structured Retrieval | 第一版 structured / canonical persistent store 采用 SQLite；`get_schema` 暴露 Physical Schema；`execute_sql` 直接执行只读 SQL |
+| SQL 边界 | statement 必须确认 read-only；关键字仅为示例；bounded、不改写 SQL、不自动切换 Retrieval |
 | Hybrid / Specialized Tools | 第一版不暴露；后续由 Evaluation / Failure Case 驱动 |
-| Search Result | 统一外层、保留 strategy provenance 与结构化 Message Identity |
-| Tool Envelope | `ok / partial / error`；Truncation 与 Partial 分离；错误码可区分 |
+| Search Result | 确认统一外层语义、strategy provenance 与结构化 Message Identity；不冻结实现 Schema |
+| Tool Envelope | 确认 `ok / partial / error` 等状态语义；不冻结实现 Schema；Truncation 与 Partial 分离 |
 
-### Pending Evaluation（不重新打开架构方向）
+### Pending Implementation / Evaluation（不重新打开架构方向）
 
 - Lexical Search 的具体上下文窗口；
 - Semantic Parent / Context Recovery 的具体范围策略；
 - 各 bounded Tool 的具体默认上限；
+- Runtime Query Scope 对 `execute_sql` 的具体 enforcement 机制；
+- Search Result / Tool Envelope 的最终 Python type、JSON serialization、字段命名与数据映射；
 - Specialized Analysis Tool 或高级组合 Tool 是否满足新增条件。
 
 ### Experimental

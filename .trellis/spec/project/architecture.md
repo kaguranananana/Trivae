@@ -22,7 +22,7 @@
 - 将高噪声群聊数据转化为可靠、可搜索的数据底座。
 - 根据自然语言问题完成查询、调查与分析。
 - 生成能够追溯到原始聊天消息的证据型回答。
-- 将 Data Plane 与 Query Plane 解耦，避免 Agent 直接依赖原始数据格式或存储细节。
+- 将 Data Plane 与 Query Plane 解耦：Query Plane 不绕过 Tool Layer 访问 Data Plane，也不依赖 Source-specific 原始格式。第一版 Structured Retrieval 是明确例外——`get_schema / execute_sql` 在 Tool Contract 内有意暴露 SQLite Physical Query Schema。
 - 为后续 Trace、Evaluation 和 Failure Attribution 保留清晰的阶段边界。
 
 ## Architecture Decision Governance
@@ -84,12 +84,12 @@ Raw QQ / Export Data
 
 - 负责接收、标准化、保存和建立索引的概念流程。
 - 不包含 Agent Runtime、Router、Planner 或 Answer Generation。
-- 不要求 Query Plane 了解 QQ 导出格式、NapCat 字段或底层存储实现。
-- Query Plane 只能通过 Tool Layer 访问 Data Plane 能力。
+- Query Plane 不依赖 QQ 导出格式、NapCat 字段等 Source-specific 原始实现。
+- Query Plane 只能通过 Tool Layer 访问 Data Plane 能力；第一版 Structured Retrieval 通过 `get_schema / execute_sql` 有意暴露 SQLite Physical Query Schema，Agent 对数据库的依赖仍被限制在 Tool Contract 与 Runtime Query Scope 内。
 
 #### Pending
 
-Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），Retrieval 架构已在 Stage 1.3 确认（见 [Stage 1.3: Retrieval Architecture](#stage-13-retrieval-architecture)，其中 Semantic 索引单位为 Conversation Chunk，且 Semantic / Lexical Index 均属 Derived Data）。但持久化方式、Database Schema、字段类型与具体索引、Vector Store 实现、Chunk 具体切分参数、Embedding 模型与 Indexing Pipeline 的具体执行方式仍待后续阶段确定。
+Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），Retrieval 架构已在 Stage 1.3 确认（见 [Stage 1.3: Retrieval Architecture](#stage-13-retrieval-architecture)，其中 Semantic 索引单位为 Conversation Chunk，且 Semantic / Lexical Index 均属 Derived Data）。Stage 1.4 已进一步确认第一版 structured / canonical persistent store 采用 SQLite。仍待后续阶段确定的是 SQLite Physical Schema、表结构、字段类型、索引、migration、transaction、具体持久化实现，以及 Vector Storage 是否独立、Chunk 具体切分参数、Embedding 模型与 Indexing Pipeline 的具体执行方式。
 
 ### Query Plane
 
@@ -665,12 +665,13 @@ Agent Runtime
 ### Context、Scope 与 Identity 边界
 
 - Search 自动附带的 bounded local context 用于候选判断；`get_message_context(message_id)` 用于 Agent 已识别重要消息后的深度上下文恢复。
-- Runtime Query Scope（当前 ChatSession、时间范围、用户选定数据范围等）由 Agent Runtime 注入；第一版不提供 `get_scope_info`，Tool 不得隐式扩大 Scope。
+- Runtime Query Scope（当前 ChatSession、时间范围、用户选定数据范围等）由 Agent Runtime 注入；第一版不提供 `get_scope_info`，所有 Tool 都不得读取当前授权 Scope 之外的数据。
+- `execute_sql` 同样受 Runtime Query Scope 的硬约束，不能把 Scope 仅作为提示模型自行添加 `WHERE` 的 soft context。具体 enforcement 机制（物理数据库隔离、connection scope、SQL validation 或其他方式）留给后续 Storage / Runtime Implementation 决定。
 - 人物查询使用 `find_members`，返回 `UserIdentity / Membership` 候选与匹配依据，不使用暗示唯一解析的 `resolve_member`。
 
 ### Structured Retrieval：Physical SQLite Schema + read-only SQL
 
-第一版沿用 ChatLab 已验证结构：`get_schema` 读取真实 Physical SQLite Schema，`execute_sql` 直接对当前 SQLite 数据库执行只读 SQL；不增加 Analysis Schema / Analysis View 隔离层。
+第一版 structured / canonical persistent store 采用 SQLite，并沿用 ChatLab 已落地的查询结构：`get_schema` 读取真实 Physical SQLite Schema，`execute_sql` 直接对当前 SQLite 数据库执行只读 SQL；不增加 Analysis Schema / Analysis View 隔离层。
 
 ```text
 SQLite
@@ -680,7 +681,7 @@ SQLite
 
 `execute_sql` 至少满足以下边界：
 
-- 仅允许 `SELECT / read-only`，显式阻止 `INSERT / UPDATE / DELETE / DROP / ALTER / CREATE` 等写入或 Schema 修改；
+- 安全约束是 statement 必须被确认是 read-only；`INSERT / UPDATE / DELETE / DROP / ALTER / CREATE` 等仅为非只读语句示例，不构成完整 denylist；
 - 使用 `max_rows` 或等价机制限制结果规模；
 - 优先利用 SQLite Driver 的 readonly statement 判断；Driver 不支持时再设计明确的只读 SQL 校验；
 - 不 silently 修改 Agent SQL，也不在执行失败后自动切换其他 Retrieval。
@@ -691,9 +692,9 @@ SQL 只处理目标集合已能由结构化条件确定的问题；需要 Semant
 
 ### Search Result 与 Tool Result 契约
 
-Lexical / Semantic Search 共享统一外层 Search Result，但保留各自 provenance：`strategy`、`matched_message_ids`、lexical 的 `matched_terms`、semantic 的 `matched_chunk_id`，以及 retrieval-specific `score`。若暴露 numeric score，必须同时提供 `score_type`，禁止直接比较 BM25、FTS rank、cosine similarity 等不同体系的数字。
+Lexical / Semantic Search 共享统一外层 Search Result 语义结构，但保留各自 provenance：strategy、matched message identities、lexical matched terms、semantic matched chunk identity，以及 retrieval-specific score。若暴露 numeric score，必须同时说明 `score_type`，禁止直接比较 BM25、FTS rank、cosine similarity 等不同体系的数字。
 
-Context Message 保留结构化 `message_id`、`session_id`、author、timestamp、content、reply 与 `is_match`，不得只返回拼接聊天文本。
+Context Message 必须保留稳定 message identity、session identity、稳定作者身份、可读作者显示信息、timestamp、content、reply 与 match 标记，不得只返回拼接聊天文本。本阶段确认的是必要信息及其语义关系，不冻结最终 Python type、JSON serialization、字段命名或数据库字段映射；作者身份究竟映射 `UserIdentity` 还是 `Membership`、显示信息采用何种历史语义，留给 Data Schema / Implementation 阶段确定。
 
 所有 Tool 使用统一薄 Envelope：
 
@@ -714,6 +715,8 @@ Context Message 保留结构化 `message_id`、`session_id`、author、timestamp
 - Truncation：`meta.truncated = true`，与 Partial Execution 保持区分。
 
 所有可能返回大量数据的 Tool 必须 bounded；Message-based Retrieval 必须返回稳定 `message_id`；Retrieval Tool 返回 Candidate Data，不在 Tool 内硬编码 Final Evidence 判断。
+
+上述 Search Result 与 Tool Result Envelope 均为语义契约，不是最终实现 Schema；具体类型、序列化形式与字段名留给 Data Schema / Implementation 阶段确定。
 
 ### 第一版不增加的 Tool 与抽象
 
@@ -774,12 +777,12 @@ Retrieval 与 Context Expansion 保持独立可观测的 capability
 | Silent Fallback | 禁止（Failure Attribution 不可被组合隐藏） |
 | 第一版 Tool Surface | `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` |
 | 深度上下文恢复 | 保留 `get_message_context(message_id)`；不引入复杂 Candidate State |
-| Query Scope | Runtime 注入；不提供 `get_scope_info`；Tool 不得隐式扩大 Scope |
+| Query Scope | Runtime 注入；不提供 `get_scope_info`；所有 Tool（包括 `execute_sql`）不得读取授权 Scope 外数据；enforcement 机制后续确定 |
 | Member Lookup | `find_members` 返回候选与匹配依据；不使用 `resolve_member` |
-| Structured Retrieval | 直接暴露 Physical SQLite Schema + bounded read-only SQL；不增加 Analysis View |
-| SQL 执行 | 显式拒绝写入；不改写 Agent SQL；失败后不自动切换 Retrieval |
-| Search Result | 统一外层结构；保留 strategy-specific provenance、`score_type` 与结构化 Message Identity |
-| Tool Result Envelope | `ok / partial / error`；Zero Hits 正常；Truncation 与 Partial 分离；错误码可区分 |
+| Structured Retrieval | 第一版 structured / canonical persistent store 采用 SQLite；直接暴露 Physical SQLite Schema + bounded read-only SQL；不增加 Analysis View |
+| SQL 执行 | statement 必须确认 read-only；关键字仅为示例而非完整规则；不改写 Agent SQL；失败后不自动切换 Retrieval |
+| Search Result | 确认统一外层语义、strategy-specific provenance、score type 与结构化 Message Identity；不冻结实现 Schema |
+| Tool Result Envelope | 确认 `ok / partial / error` 等状态语义；不冻结实现 Schema；Zero Hits 正常，Truncation 与 Partial 分离 |
 | Hybrid / Specialized Tools | 第一版不暴露；新增由 Evaluation / Failure Case 驱动 |
 
 #### Pending Evaluation（不影响 Stage 1.4 completed）
@@ -849,8 +852,8 @@ Planner schema、步骤上限、suggested tools 校验和失败处理待后续�
 - Stage 1.4 已确认 Tool 与 Capability 分离：Capability 是项目自身的业务能力（不依赖 Agent Runtime），Tool 是面向 Agent 的调用接口，一个 Tool 可在内部组合多个 Capability。
 - 第一版固定暴露 `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`。
 - Search（lexical / semantic）默认自动补充 bounded local context；内部 Retrieval 与 Context Expansion 仍保持独立可观测。深度调查通过稳定 `message_id` 调用 `get_message_context`，不引入 Candidate State。
-- Runtime Query Scope 由 Agent Runtime 注入；不提供 `get_scope_info`。Identity / Membership 查询使用 `find_members`，显式返回可能有歧义的候选。
-- Structured Retrieval 直接使用 Physical SQLite Schema + bounded read-only SQL，不增加 Analysis View；写入、SQL 静默改写和执行失败后的 Retrieval 自动切换均被禁止。
+- Runtime Query Scope 由 Agent Runtime 注入；不提供 `get_scope_info`。所有 Tool（包括 `execute_sql`）都不得读取当前授权 Scope 之外的数据；具体 enforcement 机制留给 Storage / Runtime Implementation。Identity / Membership 查询使用 `find_members`，显式返回可能有歧义的候选。
+- 第一版 structured / canonical persistent store 采用 SQLite；Structured Retrieval 直接使用 Physical SQLite Schema + bounded read-only SQL，不增加 Analysis View。Statement 必须被确认是 read-only；SQL 静默改写和执行失败后的 Retrieval 自动切换均被禁止。
 - Tool 使用统一薄 Envelope，明确区分 zero hits / invalid arguments / capability unavailable / execution failure / partial / truncated；Truncation 与 Partial Execution 是不同概念。
 - Agent 不直接读取原始文件、Canonical Store 或索引。
 - 第一版不暴露 `hybrid_search`、`universal_search`、`retrieve_evidence` 或大量 Specialized Analysis Tools；新增能力由真实 Evaluation 或 Failure Case 驱动。
@@ -964,12 +967,12 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 8. **禁止 silent fallback**：Tool 可以组合 Capability，但不能隐藏执行状态；需明确区分 zero hits / capability unavailable / invalid arguments / execution failure / partial / truncated。
 9. **第一版 Tool Surface 固定为 6 个 Tool**：`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`；新增 Tool 由真实 Evaluation 或 Failure Case 驱动。
 10. **深度 Context 通过稳定 Message Identity 恢复**：保留 `get_message_context(message_id)`；第一版不采用 `candidate_ref / Candidate State`。
-11. **Query Scope 由 Runtime 注入**：不提供 `get_scope_info`，Tool 不得隐式扩大查询范围。
+11. **Query Scope 由 Runtime 注入并构成授权边界**：不提供 `get_scope_info`；所有 Tool（包括 `execute_sql`）不得读取授权 Scope 外数据，具体 enforcement 机制后续确定。
 12. **Member Lookup 返回候选**：使用 `find_members`，保留身份歧义与匹配依据，不使用暗示唯一解析的 `resolve_member`。
-13. **Structured Retrieval 采用 Physical SQLite Schema + read-only SQL**：`get_schema` 读取真实 Schema，`execute_sql` 执行 bounded read-only SQL；第一版不增加 Analysis View。
-14. **SQL 错误透明**：显式阻止写入，不 silently 改写 SQL，不在执行失败后自动切换 Retrieval；SQL 不承担 Semantic Classification。
-15. **Search Result 保留检索差异**：Lexical / Semantic 共享统一外层结构，同时保留 strategy-specific provenance；numeric score 必须带 `score_type`，Context Message 保留稳定结构化身份。
-16. **统一 Tool Result Envelope**：使用 `ok / partial / error`；Zero Hits 是正常结果；Invalid Argument、Capability Unavailable、Execution Error 可区分；Truncation 与 Partial Execution 分离。
+13. **第一版持久化与 Structured Retrieval 采用 SQLite**：structured / canonical persistent store 为 SQLite；`get_schema` 读取真实 Schema，`execute_sql` 执行 bounded read-only SQL；第一版不增加 Analysis View。
+14. **SQL 错误透明**：statement 必须确认 read-only，非只读关键字列表仅为示例；不 silently 改写 SQL，不在执行失败后自动切换 Retrieval；SQL 不承担 Semantic Classification。
+15. **Search Result 保留检索差异**：Lexical / Semantic 共享统一外层语义结构，同时保留 strategy-specific provenance；numeric score 必须说明 `score_type`，Context Message 保留稳定结构化身份；不冻结实现 Schema。
+16. **统一 Tool Result Envelope 语义**：使用 `ok / partial / error`；Zero Hits 是正常结果；Invalid Argument、Capability Unavailable、Execution Error 可区分；Truncation 与 Partial Execution 分离；不冻结实现 Schema。
 17. **第一版不暴露万能或大量专用 Tool**：不增加 `hybrid_search`、`universal_search`、`retrieve_evidence` 或大量 Specialized Analysis Tools。
 
 详细 rationale 与 trade-off 见 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)。
@@ -991,6 +994,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 以下事项仍为 **Pending architecture specification**，不得在本阶段自行补齐或实现：
 
 - 第一版 SQLite Physical Schema 的表数量、字段类型、具体索引与持久化实现
+- Runtime Query Scope 对 `execute_sql` 的具体 enforcement 机制（物理隔离、connection scope、SQL validation 或其他实现）
 - Vector Store 实现、Chunk 具体切分参数、Embedding 模型、Indexing Pipeline 具体执行方式
 - Reranker 是否引入、Fusion 权重、merge / dedup / candidate selection 的具体算法（Pending Evaluation，由 Evaluation Set 决定）
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式（Derived Data 语义已确认，实现 Pending）
