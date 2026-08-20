@@ -38,10 +38,10 @@
 - 不 amend、不 push（除非用户明确要求）。
 - commit message 与仓库既有风格保持一致。
 
-## 当前阶段约束（Stage 1.3 Retrieval Architecture 已完成，Stage 1.4 Tool / Capability Layer pending / next）
+## 当前阶段约束（Stage 1.4 Tool / Capability Layer 已完成，Stage 1.5 pending / next）
 
-- Stage 1.1 架构骨架、Stage 1.2 Data Model + Ingestion 与 Stage 1.3 Retrieval Architecture 已完成；下一阶段是 Stage 1.4（Tool / Capability Layer）。
+- Stage 1.1 架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture 与 Stage 1.4 Tool / Capability Layer 已完成；下一阶段是 Stage 1.5。
 - 在对应架构细节确认前不编写业务代码、不创建未经确认的业务模块结构、不安装业务依赖。
 - `architecture.md` 保持 `Draft / In Progress`；未确认内容必须标记 `Pending architecture specification`。
-- Stage 1.4-1.11 按主题逐层确认，不提前填充其他架构细节。
+- Stage 1.5-1.11 按主题逐层确认，不提前填充其他架构细节。
 - 基础设施只建立当前阶段真实需要的内容。

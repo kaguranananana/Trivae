@@ -1,7 +1,7 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)。
+> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)；Stage 1.4 的关键决策记录于 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)。
 
 ---
 
@@ -77,3 +77,10 @@ Regression
 - 内容：Multi-strategy Retrieval（Composition + 三个 Primitives + Post-Retrieval Operator）、Hybrid 为组合策略、集合确定后的确定性查询优先、Conversation Chunk 为第一版 Semantic primary indexing unit（Time-aware Parent + Small Child，Message-level 辅助索引 Pending Evaluation）、Context Expansion 为 Post-Retrieval Operator、Query-specific strategy、Retrieval Result provenance（Message Candidates + Structured Results 分列）、Partial / Coverage 显式暴露（口径 Stage 1.9 细化）、Failure Attribution 分类、Evidence 判断不硬编码、Retrieval Trace 观察需求（Schema 不提前实现）。
 - 记录位置：[technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
 - 后续：Stage 1.4 Tool / Capability Layer。
+
+### Stage 1.4：Tool / Capability Layer
+
+- 状态：Confirmed（Tool / Capability 分离原则；完整 Tool 列表、Structured Query 设计、具体参数等仍 Pending）。
+- 内容：Tool 与 Capability 分离（Capability 不依赖 Agent Runtime）、一个 Tool 可组合多个 Capability、Tool Surface 优先 Agent 易用性、Search 默认自动补充 bounded context（Local context 为 Search Result 默认组成部分）、自动 Expand 必须 bounded、内部 Capability 独立可观测、Semantic Search 同原则且保留 provenance、不把大上下文窗口作为主要设计依据、参数由 Evaluation 决定、禁止 silent fallback、第一版不引入复杂 Candidate State。
+- 记录位置：[technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
+- 后续：Stage 1.5。
