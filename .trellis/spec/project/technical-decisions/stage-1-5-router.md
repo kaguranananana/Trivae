@@ -144,10 +144,20 @@ Router 以任务结构和 Planning Value 为判断依据。可以关注以下复
 Multi-goal
 Dependency
 Temporal reasoning
-Multi-source evidence
-Semantic judgment
-Recovery / query reformulation
+Evidence dependency / cross-stage validation
+Dependent semantic investigation
+Recovery / query reformulation with route change
 ```
+
+这里的 `Multi-goal` 指需要协调的独立调查目标，不是最终答案包含多个条目；`Temporal reasoning` 指纵向状态变化、阶段演变或 turning point，不是时间范围很长；`Recovery` 指证据不足会要求改写或替代调查路径，不是普通的多轮 Tool Call。
+
+`Multi-source evidence` 与 `Semantic judgment` 本身过于宽泛，不能直接视为 `planned_execution` 信号：需要阅读很多消息、收集多条 Evidence、跨多个群、做 Semantic Clustering / Synthesis，仍可能只是标准路径中的：
+
+```text
+retrieve → inspect → collect → synthesize → answer
+```
+
+只有当后一阶段结论依赖前一阶段证据成立，或语义判断会改变下一步调查方向时，才形成更强的 Planning Signal。
 
 这些维度是概念模型，不在 Stage 1.5 固化成固定整数公式、regex 集合、权重或 threshold。通常应由多个维度共同表明 Planning 有价值，而不是由某个词触发。
 
@@ -159,6 +169,30 @@ Recovery / query reformulation
 - Keyword false negative：复杂调查使用自然表达，没有明显关键词而被规则漏掉。
 
 Tool Call 数量同样不是 Route 信号。一个 `standard_execution` 可以连续调用 `find_members → get_schema → execute_sql`，一个复杂请求也可能在 Runtime 中先调用很少的 Tool。
+
+以下因素本身不是 Planning Signal：
+
+```text
+时间范围长
+最近 / 过去半年 / 过去一年
+跨群聊
+候选消息很多
+需要多次 Tool Call
+同时使用 Lexical + Semantic Retrieval
+需要 Context Expansion
+需要对多条消息做主题归纳
+需要整理多个实体 / 链接 / 资源
+需要 member filter
+最终答案包含很多条目
+```
+
+因此必须区分：
+
+```text
+Data Scope Size ≠ Planning Complexity
+Retrieval Volume ≠ Planning Complexity
+Tool Call Count ≠ Planning Complexity
+```
 
 ### Trade-off
 
@@ -204,6 +238,8 @@ LLM Router 出现 invalid JSON、unknown route、timeout、API error 或 parsing
 
 ### Trade-off
 
+Rule Surface 应保持小而结构化：识别任务结构，不把 GitHub、Skills、求职、模型降智等业务词汇分别扩展成固定 Route 规则。新增规则需要真实 Failure Case 或 Evaluation 证明，而不是围绕每个主题关键词持续加分支。
+
 Rule-first 会漏掉没有显式结构信号的复杂请求，LLM fallback 会增加 ambiguous case 的延迟和成本；换取明显请求的低成本路径与复杂自然表达的覆盖能力。具体模型、prompt、timeout 和 threshold 留待 Implementation / Evaluation。
 
 ## 6. Decision E：Conservative Routing，Planner 必须证明其价值
@@ -217,7 +253,7 @@ Rule-first 会漏掉没有显式结构信号的复杂请求，LLM fallback 会�
     → standard_execution
 ```
 
-`planned_execution` 必须由足够明确的多目标、依赖、跨阶段证据、时间演变、语义判断或恢复需求支撑，而不是因为请求“听起来很深入”。
+`planned_execution` 必须由足够明确的多目标依赖、跨阶段证据验证、纵向状态转移、Dependent semantic investigation 或调查路径恢复需求支撑，而不是因为请求“听起来很深入”。
 
 ### Why
 
@@ -319,7 +355,7 @@ Stage 1.5 不提前完成 Stage 1.10，但必须为后续验证保留 Route、Co
 - long-time-range but simple；
 - multi-tool but simple；
 - short wording but complex；
-- evidence-heavy investigation。
+- evidence-dependent / cross-stage investigation。
 
 推荐验证顺序：
 
@@ -343,7 +379,65 @@ Stage 1.5 不提前完成 Stage 1.10，但必须为后续验证保留 Route、Co
 
 重新打开时必须记录 Reopen Reason，并以 Failure Case、技术约束、Evaluation 结果或业务需求为依据。
 
-## 10. Explicitly Out of Scope
+## 10. Decision G：Evaluation 目标是 Planner Utility
+
+### Context
+
+Route Classification Accuracy 不能单独证明 Planner 值得被调用。Trivae 的真实 workload 可能明显偏向 `standard_execution`；如果 90% 的请求本来就应该走标准路径，一个永远输出 standard 的 Router 也能获得 90% Aggregate Accuracy，但没有证明复杂请求被正确处理，更没有证明 Planner 带来收益。
+
+### Decision
+
+Stage 1.5 冻结的 Evaluation 原则是：
+
+> Router 的最终目标不是获得漂亮的 Route Classification Accuracy，而是验证 Planner Invocation 是否产生实际下游收益。
+
+Stage 1.10 应能够对同一个 Query 比较两条受控路径：
+
+```text
+A: standard_execution → Agent Runtime
+B: planned_execution  → Planner → Agent Runtime
+```
+
+至少比较：
+
+```text
+Answer Correctness
+Evidence Completeness
+Missed Dimensions
+Tool Calls
+Tokens
+Latency
+```
+
+如果 B 没有明显质量收益，却稳定增加 latency / token，则这类 Query 应归入 `standard_execution`，即使某个抽象复杂度分类器认为它“很复杂”。
+
+### Evaluation Boundary
+
+本阶段不冻结 Benchmark、具体指标实现或阈值；但 Stage 1.10 不能只看 Aggregate Accuracy，至少还应观察 `planned_execution` precision / recall、standard / planned 的基准比例，以及 Planner Invocation 的实际下游收益。
+
+## 11. Representative Trivae Router Workload
+
+以下是结合当前真实产品使用方式整理的 **seed cases / design examples**，不是 Stage 1.10 Benchmark，也不是已经完成标注的 Evaluation Set。它们用于约束 Stage 1.5 的 Route 语义，初始 Route 仍需在后续 Evaluation 中验证。
+
+| Query | 初始 Route |
+| --- | --- |
+| 最近群里分享了哪些 GitHub 仓库链接？ | `standard_execution` |
+| 最近群友推荐或自己做了哪些 Skills，分别有什么用途？ | `standard_execution` |
+| 最近哪些工具或模型被评价为不如其他方案，具体拿什么在比较？ | `standard_execution`（倾向） |
+| superpowers 从被推荐到被弃用经历了什么，现在替代方案是什么？ | `planned_execution` |
+| X 最近分享了哪些链接或资源？ | `standard_execution` |
+| X 最近表达了哪些技术观点或实践经验？ | `standard_execution` |
+| 最近大家对 Agent 开发方向的求职门槛有什么看法？ | `standard_execution` |
+| 最近大家怎么看计算机专业的就业前景？ | `standard_execution` |
+| 最近有哪些关于模型变差或降智的反馈？ | `standard_execution` |
+| 最近群里推荐了哪些值得看的学习资源或文档？ | `standard_execution` |
+| 跨群聊分析 X 最近有什么技术观点或建议？ | `standard_execution` |
+
+其中 `superpowers` 生命周期问题需要追踪“推荐 → 尝试 / 使用 → 反馈 → 问题 → 态度变化 → 弃用 → 替代方案 → 当前状态”的纵向状态转移，后续调查方向依赖前一阶段证据，因此是当前 seed workload 中明确的 `planned_execution` 示例。其余问题即使需要大量 Retrieval、Context Expansion、Evidence Collection 或 Semantic Synthesis，初始仍按标准路径处理，除非 Evaluation 证明存在真实的跨阶段依赖。
+
+该 seed workload 中 `standard_execution` 占多数只是对当前产品问题形态的初始观察，不是固定的类别先验、目标比例或 Stage 1.10 Benchmark 分布。
+
+## 12. Explicitly Out of Scope
 
 本 ADR 不设计以下内容：
 

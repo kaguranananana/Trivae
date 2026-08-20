@@ -890,7 +890,7 @@ Tool Call 数量不能单独决定是否进入 Planner；关键是任务是否�
 
 #### `planned_execution`
 
-请求包含多个相互依赖的调查目标，或最终结论需要跨阶段收集、比较、验证多类证据，显式 Planning 能够显著降低遗漏、过早下结论、单一路径失败和证据覆盖不足的风险。
+请求包含多个需要协调的相互依赖调查目标，或最终结论需要跨阶段证据验证、且语义判断会改变下一步调查方向，显式 Planning 能够显著降低遗漏、过早下结论、单一路径失败和证据覆盖不足的风险。
 
 典型任务结构包括：
 
@@ -898,7 +898,7 @@ Tool Call 数量不能单独决定是否进入 Planner；关键是任务是否�
 - **Temporal evolution**：划分时间阶段、寻找代表性讨论并判断 turning points；
 - **Relationship / behavioral pattern analysis**：跨多组互动与技术议题比较成员关系；
 - **Multi-factor judgment**：综合发言量、被回复情况、话题和影响力判断成员；
-- **Evidence-heavy investigation**：区分“准备尝试”与“后来实际落地”，跨时间和多类证据核验；
+- **Evidence-dependent investigation**：区分“准备尝试”与“后来实际落地”，后续状态核验依赖前一阶段证据；
 - **Explicit recovery / iterative investigation**：请求明确要求在证据不足时改写查询、尝试替代关键词或继续调查。
 
 `planned_execution` 只表示“需要额外经过 Planner”，不表示 Planner 会接管后续执行，也不表示系统进入另一套 Agent Runtime。
@@ -909,15 +909,23 @@ Router 关注任务结构，而不是复杂词汇。可观察的复杂度维度�
 
 ```text
 Task Complexity
-├── Multi-goal             是否存在多个独立调查目标
-├── Dependency             后续调查是否依赖前一步结果
-├── Temporal reasoning     是否需要阶段划分、趋势演变或 turning point
-├── Multi-source evidence  是否需要多组证据共同支撑结论
-├── Semantic judgment      是否需要分类、解释、比较大量候选
-└── Recovery               是否明显需要证据不足处理、改写或替代策略
+├── Multi-goal                         是否存在需要协调的独立调查目标，而非多个返回条目
+├── Dependency                         后续调查是否依赖前一步结果
+├── Temporal reasoning                 是否需要纵向状态变化、阶段演变或 turning point
+├── Evidence dependency / cross-stage  后一阶段结论是否要等前一阶段证据成立后才能继续验证
+├── Dependent semantic investigation   语义判断是否会改变下一步调查方向，而非只做候选归纳
+└── Recovery                          是否明确需要证据不足处理并改写或替代调查路径
 ```
 
 这些维度是 Router 的概念判断依据，不在 Stage 1.5 冻结为固定整数公式、权重或 threshold。通常应由多个复杂度信号共同表明 Planning 有价值，而不是由单个关键词触发。
+
+`Multi-source evidence` 与 `Semantic judgment` 本身过于宽泛，不能直接视为 `planned_execution` 信号。需要阅读很多消息、收集多条 Evidence、跨多个群、做 Semantic Clustering / Synthesis，仍可能只是标准路径中的：
+
+```text
+retrieve → inspect → collect → synthesize → answer
+```
+
+只有当 Evidence 之间存在跨阶段验证依赖，或语义判断会决定下一步调查路线时，才更接近 Planning Value。
 
 以下词语不能单独触发 `planned_execution`：
 
@@ -926,6 +934,30 @@ Task Complexity
 ```
 
 例如“分析一下谁发言最多”仍可能只是明确的 Structured Retrieval；“总结昨天聊天”也可能只需要一次检索和总结。
+
+以下因素本身也不是 Planning Signal：
+
+```text
+- 时间范围长
+- 最近 / 过去半年 / 过去一年
+- 跨群聊
+- 候选消息很多
+- 需要多次 Tool Call
+- 同时使用 Lexical + Semantic Retrieval
+- 需要 Context Expansion
+- 需要对多条消息做主题归纳
+- 需要整理多个实体 / 链接 / 资源
+- 需要 member filter
+- 最终答案包含很多条目
+```
+
+应明确区分：
+
+```text
+Data Scope Size ≠ Planning Complexity
+Retrieval Volume ≠ Planning Complexity
+Tool Call Count ≠ Planning Complexity
+```
 
 ### Router、Planner 与 Agent Runtime 的关系
 
@@ -1031,6 +1063,8 @@ Query + Runtime Context
 
 明显简单或明显复杂的请求由便宜、确定性的规则直接处理；只有规则无法可靠判断的 ambiguous case 才使用 LLM Router。具体规则、regex、LLM 模型、prompt、timeout 与 confidence threshold 保持 Pending。
 
+Rule Surface 应保持小而结构化：识别任务结构，不把 GitHub、Skills、求职、模型降智等业务词汇分别扩展成固定 Route 规则。新增规则需要真实 Failure Case 或 Evaluation 证明，而不是围绕每个主题关键词持续加分支。
+
 默认策略偏向 `standard_execution`：Planner invocation must earn its invocation。若无法明确证明显式 Planning 能够带来足够价值，不进入 Planner。
 
 原因在于两类错误的代价不对称：复杂请求误判为 standard 时，Agent 仍可在 Runtime 中连续调用 Tool、调整查询和继续调查；简单请求误判为 planned 时，则稳定增加不必要的 latency、token、model call 和 plan-induced bias。
@@ -1087,7 +1121,7 @@ Stage 1.5 只确认 Router 必须留下可追踪、可评估的决策信息，�
 - long-time-range but simple；
 - multi-tool but simple；
 - short wording but complex；
-- evidence-heavy investigation。
+- evidence-dependent / cross-stage investigation。
 
 正确顺序为：
 
@@ -1100,6 +1134,17 @@ Stage 1.5 只确认 Router 必须留下可追踪、可评估的决策信息，�
 ```
 
 具体 accuracy、error rate、threshold calibration、Trace Event Schema 和回归执行方式留待 Stage 1.9 / Stage 1.10。
+
+Router Evaluation 的最终目标不是得到漂亮的 Route Classification Accuracy，而是验证 Planner Invocation 是否带来实际下游收益。Stage 1.10 可以对同一个 Query 比较两条受控路径：
+
+```text
+A: standard_execution → Agent Runtime
+B: planned_execution  → Planner → Agent Runtime
+```
+
+至少比较 Answer Correctness、Evidence Completeness、Missed Dimensions、Tool Calls、Tokens 与 Latency。若 planned path 没有明显质量收益却稳定增加 latency / token，则该类 Query 应归入 `standard_execution`，即使抽象复杂度分类器认为它“很复杂”。
+
+在真实 workload 可能明显偏向 standard 的情况下，Stage 1.10 不能只看 Aggregate Accuracy；至少还要分别观察 `planned_execution` precision / recall 与 Planner 的实际收益。
 
 ### Stage 1.5 决策状态
 
@@ -1114,10 +1159,12 @@ Stage 1.5 只确认 Router 必须留下可追踪、可评估的决策信息，�
 | Planner 输出 | soft execution guidance，不是强制 Workflow |
 | Router Input | Runtime 注入 User Query、Query Context、Compact Data Snapshot、Capability Summary |
 | Route Decision | `route`、`confidence`、`reason`、`source` 的语义契约 |
-| 分类依据 | 任务结构与 Planning Value，不是单个关键词或 Tool Call 数量 |
+| 分类依据 | 任务结构与 Planning Value，不是单个关键词、数据规模、检索量或 Tool Call 数量 |
 | 路由策略 | Rule-first，ambiguous case 使用 LLM Router |
+| Rule Surface | 小而结构化，不发展成按业务关键词扩展的分类器 |
 | 默认策略 | Conservative，无法证明 Planning 有价值时使用 `standard_execution` |
 | 失败原则 | Router 失败不得阻断请求；无可用规则时保守降级到 `standard_execution` |
+| Evaluation 目标 | Planner Invocation 的实际下游收益，不是单独追求 Route Classification Accuracy |
 | 职责边界 | Router 不选择 Tool、Retrieval、SQL、查询参数、Plan 或 Evidence |
 
 #### Pending（实现 / Evaluation / 后续 Stage）
@@ -1319,7 +1366,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 2. **两路 Route taxonomy**：Trivae 只保留 `standard_execution` 与 `planned_execution`；ChatLab 的 `direct_response` 与 `tool_assisted` 不作为 Trivae 独立 Route。
 3. **同一个 Agent Runtime**：两种 Route 最终都进入同一个 Agent Runtime；只有 `planned_execution` 额外经过 Planner。
 4. **Planner 是 soft guidance**：Planner 不接管 Agent Loop，不生成必须机械执行的 Workflow；具体 Planner Contract 留给 Stage 1.6。
-5. **任务结构优先**：Route 判断关注 Multi-goal、Dependency、Temporal reasoning、Multi-source evidence、Semantic judgment、Recovery 等 Planning Value 维度，不由单一关键词或 Tool Call 数量决定。
+5. **任务结构优先**：Route 判断关注 Multi-goal、Dependency、Temporal reasoning、Evidence dependency / cross-stage validation、Dependent semantic investigation、Recovery 等 Planning Value 维度；多条 Evidence、Semantic Synthesis、长时间范围、跨群或 Tool Call 数量本身不决定 Route。
 6. **Rule-first + LLM fallback**：明显请求由规则处理，ambiguous case 才使用 LLM Router；具体规则、模型、prompt、timeout 与阈值保持 Pending。
 7. **Conservative default**：无法明确证明 Planner 有价值时使用 `standard_execution`；Planner invocation must earn its invocation。
 8. **Router failure graceful degradation**：Router 是 execution optimization layer，不是 request availability dependency；失败时使用可用 Rule Decision，否则保守降级到 `standard_execution`，并保留可诊断信息。
