@@ -444,7 +444,7 @@ Trace
 
 ### 6.3 `intent`
 
-第一版保留 ChatLab-style intent taxonomy：
+第一版保留 ChatLab-style intent taxonomy，作为 Trivae v1 的 baseline metadata vocabulary：
 
 ```text
 summary
@@ -455,6 +455,8 @@ comparison
 evidence
 mixed
 ```
+
+该列表是 ChatLab 经验的第一版继承与实现 seed，不代表 Trivae 的长期 taxonomy 已冻结。是否长期保留、增加 Trivae-specific intent 或调整分类边界，保持 Pending Evaluation；在没有真实 Failure Case / Evaluation 证据前，不自行扩展。
 
 `intent` 是 descriptive metadata，不是执行 Router。它可以用于 Trace、Evaluation、Debug 和 Plan explanation，但不能直接绑定 Tool 或 Retrieval：
 
@@ -515,7 +517,13 @@ semantic_search 不够
     → get_message_context
 ```
 
-这是合法执行。Planner 可以建议 available Tool / Capability，但不得生成：
+这是合法执行。一个典型 Failure Case 是用户要求精确定位并引用某条消息：Planner 可能建议 semantic_search，但 Runtime 根据实际证据需求改用 lexical_search 与 get_message_context。此时：
+
+```text
+Plan deviation ≠ Planner failure
+```
+
+Planner 可以建议 available Tool / Capability，但不得生成：
 
 ```text
 semantic_search(
@@ -1030,6 +1038,7 @@ Planner Evaluation Dataset
 planned vs standard、with planner vs without planner 的评测方法
 Planner latency threshold
 Planner cost budget
+Planner latency budget / invocation policy
 具体 bounds 的参数校准
 是否需要更多 intent 类型
 是否未来需要 replan
