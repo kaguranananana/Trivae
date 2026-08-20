@@ -183,17 +183,20 @@ get_message_context(message_id)
 
 **Failure Case**：若移除独立上下文 Tool，Agent 只能反复扩大所有 Search Result 或重新检索；前者造成结果膨胀，后者不能稳定恢复已确认命中的讨论范围。
 
-## 6. 不独立设计 `get_scope_info`
+## 6. 不独立设计 `get_scope_info`，并区分 Access Scope 与 Query Filters
 
-**Decision**：当前 ChatSession、时间范围、用户选定数据范围及其他 Runtime Query Context 由 Agent Runtime 注入。第一版不增加 `get_scope_info`。Runtime Query Scope 同时构成所有 Tool 的授权边界：包括 `execute_sql` 在内，任何 Tool 都不得读取当前授权 Scope 之外的数据。
+**Decision**：Agent Runtime 向 Tool Layer 提供两类不同信息，第一版不增加 `get_scope_info`：
 
-`execute_sql` 不能仅依赖模型自行在 SQL 中加入正确过滤条件。具体 enforcement 机制——物理数据库隔离、connection scope、SQL validation 或其他方式——由后续 Storage / Runtime Implementation 决定，本阶段不提前设计。
+- **Data Access Scope**：硬授权边界，例如当前允许访问的 ChatSession、数据源或用户选定数据集合。包括 `execute_sql` 在内，任何 Tool 都不得读取该边界之外的数据。
+- **Query Context / Query-specific Filters**：本次任务的查询条件，例如 time range、member、keyword。它们不自动等同于权限边界；是否必须由某个 Tool 强制应用，取决于对应 Tool Contract 与参数来源。
 
-**Reason**：这些信息是当前查询执行上下文，不需要 Agent 在每次任务开始前进行机械 Tool Call。
+`execute_sql` 不能仅依赖模型自行在 SQL 中加入 Data Access Scope 过滤条件。具体 enforcement 机制——物理数据库隔离、connection scope、SQL validation 或其他方式——由后续 Storage / Runtime Implementation 决定，本阶段不提前设计。
 
-**Trade-off**：第一版不支持 Agent 通过 Tool 主动探索动态数据源或 Scope；同时需要后续实现一个可验证的 Scope enforcement 边界。若未来出现真实业务需求，再以新 Failure Case 或业务需求重新评估 `get_scope_info`。
+**Reason**：Data Access Scope 与 Query-specific Filters 的约束强度不同，不能因二者都来自 Runtime Context 就混为同一个权限概念；这些信息也不需要 Agent 在每次任务开始前进行机械 Tool Call。
 
-**Failure Case**：当前 Scope 仅授权 `session A` 时，Agent 提交无 session filter 的 `SELECT * FROM message`。若 `execute_sql` 直接访问包含 A / B / C 的数据库，就会越过 Runtime Query Scope；因此 Scope 不能只是 soft context。
+**Trade-off**：第一版不支持 Agent 通过 Tool 主动探索动态数据源或 Data Access Scope；同时需要后续实现一个可验证的 access enforcement 边界。各 Tool 是否强制应用某个 Query-specific Filter，仍需由其 Contract 与参数来源明确。若未来出现真实业务需求，再以新 Failure Case 或业务需求重新评估 `get_scope_info`。
+
+**Failure Case**：Data Access Scope 仅授权 `session A` 时，Agent 提交无 session filter 的 `SELECT * FROM message`。若 `execute_sql` 直接访问包含 A / B / C 的数据库，就会越过授权边界；因此 Data Access Scope 不能只是 soft context。反之，用户询问“8 月消息”时，time range 是 Query-specific Filter；它是否由参数或 SQL 表达，应遵循 `execute_sql` Contract，而不是被误写成数据访问权限。
 
 ## 7. 人物查询采用 `find_members`
 
@@ -246,7 +249,9 @@ SQLite vs PostgreSQL 的第一版技术选型已经确认；仍 Pending 的是 P
 
 ## 9. `execute_sql` 的安全与执行边界
 
-**Decision**：`execute_sql` 只允许被确认是 read-only 的 statement，并通过 `max_rows` 或等价机制限制最大结果规模。`INSERT`、`UPDATE`、`DELETE`、`DROP`、`ALTER`、`CREATE` 等只是非只读语句示例，不构成完整 denylist，也不能被实现为完整安全规则。
+**Decision**：`execute_sql` 只允许被确认是 read-only 的 statement，并通过 `max_rows` 或等价 Tool-level execution boundary 限制最大返回规模。`INSERT`、`UPDATE`、`DELETE`、`DROP`、`ALTER`、`CREATE` 等只是非只读语句示例，不构成完整 denylist，也不能被实现为完整安全规则。
+
+bounded 不要求 Agent SQL 自身包含 `LIMIT`。Tool 可以在不修改 SQL 文本语义的前提下，通过 result fetching、cursor、adapter-level max rows 等方式限制返回规模；Truncation 必须显式暴露。具体 bounded execution mechanism 留给 Implementation，本阶段不冻结。
 
 只读判断优先使用 SQLite Driver 提供的 readonly statement metadata；只有 Driver 不具备该能力时，才在实现阶段设计完整的只读 SQL validator。
 
@@ -258,12 +263,12 @@ Tool 不得 silently 修改 Agent 提交的 SQL，也不得在 SQL 执行失败�
 
 ### 与 ChatLab 的有意差异：不自动改写 SQL
 
-ChatLab 会在 SQL 缺少 `LIMIT` 时自动追加限制。Trivae 选择不 silently 修改 Agent 提交的 SQL，而是在 Tool Contract / 执行边界中控制最大返回规模，并对不满足契约的请求显式返回错误。
+ChatLab 会在 SQL 缺少 `LIMIT` 时自动追加限制。Trivae 选择不 silently 修改 Agent 提交的 SQL，而是在 Tool Contract / execution boundary 中控制最大返回规模。无 `LIMIT` 本身不是 Invalid Argument，也不要求报错；只有 statement 非 read-only、参数无效或违反其他明确 Contract 时才按对应错误语义返回。
 
 - **为什么偏离**：自动改写会让 Trace 中的提交 SQL 与实际执行语义不一致，削弱错误透明和 Failure Attribution。
 - **收益**：Agent 提交内容、实际执行行为与错误信息保持一致。
-- **复杂度与风险**：Agent 需要显式控制查询规模，Tool 需要以不改写 SQL 的方式实施结果上限；可能增加参数错误或拒绝次数。
-- **验证方式**：在 Tool Evaluation 中比较 SQL 执行成功率、越界结果率、参数错误率、返回规模与 Agent 修正成本；若该偏离成为主导 Failure Case，再按 Reopen Reason 重新评估。
+- **复杂度与风险**：Tool 需要以不改写 SQL 文本语义的方式实施结果上限，并准确暴露 Truncation；具体执行机制仍需在 Implementation 中确定。
+- **验证方式**：在 Tool Evaluation 中比较 SQL 执行成功率、越界结果率、Truncation 准确性、返回规模与 Agent 修正成本；若该偏离成为主导 Failure Case，再按 Reopen Reason 重新评估。
 
 ## 10. Structured Retrieval 的职责边界
 
@@ -390,7 +395,7 @@ Truncation 表示结果因规模上限被截断；Partial 表示只有部分内�
 3. Zero Hit 不属于 Error。
 4. Invalid Argument、Capability Unavailable、Execution Error 必须区分。
 5. 禁止 silent fallback。
-6. Runtime Query Scope 是所有 Tool 的授权边界；包括 `execute_sql` 在内，Tool 不得读取当前授权 Scope 之外的数据，具体 enforcement 机制由后续 Storage / Runtime Implementation 决定。
+6. Data Access Scope 是所有 Tool 的硬授权边界；包括 `execute_sql` 在内，Tool 不得读取边界之外的数据。time range、member、keyword 等 Query Context / Query-specific Filters 不自动等同于权限边界，是否强制应用由 Tool Contract 与参数来源决定；Data Access Scope 的具体 enforcement 机制由后续 Storage / Runtime Implementation 决定。
 7. Message-based Retrieval 必须返回稳定 `message_id`。
 8. Truncation 必须显式暴露。
 9. Tool 内部组合多个 Capability 时，各 Capability 仍保持独立可观测。
@@ -427,10 +432,11 @@ retrieve_evidence
 | 第一版 Tool Surface | `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` |
 | Message Search | 默认附带 bounded local context；内部 Retrieval / Expansion 独立可观测 |
 | 深度上下文恢复 | 保留 `get_message_context(message_id)`，不引入 Candidate State |
-| Query Scope | Runtime 注入，不提供 `get_scope_info`；所有 Tool（包括 `execute_sql`）不得读取授权 Scope 外数据；enforcement 机制后续决定 |
+| Data Access Scope | Runtime 提供，不提供 `get_scope_info`；所有 Tool（包括 `execute_sql`）不得读取硬授权边界外数据；enforcement 机制后续决定 |
+| Query Context / Query-specific Filters | time range、member、keyword 等不自动等同于权限边界；是否强制应用由 Tool Contract 与参数来源决定 |
 | Member Lookup | 使用 `find_members` 返回候选与匹配依据 |
 | Persistent Store / Structured Retrieval | 第一版 structured / canonical persistent store 采用 SQLite；`get_schema` 暴露 Physical Schema；`execute_sql` 直接执行只读 SQL |
-| SQL 边界 | statement 必须确认 read-only；关键字仅为示例；bounded、不改写 SQL、不自动切换 Retrieval |
+| SQL 边界 | statement 必须确认 read-only；关键字仅为示例；bounded 但不要求 SQL 自带 `LIMIT`；不改写 SQL、不自动切换 Retrieval；Truncation 显式暴露 |
 | Hybrid / Specialized Tools | 第一版不暴露；后续由 Evaluation / Failure Case 驱动 |
 | Search Result | 确认统一外层语义、strategy provenance 与结构化 Message Identity；不冻结实现 Schema |
 | Tool Envelope | 确认 `ok / partial / error` 等状态语义；不冻结实现 Schema；Truncation 与 Partial 分离 |
@@ -440,7 +446,8 @@ retrieve_evidence
 - Lexical Search 的具体上下文窗口；
 - Semantic Parent / Context Recovery 的具体范围策略；
 - 各 bounded Tool 的具体默认上限；
-- Runtime Query Scope 对 `execute_sql` 的具体 enforcement 机制；
+- Data Access Scope 对 `execute_sql` 的具体 enforcement 机制；
+- `execute_sql` 的具体 bounded execution mechanism；
 - Search Result / Tool Envelope 的最终 Python type、JSON serialization、字段命名与数据映射；
 - Specialized Analysis Tool 或高级组合 Tool 是否满足新增条件。
 
