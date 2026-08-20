@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture 与 Stage 1.4 Tool / Capability Layer 确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 pending（尚未开始）。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer 与 Stage 1.5 Router 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed（架构已沉淀，尚未实现）。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 pending（尚未开始） |
+| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed（架构已沉淀，尚未实现） |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
@@ -67,15 +67,18 @@ Trivae
 |       -> Search Indexes
 |
 `-- Query Plane
-    User Query + Query Context
+    User Query + Runtime Context
         -> Router
-        -> Planner (complex requests only)
-        -> Agent Runtime
-        -> Tool Layer
-        -> Retrieval / Analysis
-        -> Evidence
-        -> Answer Generation
-        -> Answer + Citation
+           ├── standard_execution ──────────────┐
+           └── planned_execution                 │
+                  -> Planner -> soft guidance ──┘
+                                                  ▼
+                                           Agent Runtime
+                                               <-> Tool Layer
+                                                   -> Retrieval / Analysis
+                                                   -> Evidence
+                                                   -> Answer Generation
+                                                   -> Answer + Citation
 ```
 
 Search index 的具体类型、数据模型和存储方式尚未确定；上图中的名称表示概念边界，不表示技术选型。
@@ -114,18 +117,24 @@ Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [St
 #### Conceptual Flow
 
 ```text
-User Query + Query Context
+User Query + Runtime-injected Context
     -> Router
-    -> [Planner] (complex requests only; soft guidance)
-    -> Agent Runtime
-       <-> Tool Layer
-           -> Retrieval / Analysis
-           -> Evidence
-           -> Answer Generation
-           -> Evidence + Citation
+       ├── standard_execution ──────────────┐
+       └── planned_execution                │
+              -> Planner                    │
+              -> soft execution guidance ──┘
+                                             ▼
+                                      Agent Runtime
+                                          <-> Tool Layer
+                                              -> Retrieval / Analysis
+                                              -> Evidence
+                                              -> Answer Generation
+                                              -> Evidence + Citation
 ```
 
-Router 的具体路径名称、分类规则、置信度和边界条件仍属于 Pending 项。`direct_response`、`tool_assisted`、`planned_execution` 仅作为 ChatLab 的参考词汇，不表示 Trivae 已确定三个独立执行流水线或固定的绕行关系。
+Stage 1.5 已确认 Router 的两种 Route 为 `standard_execution` 与 `planned_execution`。两种 Route 最终都进入同一个 Agent Runtime；只有 `planned_execution` 在进入 Agent Runtime 前额外经过 Planner，且 Planner 输出的是 soft execution guidance，不是另一套 Agent Runtime 或强制 Workflow。
+
+`direct_response`、`tool_assisted`、`planned_execution` 是 ChatLab 的参考 taxonomy，不表示 Trivae 当前保留三个 Route。
 
 ## Stage 1.2: Data Model + Ingestion
 
@@ -815,25 +824,335 @@ Retrieval 与 Context Expansion 保持独立可观测的 capability
 
 当前没有已批准的 **Experimental** 偏离。重新打开任何 Confirmed 决策必须记录 Reopen Reason（新 Failure Case、新技术约束、新 Evaluation 结果或新业务需求）。
 
+## Stage 1.5: Router
+
+> 本节为 Stage 1.5 已确认内容。Router 只负责 execution complexity classification 与 Planner gating，不负责 Tool Selection、Retrieval Strategy、Query Planning 或 Evidence Selection。具体实现参数与代码布局仍保持 Pending。
+
+### 核心定位
+
+Trivae Router 第一版是一个轻量的 **execution-complexity classifier / Planner gate**。它只回答一个问题：
+
+> 当前请求是否值得在进入 Agent Runtime 之前，先通过 Planner 生成显式的高层执行 guidance？
+
+Router 不是第二个 Agent，也不是低层执行编排器。它判断是否需要提前增加 Planning 这一个执行阶段；请求进入 Agent Runtime 后，具体 Tool、Retrieval 和下一步行为仍由 Agent Runtime 自主决定。
+
+稳定职责链为：
+
+```text
+Router
+    ↓
+判断是否需要 Planning
+
+Planner（仅 planned_execution）
+    ↓
+生成高层调查 / 执行 guidance
+
+Agent Runtime
+    ↓
+根据当前状态自主决定具体下一步行为
+
+Tool / Capability Layer
+    ↓
+执行数据访问、搜索、SQL 等具体能力
+```
+
+### Route Taxonomy
+
+Trivae 第一版只保留两种 Route：
+
+```text
+standard_execution
+planned_execution
+```
+
+#### `standard_execution`
+
+请求目标足够明确，Agent 可以在执行过程中直接选择合适的 Tool，并根据结果自然推进，不需要在 Agent Loop 之前额外生成显式计划。
+
+这一 Route 可以覆盖：
+
+- 明确的计数、聚合或排序问题；
+- 单个主题、成员或时间范围的查找；
+- 一次检索后即可总结的请求；
+- 需要多个 Tool，但步骤之间不需要预先拆解的请求。
+
+例如“谁发言最多”“过去三个月有多少条消息”“找一下有没有讨论 LangGraph”“张三最近说过什么”“A 和 B 互相回复了多少次”都可能是 `standard_execution`。
+
+`standard_execution` 不等于“不使用 Tool”。标准路径可以调用零个、一个或多个 Tool，例如：
+
+```text
+find_members → get_schema → execute_sql
+
+lexical_search → semantic_search → get_message_context
+```
+
+Tool Call 数量不能单独决定是否进入 Planner；关键是任务是否需要在执行前形成高层调查结构。
+
+#### `planned_execution`
+
+请求包含多个相互依赖的调查目标，或最终结论需要跨阶段收集、比较、验证多类证据，显式 Planning 能够显著降低遗漏、过早下结论、单一路径失败和证据覆盖不足的风险。
+
+典型任务结构包括：
+
+- **Multi-goal / Multi-dimensional analysis**：同时分析话题变化与核心成员变化；
+- **Temporal evolution**：划分时间阶段、寻找代表性讨论并判断 turning points；
+- **Relationship / behavioral pattern analysis**：跨多组互动与技术议题比较成员关系；
+- **Multi-factor judgment**：综合发言量、被回复情况、话题和影响力判断成员；
+- **Evidence-heavy investigation**：区分“准备尝试”与“后来实际落地”，跨时间和多类证据核验；
+- **Explicit recovery / iterative investigation**：请求明确要求在证据不足时改写查询、尝试替代关键词或继续调查。
+
+`planned_execution` 只表示“需要额外经过 Planner”，不表示 Planner 会接管后续执行，也不表示系统进入另一套 Agent Runtime。
+
+### Planning Value 与任务结构
+
+Router 关注任务结构，而不是复杂词汇。可观察的复杂度维度包括：
+
+```text
+Task Complexity
+├── Multi-goal             是否存在多个独立调查目标
+├── Dependency             后续调查是否依赖前一步结果
+├── Temporal reasoning     是否需要阶段划分、趋势演变或 turning point
+├── Multi-source evidence  是否需要多组证据共同支撑结论
+├── Semantic judgment      是否需要分类、解释、比较大量候选
+└── Recovery               是否明显需要证据不足处理、改写或替代策略
+```
+
+这些维度是 Router 的概念判断依据，不在 Stage 1.5 冻结为固定整数公式、权重或 threshold。通常应由多个复杂度信号共同表明 Planning 有价值，而不是由单个关键词触发。
+
+以下词语不能单独触发 `planned_execution`：
+
+```text
+分析、总结、过去一年、比较、关系、证据、趋势
+```
+
+例如“分析一下谁发言最多”仍可能只是明确的 Structured Retrieval；“总结昨天聊天”也可能只需要一次检索和总结。
+
+### Router、Planner 与 Agent Runtime 的关系
+
+```text
+User Query
++ Query Context
++ Compact Data Snapshot
++ Capability Summary
+        │
+        ▼
+      Router
+        │
+        ├── standard_execution
+        │          │
+        │          ▼
+        │      Agent Runtime
+        │
+        └── planned_execution
+                   │
+                   ▼
+                Planner
+                   │
+                   ▼
+          Soft Execution Guidance
+                   │
+                   ▼
+              Agent Runtime
+                   │
+                   ▼
+                 Tools
+```
+
+两种 Route 最终都进入同一个 Agent Runtime。Planner 输出的是高层、可被 Agent 参考的 soft guidance，而不是必须机械执行的 Workflow；具体 Planner Input、Plan Schema、步骤类型、重规划和执行语义留给 Stage 1.6。
+
+### Router Input
+
+Architecture 层只冻结以下概念结构，不冻结 Python 类型、字段名称或实现文件：
+
+```text
+RouterInput
+├── user_query
+├── query_context
+├── compact_data_snapshot
+│   ├── chat type
+│   ├── message count
+│   ├── member count
+│   ├── available data time range
+│   └── other lightweight availability hints
+└── capability_summary
+```
+
+`query_context`、`compact_data_snapshot` 与 `capability_summary` 由 Runtime 在进入 Router 前注入。Router 不通过 `get_chat_info()`、`get_scope_info()` 或其他普通业务 Tool 主动获取这些信息，也不接收大量聊天正文；`compact_data_snapshot` 只是轻量可用性元数据。
+
+这与 Stage 1.4 的 Context / Scope 边界一致：Data Access Scope 仍由 Runtime 作为硬授权上下文提供给 Tool Layer，Router 不负责重新解释或扩大该边界。
+
+### Route Decision
+
+第一版冻结 Route Decision 的语义字段：
+
+```text
+RouteDecision
+├── route
+│   ├── standard_execution
+│   └── planned_execution
+├── confidence       0..1
+├── reason           short diagnostic reason
+└── source           rule | llm
+```
+
+- `route` 是唯一直接影响 Planner gating 的字段；
+- `confidence` 用于诊断、后续 fallback 和 Evaluation，不在本阶段冻结阈值；
+- `reason` 只提供简短、结构化、可诊断的原因，例如 `multi-dimensional temporal analysis with evidence requirements`，不承载 Chain-of-Thought；
+- `source` 记录最终判断来自 Rule Router 还是 LLM Router；Stage 1.5 不增加第三个 `fallback` source，降级触发的原始错误由独立诊断 / Trace 记录。
+
+Route Decision 不得包含以下内容：
+
+```text
+selected_tools
+retrieval_strategy
+keywords
+semantic_queries
+sql
+filters
+top_k
+rerank_strategy
+plan_steps
+evidence_requirements
+```
+
+### Rule-first 与 Conservative Routing
+
+第一版采用 Rule-first + LLM fallback：
+
+```text
+Query + Runtime Context
+        ↓
+    Rule Router
+        ↓
+  high confidence?
+      ├── yes → use decision
+      └── no  → LLM Router → decision
+```
+
+明显简单或明显复杂的请求由便宜、确定性的规则直接处理；只有规则无法可靠判断的 ambiguous case 才使用 LLM Router。具体规则、regex、LLM 模型、prompt、timeout 与 confidence threshold 保持 Pending。
+
+默认策略偏向 `standard_execution`：Planner invocation must earn its invocation。若无法明确证明显式 Planning 能够带来足够价值，不进入 Planner。
+
+原因在于两类错误的代价不对称：复杂请求误判为 standard 时，Agent 仍可在 Runtime 中连续调用 Tool、调整查询和继续调查；简单请求误判为 planned 时，则稳定增加不必要的 latency、token、model call 和 plan-induced bias。
+
+### Failure Cases 与降级原则
+
+Router 需要在 Trace / Evaluation 中能够区分以下 Failure Case：
+
+| Failure Case | 典型表现 |
+| --- | --- |
+| Under-routing | 复杂请求走 `standard_execution`，遗漏调查维度、过早下结论或证据覆盖不足 |
+| Over-routing | 简单请求走 `planned_execution`，增加无意义的 Planning 成本与约束 |
+| Keyword false positive | 仅因出现“分析”“过去一年”“证据”等词而错误进入 Planner |
+| Keyword false negative | 复杂调查使用短或隐含表达，规则未识别其任务结构 |
+| LLM Router malformed output | invalid JSON、unknown route、timeout、API error 或 parsing failure |
+
+Router 是 **execution optimization layer，而不是 request availability dependency**。Router 本身异常时，请求不能因此整体失败；决策应降级到可用的 Rule Decision，若没有合理 Rule Decision 则采用保守的 `standard_execution`，再由 Agent Runtime 继续处理。
+
+该降级是 Router 可用性契约要求的、范围明确且可观测的恢复路径，不等于允许 Tool / Retrieval 静默 fallback。降级原因、原始错误与最终 Route 必须能够被诊断记录；具体 Trace Schema 留给 Stage 1.9。
+
+### Router 与 Tool / Retrieval 的边界
+
+Router 只决定执行复杂度，不决定数据访问方式：
+
+| 模块 | 决定什么 | 不决定什么 |
+| --- | --- | --- |
+| Router | 是否值得先经过 Planner | Tool、Retrieval、SQL、关键词、Top-K、rerank、evidence |
+| Planner | 复杂任务的高层调查 guidance（Stage 1.6） | 具体 Tool Call 顺序与底层查询参数 |
+| Agent Runtime | 当前状态下下一步行为与是否调用 Tool | 不改变 Router 的 Route 语义 |
+| Retrieval | 如何从数据底座召回候选 | 是否需要 Planner |
+| Tool / Capability Layer | 执行搜索、SQL、上下文恢复等具体能力 | Route 分类与高层计划 |
+
+因此不引入以下 Router taxonomy：
+
+```text
+lexical_route
+semantic_route
+sql_route
+hybrid_route
+```
+
+这些属于 Retrieval / Agent Runtime 的执行选择。`standard_execution` 也不等于 `tool_assisted`：标准路径可以不调用 Tool，也可以调用一个或多个 Tool；是否调用 Tool 不是 Router 的职责。
+
+### Trace 与 Evaluation 要求
+
+Stage 1.5 只确认 Router 必须留下可追踪、可评估的决策信息，不提前设计 Stage 1.9 Trace Schema 或 Stage 1.10 Evaluation Benchmark。
+
+未来 Router Evaluation 应包含：
+
+- obvious standard；
+- obvious planned；
+- ambiguous；
+- keyword traps；
+- long-time-range but simple；
+- multi-tool but simple；
+- short wording but complex；
+- evidence-heavy investigation。
+
+正确顺序为：
+
+```text
+定义 Route 语义
+    → 建立带标签 Query Set
+    → 实现 Rule Router
+    → Evaluation
+    → 调整规则与参数
+```
+
+具体 accuracy、error rate、threshold calibration、Trace Event Schema 和回归执行方式留待 Stage 1.9 / Stage 1.10。
+
+### Stage 1.5 决策状态
+
+#### Confirmed Architecture Decisions
+
+| 项目 | 决策 |
+| --- | --- |
+| Router 定位 | 轻量 execution-complexity classifier / Planner gate |
+| Route taxonomy | 仅 `standard_execution` 与 `planned_execution` |
+| Planner 触发 | 仅 `planned_execution` 额外经过 Planner |
+| Agent Runtime | 两种 Route 最终进入同一个 Agent Runtime |
+| Planner 输出 | soft execution guidance，不是强制 Workflow |
+| Router Input | Runtime 注入 User Query、Query Context、Compact Data Snapshot、Capability Summary |
+| Route Decision | `route`、`confidence`、`reason`、`source` 的语义契约 |
+| 分类依据 | 任务结构与 Planning Value，不是单个关键词或 Tool Call 数量 |
+| 路由策略 | Rule-first，ambiguous case 使用 LLM Router |
+| 默认策略 | Conservative，无法证明 Planning 有价值时使用 `standard_execution` |
+| 失败原则 | Router 失败不得阻断请求；无可用规则时保守降级到 `standard_execution` |
+| 职责边界 | Router 不选择 Tool、Retrieval、SQL、查询参数、Plan 或 Evidence |
+
+#### Pending（实现 / Evaluation / 后续 Stage）
+
+| 项目 | 状态 |
+| --- | --- |
+| 具体规则、regex、复杂度权重与固定公式 | Pending Evaluation / Implementation |
+| Confidence threshold 与 LLM 触发 threshold | Pending Evaluation |
+| LLM Router 的模型、prompt、timeout 与调用适配 | Pending Implementation |
+| RouteDecision 的具体 Python 类型、序列化与文件布局 | Pending Implementation |
+| Router Trace Event Schema、故障记录格式与指标命名 | Pending（Stage 1.9） |
+| Router Query Set、标签流程、准确率与校准方法 | Pending（Stage 1.10） |
+| Planner Input、Plan Schema、步骤类型、重规划与执行语义 | Pending（Stage 1.6） |
+
 ## Module Boundaries
 
 ### Router
 
-**Responsibility**：决定请求需要的执行复杂度和查询路径。
+**Responsibility**：作为轻量 execution-complexity classifier / Planner gate，判断当前请求是否值得在进入 Agent Runtime 前先经过 Planner。
 
 **Does**：
 
-- 接收 User Query 与 Query Context。
-- 将请求分为直接处理、工具辅助或需要计划的复杂执行路径（具体策略待定）。
-- 为复杂请求选择 Planner 路径。
+- 接收 Runtime 注入的 User Query、Query Context、Compact Data Snapshot 与 Capability Summary。
+- 根据任务结构与 Planning Value 将请求分为 `standard_execution` 或 `planned_execution`。
+- 输出可 Trace / Evaluate 的 Route Decision：`route`、`confidence`、`reason`、`source`。
+- 对 `planned_execution` 触发 Planner；两种 Route 最终都进入同一个 Agent Runtime。
+- 在自身或 LLM Router 失败时，按已确认的可观测降级原则继续使用 Rule Decision 或 `standard_execution`。
 
 **Does not**：
 
-- 不决定 Keyword / Semantic / Hybrid Retrieval。
-- 不决定 SQL、Top-K、Rerank 或具体 Tool 参数。
-- 不负责底层数据访问和证据选择。
+- 不区分 `direct_response` 与 `tool_assisted`，也不提前决定是否调用 Tool。
+- 不决定 Lexical / Semantic / Hybrid Retrieval、SQL、Top-K、Rerank、关键词、filters 或具体 Tool 参数。
+- 不生成多步 Plan，不决定 Evidence Requirements，不负责底层数据访问和证据选择。
 
-结论：**Router 决定“走哪种执行路径”，Retrieval 决定“怎样找数据”。**
+结论：**Router 决定是否需要 Planning，Agent Runtime 决定当前怎么执行，Retrieval 决定怎样找数据。**
 
 ### Planner
 
@@ -851,7 +1170,7 @@ Retrieval 与 Context Expansion 保持独立可观测的 capability
 - 不输出固定的 `vector_search`、`rerank`、SQL 等低层执行步骤。
 - 不替代 Agent Runtime 的执行与状态管理。
 
-Planner schema、步骤上限、suggested tools 校验和失败处理待后续确定。
+Planner 的具体 Input、Schema、步骤类型、suggested tools、步骤上限、重规划与失败处理属于 Stage 1.6，当前不提前确定。
 
 ### Agent Runtime
 
@@ -931,11 +1250,11 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 ## Confirmed Decisions
 
-以下是已完成的 Stage 1.1 所确认的架构方向：
+以下按阶段汇总当前已确认的架构方向：
 
 1. **Two-plane architecture**：系统一级划分为 Data Plane 与 Query Plane。
 2. **Data / Agent decoupling**：Data Plane 不包含 Agent；Agent 只能通过 Tool Layer 访问数据能力。
-3. **Query main chain**：Query Plane 的主链路为 `Router -> Planner (complex requests only) -> Agent Runtime -> Tools -> Retrieval / Analysis -> Evidence -> Answer`。
+3. **Query main chain**：Query Plane 的主链路为 `Router -> standard_execution | planned_execution -> [Planner for planned path] -> Agent Runtime -> Tools -> Retrieval / Analysis -> Evidence -> Answer`。
 4. **Router boundary**：Router 管执行复杂度和路径，不管具体检索算法或底层查询参数。
 5. **Thin Planner**：Planner 管复杂问题拆解，计划是 Agent 的 soft guidance，不接管底层 Tool 编排。
 6. **SDK reuse with thin adapter**：Agent Runtime 复用成熟 SDK 的通用能力，Trivae 保留薄适配层。
@@ -994,11 +1313,27 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 详细 rationale 与 trade-off 见 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)。
 
+### Stage 1.5：Router
+
+1. **Router 是 execution-complexity classifier / Planner gate**：只判断当前请求是否值得在进入 Agent Runtime 前先经过 Planner。
+2. **两路 Route taxonomy**：Trivae 只保留 `standard_execution` 与 `planned_execution`；ChatLab 的 `direct_response` 与 `tool_assisted` 不作为 Trivae 独立 Route。
+3. **同一个 Agent Runtime**：两种 Route 最终都进入同一个 Agent Runtime；只有 `planned_execution` 额外经过 Planner。
+4. **Planner 是 soft guidance**：Planner 不接管 Agent Loop，不生成必须机械执行的 Workflow；具体 Planner Contract 留给 Stage 1.6。
+5. **任务结构优先**：Route 判断关注 Multi-goal、Dependency、Temporal reasoning、Multi-source evidence、Semantic judgment、Recovery 等 Planning Value 维度，不由单一关键词或 Tool Call 数量决定。
+6. **Rule-first + LLM fallback**：明显请求由规则处理，ambiguous case 才使用 LLM Router；具体规则、模型、prompt、timeout 与阈值保持 Pending。
+7. **Conservative default**：无法明确证明 Planner 有价值时使用 `standard_execution`；Planner invocation must earn its invocation。
+8. **Router failure graceful degradation**：Router 是 execution optimization layer，不是 request availability dependency；失败时使用可用 Rule Decision，否则保守降级到 `standard_execution`，并保留可诊断信息。
+9. **Runtime 注入 Router Context**：Router 使用 User Query、Query Context、Compact Data Snapshot、Capability Summary；不通过普通业务 Tool 查询 Chat Metadata / Scope / Data Availability，不接收大量聊天正文。
+10. **Route Decision 可 Trace / Evaluate**：语义字段为 `route`、`confidence`、`reason`、`source`；`reason` 不承载 Chain-of-Thought。
+11. **Router 不越界**：不选择 Tool、Lexical / Semantic / Hybrid Retrieval、SQL、filters、Top-K、Rerank、Plan Steps 或 Evidence Requirements。
+
 ## ChatLab Baseline and Recorded Differences
 
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
-- ChatLab 的 `direct_response / tool_assisted / planned_execution` 路径和 Planner 行为是参考设计；Trivae 的路由名称与策略仍待确认。
+- ChatLab 的 `direct_response / tool_assisted / planned_execution` 是参考 taxonomy；Trivae 已确认将前两者合并为 `standard_execution`，并保留 `planned_execution` 作为唯一额外 Planner 路径。
+- ChatLab 的 `direct_response` 与 `tool_assisted` 区分不作为 Trivae Route：是否调用 Tool 由 Agent Runtime 决定，`standard_execution` 可以调用零个、一个或多个 Tool。
+- Trivae 的 Router 只负责 Planner gating，不负责 Lexical / Semantic / Hybrid Retrieval、SQL、具体 Tool 参数或 Plan Steps；这些边界分别由 Agent Runtime、Tool / Capability Layer 与后续 Planner 设计负责。
 - ChatLab 的 Planner 步骤上限等实现细节不自动继承到 Trivae。
 - ChatLab 的 Parent / Child Chunk 思路（Time-aware Parent + Small Child）是 Trivae Semantic 索引架构的参考；其具体切分参数（30 min / 360 chars / 消息数 / overlap 等）不自动继承，由 Trivae 的 Evaluation Set 决定。
 - Stage 1.4 已沿用 ChatLab 的消息搜索自动 bounded context、Physical SQLite Schema + read-only SQL 等设计，并确认 Trivae 第一版 6 个 Tool 的 Agent-facing Surface。Trivae 不机械复制 ChatLab 的大量 Specialized Analysis Tools；该偏离以 `get_schema + execute_sql` 可覆盖确定性分析为当前约束，是否新增由 Evaluation 验证。
@@ -1024,7 +1359,9 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - raw payload / source locator / structured content 的具体表示
 - Canonical timestamp 的 timezone / precision / 存储类型与转换实现
 - Query-specific strategy 的具体指导机制与失败处理（Stage 1.10 Evaluation 边界）
-- Router 具体策略、分类规则、置信度、阈值与失败处理
+- Router 具体规则 / regex、复杂度权重、confidence threshold、LLM 模型 / prompt / timeout、Python 类型与文件布局（Stage 1.5 已确认语义，具体实现保持 Pending）
+- Router Trace Event Schema、故障记录格式与指标命名（Stage 1.9）
+- Router Query Set、标签流程、accuracy / error rate 口径与参数校准方式（Stage 1.10）
 - Planner Schema、步骤上限、校验和执行约束
 - Agent Runtime 的具体 SDK 版本、Adapter 契约、Session、Streaming、Abort 与 Run Lifecycle 细节
 - Evidence / Citation model、证据状态、来源字段与引用格式（Stage 1.8）
@@ -1033,7 +1370,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Answer Generation 的模型、Prompt、输出契约与失败处理
 - CLI / API 边界
 - Python package / module layout
-- Retry / Fallback 策略
+- 其他模块的 Retry / Fallback 策略（Stage 1.5 Router 的显式可用性降级契约除外）
 - 会明显改变系统复杂度的新依赖或基础设施
 
 ## Evolution Rule

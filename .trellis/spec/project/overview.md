@@ -42,9 +42,11 @@
 
 **Stage 1.4（Tool / Capability Layer）已完成**：Tool 与 Capability 分离且可组合；第一版固定 6 个 Agent-facing Tool；Message Search 默认自动补充 bounded context；深度调查通过稳定 `message_id` 调用 `get_message_context`；Data Access Scope 构成所有 Tool（包括 `execute_sql`）的硬授权边界，Query-specific Filters 不自动等同于权限边界；人物查询使用 `find_members`；第一版 structured / canonical persistent store 采用 SQLite，Structured Retrieval 直接使用 Physical Schema + bounded read-only SQL，且 bounded 不要求 Agent SQL 自带 `LIMIT`；Search Result 与 Tool Result Envelope 的语义契约已确认、实现 Schema 尚未冻结；禁止 silent fallback；第一版不引入 Analysis View、Candidate State、Hybrid / Universal / Evidence Tool 或大量 Specialized Analysis Tools（见 [architecture.md](./architecture.md)）。
 
-当前架构文档仍为 `Draft / In Progress`。Stage 1.5 尚未开始；第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Evidence / Citation、Trace 等细节仍为 Pending，不能视为最终 Architecture Specification。
+**Stage 1.5（Router）已完成**：Router 被定义为轻量 execution-complexity classifier / Planner gate；第一版只保留 `standard_execution` 与 `planned_execution`；两种 Route 最终进入同一个 Agent Runtime，只有 planned path 额外经过 Planner 并接收 soft execution guidance；Router 不选择 Tool 或 Retrieval Strategy；采用 Rule-first + LLM fallback、conservative default，并在 Router 失败时显式、可观测地降级到可用 Rule Decision 或 `standard_execution`（见 [architecture.md](./architecture.md) 与 [stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)）。
 
-**当前任务**：Stage 1.4 已完成，等待进入 Stage 1.5。在对应架构细节确认前不实现业务功能。
+当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Evidence / Citation、Trace 等细节仍为 Pending，不能视为最终 Architecture Specification。
+
+**当前任务**：Stage 1.5 已完成，等待进入 Stage 1.6 Planner。在对应架构细节确认前不实现业务功能。
 
 ## 演进目标
 

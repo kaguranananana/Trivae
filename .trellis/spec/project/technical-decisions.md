@@ -1,7 +1,7 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)；Stage 1.4 的关键决策记录于 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)。
+> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)；Stage 1.4 的关键决策记录于 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)；Stage 1.5 的关键决策记录于 [technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)。
 
 ---
 
@@ -84,11 +84,18 @@ Regression
 - 状态：Confirmed（Retrieval 内部能力与组合策略；Tool 暴露方式已在 Stage 1.4 确认；Reranker、Fusion 权重、Chunk 参数、Message-level 辅助索引、Trace Schema、Vector Store / Embedding 仍 Pending）。
 - 内容：Multi-strategy Retrieval（Composition + 三个 Primitives + Post-Retrieval Operator）、Hybrid 为组合策略、集合确定后的确定性查询优先、Conversation Chunk 为第一版 Semantic primary indexing unit（Time-aware Parent + Small Child，Message-level 辅助索引 Pending Evaluation）、Context Expansion 为 Post-Retrieval Operator、Query-specific strategy、Retrieval Result provenance（Message Candidates + Structured Results 分列）、Partial / Coverage 显式暴露（口径 Stage 1.9 细化）、Failure Attribution 分类、Evidence 判断不硬编码、Retrieval Trace 观察需求（Schema 不提前实现）。
 - 记录位置：[technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
-- 后续：Stage 1.4 Tool / Capability Layer 已完成；Stage 1.5 尚未开始。
+- 后续：Stage 1.4 Tool / Capability Layer 已完成；Stage 1.5 Router 已完成。
 
 ### Stage 1.4：Tool / Capability Layer
 
 - 状态：**Confirmed / Completed（Stage 1.4）**。具体 bounded 参数仍 Pending Evaluation，但不影响本阶段架构完成状态。
 - 内容：遵循项目级 ChatLab Reference Implementation Architecture Principle；Tool 与 Capability 分离且可组合；第一版 6 个 Tool（`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`）；Message Search 默认 bounded context；稳定 `message_id` 深度扩展；Data Access Scope 约束所有 Tool（包括 `execute_sql`），Query Context / Query-specific Filters 不自动等同于权限边界；Member Lookup 返回候选；第一版 structured / canonical persistent store 采用 SQLite，直接暴露 Physical Query Schema + bounded read-only SQL，且 bounded 不要求 Agent SQL 自带 `LIMIT`；统一 Search Result / Tool Envelope 语义契约但不冻结实现 Schema；禁止 silent fallback；第一版不引入 Analysis View、Candidate State、Hybrid / Universal / Evidence Tool 或大量 Specialized Analysis Tools。
 - 记录位置：[technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
-- 后续：Stage 1.5 尚未开始；Stage 1.4 的经验参数由后续 Evaluation 校准，重新打开 Confirmed 决策必须记录 Reopen Reason。
+- 后续：Stage 1.5 Router 已完成；Stage 1.4 的经验参数由后续 Evaluation 校准，重新打开 Confirmed 决策必须记录 Reopen Reason。
+
+### Stage 1.5：Router
+
+- 状态：**Confirmed / Completed（Stage 1.5）**。本阶段完成 Router 架构决策沉淀；Router 尚未实现。
+- 内容：Router 作为 execution-complexity classifier / Planner gate；两路 Route（`standard_execution` / `planned_execution`）；两种 Route 进入同一个 Agent Runtime；Planner 为 planned path 提供 soft guidance；Runtime 注入 Router Context / Data Snapshot / Capability Summary；Rule-first + LLM fallback；conservative default；Router failure graceful degradation；Router 与 Tool / Retrieval / Planner 的职责边界；Route Decision 的 Trace / Evaluation 语义。
+- 记录位置：[technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)（详细 rationale），[architecture.md](./architecture.md)（稳定结构与模块边界）。
+- 后续：Stage 1.6 单独确定 Planner 的 Input、Plan Schema、步骤类型、重规划与执行语义；Stage 1.9 确定 Router Trace Schema；Stage 1.10 建立 Router Query Set、指标与参数校准方式。
