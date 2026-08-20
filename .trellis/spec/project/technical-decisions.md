@@ -80,7 +80,7 @@ Regression
 
 ### Stage 1.4：Tool / Capability Layer
 
-- 状态：Confirmed（Tool / Capability 分离原则；完整 Tool 列表、Structured Query 设计、具体参数等仍 Pending）。
-- 内容：Tool 与 Capability 分离（Capability 不依赖 Agent Runtime）、一个 Tool 可组合多个 Capability、Tool Surface 优先 Agent 易用性、Search 默认自动补充 bounded context（Local context 为 Search Result 默认组成部分）、自动 Expand 必须 bounded、内部 Capability 独立可观测、Semantic Search 同原则且保留 provenance、不把大上下文窗口作为主要设计依据、参数由 Evaluation 决定、禁止 silent fallback、第一版不引入复杂 Candidate State。
+- 状态：**本文所记录决策均已 Confirmed；Stage 1.4 整体 In Progress**（完整 Tool 列表、Structured Query 设计、Search Result Schema、Tool Contract 等仍 Pending）。
+- 内容：Tool 与 Capability 分离（Capability 不依赖 Agent Runtime）、一个 Tool 可组合多个 Capability、Tool Surface 优先 Agent 易用性、Message Search（Lexical / Semantic）默认自动补充 bounded context（Local context 为 Search Result 默认组成部分）、自动 Expand 必须 bounded、内部 Capability 独立可观测、Semantic Search 同原则且保留 provenance、不把大上下文窗口作为主要设计依据、参数由 Evaluation 决定、禁止 silent fallback、第一版不引入复杂 Candidate State。
 - 记录位置：[technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
-- 后续：Stage 1.5。
+- 后续：继续 Stage 1.4，完成 Tool Surface / Contract 等剩余设计；Stage 1.5 暂不开始。

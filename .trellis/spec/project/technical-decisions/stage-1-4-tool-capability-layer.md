@@ -1,7 +1,8 @@
 # Stage 1.4: Tool / Capability Layer Decisions
 
-> 状态：**Confirmed（Stage 1.4）**
-> 记录 Stage 1.4 真正形成的 Tool / Capability Layer 架构决策及 rationale。仅覆盖已确认的架构原则；尚未定稿的 Tool 列表、Structured Query 设计、具体参数等不在此文档内决定。
+> 状态：**Stage 1.4 In Progress**
+>
+> 本文所记录的决策均已 **Confirmed**；但 Stage 1.4 整体尚未完成——完整 Tool 列表、Structured Query 设计、Search Result Schema、Tool Contract 等主体设计仍 Pending，完成这些后 Stage 1.4 才算 completed。记录 Stage 1.4 已确认的架构原则及 rationale；尚未定稿的内容不在此文档内决定。
 > 参考 ChatLab 但不机械复制：所有参考仅作为 initial hypothesis / reference design，以 Trivae 的业务目标（高噪声群聊分析的垂直 Agent）与 Evaluation 为准。
 
 ---
@@ -10,7 +11,7 @@
 
 **Context**：Agent Runtime 与底层 Retrieval / Data Layer 之间需要一个边界层：既要向 Agent 暴露少量、语义清晰、容易调用的工具，又要隔离 Agent SDK 与底层业务实现，使 Retrieval、Context、Identity 等核心能力不依赖具体 Agent Runtime。
 
-**Problem**：如果把底层每一步能力直接暴露为 Agent Tool，或让业务逻辑直接依赖 OpenAI Agents SDK 等 Runtime，会导致 Agent 面对几十个 Tool 选择混乱，且核心能力被绑定到具体 SDK。
+**Problem**：如果把底层每一步能力直接暴露为 Agent Tool，或让业务逻辑直接依赖 OpenAI Agents SDK 等 Runtime，会增加 Tool 数量与选择复杂度，把底层编排负担转移给 Agent，且核心能力被绑定到具体 SDK。
 
 **Decision**：区分两个概念：
 
@@ -138,7 +139,7 @@ lexical_search Tool
 
 **Context**：此前讨论过 `RetrievalCandidate / candidate_ref / expand_context(candidate_ref) / runtime candidate state` 这类候选引用状态机制。
 
-**Problem**：Search 已默认返回足够的 bounded context，普通 Retrieval 不再需要 `Search → 保存 Candidate → Agent 引用 Candidate → Expand Candidate` 的额外状态机制。
+**Problem**：Search 默认返回**用于候选判断**的 bounded context，普通 Retrieval 无需为每个 hit 建立额外 Candidate State（`Search → 保存 Candidate → Agent 引用 Candidate → Expand Candidate`）。但我们并未确认 bounded context 一定足够回答最终问题——观点变化、长期争论、一次完整排错、某人前后态度变化等深度调查仍可能需要继续扩大上下文。
 
 **Decision**：**第一版暂不采用 Candidate State 设计**，优先保持 Tool API 简单。若后续真实 Evaluation 证明复杂调查需要稳定 Candidate Reference，再单独设计。
 

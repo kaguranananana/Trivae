@@ -31,7 +31,7 @@ Retrieval
 
 Composition 根据当前任务选择并组合底层原语，输出候选集合；可选地在候选集上应用 Post-Retrieval Operator。
 
-**Reason**：不同问题对应不同的最佳信息获取方式（明确关键词 → Lexical，同义表述 → Semantic，统计聚合 → Structured，命中上下文不足 → Context Expansion）。把能力拆成可组合的原语，让"选哪种方式"成为一个显式的组合决策，而不是被藏在一个黑盒里。Context Expansion 与前三个不在同一层：前三个负责"找出候选"，它负责"拿已有命中恢复上下文"——`search something` 与 `expand this known hit` 天然属于两类 capability，这一区别在 Stage 1.4 Tool Layer 会直接影响如何封装。
+**Reason**：不同问题对应不同的最佳信息获取方式（明确关键词 → Lexical，同义表述 → Semantic，统计聚合 → Structured，命中上下文不足 → Context Expansion）。把能力拆成可组合的原语，让"选哪种方式"成为一个显式的组合决策，而不是被藏在一个黑盒里。Context Expansion 与前三个不在同一层：前三个负责"找出候选"，它负责"拿已有命中恢复上下文"——`search something` 与 `expand this known hit` 天然属于两类 capability，这一区别在 Stage 1.4 Tool Layer 会直接影响如何封装。这里指**内部 Capability 边界**，不意味着必须分别暴露为两个 Agent-facing Tool；Agent-facing 封装由 Stage 1.4 决定——高频组合可由一个 search Tool 自动完成。
 
 **Result**：`Retrieval Request → Composition → 原语召回 → Candidate Set →（Post-Retrieval Operator）Context Expansion → Retrieval Result`。
 
@@ -123,9 +123,9 @@ Query → 命中 Child → 定位所属 Parent → Context Expansion
 
 **Context**：命中一条"我现在觉得 LangGraph 真有点重"，只把这条交给 LLM 信息远远不够；真正重要的是附近李四的追问、张三对状态和调试的解释、王五换 SDK 的后续。
 
-**Decision**：**`retrieve` 与 `expand context` 是两个动作**。Context Expansion 是 **Post-Retrieval Operator**，与前三个 Primitives 不在同一层：前三个负责"找出候选"（find candidates），Context Expansion 负责"拿已有命中，恢复其所在上下文"（recover surrounding context），将命中扩展为完整的 Evidence Window（前后消息、回复链、同 Parent 范围等）。该层级区别直接影响 Stage 1.4——`search something` 与 `expand this known hit` 天然属于两类 capability。
+**Decision**：**`retrieve` 与 `expand context` 是两个动作**。Context Expansion 是 **Post-Retrieval Operator**，与前三个 Primitives 不在同一层：前三个负责"找出候选"（find candidates），Context Expansion 负责"拿已有命中，恢复其所在上下文"（recover surrounding context），将命中扩展为完整的 Evidence Window（前后消息、回复链、同 Parent 范围等）。该层级区别直接影响 Stage 1.4——`search something` 与 `expand this known hit` 是两类内部 capability（不必然对应两个 Agent-facing Tool；Agent-facing 封装由 Stage 1.4 决定）。
 
-**Reason**：命中与扩展的成功率、失败模式完全不同，必须分开观察和归因（Context Expansion Error 单独可定位）；在 Tool Layer 它们也应作为两类 capability 封装。
+**Reason**：命中与扩展的成功率、失败模式完全不同，必须分开观察和归因（Context Expansion Error 单独可定位）；在 Tool Layer 它们是两类内部 capability，Agent-facing 是否各自暴露或组合成一个 search Tool 由 Stage 1.4 决定。
 
 **Trade-off**：扩展需要定义范围边界（扩展多少、是否越界进入无关话题），由 Evaluation 校准。
 

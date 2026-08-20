@@ -40,11 +40,11 @@
 
 **Stage 1.3（Retrieval Architecture）已完成**：Retrieval 由 Retrieval Composition、三个 Primitives（Structured / Lexical / Semantic）与 Post-Retrieval Operator（Context Expansion）组成；Hybrid 为组合策略；集合确定后的确定性查询优先；Semantic 第一版 primary indexing unit 为 Conversation Chunk（Time-aware Parent + Small Child，Message-level 辅助索引 Pending Evaluation）；Retrieval Strategy 由任务决定；Retrieval Result provenance 与 Partial / Coverage 显式暴露已沉淀（见 [architecture.md](./architecture.md)）。Reranker、Fusion 权重、Chunk 参数等保持 Pending Evaluation。
 
-**Stage 1.4（Tool / Capability Layer）已完成**：Tool 与 Capability 分离（Capability 不依赖 Agent Runtime）；一个 Tool 可组合多个 Capability；Search 默认自动补充 bounded context（Local context 为 Search Result 默认组成部分）；内部 Capability 保持独立可观测；禁止 silent fallback；第一版不引入复杂 Candidate State；具体 Tool 列表、Structured Query 设计、窗口参数等保持 Pending（见 [architecture.md](./architecture.md)）。
+**Stage 1.4（Tool / Capability Layer）进行中（部分决策已确认，Stage 整体未完成）**：Tool 与 Capability 分离（Capability 不依赖 Agent Runtime）；一个 Tool 可组合多个 Capability；Message Search（Lexical / Semantic）默认自动补充 bounded context（Local context 为 Search Result 默认组成部分）；内部 Capability 保持独立可观测；禁止 silent fallback；第一版不引入复杂 Candidate State。完整 Tool 列表、Structured Query 设计、Search Result Schema、Tool Contract 等主体设计仍 Pending，完成后 Stage 1.4 才算 completed（见 [architecture.md](./architecture.md)）。
 
-当前架构文档为 `Draft / In Progress`。Stage 1.5 为下一阶段；Database Schema、Vector Store、Chunking 参数、Embedding、Evidence / Citation、Trace 等细节仍为 Pending，不能视为最终 Architecture Specification。
+当前架构文档为 `Draft / In Progress`。继续完成 Stage 1.4 剩余设计（Tool Surface / Contract 等）；Database Schema、Vector Store、Chunking 参数、Embedding、Evidence / Citation、Trace 等细节仍为 Pending，不能视为最终 Architecture Specification。
 
-**下一阶段**：Stage 1.5。在对应架构细节确认前不实现业务功能。
+**当前任务**：完成 Stage 1.4 后半段（Tool Surface / Contract 等剩余设计）。在对应架构细节确认前不实现业务功能。Stage 1.5 在 Stage 1.4 全部完成前不开始。
 
 ## 演进目标
 
