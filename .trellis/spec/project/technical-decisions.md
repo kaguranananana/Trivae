@@ -1,13 +1,25 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)；Stage 1.4 的关键决策记录于 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)；Stage 1.5 的关键决策记录于 [technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)。
+> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)；Stage 1.4 的关键决策记录于 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)；Stage 1.5 的关键决策记录于 [technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)；Stage 1.6 的关键决策记录于 [technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)。
 
 ---
 
 ## 记录位置
 
 正式决策文档：`.trellis/spec/project/technical-decisions/<slug>.md`，本文件作为索引。
+
+## 当前 ADR 列表
+
+| Stage | 状态 | 主要决策 | ADR 路径 |
+| --- | --- | --- | --- |
+| Stage 1.2 | Confirmed | Data Model + Ingestion | [stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md) |
+| Stage 1.3 | Confirmed | Retrieval Architecture | [stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md) |
+| Stage 1.4 | Confirmed / Completed | Tool / Capability Layer | [stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md) |
+| Stage 1.5 | Confirmed / Completed | Router 与 Planner gating | [stage-1-5-router.md](./technical-decisions/stage-1-5-router.md) |
+| Stage 1.6 | Confirmed / Completed | Thin pre-execution investigation planner | [stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md) |
+
+Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)，Stage 1.7 及之后尚未标记完成。
 
 ## 决策问题链
 
@@ -98,4 +110,11 @@ Regression
 - 状态：**Confirmed / Completed（Stage 1.5）**。本阶段完成 Router 架构决策沉淀；Router 尚未实现。
 - 内容：Router 作为 execution-complexity classifier / Planner gate；两路 Route（`standard_execution` / `planned_execution`）；两种 Route 进入同一个 Agent Runtime；Planner 为 planned path 提供 soft guidance；Runtime 注入 Router Context / Data Snapshot / Capability Summary；严格区分 Evidence dependency / Dependent semantic investigation 与普通 Retrieval / Synthesis；明确 Data Scope Size、Retrieval Volume、Tool Call Count 等 non-signals；Rule-first + LLM fallback；conservative default；Router failure graceful degradation；Router 与 Tool / Retrieval / Planner 的职责边界；Route Decision 的 Trace / Evaluation 语义；真实 Trivae seed workload；Planner Utility 优先于单独的 Route Classification Accuracy。
 - 记录位置：[technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)（详细 rationale），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：Stage 1.6 单独确定 Planner 的 Input、Plan Schema、步骤类型、重规划与执行语义；Stage 1.9 确定 Router Trace Schema；Stage 1.10 建立 Router Query Set、指标与参数校准方式。
+- 后续：Stage 1.6 已确认 Planner 的 Input、Plan Schema、步骤类型、重规划与执行语义；Stage 1.9 确定 Router Trace Schema；Stage 1.10 建立 Router Query Set、指标与参数校准方式。
+
+### Stage 1.6：Planner
+
+- 状态：**Confirmed / Completed（Stage 1.6）**。本阶段完成 Planner 架构决策沉淀；Planner 尚未实现。
+- 内容：Planner 定义为 Thin pre-execution investigation planner；只在 `planned_execution` 进入 Agent Runtime 前运行一次；`standard_execution` 与 `planned_execution` 使用同一个 Agent Runtime；Plan 是 soft investigation guidance，不是 Workflow；Planner Input 由 Runtime 注入 `user_query`、`query_context`、compact `data_snapshot` 与 `capability_summary`；第一版采用轻量 Plan Schema（version / title / intent / steps.goal / suggested_tools / evidence_needed / success_criteria）；suggested_tools 是 advisory hint，不生成 Tool Arguments；evidence_needed 不是 Stage 1.8 Evidence Object；Plan 经过 deterministic validation / sanitization；hallucinated Tool 被过滤；Plan bounded；Planner failure graceful degradation 且不重写 Router Decision；第一版不 automatic replan、不 Planner-owned state、不 Planner-specific retry / regeneration、不增加 LLM Plan Validator。
+- 记录位置：[technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
+- 后续：Stage 1.7 确定 Agent Loop / SDK / Runtime lifecycle；Stage 1.8 确定 Evidence / Citation；Stage 1.9 确定 Planner / Router / Agent Trace 与 Observability；Stage 1.10 建立 Planner Evaluation、质量 / 延迟 / Token / Tool Call 指标与参数校准方式。

@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer 与 Stage 1.5 Router 确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed（架构已沉淀，尚未实现）。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router 与 Stage 1.6 Planner 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed（架构已沉淀，尚未实现）。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed（架构已沉淀，尚未实现） |
+| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed（架构已沉淀，尚未实现） |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
@@ -71,7 +71,7 @@ Trivae
         -> Router
            ├── standard_execution ──────────────┐
            └── planned_execution                 │
-                  -> Planner -> soft guidance ──┘
+                  -> Planner -> validate / sanitize -> soft guidance ──┘
                                                   ▼
                                            Agent Runtime
                                                <-> Tool Layer
@@ -122,6 +122,7 @@ User Query + Runtime-injected Context
        ├── standard_execution ──────────────┐
        └── planned_execution                │
               -> Planner                    │
+              -> validate / sanitize       │
               -> soft execution guidance ──┘
                                              ▼
                                       Agent Runtime
@@ -990,7 +991,7 @@ User Query
                  Tools
 ```
 
-两种 Route 最终都进入同一个 Agent Runtime。Planner 输出的是高层、可被 Agent 参考的 soft guidance，而不是必须机械执行的 Workflow；具体 Planner Input、Plan Schema、步骤类型、重规划和执行语义留给 Stage 1.6。
+两种 Route 最终都进入同一个 Agent Runtime。Planner 输出的是高层、可被 Agent 参考的 soft guidance，而不是必须机械执行的 Workflow；Stage 1.6 已确认 Planner Input、Plan Schema、步骤类型、重规划和执行语义的概念边界，具体实现参数仍 Pending。
 
 ### Router Input
 
@@ -1177,7 +1178,447 @@ B: planned_execution  → Planner → Agent Runtime
 | RouteDecision 的具体 Python 类型、序列化与文件布局 | Pending Implementation |
 | Router Trace Event Schema、故障记录格式与指标命名 | Pending（Stage 1.9） |
 | Router Query Set、标签流程、准确率与校准方法 | Pending（Stage 1.10） |
-| Planner Input、Plan Schema、步骤类型、重规划与执行语义 | Pending（Stage 1.6） |
+| Planner 的 Python / JSON 实现、模型参数、具体 bounds 与 Runtime adapter | Pending（Stage 1.6 Implementation / Evaluation）；Planner 的概念 Input、Plan Schema、重规划与执行语义已确认 |
+
+## Stage 1.6: Planner
+
+> 本节为 Stage 1.6 已确认内容。Planner 是 **Thin pre-execution investigation planner**，只在 planned_execution 进入 Agent Runtime 前运行一次；它输出 soft investigation guidance，不拥有 Agent Loop、Tool Executor、Execution State 或 Automatic Replanning。详细 rationale、Trade-off、Failure Case 与 Reopen Conditions 见 [Stage 1.6 Planner ADR](./technical-decisions/stage-1-6-planner.md)。
+
+### 核心定位与执行链路
+
+ChatLab Planner 的主要执行链路为：
+
+~~~text
+User Query
+    ↓
+Router
+    ↓ planned_execution
+Planner LLM
+    ↓
+Structured Plan
+    ↓
+Validation / Sanitization
+    ↓
+Plan Guidance
+    ↓
+追加进入 Agent System Prompt
+    ↓
+原有 Agent Core
+    ↓
+Agent 自主调用 Tools
+~~~
+
+Trivae 第一版固定为：
+
+~~~text
+standard_execution
+    → Agent Runtime
+
+planned_execution
+    → Planner
+    → deterministic validation / sanitization
+    → soft guidance
+    → same Agent Runtime
+~~~
+
+两条 Route 最终进入同一个 Agent Runtime。Planner 不执行 Plan Step，不逐步驱动 Tool Calls，不维护 Step Execution State，也不在执行中自动重新规划。
+
+Planner 的职责可以概括为：
+
+~~~text
+Planner = Investigation Decomposition
+
+NOT
+
+Planner = Tool Execution Planner
+~~~
+
+第一版不引入 Workflow Engine、DAG Planner、Plan-and-Execute Framework、Step Executor、Planner Agent Loop、Automatic Replanner、Planner-owned State Machine、Planner Tool Calling 或 Planner-specific Retry Loop。
+
+### Planner 与 Agent Runtime 的职责边界
+
+| 模块 | 负责 | 不负责 |
+| --- | --- | --- |
+| Planner | 复杂调查目标、少量高层 investigation steps、每一步的调查问题、所需证据类型、可能有帮助的 capability、success criteria | Tool execution、具体参数、实时 Retrieval Strategy、Search Query、SQL、filters、top_k、rerank、Evidence Selection、Citation、Runtime Loop、Retry、Replanning |
+| Agent Runtime | 当前状态下是否调用 Tool、调用哪个 Tool、Tool 参数、Lexical / Semantic / Structured Retrieval 组合、SQL / Search Query、Context 获取、继续或停止调查、证据不足时的调整、是否偏离 Plan | 不把 Planner suggestion 当成 mandatory workflow；不改变已经发生的 Router Decision |
+| Tool / Capability Layer | 执行 Stage 1.4 已确认的搜索、上下文、成员、Schema 与只读 SQL 能力 | 不接受 Planner 对 Tool Arguments、执行顺序或底层 Retrieval 参数的绑定 |
+
+Plan 是静态的 soft execution / investigation guidance。Runtime 可以完全偏离 suggested tool 或原始 step 顺序；这不构成 Planner 失败。
+
+### Planner Input
+
+第一版 Planner Input 只在概念层确认：
+
+~~~text
+PlannerInput
+├── user_query
+├── query_context
+├── data_snapshot
+└── capability_summary
+~~~
+
+Input 由 Runtime 注入，Planner 不主动调用 Tool 获取上下文，也不通过 Tool Result 逐步完善 Plan。具体 Python class、字段类型、Pydantic Model、序列化格式和 package layout 保持 Pending。
+
+#### user_query
+
+Planner 必须获得足够理解当前请求真实会话语义的 contextualized request / conversation context，不能假设每条输入都是 standalone query：
+
+~~~text
+上一轮：分析过去一年大家对 Cursor 的讨论变化。
+当前：那 Claude Code 呢？
+~~~
+
+Stage 1.6 不冻结完整 history 注入、history window、conversation summarization、context compression 或 context token limit；这些属于后续 Context / Runtime 设计。
+
+#### query_context
+
+Query Context 表达当前请求要求系统在哪个查询范围内工作，概念上可能包括：
+
+~~~text
+当前 ChatSession
+用户指定的 session / sessions
+明确时间范围
+明确成员约束
+当前群 / 跨群范围
+timezone / current time 等与查询语义直接相关的信息
+~~~
+
+Query Context 继续与 Stage 1.4 的 Data Access Scope 分离：
+
+~~~text
+Query Context
+≠
+Data Access Scope
+~~~
+
+Query Context 是用户请求的查询条件；Data Access Scope 是所有 Tool 都不得突破的硬授权边界。Planner 可以理解 Query Context，但不能扩大、重写或替代 Runtime / Tool Layer 的 Data Access Scope，也不能把 Query-specific filter 误解为底层数据实际上只有这些内容。
+
+#### Compact data_snapshot
+
+Runtime 注入的 Compact Data Snapshot 只帮助 Planner 了解：
+
+~~~text
+有哪些数据
+数据覆盖哪里
+数据大概多大
+哪些能力当前可用
+~~~
+
+第一版概念上可以包括：
+
+~~~text
+session identity / metadata
+
+data coverage
+    first_message_time
+    last_message_time
+
+scale
+    message_count
+    member_count
+
+capability / index availability
+~~~
+
+例如 semantic index 当前不可用时，Planner 可以避免把 semantic_search 作为主要 suggested tool。Data Snapshot 必须保持 Compact，第一版不默认注入热门成员排名、热门关键词、主题统计、大量 segment summaries、大量聊天正文、预计算影响力判断或预计算语义结论，以减少 Planning Anchoring。是否加入更多 analytical hints 保持 Pending Evaluation。
+
+#### capability_summary
+
+Planner 只需要能力的 name、purpose、important constraints 与 availability，不需要完整 Tool JSON Schema、全部参数说明、SQL Manual 或完整错误码。第一版 capability summary 应覆盖 Stage 1.4 已确认的 Tool Surface：
+
+~~~text
+lexical_search
+    明确关键词、实体、术语查找
+    Search Result 默认带 bounded local context
+
+semantic_search
+    conversation-oriented semantic retrieval
+    Search Result 默认带 bounded local context
+
+get_message_context
+    对已知稳定 message_id 做进一步上下文恢复
+
+find_members
+    返回成员候选与匹配依据，不保证唯一解析
+
+get_schema
+    获取真实 SQLite Physical Query Schema
+
+execute_sql
+    bounded read-only deterministic query / aggregation
+    不承担 semantic classification
+~~~
+
+#### 不属于 Planner Input 的内容
+
+第一版不把以下内容注入 Planner：
+
+~~~text
+Router diagnostic reason
+大量聊天正文
+Retrieval Result
+Tool Result
+Agent intermediate state
+Evidence Object
+Citation State
+~~~
+
+Router 的 route、confidence、reason、source 是诊断 / Trace 信息。Planner 被调用时只需通过 invocation boundary 知道当前处于 planned path，不把 Router reason 当成业务输入，以避免 semantic anchoring。Planner 第一版不能调用 Tool，也不能观察 Tool Result。
+
+### Plan Schema
+
+第一版只冻结以下概念结构，不冻结 Python / JSON 具体格式：
+
+~~~text
+Plan
+├── version
+├── title
+├── intent
+├── steps[]
+│   ├── goal
+│   ├── suggested_tools[]
+│   └── evidence_needed
+└── success_criteria[]
+~~~
+
+- version：保留 Schema version，概念版本为 1，不设计 migration framework。
+- title：简短标题，用于理解、Debug、Trace 和未来可能的 UI，不参与执行决策。
+- intent：保留 ChatLab baseline taxonomy：summary、trend、relationship、search、comparison、evidence、mixed。它是 descriptive metadata，不是第二个 Router，不能绑定固定 Tool 或 Retrieval。
+- steps[].goal：描述调查子问题或认知结果，必须 outcome-oriented / investigation-oriented，不能写成 Tool Invocation。
+- steps[].suggested_tools[]：advisory metadata / capability hint，不是 required_tools、selected_tools 或 tool_calls；可以建议 available Tool，但不能生成 query、top_k、filters、SQL 等 Tool Arguments。Runtime 可以完全偏离。
+- steps[].evidence_needed：描述形成可靠判断所需的证据类型，是 evidence requirement / guidance；实际 Evidence Object、Selection、Status 与 Citation 留给 Stage 1.8。
+- success_criteria[]：给 Runtime 的自然语言 soft completion guidance，不是 machine-enforced hard predicate，不冻结 Evidence 数量、confidence 或每时间段消息数量。
+
+第一版不加入：
+
+~~~text
+step_id
+depends_on
+condition
+branch
+status
+priority
+expected_output
+intermediate_result
+step_result
+tool_arguments
+search_query
+SQL
+filters
+top_k
+rerank parameters
+retry
+timeout
+fallback
+replan_policy
+~~~
+
+即使请求存在依赖，也通过 steps 顺序与 goal 自然语言表达。Planner 不维护 pending、executing、done、failed、skipped 等 Step Execution State；未来是否执行、跳过或偏离由 Stage 1.9 Trace / Observability 观察。
+
+### No Automatic Replanning
+
+第一版明确：
+
+~~~text
+No automatic replanning.
+~~~
+
+Planner 只运行一次。原 Plan 假设错误、调查方向没有数据、suggested tool 不适合或新证据改变方向时，Agent Runtime 可以直接偏离 Plan，不需要再次调用 Planner。只有未来 Evaluation 证明 Initial Plan anchoring 稳定造成遗漏，才重新评估 Replanning。
+
+### Planner Validation
+
+LLM 输出必须经过 deterministic validation 后才能进入 Runtime：
+
+~~~text
+Planner LLM Raw Output
+        ↓
+Parse
+        ↓
+Structural Validation
+        ↓
+Sanitization / Bounding
+        ↓
+Validated Plan
+        ↓
+Plan Guidance
+        ↓
+Agent Runtime
+~~~
+
+概念上的 Structural Validation 至少保证：
+
+~~~text
+version 合法
+title 有效
+intent 属于允许 taxonomy
+steps 是非空集合
+每个有效 step 存在 goal
+每个有效 step 存在 evidence_needed
+suggested_tools 结构合法
+success_criteria 存在有效内容
+~~~
+
+允许的 Sanitization 仅限轻量、确定性、可解释的修正：
+
+~~~text
+过滤不存在 / 不可用 Tool
+去重 suggested_tools
+限制 Steps 数量
+限制 Success Criteria 数量
+限制字段大小
+~~~
+
+核心结构错误应标记为 invalid，不设计复杂的模型输出修复兼容逻辑。Plan size 必须 bounded，但 exact limits 保持：
+
+~~~text
+Pending Evaluation / Implementation calibration
+~~~
+
+不存在或不可用的 suggested tool 被过滤，不因此让整个 Plan 失败。若某 Step 的全部建议都被过滤，只要 goal 与 evidence_needed 合法，该 Step 仍可保留并以 suggested_tools = [] 存在。
+
+第一版不增加 Online LLM Plan Validator；Schema、Tool availability 与 bounds 由 deterministic validator 负责，Plan Quality 留给 Stage 1.10 Evaluation。
+
+Validator 不验证 Plan 的事实正确性：它不判断调查假设是否正确、某个时间段实际上有没有聊天、某个人是不是主要影响者，或某个 Tool 是否最终真的能找到证据。Compact Data Snapshot 只能帮助减少明显错误，不能保证 epistemic correctness；Agent Runtime 仍可根据实际证据偏离 Plan。
+
+### Planner Failure Contract
+
+Planner 是 execution optimization / guidance layer，不是 request availability dependency。只要用户没有 abort 且 Agent Runtime 可用，无论 Planner 是否成功，都必须继续进入 Agent Runtime：
+
+~~~text
+planned_execution
+        ↓
+     Planner
+     /     \
+ success   failure
+    |         |
+ guidance    |
+    |         |
+    └────┬────┘
+         ↓
+    Agent Runtime
+~~~
+
+第一版在语义上区分：
+
+~~~text
+generation_error
+timeout
+invalid_output
+unavailable
+aborted
+~~~
+
+具体 event names、fields、metrics、storage 与 error schema 留给 Stage 1.9。Planner Failure 不重写 Router Decision：
+
+~~~text
+route = planned_execution
+planner = failed
+runtime = executed_without_plan
+~~~
+
+这不是把 Route 改成 standard_execution；Router Decision 是已发生的事实，Planner Failure 是后续 degradation。
+
+第一版没有 Planner-specific retry / regeneration contract。Planner failure 或 invalid Plan 直接 skip Plan；不增加“retry Planner → fallback smaller model → regenerate”的 Online Loop。通用 SDK / Provider transient retry 若未来存在，属于 Agent Runtime / Provider 层机制，不属于 Stage 1.6 policy。
+
+### ChatLab Baseline and Recorded Differences
+
+继承 ChatLab 的部分：
+
+~~~text
+pre-execution planner
+structured plan
+bounded plan
+available tool filtering
+invalid plan graceful skip
+soft guidance injection
+same Agent Runtime
+~~~
+
+不机械继承 ChatLab-specific Prompt / Tool heuristic：
+
+~~~text
+retrieve_chat_evidence
+segment summaries
+chart generation
+specific specialized analysis tools
+ChatLab-specific evidence planning heuristics
+~~~
+
+原因是 Trivae Stage 1.4 已确认的 Tool Surface 不同：
+
+~~~text
+lexical_search
+semantic_search
+get_message_context
+find_members
+get_schema
+execute_sql
+~~~
+
+继承 Planner architecture 不等于复制 ChatLab Planner Prompt 的全部业务经验。Trivae-specific heuristic 必须由真实 workload、Failure Case 或 Evaluation 驱动；否则保持 Pending architecture specification。
+
+### Stage 1.6 Confirmed Decisions
+
+| # | 决策 |
+| --- | --- |
+| 1 | **Thin pre-execution Planner**：Planner 只在 planned_execution 进入 Agent Runtime 前执行一次，不拥有 Agent Loop 或执行器。 |
+| 2 | **Same Agent Runtime**：两种 Route 最终进入同一个 Agent Runtime。 |
+| 3 | **Soft guidance**：Plan 是 investigation guidance，不是 mandatory workflow；Runtime 可以根据证据偏离。 |
+| 4 | **Runtime-injected Planner Input**：Input 为 user_query、query_context、compact data_snapshot、capability_summary。 |
+| 5 | **Compact Data Snapshot**：主要表达 coverage、scale、availability、basic environment metadata；更多 hints Pending Evaluation。 |
+| 6 | **Capability Summary instead of full Tool Manual**：提供 purpose、重要 constraints、availability；完整 Tool Schema 留给 Runtime。 |
+| 7 | **Lightweight Plan Schema**：version、title、intent、steps[].goal、steps[].suggested_tools、steps[].evidence_needed、success_criteria。 |
+| 8 | **Intent is descriptive metadata**：保留 ChatLab taxonomy，不绑定 Route、Tool 或 Retrieval。 |
+| 9 | **Outcome-oriented Plan Step**：goal 描述调查问题 / 结果，不描述 Tool Invocation。 |
+| 10 | **suggested_tools is advisory**：只是 capability hint；Runtime 不受约束；不生成 Tool Arguments。 |
+| 11 | **evidence_needed is requirement, not Evidence Object**：实际 Evidence / Citation 留给 Stage 1.8。 |
+| 12 | **No workflow fields in v1**：不增加 step_id、depends_on、condition、branch、status、expected_output、intermediate_result、retry、fallback、tool_arguments 等字段。 |
+| 13 | **No Planner-owned execution state**：不维护 step status 或 state machine。 |
+| 14 | **No automatic replanning in v1**：Planner 只运行一次，Runtime 自主调整。 |
+| 15 | **Deterministic validation**：经过 parse、structural validation、bounded sanitization 后才注入 Runtime。 |
+| 16 | **Hallucinated Tool filtering**：不存在或不可用的 suggested tool 被过滤，不使整个 Plan 失败。 |
+| 17 | **Bounded Plan**：Steps、Criteria 与字段规模 bounded，具体 limit Pending Evaluation。 |
+| 18 | **No online LLM Plan Validator**：不增加第二个 LLM Validator，质量由 Stage 1.10 Evaluation 判断。 |
+| 19 | **Planner failure graceful degradation**：Planner failure / timeout / invalid output / unavailable 不阻塞 Runtime。 |
+| 20 | **Do not rewrite Router Decision after Planner failure**：保留 planned route、planner failure 与 runtime executed_without_plan 的归因。 |
+| 21 | **No Planner-specific retry / regeneration in v1**：失败或 invalid Plan 直接 skip，未来由 Evaluation 重新评估。 |
+
+### Stage 1.6 Pending
+
+以下不在本阶段冻结：
+
+~~~text
+Planner 具体 Python class / package layout
+具体 Planner Model
+具体 Prompt
+Structured Output 技术
+temperature
+max tokens
+timeout
+具体 max steps
+具体 max success criteria
+具体字段长度 limit
+具体 DataSnapshot schema
+Conversation Context 压缩方式
+History window
+Planner Trace Schema
+Planner metrics
+Planner Evaluation Dataset
+Planner latency threshold
+Planner cost budget
+是否未来需要 replan
+是否未来需要 step-level execution trace
+是否需要更多 intent 类型
+~~~
+
+对应的后续边界为：
+
+~~~text
+Agent Loop / SDK / Runtime lifecycle → Stage 1.7
+Evidence / Citation → Stage 1.8
+Trace / Observability → Stage 1.9
+Evaluation / parameter calibration → Stage 1.10
+~~~
 
 ## Module Boundaries
 
@@ -1203,28 +1644,34 @@ B: planned_execution  → Planner → Agent Runtime
 
 ### Planner
 
-**Responsibility**：将复杂请求拆分为调查目标，为 Agent 提供软指导。
+**Responsibility**：作为 **Thin pre-execution investigation planner**，将复杂请求拆分为少量高层调查目标，为同一个 Agent Runtime 提供 soft execution / investigation guidance。
 
 **Does**：
 
-- 仅在复杂请求路径中参与。
-- 输出调查目标、阶段性问题或高层计划。
-- 计划作为 Agent 的 soft guidance，而非强制执行图。
+- 仅在 `planned_execution` 进入 Agent Runtime 前运行一次。
+- 接收 Runtime 注入的 `user_query`、`query_context`、compact `data_snapshot` 与 `capability_summary`。
+- 输出 outcome-oriented 的调查目标、阶段性问题、evidence requirement、advisory `suggested_tools` 与自然语言 `success_criteria`。
+- 对 LLM Plan 执行 deterministic parse、structural validation、bounded sanitization 与 hallucinated Tool filtering。
+- 在 Plan 有效时追加 soft Plan Guidance；在失败时让 Agent Runtime 无 Plan 继续执行。
 
 **Does not**：
 
-- 不编排底层 Tool 调用流程。
-- 不输出固定的 `vector_search`、`rerank`、SQL 等低层执行步骤。
-- 不替代 Agent Runtime 的执行与状态管理。
+- 不拥有 Agent Loop、Step Executor、Planner Tool Calling 或 Planner-owned State Machine。
+- 不编排底层 Tool 调用流程，不输出 Tool Arguments、Search Query、SQL、filters、top_k、rerank 或 Context Expansion 参数。
+- 不选择实时 Retrieval Strategy，不执行 Evidence Selection / Citation。
+- 不维护 Step Execution State，不 Retry，不 Automatic Replanning。
+- 不把 `suggested_tools` 变成 Runtime 的 required tools；Agent 可以完全偏离 Plan。
 
-Planner 的具体 Input、Schema、步骤类型、suggested tools、步骤上限、重规划与失败处理属于 Stage 1.6，当前不提前确定。
+Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stage-16-planner)；Python class、模型、Prompt、具体 bounds、Trace 与 Evaluation 仍 Pending。
 
 ### Agent Runtime
 
-**Responsibility**：承载查询执行循环，并协调 Planner 指导与 Tool Layer。
+**Responsibility**：承载查询执行循环，并在可用时参考 Planner guidance，继续拥有 Tool Selection 与执行自治。
 
 - 通用 Agent Loop、Tool Execution、Streaming、Run Lifecycle 和基础 Tracing 优先复用成熟 Agent SDK。
 - Trivae 保留薄适配层，负责 Trivae 领域契约与 SDK 之间的映射。
+- Runtime 决定是否调用 Tool、调用哪个 Tool、Tool 参数、Retrieval 组合、Search Query / SQL、Context 恢复、是否继续调查、何时停止，以及是否偏离 Plan。
+- Planner failure、invalid Plan 或 unavailable Planner 不得阻断 Runtime；planned route 的 Router Decision 仍保留为已发生事实。
 - Router、Planner、Retrieval、Evidence 等业务逻辑不下沉到 SDK，也不隐藏在 Runtime 适配层中。
 - Python 侧当前以 OpenAI Agents SDK 作为映射方向；具体依赖版本、适配契约和生命周期边界在 Stage 1.7 确认。
 
@@ -1282,6 +1729,8 @@ Retrieval Query
 Observability 与 Trace 横切 Query Plane，目标是支持 Failure Attribution。一次查询最终应能区分 Router、Planner、Agent、Tool、Retrieval、Evidence 和 Answer 等阶段的中间状态与结果。
 
 Stage 1.4 补充了 Tool 层内部可观测性要求：Tool 可以组合多个 Capability，但组合不得隐藏执行状态——一次 Tool Call 内部应能区分 Retrieval 未召回、Context Expansion 范围不合适、Agent 分析错误；Semantic 不可用时不得 silent fallback 为 Lexical 并返回普通结果。统一 Envelope 明确区分 zero hits / capability unavailable / invalid arguments / execution failure / partial / truncated，其中 Truncation 与 Partial Execution 保持独立。
+
+Stage 1.6 补充了 Planner 的 Failure Attribution 语义：generation_error、timeout、invalid_output、unavailable、aborted 等 Planner failure 不得静默压成 no plan；planned_execution 的 Router Decision 仍保留，Runtime 可以记录为 executed_without_plan。Plan 是否被执行、跳过或偏离只作为未来 Trace 的观察内容，不由 Planner 维护状态。
 
 当前只确认逻辑覆盖范围，不确认具体 Trace Schema、存储、采集方式或指标命名。
 
@@ -1365,7 +1814,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 1. **Router 是 execution-complexity classifier / Planner gate**：只判断当前请求是否值得在进入 Agent Runtime 前先经过 Planner。
 2. **两路 Route taxonomy**：Trivae 只保留 `standard_execution` 与 `planned_execution`；ChatLab 的 `direct_response` 与 `tool_assisted` 不作为 Trivae 独立 Route。
 3. **同一个 Agent Runtime**：两种 Route 最终都进入同一个 Agent Runtime；只有 `planned_execution` 额外经过 Planner。
-4. **Planner 是 soft guidance**：Planner 不接管 Agent Loop，不生成必须机械执行的 Workflow；具体 Planner Contract 留给 Stage 1.6。
+4. **Planner 是 soft guidance**：Planner 不接管 Agent Loop，不生成必须机械执行的 Workflow；Stage 1.6 已确认 Planner Contract 的概念边界，具体实现仍 Pending。
 5. **任务结构优先**：Route 判断关注 Multi-goal、Dependency、Temporal reasoning、Evidence dependency / cross-stage validation、Dependent semantic investigation、Recovery 等 Planning Value 维度；多条 Evidence、Semantic Synthesis、长时间范围、跨群或 Tool Call 数量本身不决定 Route。
 6. **Rule-first + LLM fallback**：明显请求由规则处理，ambiguous case 才使用 LLM Router；具体规则、模型、prompt、timeout 与阈值保持 Pending。
 7. **Conservative default**：无法明确证明 Planner 有价值时使用 `standard_execution`；Planner invocation must earn its invocation。
@@ -1374,7 +1823,31 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 10. **Route Decision 可 Trace / Evaluate**：语义字段为 `route`、`confidence`、`reason`、`source`；`reason` 不承载 Chain-of-Thought。
 11. **Router 不越界**：不选择 Tool、Lexical / Semantic / Hybrid Retrieval、SQL、filters、Top-K、Rerank、Plan Steps 或 Evidence Requirements。
 
-## ChatLab Baseline and Recorded Differences
+### Stage 1.6：Planner
+
+1. **Thin pre-execution Planner**：Planner 仅在 planned_execution 路径进入 Agent Runtime 前执行一次，不拥有 Agent Loop、Step Executor 或 Tool Calling。
+2. **Same Agent Runtime**：standard_execution 与 planned_execution 最终进入同一个 Agent Runtime。
+3. **Soft guidance**：Plan 是 investigation guidance，不是 mandatory workflow；Runtime 可以根据实际证据和 Tool Result 偏离。
+4. **Runtime-injected Planner Input**：PlannerInput 概念上为 user_query、query_context、data_snapshot、capability_summary。
+5. **Contextualized request**：user_query 必须足够表达当前会话语义；history window、summarization、compression 与 token limit 保持 Pending。
+6. **Query Context / Data Access Scope 分离**：query_context 是查询条件，Data Access Scope 仍是 Tool Layer 的硬授权边界。
+7. **Compact Data Snapshot**：主要表达 coverage、scale、availability 与 basic environment metadata；更多 analytical hints Pending Evaluation。
+8. **Capability Summary**：提供 6 个 Tool / Capability 的 purpose、重要 constraint 与 availability，不复制完整 Tool Manual。
+9. **Planner Input exclusions**：不注入 Router diagnostic reason、大量聊天正文、Retrieval Result、Tool Result、Agent intermediate state、Evidence Object 或 Citation State。
+10. **Lightweight Plan Schema**：概念字段为 version、title、intent、steps[].goal、steps[].suggested_tools、steps[].evidence_needed、success_criteria。
+11. **Intent is descriptive metadata**：保留 ChatLab taxonomy summary / trend / relationship / search / comparison / evidence / mixed，不绑定 Route、Tool 或 Retrieval。
+12. **Outcome-oriented Plan Step**：goal 描述调查问题或认知结果，不描述 Tool Invocation。
+13. **suggested_tools is advisory**：只是 capability hint，Runtime 不受约束，Planner 不生成 Tool Arguments。
+14. **evidence_needed is requirement**：描述所需证据类型，不定义 Stage 1.8 Evidence Object、Status 或 Citation。
+15. **Soft success criteria**：success_criteria 是自然语言完成指导，不是 machine-enforced hard predicate。
+16. **No workflow fields / execution state**：不增加 step_id、depends_on、condition、branch、status、retry、fallback、Tool Arguments 等字段；Planner 不拥有 state machine。
+17. **No automatic replanning**：Planner 只运行一次，Runtime 自主偏离或调整。
+18. **Deterministic validation**：LLM 输出必须经过 parse、structural validation、bounded sanitization 后才能注入 Runtime。
+19. **Hallucinated Tool filtering**：不存在或不可用的 suggested Tool 被过滤，不使整个 Plan 失败；所有建议被过滤时，合法 Step 仍可保留。
+20. **Bounded Plan / no LLM validator**：Plan 必须 bounded；具体 limit Pending Evaluation / Implementation，Plan Quality 留给 Stage 1.10，不增加第二个 LLM Validator。
+21. **Planner failure graceful degradation**：Planner failure、timeout、invalid output、unavailable、aborted 等不阻塞可用 Agent Runtime；不重试、不再生成、不重写原 Router Decision。
+
+详细 rationale 与 trade-off 见 [technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)。
 
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
@@ -1386,6 +1859,10 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Stage 1.4 已沿用 ChatLab 的消息搜索自动 bounded context、Physical SQLite Schema + read-only SQL 等设计，并确认 Trivae 第一版 6 个 Tool 的 Agent-facing Surface。Trivae 不机械复制 ChatLab 的大量 Specialized Analysis Tools；该偏离以 `get_schema + execute_sql` 可覆盖确定性分析为当前约束，是否新增由 Evaluation 验证。
 - ChatLab 的 `search_messages` 命中后自动扩展前后 context 是 Trivae "Search 默认带 bounded context" 决策的参考；其默认窗口参数（如 `before = 2 / after = 2`）不自动继承，由 Trivae 的 Evaluation Set 决定。
 - ChatLab 的固定关键词 Evidence 判断方案（计划词 / 实际发生词 → included / excluded / uncertain）不复制到 Trivae；Evidence Judge 围绕 Question-specific Criteria 设计。
+- Stage 1.6 继承 ChatLab Planner 的 pre-execution planner、structured plan、bounded plan、available Tool filtering、invalid plan graceful skip、soft guidance injection 与 same Agent Runtime 架构。
+- ChatLab Planner 的具体步骤上限、字段长度、模型参数与 Prompt 不自动继承到 Trivae；Plan size exact limits 保持 Pending Evaluation / Implementation calibration。
+- ChatLab Prompt 中的 `retrieve_chat_evidence`、segment summaries、chart generation、specific specialized analysis tools 与 ChatLab-specific evidence planning heuristics 不机械复制；Trivae 只按 Stage 1.4 已确认的 6 个 Tool / Capability 设计高层 summary。
+- 继承 Planner architecture 不等于复制 ChatLab Planner Prompt 的全部业务经验；Trivae-specific heuristic 必须由真实 workload、Failure Case 或 Evaluation 驱动。
 - OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向；具体版本、集成方式和适配契约仍需在 Stage 1.7 验证。
 
 ## Pending Decisions
@@ -1409,7 +1886,13 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Router 具体规则 / regex、复杂度权重、confidence threshold、LLM 模型 / prompt / timeout、Python 类型与文件布局（Stage 1.5 已确认语义，具体实现保持 Pending）
 - Router Trace Event Schema、故障记录格式与指标命名（Stage 1.9）
 - Router Query Set、标签流程、accuracy / error rate 口径与参数校准方式（Stage 1.10）
-- Planner Schema、步骤上限、校验和执行约束
+- Planner 的具体 Python class / package layout、Model、Prompt、Structured Output 技术、temperature、max tokens、timeout
+- Plan 的具体 Python / JSON Schema、validator library、字段类型与序列化；概念字段与语义已由 Stage 1.6 确认
+- Plan 的具体 max steps、max success criteria、字段长度 limit 与其他 bounded 参数（Pending Evaluation / Implementation calibration）
+- Compact DataSnapshot 的完整 Schema、Conversation Context 的 history window / summarization / compression / token 控制
+- Planner Trace Schema、failure event names / fields / storage 与 Planner metrics（Stage 1.9）
+- Planner Evaluation Dataset、latency threshold、cost budget、bounds calibration、是否需要更多 intent 类型与未来是否需要 replan（Stage 1.10）
+- 是否需要 step-level execution trace（Stage 1.9）
 - Agent Runtime 的具体 SDK 版本、Adapter 契约、Session、Streaming、Abort 与 Run Lifecycle 细节
 - Evidence / Citation model、证据状态、来源字段与引用格式（Stage 1.8）
 - Evaluation Set、指标口径、Evaluation architecture 与 Regression 执行方式
@@ -1422,7 +1905,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 
 ## Evolution Rule
 
-- Stage 1.5-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.6-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 
