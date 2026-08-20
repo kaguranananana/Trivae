@@ -25,11 +25,25 @@
 - 将 Data Plane 与 Query Plane 解耦：Query Plane 不绕过 Tool Layer 访问 Data Plane，也不依赖 Source-specific 原始格式。第一版 Structured Retrieval 是明确例外——`get_schema / execute_sql` 在 Tool Contract 内有意暴露 SQLite Physical Query Schema。
 - 为后续 Trace、Evaluation 和 Failure Attribution 保留清晰的阶段边界。
 
-## Architecture Decision Governance
+## Architecture Governance
 
-### ChatLab First Principle
+### Architecture Principle: ChatLab as Reference Implementation
 
-ChatLab 是 Trivae 的主要参考基线。对于 ChatLab 已存在且适用于 Trivae 的架构设计，默认采用原方案。偏离必须记录 ChatLab 方案不适用的原因、具体 Failure Case / Evaluation / 技术约束、新方案收益、新增复杂度与风险，以及验证方法。
+ChatLab 是 Trivae 的主要 reference implementation（参考实现）。本原则适用于整个项目、所有架构层级和后续各 Stage，不只适用于 Tool / Capability Layer。对于 ChatLab 已有、经过实际运行验证且适用于 Trivae 的设计，默认继承原方案，而不是重新设计。
+
+这里的“默认继承”是架构治理规则，不是对 ChatLab 的逐字复制，也不意味着自动继承未经验证的参数、实现细节或与 Trivae 约束无关的行为。首先应判断 ChatLab 设计是否真的适用于当前问题；若适用，重新设计必须有证据，而不是从偏好出发。
+
+任何偏离 ChatLab 基线的架构变化，都必须在决策记录中说明：
+
+1. ChatLab 方案的具体范围，以及它为什么不适用于 Trivae；
+2. 触发偏离的具体 Failure Case、技术约束或 Evaluation 结果（必要时包括新的业务需求）；
+3. 新方案相对原方案带来的收益；
+4. 新增的复杂度、维护成本和风险；
+5. 验证新方案有效性的 Test / Evaluation 方法、指标和退出条件。
+
+“更简单”“更优雅”“感觉可以重新抽象”“LLM 能力更强”“可以少一个 Tool”等主观判断，不足以推翻已有设计。
+
+该原则不认为 ChatLab 永远正确，也不禁止基于证据的架构变化。当 ChatLab 方案与 Trivae 的真实 Failure Case、技术约束、Evaluation 结果或业务需求冲突时，可以偏离或重新打开已有决策；但变化必须由可观察、可复现、可验证的证据驱动，而不是由个人偏好驱动。
 
 架构决策分为三种状态：
 

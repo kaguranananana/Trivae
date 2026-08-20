@@ -39,9 +39,7 @@ Regression
 
 ## 来源分级
 
-- **ChatLab First Principle**：ChatLab 是 Trivae 的主要参考基线。ChatLab 已存在且适用于 Trivae 的架构设计默认采用原方案，不因主观偏好重新设计。
-- 任何偏离 ChatLab 的设计都必须记录：原方案不适用的原因、具体业务问题 / Failure Case / Evaluation / 技术约束、新方案收益、新增复杂度与风险，以及验证方法。
-- “感觉可以更简单”“感觉可以少一个 Tool”“LLM 现在能力很强”“可以封装起来”“代码看起来更优雅”不足以改变 Confirmed 决策。
+- **项目级 Architecture Principle：ChatLab 作为 Reference Implementation**：ChatLab 是 Trivae 的主要参考实现，适用设计默认继承；全项目的适用性判断、偏离记录要求和证据门槛统一见 [Architecture Governance](./architecture.md#architecture-principle-chatlab-as-reference-implementation)。
 - 对其他框架、开源项目或未经验证的默认值，仍视为 **Initial hypothesis / reference design**；应通过项目约束、Prototype、Test、Benchmark、Evaluation 或真实 Failure Case 确认。
 
 ## 决策状态与重新打开规则
@@ -91,6 +89,6 @@ Regression
 ### Stage 1.4：Tool / Capability Layer
 
 - 状态：**Confirmed / Completed（Stage 1.4）**。具体 bounded 参数仍 Pending Evaluation，但不影响本阶段架构完成状态。
-- 内容：ChatLab First Principle；Tool 与 Capability 分离且可组合；第一版 6 个 Tool（`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`）；Message Search 默认 bounded context；稳定 `message_id` 深度扩展；Data Access Scope 约束所有 Tool（包括 `execute_sql`），Query Context / Query-specific Filters 不自动等同于权限边界；Member Lookup 返回候选；第一版 structured / canonical persistent store 采用 SQLite，直接暴露 Physical Query Schema + bounded read-only SQL，且 bounded 不要求 Agent SQL 自带 `LIMIT`；统一 Search Result / Tool Envelope 语义契约但不冻结实现 Schema；禁止 silent fallback；第一版不引入 Analysis View、Candidate State、Hybrid / Universal / Evidence Tool 或大量 Specialized Analysis Tools。
+- 内容：遵循项目级 ChatLab Reference Implementation Architecture Principle；Tool 与 Capability 分离且可组合；第一版 6 个 Tool（`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql`）；Message Search 默认 bounded context；稳定 `message_id` 深度扩展；Data Access Scope 约束所有 Tool（包括 `execute_sql`），Query Context / Query-specific Filters 不自动等同于权限边界；Member Lookup 返回候选；第一版 structured / canonical persistent store 采用 SQLite，直接暴露 Physical Query Schema + bounded read-only SQL，且 bounded 不要求 Agent SQL 自带 `LIMIT`；统一 Search Result / Tool Envelope 语义契约但不冻结实现 Schema；禁止 silent fallback；第一版不引入 Analysis View、Candidate State、Hybrid / Universal / Evidence Tool 或大量 Specialized Analysis Tools。
 - 记录位置：[technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)（详细 rationale），[architecture.md](./architecture.md)（整体视图）。
 - 后续：Stage 1.5 尚未开始；Stage 1.4 的经验参数由后续 Evaluation 校准，重新打开 Confirmed 决策必须记录 Reopen Reason。

@@ -6,42 +6,9 @@
 
 ---
 
-## 0. Architecture Decision：ChatLab First Principle
+## 0. Architecture Governance
 
-**Context**：ChatLab 是 Trivae 的主要参考基线，已经落地了 Agent Tool Surface、消息检索、SQLite 结构化查询等关键设计，为 Trivae 提供成熟的 reference implementation。若没有证据就重新设计同类能力，既会增加讨论成本，也会引入未经验证的复杂度。
-
-**Decision**：对于 ChatLab 已存在且适用于 Trivae 的架构设计，默认采用原方案。任何偏离都必须明确记录：
-
-1. ChatLab 方案为什么不适用于 Trivae；
-2. 遇到的具体业务问题、Failure Case、Evaluation 结果或技术约束；
-3. 新方案相对原方案的收益；
-4. 新增的复杂度与风险；
-5. 验证偏离是否有效的 Evaluation 方法。
-
-以下理由不足以改变已确认设计：
-
-- “感觉可以更简单”；
-- “感觉可以少一个 Tool”；
-- “LLM 现在能力很强”；
-- “可以封装起来”；
-- “代码看起来更优雅”。
-
-**Reason**：把 ChatLab 作为默认基线，可以让 Trivae 优先复用已经真实实现并运行的设计；这不代表 ChatLab 方案天然是 Trivae 的最优解，偏离仍必须由可观察的问题和 Trivae 自身 Evaluation 驱动，而不是由偏好驱动。
-
-**Trade-off**：Trivae 不会为追求表面上的独特性而自由重构基线；换取决策连续性、较低的不确定性和明确的验证责任。
-
-### 决策状态
-
-- **Confirmed**：已经完成决策，默认冻结；后续讨论主要用于解释与理解，不直接重新设计。
-- **Pending**：尚未决定，可以继续比较方案。
-- **Experimental**：明确偏离已有方案，必须通过实验或 Evaluation 验证，尚不能视为稳定架构事实。
-
-重新打开 Confirmed 决策必须记录 **Reopen Reason**，且至少由以下一种新证据触发：
-
-- 新 Failure Case；
-- 新技术约束；
-- 新 Evaluation 结果；
-- 新业务需求。
+Stage 1.4 遵循项目级 [Architecture Principle: ChatLab as Reference Implementation](../architecture.md#architecture-principle-chatlab-as-reference-implementation)。该原则适用于整个 Trivae 架构；本 ADR 从下一节开始记录 Tool / Capability Layer 的具体决策、理由、边界、Trade-off、Failure Case 与重新打开条件，不在此重复定义项目级治理原则。
 
 ## 1. Tool 与 Capability 分离
 
@@ -427,7 +394,7 @@ retrieve_evidence
 
 | 项目 | 决策 |
 | --- | --- |
-| 架构治理 | ChatLab First Principle；偏离必须有问题、收益、复杂度、风险与 Evaluation 记录 |
+| 架构治理 | 遵循项目级 ChatLab Reference Implementation Architecture Principle；偏离按项目级原则记录证据与验证要求 |
 | Tool / Capability | 分离；Tool 可以组合多个 Capability |
 | 第一版 Tool Surface | `lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` |
 | Message Search | 默认附带 bounded local context；内部 Retrieval / Expansion 独立可观测 |
