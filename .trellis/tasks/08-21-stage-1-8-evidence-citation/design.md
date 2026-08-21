@@ -320,4 +320,3 @@ Sources
 - Trace Event / metrics / storage（Stage 1.9）
 - semantic entailment、sufficiency、citation precision / recall Evaluation（Stage 1.10）
 - citation repair、minimum-citation gate 与 Evidence-aware stopping 参数（Stage 1.10）
-

@@ -64,4 +64,3 @@ rg -n "retrieve_evidence|included / excluded / uncertain|Runtime-owned Evidence"
 - ChatLab 继承 / 偏离均有 commit 与代码路径证据。
 - `task.py validate`、diff check、链接 / 术语检查与 `trellis-check` 通过。
 - 质量审查完成后再进入 spec update、commit 与 `trellis-finish-work`。
-
