@@ -1,7 +1,7 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)；Stage 1.4 的关键决策记录于 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)；Stage 1.5 的关键决策记录于 [technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)；Stage 1.6 的关键决策记录于 [technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)。
+> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2 的关键决策记录于 [technical-decisions/stage-1-2-data-model-ingestion.md](./technical-decisions/stage-1-2-data-model-ingestion.md)；Stage 1.3 的关键决策记录于 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)；Stage 1.4 的关键决策记录于 [technical-decisions/stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md)；Stage 1.5 的关键决策记录于 [technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)；Stage 1.6 的关键决策记录于 [technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)；Stage 1.7 的关键决策记录于 [technical-decisions/stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)。
 
 ---
 
@@ -18,8 +18,9 @@
 | Stage 1.4 | Confirmed / Completed | Tool / Capability Layer | [stage-1-4-tool-capability-layer.md](./technical-decisions/stage-1-4-tool-capability-layer.md) |
 | Stage 1.5 | Confirmed / Completed | Router 与 Planner gating | [stage-1-5-router.md](./technical-decisions/stage-1-5-router.md) |
 | Stage 1.6 | Confirmed / Completed | Thin pre-execution investigation planner | [stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md) |
+| Stage 1.7 | Confirmed / Completed | Agent Loop · SDK · Runtime lifecycle | [stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md) |
 
-Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)，Stage 1.7 及之后尚未标记完成。
+Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)，Stage 1.8 及之后尚未标记完成。
 
 ## 决策问题链
 
@@ -117,4 +118,11 @@ Regression
 - 状态：**Confirmed / Completed（Stage 1.6）**。本阶段完成 Planner 架构决策沉淀；Planner 尚未实现。
 - 内容：Planner 定义为 Thin pre-execution investigation planner；只在 `planned_execution` 进入 Agent Runtime 前运行一次；`standard_execution` 与 `planned_execution` 使用同一个 Agent Runtime；Plan 是 soft investigation guidance，不是 Workflow；Planner Input 由 Runtime 注入 `user_query`、`query_context`、compact `data_snapshot` 与 `capability_summary`；第一版采用轻量 Plan Schema（version / title / intent / steps.goal / suggested_tools / evidence_needed / success_criteria）；suggested_tools 是 advisory hint，不生成 Tool Arguments；evidence_needed 不是 Stage 1.8 Evidence Object；Plan 经过 deterministic validation / sanitization；hallucinated Tool 被过滤；Plan bounded；Planner failure graceful degradation 且不重写 Router Decision；第一版不 automatic replan、不 Planner-owned state、不 Planner-specific retry / regeneration、不增加 LLM Plan Validator。
 - 记录位置：[technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：Stage 1.7 确定 Agent Loop / SDK / Runtime lifecycle；Stage 1.8 确定 Evidence / Citation；Stage 1.9 确定 Planner / Router / Agent Trace 与 Observability；Stage 1.10 建立 Planner Evaluation、质量 / 延迟 / Token / Tool Call 指标与参数校准方式，并评估 Planner latency budget / invocation policy。
+- 后续：Stage 1.7 已确认 Agent Loop / SDK / Runtime lifecycle（见下文）；Stage 1.8 确定 Evidence / Citation；Stage 1.9 确定 Planner / Router / Agent Trace 与 Observability；Stage 1.10 建立 Planner Evaluation、质量 / 延迟 / Token / Tool Call 指标与参数校准方式，并评估 Planner latency budget / invocation policy。
+
+### Stage 1.7：Agent Runtime
+
+- 状态：**Confirmed / Completed（Stage 1.7）**。本阶段完成 Agent Runtime 架构决策沉淀；Agent Runtime 尚未实现。
+- 内容：继承 ChatLab 的 Thin Agent Core 架构，由 OpenAI Agents SDK 承载通用 Agent Loop；Trivae 拥有外层执行编排、Context、Conversation History、Tool Adapter、生命周期语义与事件契约；Thin Agent Runtime + 单 Agent + 两种 Route 用同一个 Runtime；OpenAI Agents SDK 通过概念性的 Runtime / Function Tool Adapter 接入，不冻结文件布局；RuntimeContext（local）与 Agent Model Context（LLM-visible）分离且 Data Access Scope 硬执行；Trivae Conversation Store 为 source of truth，SDK / Provider conversation state 只作可重建 adapter state，streaming、完成、中止与失败记录有明确提交边界；pre-run Context 压缩（不做 mid-run compaction）；Tool Round 按一个包含 Tool Result 的模型轮次计数，Trivae Budget 先触发 graceful final synthesis，SDK `max_turns` 预留最终模型调用并只作兜底；仅已知 Tool Contract Error 可由 Agent 恢复，未知 Tool / Adapter 异常显式 `FAILED`；Abort 采用协作式 cancellation，晚到结果不得重启执行；Streaming 为 canonical path；Runtime lifecycle 状态机；Planner soft guidance 注入；Trivae 显式关闭 SDK built-in external tracing；ChatLab 经验参数可直接继承但标注来源并保留 Evaluation 校准。
+- 记录位置：[technical-decisions/stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
+- 后续：Stage 1.8 确定 Evidence / Citation；Stage 1.9 确定 Runtime Event / Trace Schema、Error Code 与 Observability；Stage 1.10 校准 max_tool_rounds、SDK max_turns、history window、compression threshold 等参数并建立 Agent correctness benchmark。

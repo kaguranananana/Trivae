@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router 与 Stage 1.6 Planner 确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed（架构已沉淀，尚未实现）。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner 与 Stage 1.7 Agent Runtime 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed；Stage 1.7 Agent Runtime completed（架构已沉淀，尚未实现）。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed（架构已沉淀，尚未实现） |
+| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed；Stage 1.7 Agent Runtime completed（架构已沉淀，尚未实现） |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
@@ -1241,6 +1241,128 @@ Planner = Investigation Decomposition，不是 Tool Execution Planner。两条 R
 
 完整的 21 项 Confirmed Decisions、详细 Failure Case 与 Reopen Conditions 见 [Stage 1.6 Planner ADR](./technical-decisions/stage-1-6-planner.md)。
 
+## Stage 1.7: Agent Runtime
+
+> 本节只保留 Stage 1.7 Agent Runtime 的稳定架构契约。核心方向：**继承 ChatLab 的 Thin Agent Core 架构，由 OpenAI Agents SDK 承载通用 Agent Loop；Trivae 自己拥有外层执行编排、Context、Conversation History、Tool Adapter、生命周期语义和事件契约。** 详细 rationale、Trade-off、Failure Case 与 Reopen Conditions 见 [Stage 1.7 Agent Runtime ADR](./technical-decisions/stage-1-7-agent-runtime.md)。
+
+### 核心定位与执行链路
+
+```text
+standard_execution
+    → Agent Runtime
+
+planned_execution
+    → Planner
+    → deterministic validation / sanitization
+    → soft guidance
+    → same Agent Runtime
+```
+
+Agent Runtime 定义为 **Single-agent execution runtime**：驱动模型与 Tool 之间的 bounded Agent Loop，并提供稳定的 streaming、cancellation、termination 和 result boundary。通用 Agent Loop 由 OpenAI Agents SDK 承载，Trivae 不自行重写通用 Loop；第一版单 Agent，不引入 handoff / multi-agent。
+
+### Query Execution Orchestration 与 Agent Runtime
+
+明确区分两个概念：
+
+```text
+Request Orchestrator
+    负责整个 Query 生命周期（Context Assembly → Router → Planner → Runtime → Result）
+
+Agent Runtime
+    从 Agent Loop 启动开始负责执行核心
+```
+
+第一版 `Query Execution Orchestration` 可以只是一个 service/function，不需要成为新的重"架构层"。ROUTING / PLANNING 属于整个 Query Execution lifecycle，但不属于内部 Agent Loop。
+
+### SDK 接入方式
+
+```text
+Trivae AgentRuntime interface
+             │
+             ▼
+OpenAIAgentsRuntimeAdapter
+             │
+             ▼
+OpenAI Agents SDK
+```
+
+未来替换 SDK 主要替换 **OpenAI Agents Runtime Adapter** 与 **OpenAI Function Tool Adapter**，而不是 Retrieval、SQLite、Context Expansion、Identity 等业务系统。这里确认的是概念替换面，不冻结 Python package / module layout 或具体文件名。Capability 不绑定具体 Runtime（Stage 1.4）的约束在 Stage 1.7 继续保留并扩展到 Runtime / Tool 的 SDK 接触面。
+
+### Context 两种分离
+
+- **RuntimeContext（local）**：不发给 LLM，承载 run / request identity、conversation identity、`data_access_scope`（硬权限）、capability dependencies、database / retrieval handles、cancellation state、runtime budgets。
+- **Agent Model Context（LLM-visible）**：system instructions、bounded conversation context、current user request、relevant query-context projection、compact session/data metadata、validated plan guidance（仅 planned_execution）。
+- **Data Access Scope 硬执行**：必须在 Tool / Capability 执行路径中强制执行，不写进 system prompt 靠模型自觉。
+
+### Conversation History 归属
+
+Trivae Conversation Store 是 source of truth，v1 不用 SDK Session 作为 canonical storage：
+
+```text
+Trivae Conversation Store
+        │
+        ▼
+Conversation Context Compiler
+        │
+        ▼
+SDK-compatible input items
+        │
+        ▼
+Runner
+```
+
+SDK / Provider 提供的 `Session`、`conversation_id`、`previous_response_id` 或其他 server-managed conversation state 只能作为可替换、可由 Trivae Store 重建的 adapter state，不能成为 canonical history。Streaming delta 只用于临时展示；Tool Call / Tool Result 保持结构化关联；完整 assistant message 仅在 SDK Run 真正完成后以 `COMPLETED` 提交。`ABORTED` / `FAILED` 的 partial output 与已发生 Tool 记录可以保留用于诊断，但必须带非完成状态，默认不作为完整 assistant turn 参与后续 replay。具体 transaction 与存储 Schema 保持 Pending。
+
+### 终止条件、Tool Error、Abort、Streaming
+
+- **终止条件两层**：一个模型轮次产生一个或多个 Tool Call，且该轮 Tool Result 全部形成后，计为一个 Tool Round；同轮并行多个 Tool 仍只计一轮。Trivae Tool Investigation Budget 耗尽后禁用 Tool 并执行 graceful final synthesis；SDK `max_turns` 必须覆盖全部 Tool-bearing turns，并至少预留一次 final synthesis 模型调用，仅作 absolute safety backstop。final synthesis fatal 时显式 `FAILED`。
+- **Tool Error ≠ Runtime Failure**：只有已知、已分类的 Tool Contract Error（如 capability unavailable、invalid argument、scope violation、bounded execution failure）转换成 `status=error` + `error.code` 交给 Agent 恢复；未分类 Tool / Capability 异常、Adapter invariant、SDK generic error handler 试图吞掉的程序缺陷以及其他 fatal failure 必须显式进入 `FAILED`。
+- **Abort = terminal intent**：`ABORTED` 不执行 final synthesis；v1 immediate 接受终止意图，取消 SDK Run 并向 Tool / Capability 协作式传播 cancellation。它不承诺同步阻塞调用能物理瞬时中断；晚到 Tool Result 不得重启 Loop 或触发 final synthesis。`COMPLETED` 以 SDK Run 真正完成为准（不是最后一个可见 token）。
+- **Streaming canonical path**：`SDK StreamEvent → OpenAIAgentsRuntimeAdapter → Trivae Runtime Event → CLI / API / UI`；禁止直接返回 SDK StreamEvent。
+
+### Runtime lifecycle 状态机
+
+```text
+CONTEXT_PREPARING → ROUTING → (PLANNING) → AGENT_PREPARING
+    → RUNNING (RESPONDING / TOOL_RUNNING) → (FINALIZING) → COMPLETED
+任何阶段：User Abort → ABORTED；Fatal Runtime Error → FAILED
+```
+
+### Planner→Runtime Adapter
+
+`Validated Plan → Plan Guidance Renderer → LLM-visible soft instructions → Agent Runtime`；Runtime 不读取 plan.steps 逐条执行；`effective_system_prompt = system_prompt + buildPlanGuidance(plan)`（仅 planned_execution）。
+
+### SDK built-in Trace 不当正式 Trace
+
+Trivae 配置必须显式关闭 SDK built-in external tracing，不能依赖 SDK 版本默认值；`SDK Hooks / Stream Events → Trivae normalized events → Stage 1.9 Trace Collector`；正式 Trace Schema 留 Stage 1.9。
+
+### Stage 1.7 Confirmed Architecture Summary
+
+1. Thin Agent Runtime，由 OpenAI Agents SDK 承载通用 Agent Loop；Trivae 拥有外层编排、Context、Conversation History、Tool Adapter、生命周期与事件契约。
+2. 单 Agent；`standard_execution` 与 `planned_execution` 使用同一个 Runtime。
+3. Runtime 不重新吞掉 Router / Planner / Retrieval / Evidence。
+4. OpenAI Agents SDK 通过薄适配层接入，业务代码不直接依赖 SDK 类型；替换面为 runtime / tools adapter。
+5. RuntimeContext（local）与 Agent Model Context（LLM-visible）分离；Data Access Scope 硬执行。
+6. Trivae Conversation Store 为 source of truth；SDK / Provider conversation state 只作可重建 adapter state；streaming、完成、中止与失败记录有明确提交边界。
+7. Pre-run Context 压缩，不做 mid-run compaction。
+8. Tool Round 按“一个包含 Tool Result 的模型轮次”计数；Trivae Budget 先触发 graceful final synthesis，SDK max_turns 为其预留一次最终调用并只作兜底。
+9. 仅已知 Tool Contract Error 可恢复；未知 Tool / Adapter 异常必须显式 `FAILED`，不能由 SDK generic error handler 吞掉。
+10. Abort = terminal intent，采用协作式 cancellation，晚到结果不能重启执行；Streaming 为 canonical path。
+11. Runtime lifecycle 状态机已定义；ROUTING / PLANNING 属于 Query 生命周期。
+12. Plan 只作 soft guidance 注入，Runtime 不逐条执行。
+13. SDK built-in Trace 不当正式 Trace；Trivae 显式关闭 external tracing，不依赖 SDK 默认值。
+14. ChatLab 经验参数可直接继承作为 v1 baseline，标注来源，保留 Evaluation 校准。
+
+### Stage 1.7 Pending 路由
+
+- Python package / module layout、具体 SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 具体类型、Tool 并发策略、Agent Model、Prompt 文案：Implementation。
+- `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字：Pending Evaluation（可继承 ChatLab 经验参数，标注来源）。
+- Runtime Event 最终 Schema、Trace 字段 / storage、Error Code 命名、SDK tracing 是否最终接入：Stage 1.9。
+- Agent correctness benchmark、budget / threshold 参数校准：Stage 1.10。
+- Evidence-aware stopping：Stage 1.8 / 1.10 联动。
+
+完整的 20 项 Confirmed Decisions、详细 Failure Case 与 Reopen Conditions 见 [Stage 1.7 Agent Runtime ADR](./technical-decisions/stage-1-7-agent-runtime.md)。
+
 
 ## Module Boundaries
 
@@ -1288,14 +1410,19 @@ Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stag
 
 ### Agent Runtime
 
-**Responsibility**：承载查询执行循环，并在可用时参考 Planner guidance，继续拥有 Tool Selection 与执行自治。
+**Responsibility**：作为 Single-agent execution runtime 承载查询执行循环（bounded Agent Loop），并在可用时参考 Planner guidance，继续拥有 Tool Selection 与执行自治。通用 Agent Loop 由 OpenAI Agents SDK 承载，Trivae 不自行重写通用 Loop。
 
-- 通用 Agent Loop、Tool Execution、Streaming、Run Lifecycle 和基础 Tracing 优先复用成熟 Agent SDK。
-- Trivae 保留薄适配层，负责 Trivae 领域契约与 SDK 之间的映射。
+- 通用 Agent Loop、Tool Execution、Streaming、Cancellation、Run Lifecycle 和基础 Tracing 优先复用成熟 Agent SDK（第一版：OpenAI Agents SDK）。
+- Trivae 保留薄适配层（`Trivae AgentRuntime interface → OpenAIAgentsRuntimeAdapter → SDK`），负责 Trivae 领域契约与 SDK 之间的映射；业务代码不直接依赖 SDK 类型；未来替换 SDK 主要涉及 runtime / tools adapter。
 - Runtime 决定是否调用 Tool、调用哪个 Tool、Tool 参数、Retrieval 组合、Search Query / SQL、Context 恢复、是否继续调查、何时停止，以及是否偏离 Plan。
 - Planner failure、invalid Plan 或 unavailable Planner 不得阻断 Runtime；planned route 的 Router Decision 仍保留为已发生事实。
 - Router、Planner、Retrieval、Evidence 等业务逻辑不下沉到 SDK，也不隐藏在 Runtime 适配层中。
-- Python 侧当前以 OpenAI Agents SDK 作为映射方向；具体依赖版本、适配契约和生命周期边界在 Stage 1.7 确认。
+- RuntimeContext（local，不发给 LLM）与 Agent Model Context（LLM-visible）分离；Data Access Scope 在 Tool / Capability 执行路径硬执行，不写进 system prompt 靠模型自觉。
+- Trivae Conversation Store 是 Conversation History 的 source of truth，经 Context Compiler 生成 SDK-compatible items；SDK / Provider conversation state 只作可重建 adapter state；streaming、完成、中止与失败记录遵守明确提交边界。
+- Tool Round 按一个包含 Tool Result 的模型轮次计数，同轮多个 Tool 仍为一轮；Trivae Budget 耗尽后 graceful final synthesis，SDK `max_turns` 为最终调用预留空间并仅作兜底。只有已知 Tool Contract Error 可恢复，未知 Tool / Adapter 异常显式 `FAILED`；Abort 采用协作式 cancellation，晚到结果不得重启执行；Streaming 为 canonical path（SDK StreamEvent → adapter → Trivae Runtime Event）。
+- Runtime lifecycle 状态机为 `CONTEXT_PREPARING → ROUTING → (PLANNING) → AGENT_PREPARING → RUNNING → (FINALIZING) → COMPLETED`；任意阶段 `ABORTED` / `FAILED`；ROUTING / PLANNING 属于 Query 生命周期而非内部 Agent Loop。
+- Trivae 配置显式关闭 SDK built-in external tracing，不依赖 SDK 默认值；`SDK Hooks / Stream Events → Trivae normalized events → Stage 1.9 Trace Collector`。
+- 具体 SDK 版本、Adapter 契约、参数数字、Runtime Event Schema 与 Trace 字段仍保持 Pending（见 [Stage 1.7 ADR](./technical-decisions/stage-1-7-agent-runtime.md)）。
 
 ### Tool Layer
 
@@ -1471,6 +1598,29 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 详细 rationale 与 trade-off 见 [technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)。
 
+### Stage 1.7：Agent Runtime
+
+1. **Thin Agent Runtime + SDK 承载通用 Loop**：继承 ChatLab 的 Thin Agent Core 架构；通用 Agent Loop 由 OpenAI Agents SDK 承载，Trivae 不自行重写通用 Loop。
+2. **Single Agent（v1）**：第一版单 Agent，不引入 handoff / multi-agent。
+3. **Same Runtime both routes**：`standard_execution` 与 `planned_execution` 使用完全相同的 Agent Runtime。
+4. **SDK 选型 OpenAI Agents SDK + 薄适配层**：`Trivae AgentRuntime interface → OpenAIAgentsRuntimeAdapter → SDK`；业务代码不直接依赖 SDK 类型；替换面为 runtime / tools adapter。
+5. **Runtime 职责边界**：Runtime 不重新吞掉 Router / Planner / Retrieval / Evidence；只负责 bounded Agent Loop、streaming、cancellation、termination、result boundary。
+6. **Orchestrator / Runtime 区分**：Request Orchestrator 负责整个 Query 生命周期；Agent Runtime 从 Agent Loop 启动开始负责执行核心；第一版 Orchestrator 可为 service/function。
+7. **RuntimeContext 与 Agent Model Context 分离**：RuntimeContext（local，不发给 LLM）与 Agent Model Context（LLM-visible）是两个边界；Data Access Scope 在 Tool / Capability 执行路径硬执行，不写进 system prompt 靠模型自觉。
+8. **Conversation History 归 Trivae**：Trivae Conversation Store 是 source of truth；SDK Session / Provider Conversation 只作可重建 adapter state；streaming、完成、中止与失败记录有明确提交边界。
+9. **Pre-run Context 压缩**：压缩发生在 Agent Runtime 之前；v1 不做 mid-run compaction。
+10. **终止条件两层**：Tool Round 按一个包含 Tool Result 的模型轮次计数；Trivae Budget 先触发 graceful final synthesis，SDK `max_turns` 必须预留最终模型调用并仅作 absolute backstop。
+11. **Tool Error / Runtime Failure 分界**：仅已知 Tool Contract Error 以结构化错误交给 Agent 恢复；未知 Tool / Adapter 异常显式 `FAILED`，不能由 SDK generic error handler 吞掉。
+12. **Abort = terminal intent**：v1 immediate 接受终止意图并协作式传播 cancellation；`ABORTED` 不执行 final synthesis，晚到 Tool Result 不得重启执行；`COMPLETED` 以 SDK Run 真正完成为准。
+13. **Streaming canonical path**：`SDK StreamEvent → adapter → Trivae Runtime Event → CLI / API / UI`；禁止直接返回 SDK StreamEvent。
+14. **Runtime lifecycle 状态机**：`CONTEXT_PREPARING → ROUTING → (PLANNING) → AGENT_PREPARING → RUNNING → (FINALIZING) → COMPLETED`；任意阶段 `ABORTED` / `FAILED`；ROUTING / PLANNING 属于 Query 生命周期。
+15. **Planner soft guidance 注入**：`Validated Plan → Plan Guidance Renderer → LLM-visible soft instructions → Agent Runtime`；Runtime 不读取 plan.steps 逐条执行。
+16. **SDK built-in Trace 不当正式 Trace**：Trivae 显式关闭 SDK external tracing，不依赖 SDK 默认值；`SDK Hooks / Stream Events → Trivae normalized events → Stage 1.9 Trace Collector`。
+17. **ChatLab 经验参数可直接继承**：作为 v1 baseline 直接继承，标注继承来源，保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。
+18. **明确不引入**：手写通用 Loop、Multi-Agent、Handoff、Planner Agent Loop、Step Executor、Workflow Engine、Replanning、Runtime-owned Evidence State Machine、SDK Session canonical、SDK 类型泄漏、mid-run 压缩、应用级 retry / fallback、自定义 Tool orchestration scheduler、硬编码 Retrieval workflow。
+
+详细 rationale 与 trade-off 见 [technical-decisions/stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)。
+
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
 - ChatLab 的 `direct_response / tool_assisted / planned_execution` 是参考 taxonomy；Trivae 已确认将前两者合并为 `standard_execution`，并保留 `planned_execution` 作为唯一额外 Planner 路径。
@@ -1485,7 +1635,9 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - ChatLab Planner 的具体步骤上限、字段长度、模型参数与 Prompt 不自动继承到 Trivae；Plan size exact limits 保持 Pending Evaluation / Implementation calibration。
 - ChatLab Prompt 中的 `retrieve_chat_evidence`、segment summaries、chart generation、specific specialized analysis tools 与 ChatLab-specific evidence planning heuristics 不机械复制；Trivae 只按 Stage 1.4 已确认的 6 个 Tool / Capability 设计高层 summary。
 - 继承 Planner architecture 不等于复制 ChatLab Planner Prompt 的全部业务经验；Trivae-specific heuristic 必须由真实 workload、Failure Case 或 Evaluation 驱动。
-- OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向；具体版本、集成方式和适配契约仍需在 Stage 1.7 验证。
+- Stage 1.7 继承 ChatLab 的 Thin Agent Core 架构（通用 Loop 由核心库承载、pre-run context compression、Trivae-owned conversation history、budget-exhausted graceful final synthesis、Tool Error 可恢复、事件归一化）；第一版由 OpenAI Agents SDK（Python）承载通用 Loop，替换 ChatLab 使用的 `@earendil-works/pi-agent-core`（TS），继承的是 runtime architecture 而非具体 library。
+- Stage 1.7 允许把 ChatLab 的 `max_tool_rounds`、history window、compression threshold 等**经验参数直接继承**作为 v1 baseline，但必须标注继承来源并保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。
+- OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向（Stage 1.7 已确认架构）；具体版本、集成方式与适配契约保持 Implementation Pending。
 
 ## Pending Decisions
 
@@ -1511,14 +1663,18 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Planner 的具体 Python class / package layout、Model、Prompt、Structured Output 技术、temperature、max tokens、timeout
 - Plan 的具体 Python / JSON Schema、validator library、字段类型与序列化；概念字段与语义已由 Stage 1.6 确认
 - Plan 的具体 max steps、max success criteria、字段长度 limit 与其他 bounded 参数（Pending Evaluation / Implementation calibration）
-- Compact DataSnapshot 的完整 Schema、Conversation Context 的 history window / summarization / compression / token 控制
+- Compact DataSnapshot 的完整 Schema、Conversation Context 的 history window / summarization / compression / token 控制（Stage 1.7 已确认 pre-run compression 机制，具体参数 Pending Evaluation）
 - Planner Trace Schema、failure event names / fields / storage 与 Planner metrics（Stage 1.9）
-+ Planner Evaluation Dataset、latency threshold、latency budget / invocation policy、cost budget、bounds calibration、是否需要更多 intent 类型与未来是否需要 replan（Stage 1.10）
+- Planner Evaluation Dataset、latency threshold、latency budget / invocation policy、cost budget、bounds calibration、是否需要更多 intent 类型与未来是否需要 replan（Stage 1.10）
 - 是否需要 step-level execution trace（Stage 1.9）
-- Agent Runtime 的具体 SDK 版本、Adapter 契约、Session、Streaming、Abort 与 Run Lifecycle 细节
+- Agent Runtime 的具体 SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 具体类型、Conversation transaction / commit Schema、Tool 并发策略（Stage 1.7 已确认架构边界，具体实现保持 Pending Implementation）
+- Agent Runtime 的 `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字（Pending Evaluation；可继承 ChatLab 经验参数作为 v1 baseline，标注来源）
+- Runtime Event 最终 Schema、Error Code 命名、SDK built-in tracing 是否最终接入（Stage 1.9）
+- Agent correctness benchmark、budget / threshold 参数校准（Stage 1.10）
+- Evidence-aware stopping（Stage 1.8 / 1.10 联动）
 - Evidence / Citation model、证据状态、来源字段与引用格式（Stage 1.8）
 - Evaluation Set、指标口径、Evaluation architecture 与 Regression 执行方式
-- Context architecture 与上下文规模控制
+- Context architecture 与上下文规模控制（Stage 1.7 已确认 RuntimeContext / Model Context 分离与 pre-run compression 机制，实现 Pending）
 - Answer Generation 的模型、Prompt、输出契约与失败处理
 - CLI / API 边界
 - Python package / module layout
@@ -1527,7 +1683,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 
 ## Evolution Rule
 
-- Stage 1.6-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.8-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 

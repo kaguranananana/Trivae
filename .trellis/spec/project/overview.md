@@ -44,9 +44,13 @@
 
 **Stage 1.5（Router）已完成**：Router 被定义为轻量 execution-complexity classifier / Planner gate；第一版只保留 `standard_execution` 与 `planned_execution`；两种 Route 最终进入同一个 Agent Runtime，只有 planned path 额外经过 Planner 并接收 soft execution guidance；Router 不选择 Tool 或 Retrieval Strategy；采用 Rule-first + LLM fallback、conservative default，并在 Router 失败时显式、可观测地降级到可用 Rule Decision 或 `standard_execution`（见 [architecture.md](./architecture.md) 与 [stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)）。
 
+**Stage 1.6（Planner）已完成**：Planner 被定义为 Thin pre-execution investigation planner，只在 `planned_execution` 进入同一个 Agent Runtime 前运行一次；Plan 是经过 deterministic validation / sanitization 的 soft guidance，不是 Workflow 或 Step Executor；第一版不引入 automatic replan、Planner-owned state、Planner Tool Calling 或 Planner-specific retry（见 [architecture.md](./architecture.md) 与 [stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)）。
+
+**Stage 1.7（Agent Runtime）已完成**：第一版采用 Thin Agent Runtime + OpenAI Agents SDK，单 Agent 承载 bounded Agent Loop；Trivae 保有 Context、Conversation History、Tool Adapter、生命周期和事件契约。Conversation Store 是 source of truth；Tool Round、graceful final synthesis 与 SDK `max_turns` 的关系已明确；仅已知 Tool Contract Error 可恢复，未知异常显式失败；Abort、Streaming、提交边界与 external tracing 配置均已确认（见 [architecture.md](./architecture.md) 与 [stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)）。
+
 当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Evidence / Citation、Trace 等细节仍为 Pending，不能视为最终 Architecture Specification。
 
-**当前任务**：Stage 1.5 已完成，等待进入 Stage 1.6 Planner。在对应架构细节确认前不实现业务功能。
+**当前任务**：Stage 1.7 已完成，等待进入 Stage 1.8 Evidence / Citation。在对应架构细节确认前不实现业务功能。
 
 ## 演进目标
 

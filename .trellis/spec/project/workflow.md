@@ -38,11 +38,11 @@
 - 不 amend、不 push（除非用户明确要求）。
 - commit message 与仓库既有风格保持一致。
 
-## 当前阶段约束（Stage 1.5 Router completed，Stage 1.6 pending）
+## 当前阶段约束（Stage 1.7 Agent Runtime completed，Stage 1.8 pending）
 
-- Stage 1.1 架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router 已完成；Stage 1.4 的具体 bounded 参数与 Stage 1.5 的 Router 参数仍由后续 Evaluation 校准。
-- Stage 1.5 已完成架构沉淀但尚未实现；当前不提前填充 Stage 1.6 Planner 的具体设计。
+- Stage 1.1 架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner 与 Stage 1.7 Agent Runtime 已完成；各阶段未冻结的具体参数仍由后续 Evaluation 校准。
+- Stage 1.7 已完成架构沉淀但尚未实现；当前不提前填充 Stage 1.8 Evidence / Citation 的具体设计。
 - 在对应架构细节确认前不编写业务代码、不创建未经确认的业务模块结构、不安装业务依赖。
 - `architecture.md` 保持 `Draft / In Progress`；未确认内容必须标记 `Pending architecture specification`。
-- Stage 1.5-1.11 按主题逐层确认，不提前填充其他架构细节。
+- Stage 1.8-1.11 按主题逐层确认，不提前填充其他架构细节。
 - 基础设施只建立当前阶段真实需要的内容。
