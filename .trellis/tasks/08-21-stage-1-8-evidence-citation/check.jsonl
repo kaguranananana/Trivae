@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/project/architecture.md", "reason": "核验 Stage 1.8 跨章节状态、术语、Confirmed / Pending 与既有阶段边界"}
+{"file": ".trellis/spec/project/technical-decisions.md", "reason": "核验 ADR 索引、阶段摘要与 Stage 1.7/1.9 衔接"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-4-tool-capability-layer.md", "reason": "防止误引入 retrieve_evidence Tool、Candidate State 或 silent fallback"}
+{"file": ".trellis/tasks/08-21-stage-1-8-evidence-citation/research/chatlab-evidence-citation-analysis.md", "reason": "核验 ChatLab 继承与偏离均有准确代码证据"}

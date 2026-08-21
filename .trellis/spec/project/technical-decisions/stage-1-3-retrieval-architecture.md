@@ -1,7 +1,7 @@
 # Stage 1.3: Retrieval Architecture Decisions
 
 > 状态：**Confirmed（Stage 1.3）**
-> 记录 Stage 1.3 真正形成的 Retrieval 架构决策及 rationale。仅覆盖 Retrieval 内部能力与组合策略；Agent 可见的 Tool 暴露方式（Stage 1.4）、Evidence Judge（Stage 1.8）、Trace Schema、Vector Store / Chunk 参数 / Embedding 模型等技术选型不在此文档内决定。
+> 记录 Stage 1.3 真正形成的 Retrieval 架构决策及 rationale。仅覆盖 Retrieval 内部能力与组合策略；Agent 可见的 Tool 暴露方式后由 Stage 1.4 确认，Evidence / Citation 后由 Stage 1.8 确认；Trace Schema、Vector Store / Chunk 参数 / Embedding 模型等技术选型不在此文档内决定。
 > 参考 ChatLab 但不机械复制：所有参考仅作为 initial hypothesis / reference design，以 Trivae 的数据特点（高噪声技术群、短消息多、话题高速切换、多人插话严重）与业务目标为准。
 
 ---
@@ -216,11 +216,11 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 
 **Problem**：Trivae 面向技术情报，不同问题的"证据成立条件"完全不同（`准备试一下` / `已经接进去了` / `昨天上线了` / `最后还是换回自己写`），固定关键词无法迁移。
 
-**Decision**：**不复制固定关键词判断 Evidence Status 的方案**。Evidence Judge 围绕 **Question-specific Criteria** 设计，留到 Stage 1.8 Evidence / Citation 决定。
+**Decision**：**不复制固定关键词判断 Evidence Status 的方案**。Stage 1.8 后续确认由 Agent Final Synthesis 使用 **question-specific criterion** 选择和组织 Final Evidence，不新增固定关键词 Judge 或独立 Evidence Agent。
 
 **Reason**：参考 ChatLab 但不机械复制；Trivae 的 Evidence 语义必须由自身业务目标决定。
 
-**Regression**：若在 Retrieval 层硬编码证据判断，会与"Retrieval 输出候选、Evidence 层负责组织证据"的职责边界冲突，并在 Stage 1.8 被迫重构。
+**Regression**：若在 Retrieval 层硬编码证据判断，会与“Retrieval 输出候选、Evidence Selection / Organization 负责组织 Final Evidence”的职责边界冲突，并破坏 Stage 1.8 已确认的 ownership。
 
 ## 13. Retrieval Trace：只确定观察需求，不实现 Schema
 
@@ -265,7 +265,7 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 - Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式
 - Retrieval Trace Schema、事件模型、存储与采集方式（仅观察需求已确认）
-- Tool / Capability Layer：Agent 看到哪些 Tool、如何命名与封装（Stage 1.4）
-- Evidence Judge 设计（Question-specific Criteria，Stage 1.8）
+- Tool / Capability Layer 已由 Stage 1.4 确认；具体实现 Schema 保持 Implementation Pending
+- Evidence / Citation 已由 Stage 1.8 确认；具体 Python / JSON Schema 保持 Implementation Pending
 - Coverage 的具体口径与字段（Stage 1.9 明确 query-scope coverage）
 - Candidate / Retrieval Result 的具体数据结构（与 Storage / Data Schema 联动）

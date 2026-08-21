@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner 与 Stage 1.7 Agent Runtime 确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed；Stage 1.7 Agent Runtime completed（架构已沉淀，尚未实现）。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime 与 Stage 1.8 Evidence / Citation 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1–1.8 completed（架构已沉淀，尚未实现）；Stage 1.9–1.11 Pending。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1 completed；Stage 1.2 Data Model + Ingestion completed；Stage 1.3 Retrieval Architecture completed；Stage 1.4 Tool / Capability Layer completed；Stage 1.5 Router completed；Stage 1.6 Planner completed；Stage 1.7 Agent Runtime completed（架构已沉淀，尚未实现） |
+| 当前阶段   | Stage 1.1–1.8 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.9 Trace / Observability |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
@@ -75,10 +75,10 @@ Trivae
                                                   ▼
                                            Agent Runtime
                                                <-> Tool Layer
-                                                   -> Retrieval / Analysis
-                                                   -> Evidence
-                                                   -> Answer Generation
-                                                   -> Answer + Citation
+                                                   -> Retrieval / Structured Result
+                                                   -> Evidence Selection / Organization
+                                                   -> Final Evidence
+                                                   -> Citation-bound Answer
 ```
 
 Search index 的具体类型、数据模型和存储方式尚未确定；上图中的名称表示概念边界，不表示技术选型。
@@ -127,10 +127,10 @@ User Query + Runtime-injected Context
                                              ▼
                                       Agent Runtime
                                           <-> Tool Layer
-                                              -> Retrieval / Analysis
-                                              -> Evidence
-                                              -> Answer Generation
-                                              -> Evidence + Citation
+                                              -> Retrieval / Structured Result
+                                              -> Evidence Selection / Organization
+                                              -> Final Evidence
+                                              -> Citation-bound Answer
 ```
 
 Stage 1.5 已确认 Router 的两种 Route 为 `standard_execution` 与 `planned_execution`。两种 Route 最终都进入同一个 Agent Runtime；只有 `planned_execution` 在进入 Agent Runtime 前额外经过 Planner，且 Planner 输出的是 soft execution guidance，不是另一套 Agent Runtime 或强制 Workflow。
@@ -578,7 +578,7 @@ partial = true
 
 ### Evidence 判断不在 Retrieval 层硬编码
 
-不复制 ChatLab 用固定关键词（计划词 / 实际发生词）判断 `included / excluded / uncertain` 的方案。Trivae 面向技术情报，不同问题的"证据成立条件"完全不同（例如"最终有没有人真的把 OpenAI Agents SDK 用到项目里"可能出现"准备试一下""已经接进去了""昨天上线了""最后还是换回自己写"）。Evidence Judge 应围绕 **Question-specific Criteria** 设计，留到 Stage 1.8 Evidence / Citation 决定。
+不复制 ChatLab 用固定关键词（计划词 / 实际发生词）判断 `included / excluded / uncertain` 的方案。Trivae 面向技术情报，不同问题的“证据成立条件”完全不同（例如“最终有没有人真的把 OpenAI Agents SDK 用到项目里”可能出现“准备试一下”“已经接进去了”“昨天上线了”“最后还是换回自己写”）。Stage 1.8 已确认由 Agent Final Synthesis 针对 finding 表达并应用 **question-specific criterion**；不新增固定关键词 Judge 或独立 Evidence Agent。Retrieval 仍只产出 Candidate Data，不拥有 Final Evidence 判断。
 
 ### Stage 1.3 决策状态分类
 
@@ -599,7 +599,7 @@ partial = true
 | Semantic Index | Derived Data，可重建 |
 | Retrieval Result provenance | 必须保留（Message Candidates 与 Structured Results 共有） |
 | Partial / Coverage | 必须显式暴露（口径在 Stage 1.9 细化为 query-scope coverage） |
-| Evidence 判断 | 不在 Retrieval 层硬编码（Question-specific Criteria，Stage 1.8） |
+| Evidence 判断 | 不在 Retrieval 层硬编码；Stage 1.8 已确认使用 question-specific criterion |
 | Retrieval Trace | 观察需求已确认；存储格式 / Schema 不提前实现 |
 
 #### Tunable / Pending Evaluation（由 Evaluation Set 决定）
@@ -621,7 +621,7 @@ partial = true
 | Semantic / Lexical Index 的具体存储与版本管理 | Pending architecture specification |
 | Retrieval Trace Schema、事件模型、存储与采集方式 | Pending（本阶段仅确认观察需求） |
 | Tool / Capability Layer（Agent 看到哪些 Tool、如何命名） | Confirmed（Stage 1.4） |
-| Evidence Judge 设计 | Pending（Stage 1.8） |
+| Evidence / Citation | Confirmed（Stage 1.8）；具体 Python / JSON Schema 保持 Implementation Pending |
 | Candidate / Retrieval Result 具体数据结构 | Pending（与 Storage / Data Schema 联动） |
 
 ## Stage 1.4: Tool / Capability Layer
@@ -1237,7 +1237,7 @@ Planner = Investigation Decomposition，不是 Tool Execution Planner。两条 R
 - Python class / package layout、Model、Prompt、Structured Output、具体 Schema、字段类型、bounds、DataSnapshot schema 与 Context 压缩：Implementation / Stage 1.7。
 - Planner latency budget 与 invocation policy、Evaluation Dataset、质量 / latency / token / Tool Call 指标、参数校准、是否增加 intent 类型、是否未来需要 replan：Stage 1.10。
 - Planner Trace Schema、failure event、metrics 与 step-level execution trace：Stage 1.9。
-- Evidence / Citation：Stage 1.8。
+- Evidence / Citation：Confirmed（Stage 1.8）；Planner `evidence_needed` 仍只表达 requirement。
 
 完整的 21 项 Confirmed Decisions、详细 Failure Case 与 Reopen Conditions 见 [Stage 1.6 Planner ADR](./technical-decisions/stage-1-6-planner.md)。
 
@@ -1359,9 +1359,55 @@ Trivae 配置必须显式关闭 SDK built-in external tracing，不能依赖 SDK
 - `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字：Pending Evaluation（可继承 ChatLab 经验参数，标注来源）。
 - Runtime Event 最终 Schema、Trace 字段 / storage、Error Code 命名、SDK tracing 是否最终接入：Stage 1.9。
 - Agent correctness benchmark、budget / threshold 参数校准：Stage 1.10。
-- Evidence-aware stopping：Stage 1.8 / 1.10 联动。
+- Evidence-aware stopping：Stage 1.8 已确认第一版只作 Agent guidance；machine-enforced gate 与参数留给 Stage 1.10。
 
 完整的 20 项 Confirmed Decisions、详细 Failure Case 与 Reopen Conditions 见 [Stage 1.7 Agent Runtime ADR](./technical-decisions/stage-1-7-agent-runtime.md)。
+
+## Stage 1.8: Evidence / Citation
+
+> 本节只保留 Stage 1.8 的稳定架构契约。核心方向：**一份结构化 Answer Artifact 同时驱动 claim-level Citation 与 Evidence Panel；所有数据性结论都可追溯到当前 Run 实际取得的 Message Source 或 Structured Result Source，并允许用户通过精确时间与 bounded 原始上下文人工复核。**
+
+### 数据流与提交边界
+
+```text
+Current Run Tool Calls / Tool Results
+        ↓
+Agent Final Synthesis
+        ├── apply question-specific criteria
+        ├── select Final Evidence
+        ├── organize Evidence Items by finding
+        └── produce Answer + Citation bindings
+        ↓
+Citation Validation / Trusted Metadata Hydration
+        ↓
+Validated Answer Artifact
+        ↓
+Conversation Store commit
+```
+
+Citation Finalizer 是 Answer Generation 的确定性提交边界，不是新的 Tool、Agent、Judge 或 Runtime-owned Evidence State Machine。它验证引用真实性、可解析性与 Data Access Scope，不宣称能够验证自然语言语义正确性。
+
+### Stage 1.8 Confirmed Architecture Summary
+
+1. Final Evidence 按 claim / finding 组织，一个 Evidence Item 可以包含多条 `supports / contradicts / context` Source。
+2. Answer 中的数据性事实与推断使用 claim-level Citation；正文显示与 Evidence Panel 共用同一 Answer Artifact。
+3. Message Source 由 current-run provenance、显式 Session / Message locator 和可信人工复核 snapshot 共同构成。
+4. Structured Result 使用独立 Source Reference；Semantic Chunk 只作 acquisition provenance。
+5. question-specific criterion 与 Evidence Item 一起持久化；不使用固定关键词 Judge。
+6. `sufficient / partial / insufficient` 与 Tool `partial / coverage / truncated / unavailable` 分轴表达。
+7. invalid / unresolved Citation 阻止 Answer 提交，不 silent drop 或自动 repair。
+8. 历史 Evidence 可查看但不是后续 Run 的 fresh evidence；事实问题必须重新调用当前数据库 Tool。
+9. 应用内只展示被引消息及 bounded 原始上下文；全量聊天由原社交平台承载。
+10. Evidence-aware stopping 仅作 Agent guidance；Stage 1.7 Tool Budget 仍是 hard investigation bound。
+
+### Stage 1.8 后续实现与阶段路由
+
+- Python / JSON / Database Schema、Claim binding 序列化、Structured Result locator、Conversation commit Schema：Implementation。
+- bounded context 数量、Citation 密度、Evidence Item 上限、Message mutation 后的 diff UX：Implementation / Evaluation。
+- Evidence / Citation Trace Event、Error Code、storage 与 metrics：Stage 1.9。
+- semantic entailment、sufficiency、citation precision / recall、repair 与 machine-enforced stopping gate：Stage 1.10。
+
+完整的 16 项 Confirmed Decisions、ChatLab 代码证据、Failure Case 与 Reopen Conditions 见 [Stage 1.8 Evidence / Citation ADR](./technical-decisions/stage-1-8-evidence-citation.md)。
 
 
 ## Module Boundaries
@@ -1453,7 +1499,7 @@ Retrieval Query
     -> Retrieval Candidates / Results
     -> Evidence Selection / Organization
     -> Final Evidence
-    -> Answer
+    -> Citation-bound Answer
 ```
 
 ### Evidence
@@ -1461,15 +1507,30 @@ Retrieval Query
 **Responsibility**：将检索和分析结果组织成可支撑回答结论的证据，并连接原始聊天消息与最终引用。
 
 - Evidence 是 Trivae 的业务核心之一。
-- Evidence 不等同于原始 Retrieval Result；需要独立表达证据来源、选择结果和完整性等语义（具体状态模型待定）。
-- Evidence / Citation 数据模型、完整性状态、来源字段和引用格式待 Stage 1.8 确定。
+- Retrieval / Tool 只提供 Candidate Data、Structured Result、current-run provenance 与 execution completeness；Agent Final Synthesis 依据 question-specific criterion 选择 Final Evidence，并按 claim / finding 组织 Evidence Item。
+- 一个 Evidence Item 可以包含多条 Source；每条 Source 相对 finding 的关系为 `supports / contradicts / context`。Evidence Item 的 sufficiency 为 `sufficient / partial / insufficient`，不引入未经校准的数值 confidence。
+- Tool 的 `partial / coverage / truncated / unavailable` 是 Retrieval / execution completeness，必须保留为 limitation；它与 Evidence sufficiency 是独立维度。
+- Message Source 同时保留 current-run Tool provenance、`session_id + internal message_id`（可选 Message Range）定位与生成时可信展示快照。快照包括 ChatSession 可读标识、作者、精确 Canonical Timestamp（含明确 timezone / offset 语义）和未经 LLM 改写的安全 excerpt。
+- Semantic Chunk、embedding score 与 snippet 只作 acquisition provenance；最终 Source 必须解析到 Canonical Message / Message Range。显示编号、Chunk 和 snippet 均不是 source identity。
+- Structured Result Source 独立保留 Tool Call / Result identity、结果位置、value snapshot、query scope snapshot 与 execution limitations，不伪装成 Message Source。具体 row / value locator 序列化保持 Implementation Pending。
+- Planner 的 `evidence_needed` 仍只是调查需求；第一版不新增 `retrieve_evidence` Tool、Evidence Agent、固定关键词 Judge、固定时间聚类或 Runtime-owned Evidence State Machine。
 
 ### Answer Generation
 
-**Responsibility**：基于分析结果与 Evidence 生成回答，并返回可追溯的 Evidence / Citation。
+**Responsibility**：基于 Final Evidence 生成 Citation-bound Answer，并在提交前形成可确定性验证的 Answer Artifact。
 
-- 回答生成必须以 Evidence 为依据，而不是绕过证据直接读取底层数据。
-- Prompt、模型、输出 schema、引用格式和失败处理不在 Stage 1.1 决定。
+- Answer Artifact 在语义上包含 Answer Content、Claim Citation Bindings、Evidence Items 与 limitations；这是 conceptual contract，不冻结 Python / JSON Schema。
+- 来自聊天记录、统计或数据库概览的实质性事实与推断必须使用 claim-level Citation；一般性解释、交互性文字与明确标为建议的方法内容不强制引用。
+- Citation 将 claim / content unit 绑定到一个或多个 Evidence Item。正文 `[1]` 等显示编号与可展开 Evidence Panel 共用同一份结构化 Evidence，编号不构成来源身份。
+- Citation Validator / Finalizer 确定性验证 Evidence ID、current-run Tool provenance、Source locator、Session / Message 一致性、Structured Result 位置与 Data Access Scope，并从可信 Tool Result / Canonical projection hydrate 会话、作者、精确时间与 excerpt。
+- Validator 不证明自然语言 claim 与 Source 的语义蕴含，也不判断 criterion 是否最佳或 Retrieval 是否召回全部来源；这些质量问题属于 Stage 1.10 Evaluation。
+- invalid / unresolved Citation 显式使 Answer Finalization 失败；不 silent drop、不提交无引用版本、不自动替换来源或增加无依据 repair / retry。
+- 只有验证通过的 Answer Artifact 才随最终 Assistant Message 按 Stage 1.7 `COMPLETED` 边界提交。历史 Evidence 可回放，但后续事实问题必须重新通过当前数据库 Tool 取得 fresh evidence。
+- 点击 Message Citation 后，应用以被引消息为中心展示 bounded、未经 LLM 改写的 Canonical context；全量聊天留给原社交平台。平台不支持 deep link 时仍展示会话、作者和精确时间等人工 Source Locator。
+- Evidence-aware stopping 第一版只作 Agent guidance：主要 finding 达到 sufficient 时可自然结束；Tool Budget 耗尽后只基于已取得来源 final synthesis 并显式标记 partial / insufficient。machine-enforced gate 与参数留给 Stage 1.10。
+- Prompt、模型、Claim binding 序列化、Structured Result locator、bounded context 数量和具体 UI 组件保持 Pending。
+
+完整 rationale、Failure Case、ChatLab 继承 / 偏离与 Reopen Conditions 见 [Stage 1.8 Evidence / Citation ADR](./technical-decisions/stage-1-8-evidence-citation.md)。
 
 ## Cross-Cutting Concerns
 
@@ -1499,7 +1560,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 1. **Two-plane architecture**：系统一级划分为 Data Plane 与 Query Plane。
 2. **Data / Agent decoupling**：Data Plane 不包含 Agent；Agent 只能通过 Tool Layer 访问数据能力。
-3. **Query main chain**：Query Plane 的主链路为 `Router -> standard_execution | planned_execution -> [Planner for planned path] -> Agent Runtime -> Tools -> Retrieval / Analysis -> Evidence -> Answer`。
+3. **Query main chain**：Query Plane 的主链路为 `Router → standard_execution | planned_execution → [Planner for planned path] → Agent Runtime ↔ Tools → Retrieval / Structured Result → Evidence Selection / Organization → Final Evidence → Citation-bound Answer`。
 4. **Router boundary**：Router 管执行复杂度和路径，不管具体检索算法或底层查询参数。
 5. **Thin Planner**：Planner 管复杂问题拆解，计划是 Agent 的 soft guidance，不接管底层 Tool 编排。
 6. **SDK reuse with thin adapter**：Agent Runtime 复用成熟 SDK 的通用能力，Trivae 保留薄适配层。
@@ -1531,7 +1592,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 6. **Retrieval Result provenance 保留**：Retrieval Result 分 Message Candidates（lexical / semantic）与 Structured Results（scalar / aggregate / records），共同保留 provenance 与 trace metadata；不把所有结果压成单一 Candidate 类型。
 7. **Partial / Coverage 显式暴露**：不能"搜不到 = 不存在"；Semantic Retrieval 必须能表达 coverage / partial / truncated 等完整性信息（口径在 Stage 1.9 细化为 query-scope coverage）。
 8. **Reranker 与 Fusion 权重不提前设计**：先建立 baseline，出现 Failure Case 并证明排序问题后再评估；Chunk 具体参数同样保持 Tunable。
-9. **Evidence 判断不在 Retrieval 层硬编码**：不复制 ChatLab 固定关键词判断 Evidence Status 的方案；Evidence Judge 围绕 Question-specific Criteria 设计（Stage 1.8）。
+9. **Evidence 判断不在 Retrieval 层硬编码**：不复制 ChatLab 固定关键词判断 Evidence Status 的方案；Stage 1.8 已确认由 Final Synthesis 使用 question-specific criterion 选择和组织 Final Evidence。
 10. **Retrieval Trace 观察需求确定、Schema 不提前实现**：记录需要观察的检索信息（query / strategy / filters / lexical / semantic / context_expansion / final_candidates）及其目的；具体存储格式与 Trace Schema 保持 Pending。
 
 详细 rationale 与 trade-off 见 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)。
@@ -1621,6 +1682,24 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 详细 rationale 与 trade-off 见 [technical-decisions/stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)。
 
+### Stage 1.8：Evidence / Citation
+
+1. **主链路**：`Retrieval / Structured Result → Evidence Selection / Organization → Final Evidence → Citation-bound Answer`。
+2. **单一 Answer Artifact**：正文 claim-level Citation 与 Evidence Panel 共用同一份结构化 Evidence；显示编号不是 source identity。
+3. **Finding-oriented Evidence**：Evidence Item 按 claim / finding 组织，可包含多条 Source；relation 为 `supports / contradicts / context`。
+4. **Message Source**：current-run Tool provenance、显式 `session_id + internal message_id` locator 与可信人工复核 snapshot 缺一不可；Semantic Chunk 只作 acquisition provenance。
+5. **Structured Result Source**：通过当前 Tool Result identity 与结果位置定位，保存 value / query scope snapshot，不伪装成 Message Source。
+6. **Question-specific criterion**：criterion 与 Evidence Item 持久化；Planner `evidence_needed` 仍只是 requirement，不是 Evidence Object。
+7. **双轴状态**：Evidence sufficiency 使用 `sufficient / partial / insufficient`；Tool `partial / coverage / truncated / unavailable` 作为独立 limitations 保留。
+8. **Deterministic validation**：Citation Finalizer 检查 ID、current-run provenance、locator、Data Access Scope 与可信 metadata hydration；不声称验证 semantic entailment。
+9. **Failure transparency**：invalid / unresolved Citation 使 Answer Finalization 失败；不 silent drop、不自动替换来源或 repair / retry。
+10. **Persistence / replay**：validated Answer Artifact 随 Assistant Message 提交；旧 Evidence 只记录当时依据，后续事实问题重新调用当前数据库 Tool。
+11. **Bounded source review**：应用内展示被引消息与有限原始上下文；全量聊天由原社交平台承载，deep link 不可用时展示人工 locator。
+12. **Evidence-aware stopping**：第一版仅作 Agent guidance；Tool Budget 仍是 hard bound，machine-enforced gate 留给 Stage 1.10。
+13. **明确不引入**：`retrieve_evidence` Tool、Evidence Agent、固定关键词 Judge、固定时间 Evidence Group、Runtime-owned Evidence State Machine 或无依据 citation retry / fallback。
+
+详细 rationale、ChatLab 代码证据与 Reopen Conditions 见 [technical-decisions/stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md)。
+
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
 - ChatLab 的 `direct_response / tool_assisted / planned_execution` 是参考 taxonomy；Trivae 已确认将前两者合并为 `standard_execution`，并保留 `planned_execution` 作为唯一额外 Planner 路径。
@@ -1630,7 +1709,11 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - ChatLab 的 Parent / Child Chunk 思路（Time-aware Parent + Small Child）是 Trivae Semantic 索引架构的参考；其具体切分参数（30 min / 360 chars / 消息数 / overlap 等）不自动继承，由 Trivae 的 Evaluation Set 决定。
 - Stage 1.4 已沿用 ChatLab 的消息搜索自动 bounded context、Physical SQLite Schema + read-only SQL 等设计，并确认 Trivae 第一版 6 个 Tool 的 Agent-facing Surface。Trivae 不机械复制 ChatLab 的大量 Specialized Analysis Tools；该偏离以 `get_schema + execute_sql` 可覆盖确定性分析为当前约束，是否新增由 Evaluation 验证。
 - ChatLab 的 `search_messages` 命中后自动扩展前后 context 是 Trivae "Search 默认带 bounded context" 决策的参考；其默认窗口参数（如 `before = 2 / after = 2`）不自动继承，由 Trivae 的 Evaluation Set 决定。
-- ChatLab 的固定关键词 Evidence 判断方案（计划词 / 实际发生词 → included / excluded / uncertain）不复制到 Trivae；Evidence Judge 围绕 Question-specific Criteria 设计。
+- Stage 1.8 继承 ChatLab 的结构化 Evidence Block、消息锚点、Assistant Message 持久化、安全 snippet、点击追溯和显式 incomplete 原则；正文 Citation 与 Evidence Panel 在 Trivae 中统一为同一 Answer Artifact。
+- ChatLab 的固定关键词 Evidence 判断方案（计划词 / 实际发生词 → included / excluded / uncertain）不复制到 Trivae；Final Synthesis 使用 question-specific criterion，并以 `supports / contradicts / context` 与 finding sufficiency 表达语义。
+- ChatLab 的固定两小时时间聚类不定义 Trivae Evidence Item；Evidence 按 claim / finding 组织，时间接近只可作为 Retrieval 线索。
+- ChatLab 的 implicit CURRENT conversation 不适合 Trivae 跨 Session 调查；Message Source 显式包含 Session / Message locator、精确时间和 current-run Tool provenance。
+- ChatLab 的 retrieval path status 不直接作为 Answer sufficiency；Trivae 将 Tool completeness limitations 与 `sufficient / partial / insufficient` 分轴表达。
 - Stage 1.6 继承 ChatLab Planner 的 pre-execution planner、structured plan、bounded plan、available Tool filtering、invalid plan graceful skip、soft guidance injection 与 same Agent Runtime 架构。
 - ChatLab Planner 的具体步骤上限、字段长度、模型参数与 Prompt 不自动继承到 Trivae；Plan size exact limits 保持 Pending Evaluation / Implementation calibration。
 - ChatLab Prompt 中的 `retrieve_chat_evidence`、segment summaries、chart generation、specific specialized analysis tools 与 ChatLab-specific evidence planning heuristics 不机械复制；Trivae 只按 Stage 1.4 已确认的 6 个 Tool / Capability 设计高层 summary。
@@ -1671,11 +1754,13 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Agent Runtime 的 `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字（Pending Evaluation；可继承 ChatLab 经验参数作为 v1 baseline，标注来源）
 - Runtime Event 最终 Schema、Error Code 命名、SDK built-in tracing 是否最终接入（Stage 1.9）
 - Agent correctness benchmark、budget / threshold 参数校准（Stage 1.10）
-- Evidence-aware stopping（Stage 1.8 / 1.10 联动）
-- Evidence / Citation model、证据状态、来源字段与引用格式（Stage 1.8）
+- Evidence-aware stopping 的 machine-enforced gate、minimum-citation / coverage gate 与参数（Stage 1.10；Stage 1.8 已确认第一版仅作 Agent guidance）
+- Answer Artifact 的 Python / JSON / Database Schema、Claim binding 序列化、Structured Result locator、bounded context 数量与 Message mutation 后的 snapshot / current diff UX（Stage 1.8 语义已确认，实现 Pending）
+- Evidence / Citation 的 Trace Event、Error Code、storage 与 metrics（Stage 1.9）
+- semantic entailment、criterion quality、sufficiency、citation precision / recall 与 bounded repair Evaluation（Stage 1.10）
 - Evaluation Set、指标口径、Evaluation architecture 与 Regression 执行方式
 - Context architecture 与上下文规模控制（Stage 1.7 已确认 RuntimeContext / Model Context 分离与 pre-run compression 机制，实现 Pending）
-- Answer Generation 的模型、Prompt、输出契约与失败处理
+- Answer Generation 的模型、Prompt、具体输出 Schema；invalid / unresolved Citation 阻止 Finalization 的失败语义已由 Stage 1.8 确认
 - CLI / API 边界
 - Python package / module layout
 - 其他模块的 Retry / Fallback 策略（Stage 1.5 Router 的显式可用性降级契约除外）
@@ -1683,7 +1768,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 
 ## Evolution Rule
 
-- Stage 1.8-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.9-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 

@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/project/technical-decisions/stage-1-3-retrieval-architecture.md", "reason": "保持 Retrieval Candidate 与 Final Evidence 分层，继承 question-specific criteria 与 completeness 边界"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-4-tool-capability-layer.md", "reason": "保持 6 个 Tool、稳定 message_id、Tool Envelope 与不新增 retrieve_evidence 的已确认边界"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-7-agent-runtime.md", "reason": "对齐 Thin Runtime、Conversation Store 提交边界、Tool Result replay 与 evidence-aware stopping"}
+{"file": ".trellis/spec/project/architecture.md", "reason": "更新 Stage 1.8 Evidence / Answer Generation、Confirmed / Pending 与 ChatLab 继承偏离"}
+{"file": ".trellis/tasks/08-21-stage-1-8-evidence-citation/research/chatlab-evidence-citation-analysis.md", "reason": "ChatLab f9b87c00 的 Evidence Block、message anchor、固定 Judge 与双 Citation 机制代码证据"}

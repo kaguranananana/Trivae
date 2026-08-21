@@ -20,7 +20,7 @@
 
 - 输入：海量、高噪声、非结构化的群聊文本；
 - 输出：证据型回答（每个结论可追溯到原始消息）；
-- 主要架构参考：[ChatLab](https://github.com/ChatLab/ChatLab)（借鉴范围与映射方式由正式 Architecture Specification 确定）。
+- 主要架构参考：[ChatLab](https://github.com/ChatLab/ChatLab)；适用设计默认继承，具体继承与偏离由各 Stage ADR 记录。
 
 ## 已确认信息
 
@@ -28,7 +28,7 @@
 |----|----|
 | 语言 | Python |
 | 领域 | 高噪声群聊情报 / 技术讨论分析 |
-| 架构参考 | ChatLab（待正式规格） |
+| 架构参考 | ChatLab（作为 Reference Implementation；继承与偏离按各 Stage ADR 记录） |
 | 开发管理 | Trellis |
 | 工程风格 | Simple / Explicit / Testable / Observable / Failure-case driven / Evidence-based |
 
@@ -48,9 +48,11 @@
 
 **Stage 1.7（Agent Runtime）已完成**：第一版采用 Thin Agent Runtime + OpenAI Agents SDK，单 Agent 承载 bounded Agent Loop；Trivae 保有 Context、Conversation History、Tool Adapter、生命周期和事件契约。Conversation Store 是 source of truth；Tool Round、graceful final synthesis 与 SDK `max_turns` 的关系已明确；仅已知 Tool Contract Error 可恢复，未知异常显式失败；Abort、Streaming、提交边界与 external tracing 配置均已确认（见 [architecture.md](./architecture.md) 与 [stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)）。
 
-当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Evidence / Citation、Trace 等细节仍为 Pending，不能视为最终 Architecture Specification。
+**Stage 1.8（Evidence / Citation）已完成**：Answer 使用 claim-level Citation，并与 Evidence Panel 共用同一结构化 Answer Artifact；Final Evidence 按 claim / finding 组织，可包含 Message Source 与 Structured Result Source；Citation 必须来自当前 Run 实际取得且在 Data Access Scope 内的 Tool Result。用户可通过会话、作者、精确时间和 bounded 原始上下文复核来源，全量聊天留在原社交平台。invalid / unresolved Citation 会显式阻止 Answer 提交，第一版不新增 Evidence Tool、Evidence Agent、固定关键词 Judge、自动 citation repair 或 Runtime-owned Evidence State Machine（见 [architecture.md](./architecture.md) 与 [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md)）。
 
-**当前任务**：Stage 1.7 已完成，等待进入 Stage 1.8 Evidence / Citation。在对应架构细节确认前不实现业务功能。
+当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Trace、Evaluation 与各模块具体实现 Schema 仍为 Pending，不能视为最终 Architecture Specification。
+
+**当前任务**：Stage 1.8 已完成，等待进入 Stage 1.9 Trace / Observability。在对应架构细节确认前不实现业务功能。
 
 ## 演进目标
 

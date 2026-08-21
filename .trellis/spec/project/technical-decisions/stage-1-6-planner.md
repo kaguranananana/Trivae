@@ -971,7 +971,7 @@ Pending architecture specification
 | 8 | **Intent is descriptive metadata** | 保留 `summary / trend / relationship / search / comparison / evidence / mixed`，不绑定 Route、Tool 或 Retrieval。 |
 | 9 | **Outcome-oriented Plan Step** | `goal` 描述调查问题或认知结果，不描述 Tool Invocation。 |
 | 10 | **suggested_tools is advisory** | 只是 capability hint；Runtime 不受约束；不生成 Tool Arguments。 |
-| 11 | **evidence_needed is requirement, not Evidence Object** | 只描述所需证据类型；实际 Evidence / Citation 留给 Stage 1.8。 |
+| 11 | **evidence_needed is requirement, not Evidence Object** | 只描述所需证据类型；Stage 1.8 已确认实际 Evidence / Citation 由 Agent Final Synthesis 选择和组织。 |
 | 12 | **No workflow fields in v1** | 不增加 `step_id`、`depends_on`、`condition`、`branch`、`status`、`expected_output`、`intermediate_result`、`retry`、`fallback`、`tool_arguments` 等字段。 |
 | 13 | **No Planner-owned execution state** | Planner 不维护 step status 或 state machine；执行与偏离由未来 Trace 观察。 |
 | 14 | **No automatic replanning in v1** | Planner 只运行一次；执行中由 Agent Runtime 自主调整。 |
@@ -1006,20 +1006,19 @@ Compact DataSnapshot 的完整 schema
 Planner Guidance 的具体注入实现
 ```
 
-### Stage 1.7 Pending
+### Stage 1.7 已解除的 Pending
 
 ```text
-Agent Loop / SDK / Runtime lifecycle
-Planner 与 Agent Runtime 的具体 adapter 契约
-Session、Streaming、Abort 的生命周期语义
-Conversation Context 的 history window / summarization / compression / token 控制
+Agent Loop / SDK / Runtime lifecycle 与 Session、Streaming、Abort 语义已由 Stage 1.7 确认
+Planner 与 Agent Runtime 的具体 adapter 契约保持 Implementation Pending
+Conversation Context 的具体 history window / compression / token 参数保持 Pending Evaluation
 ```
 
-### Stage 1.8 Pending
+### Stage 1.8 已解除的 Pending
 
 ```text
-Evidence / Citation model
-Evidence Object 的 status、confidence、citation state 与 source locator schema
+Evidence / Citation 的领域语义与职责边界已由 Stage 1.8 确认
+具体 Python / JSON Schema、序列化与存储实现仍为 Implementation Pending
 ```
 
 ### Stage 1.9 Pending

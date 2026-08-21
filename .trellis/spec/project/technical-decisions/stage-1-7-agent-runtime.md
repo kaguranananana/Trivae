@@ -883,10 +883,11 @@ Tool Result token budget
 Runtime budgets 的具体默认值
 ```
 
-### Stage 1.8 Pending
+### Stage 1.8 已解除的 Pending
 
 ```text
-Evidence-aware stopping（与 Stage 1.8 / 1.10 联动）
+Evidence-aware stopping 第一版仅作 Agent guidance
+machine-enforced gate 与具体参数仍由 Stage 1.10 Evaluation 决定
 ```
 
 ### Stage 1.9 Pending
