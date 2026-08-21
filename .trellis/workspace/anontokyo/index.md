@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 3
-- **Last Active**: 2026-08-18
+- **Total Sessions**: 4
+- **Last Active**: 2026-08-21
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~114 | Active |
+| `journal-1.md` | ~136 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 4 | 2026-08-21 | Stage 1.7 Agent Runtime 架构收尾 | `79db876`, `0db8d1c` | `main` |
 | 3 | 2026-08-18 | Docs cleanup before Stage 1.2 | - | `main` |
 | 2 | 2026-08-18 | Stage 1.1: 沉淀整体架构骨架 | - | `main` |
 | 1 | 2026-08-18 | Stage 0: Project Bootstrap (Git + Trellis + Engineering Specs) | - | `main` |

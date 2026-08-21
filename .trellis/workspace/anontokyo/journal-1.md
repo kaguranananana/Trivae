@@ -112,3 +112,25 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Next Steps
 
 - 进入 Stage 1.2：Data Model + Ingestion
+
+
+## Session 4: Stage 1.7 Agent Runtime 架构收尾
+
+**Date**: 2026-08-21
+**Task**: Stage 1.7 Agent Runtime 架构收尾
+**Branch**: `main`
+
+### Summary
+
+完成 Stage 1.7 Agent Runtime 架构决策沉淀、质量核验与任务归档，准备进入 Stage 1.8 Evidence / Citation。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `79db876` | (see git log) |
+| `0db8d1c` | (see git log) |
+
+### Status
+
+[OK] **Completed**
