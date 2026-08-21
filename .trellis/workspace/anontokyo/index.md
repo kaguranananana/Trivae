@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 4
+- **Total Sessions**: 5
 - **Last Active**: 2026-08-21
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~136 | Active |
+| `journal-1.md` | ~158 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 5 | 2026-08-21 | Stage 1.8 Evidence / Citation 架构决策 | `53d1b38`, `b41b50e` | `main` |
 | 4 | 2026-08-21 | Stage 1.7 Agent Runtime 架构收尾 | `79db876`, `0db8d1c` | `main` |
 | 3 | 2026-08-18 | Docs cleanup before Stage 1.2 | - | `main` |
 | 2 | 2026-08-18 | Stage 1.1: 沉淀整体架构骨架 | - | `main` |

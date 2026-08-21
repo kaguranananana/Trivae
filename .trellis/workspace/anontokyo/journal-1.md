@@ -134,3 +134,25 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Status
 
 [OK] **Completed**
+
+
+## Session 5: Stage 1.8 Evidence / Citation 架构决策
+
+**Date**: 2026-08-21
+**Task**: Stage 1.8 Evidence / Citation 架构决策
+**Branch**: `main`
+
+### Summary
+
+结合 ChatLab f9b87c00 完成 Stage 1.8 Evidence / Citation 架构：claim-level Citation 与 Evidence Panel 共用 Answer Artifact，finding-oriented multi-source Evidence，Message / Structured Result Source，精确时间与 bounded 原文复核，双轴状态、Citation Validator、持久化与 Evidence-aware stopping 边界；独立检查并同步旧 Pending 与项目状态。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `53d1b38` | (see git log) |
+| `b41b50e` | (see git log) |
+
+### Status
+
+[OK] **Completed**
