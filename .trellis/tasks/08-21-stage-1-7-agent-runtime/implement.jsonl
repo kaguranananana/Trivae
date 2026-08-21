@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/project/technical-decisions/stage-1-6-planner.md", "reason": "Stage 1.7 ADR 需参照既有 ADR 的结构、文风与决策链约定（Architecture Governance / Decision / Why / Trade-off / Failure Case / Confirmed / Pending / Reopen）"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-5-router.md", "reason": "Router 边界与 stage 1.5 Confirmed 决策，Stage 1.7 需保持一致（两种 Route 进同一 Runtime、Router 不越界）"}
+{"file": ".trellis/spec/project/architecture.md", "reason": "Stage 1.7 需要更新架构文档：新增章节、Agent Runtime 模块边界、Confirmed/Pending Decisions、ChatLab 偏离说明，需保持与既有章节一致"}
+{"file": ".trellis/spec/project/technical-decisions.md", "reason": "ADR 索引文件，需要更新顶部状态、ADR 列表与当前记录三处"}
+{"file": ".trellis/spec/project/overview.md", "reason": "了解项目当前阶段与目标，确保 Stage 1.7 措辞与整体定位一致"}
+{"file": ".trellis/tasks/08-21-stage-1-7-agent-runtime/research/stage-1-7-user-proposal.md", "reason": "用户完整提案的事实来源，实现 ADR 必须忠实反映其中的 16 项决策与参数继承口径"}

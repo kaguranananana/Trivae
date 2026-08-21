@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/project/architecture.md", "reason": "质量检查目标之一：确认 Stage 1.7 章节、模块边界、Confirmed/Pending 与既有内容一致、无冲突"}
+{"file": ".trellis/spec/project/technical-decisions.md", "reason": "质量检查目标之一：确认索引三处与 Stage 1.7 同步、链接正确"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-6-planner.md", "reason": "与 Stage 1.6 ADR 交叉核对：Stage 1.7 未改动已确认内容，后续指向一致"}
+{"file": ".trellis/tasks/08-21-stage-1-7-agent-runtime/prd.md", "reason": "验收标准来源：检查交付物与 16 项决策是否全部落实"}
