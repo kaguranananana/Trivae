@@ -43,8 +43,8 @@ Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverag
 ## 5. Evaluation
 
 - 端到端评测以 Evaluation Case Bundle 为 canonical truth，固定 Case、Dataset Snapshot、Data Access Scope 与受控 Variant 条件，验证真实问题和真实改动。
-- Reference 必须说明 `exhaustive / partial / unknown` annotation completeness 与 provenance；partial / unknown 不得机械推导强 Precision / Recall。
-- Router / Planner 先做 forced standard / forced planned 的 Planner Utility，再评价 Router 是否能识别值得调用 Planner 的 Case；不能只看 Route accuracy。
+- Reference 必须针对具体 Finding 说明 `exhaustive / partial / unknown` annotation completeness 与 provenance；Case 级完整度只能派生，partial / unknown Finding 不得机械推导强 Precision / Recall。
+- Router / Planner 先在除 Planner 是否介入及其 guidance 外其他条件完全相同的 forced standard / forced planned 路径上测 Planner Utility，再评价 Router 是否能识别值得调用 Planner 的 Case；不能只看 Route accuracy，也不强制没有明显收益的 Case 填 `expectedRoute`。
 - 质量轴（Finding Correctness、Evidence Completeness、Groundedness、Uncertainty Calibration、Relevance）与 Trace / latency / token / Tool Call 等模块诊断分开，不压成单一总分。
 - Baseline 必须是 pinned Controlled Variant，Candidate 只声明显式 diff；Core / Regression 通过 versioned Suite 演进并保留历史结果。
 - paired quality review 优先 blind、随机 A/B、同 rubric、同 Evidence visibility；Judge 不是唯一真相源，关键争议转人工。

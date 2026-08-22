@@ -441,7 +441,7 @@ Citation Finalizer 属于 Answer Generation 的确定性提交边界，不是 Ag
 - minimum-citation gate、coverage gate、citation repair 与 Evidence-aware stopping 参数；
 - bounded context、Citation 密度和 Answer Correctness 的 workload 校准。
 
-Stage 1.10 已确认 Citation / Evidence 质量必须置于 Case Bundle 的 Reference completeness / provenance、Groundedness、Citation coverage 与 blind paired review 中；本节保留具体 rubric、runner、真实结果和参数校准，不把结构校验当作语义质量证明。
+Stage 1.10 已确认 Citation / Evidence 质量必须置于 Case Bundle 的 **Finding-level** Reference completeness / provenance、Groundedness、Citation coverage 与 blind paired review 中；同一 Case 的不同 Finding 可以有不同 completeness，本节保留具体 rubric、runner、真实结果和参数校准，不把结构校验当作语义质量证明。
 
 ## 19. Failure Cases
 

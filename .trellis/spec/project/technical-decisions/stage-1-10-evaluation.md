@@ -68,13 +68,17 @@ Case Bundle
 ├── Dataset Snapshot identity
 ├── Data Access Scope + query-specific context
 ├── user query / locale / time context / scenario tags
-├── Reference Findings
-├── Reference Evidence + relation / provenance
-├── annotation completeness: exhaustive | partial | unknown
+├── Reference Findings[]
+│   ├── finding-specific criterion / expected semantics
+│   ├── Reference Evidence + relation
+│   ├── annotation completeness: exhaustive | partial | unknown
+│   └── finding-level provenance / limitations
 ├── uncertainty / negative constraints / critical requirements
-├── optional route / planner / retrieval diagnostic references
+├── optional route hypothesis / planner diagnostic references
 └── review policy / rubric reference
 ```
+
+`annotation completeness` 是 **Finding 级别** 的语义：同一个 Case 可以有一个 `exhaustive` Finding、另一个 `partial` Finding；Case 级别如需汇总，只能是由 Finding 状态派生的摘要，不能覆盖更细粒度的标注。`route hypothesis` 也是可选诊断信息，不是必须填写的 `expectedRoute`，更不是 Gate。
 
 纯模块输入可以是 Unit Test、Contract Test 或 Diagnostic Fixture，但不能冒充端到端质量 Case。
 
@@ -86,9 +90,9 @@ Case Bundle
 
 ### Decision
 
-Ground Truth 由 Reference Findings、Reference Evidence、Evidence relation、Uncertainty expectation 与 Critical requirements 组成，不以一段 reference answer 作为唯一标准文本。
+Ground Truth 由多个 Reference Finding 组成；每个 Finding 绑定自己的 criterion、Reference Evidence、Evidence relation、annotation completeness、provenance、Uncertainty expectation 与 Critical requirements，不以一段 reference answer 作为唯一标准文本。
 
-`annotation completeness` 的概念语义固定为：
+`annotation completeness` 必须针对具体 Finding、Snapshot、Scope 与 criterion 记录，概念语义固定为：
 
 - **exhaustive**：在明确 Snapshot、Scope 和 criterion 内，由完整查询、人工穷举或可说明的可靠流程建立；Precision / Recall 可以较强解释，但只限于该边界。
 - **partial**：只标注代表性或已知 Evidence；命中已知集合有意义，但 Reference 外真实 Source 不机械算 false positive，Recall 只解释为对已知集合的覆盖。
@@ -96,7 +100,19 @@ Ground Truth 由 Reference Findings、Reference Evidence、Evidence relation、U
 
 `exhaustive` 不表示对现实世界绝对穷尽，只表示在当前 Snapshot、Scope 与 criterion 内有明确的穷尽依据。
 
-Reference provenance 至少说明建立者或建立流程、建立时间、使用的数据与 Scope、是否经过独立人工 adjudication、适用边界、已知限制和 completeness 依据。Reference 自身可能出错；发现新 Evidence 或标注错误时创建新 Case version，保留旧 Result 的历史解释。
+每个 Finding 的 Reference provenance 至少说明建立者或建立流程、建立时间、使用的数据与 Scope、是否经过独立人工 adjudication、适用边界、已知限制和 completeness 依据。Reference 自身可能出错；发现新 Evidence 或标注错误时创建新 Case version，保留旧 Result 的历史解释。
+
+Precision / Recall 应按 Finding 或一组 completeness 兼容的 Finding slice 报告。不能把一个 Case 内 `exhaustive`、`partial`、`unknown` 混合成一个强总体 Precision / Recall；partial / unknown Finding 的 Reference 外新 Evidence 进入人工复核，而不是直接判错。
+
+例如同一个 Case 可以同时包含：
+
+```text
+F1：明确列出最近分享的仓库链接 → exhaustive
+F2：总结半年态度变化 → partial
+F3：判断某个观点是否从未出现 → unknown
+```
+
+这三个 Finding 必须分别评审和报告，不能用 Case 的一个 `completeness = partial` 抹平 F1 的穷尽性，也不能用 F1 的 exhaustive 标注替 F2 / F3 提供强 Recall 解释。
 
 ## 5. Decision 3：Suite 分层，Core 通过版本刷新
 
@@ -170,7 +186,20 @@ Case → Router → standard / planned
 
 阶段 A 的 Planner Utility 比较质量变化与 latency、token、Tool Call 成本；“Plan 文本看起来合理”不是成功条件。阶段 B 的 Router Utility 只问 Router 能否把当前 Planner 确实有收益的 Case 送入 planned path，同时避免无收益或负收益的过度路由；它不是 Aggregate Route Accuracy。
 
+### Planner Utility 的控制变量
+
+测量 Planner Utility 时，除 Planner 是否介入及其产生的 guidance 外，其他条件必须保持一致：
+
+- 同一 Case version、Dataset Snapshot、Data Access Scope、User Query 与 Reference；
+- 同一 Agent Runtime、Model、Prompt、Tool surface、Retrieval / Index / Chunk / Evidence / Citation 版本；
+- 同一 budget、timeout、外部能力边界、privacy projection 与输出检查；
+- 同一 stochastic run 分层和配对调度；Provider 支持时记录并固定可用的 seed / generation 参数，不支持时保留随机性并比较配对分布。
+
+比较不同 Planner 版本时，Planner 版本是唯一受控变化；比较 Planner on / off 时，唯一的实验变量是是否生成并注入 Planner guidance。任何其他配置变化都必须另建 Comparison，不能把它归因于 Planner Utility。
+
 Planner Utility 绑定被评测的 Planner / Runtime Controlled Variant，不是永久不变的 Case 属性。Planner 或 Runtime 变化后，Router Utility 必须重新对照相应 forced-path 结果。
+
+没有明显 Planner 收益的 Case 不强行规定 `expectedRoute`。它可以只保留 `route_hypothesis = null`，或者记录“待 forced-path 验证”的诊断假设；最终 Route 是否合理由 forced-path Utility、成本和真实结果决定，而不是由预先标签决定。
 
 ## 10. Decision 8：Review / Judge 分层，配对质量比较使用 blind pairwise
 
@@ -260,7 +289,7 @@ Evaluation Artifact 是独立选择和治理的数据，不因评测需要永久
 
 ### 继承
 
-- 固定 Case ID、locale、chat type、scenario slice；planned case 显式表达 expected evidence coverage；
+- 固定 Case ID、locale、chat type、scenario slice；Case 可以针对具体 Finding 表达 expected evidence coverage；
 - Route / Plan / Tool / usage / budget 可观察；参数可覆盖并先观察 workload；
 - ChatLab Runtime、Chunk、Search Context、Compression 和 Evidence budget 数字可作为 `chatlab_derived_seed`，但不是 stable baseline。
 
@@ -273,7 +302,7 @@ Evaluation Artifact 是独立选择和治理的数据，不因评测需要永久
 ### 明确不继承
 
 - 固定关键词 Evidence Judge、固定两小时时间聚类、ChatLab-specific Tool surface / Prompt heuristic；
-- ChatLab 24 个 Case 的数量、比例、expected route 或结构测试结果作为 Trivae Benchmark；
+- ChatLab 24 个 Case 的数量、比例、expected route 标签或结构测试结果作为 Trivae Benchmark；
 - Router Accuracy 作为最终成功指标；
 - ChatLab 经验参数作为 Trivae 最优值；
 - 没有真实运行的 Evaluation Set 被描述为已完成质量 baseline。
@@ -283,8 +312,8 @@ Evaluation Artifact 是独立选择和治理的数据，不因评测需要永久
 1. Evaluation 验证真实改善，不是指标展示层；与在线 Query Execution 分离。
 2. Case Bundle 是端到端 canonical truth；模块评测从同一 Case 派生。
 3. Case 绑定 Snapshot、Scope、Query、Findings、Evidence 和 uncertainty constraints。
-4. Ground Truth 不使用唯一答案文本；Reference completeness 为 `exhaustive / partial / unknown`。
-5. Reference 保存 provenance；完整度决定 Precision / Recall 的解释强度。
+4. Ground Truth 不使用唯一答案文本；每个 Reference Finding 都有自己的 completeness：`exhaustive / partial / unknown`。
+5. 每个 Finding 保存 provenance；完整度决定该 Finding 的 Precision / Recall 解释强度，不能被 Case 级摘要覆盖。
 6. Design Seed、Core、Failure Regression、Calibration Slice 语义分开；Core 通过 versioned Suite 刷新并保留历史。
 7. Run 绑定完整 Controlled Variant；Baseline 必须 pinned，Candidate 必须有显式 diff。
 8. stochastic path 使用重复 Run；可复现承诺是条件可重建和统计可比较，不是 bit-for-bit。
@@ -300,9 +329,11 @@ Evaluation Artifact 是独立选择和治理的数据，不因评测需要永久
 
 在业务实现前，本 ADR 的可验证内容是文档契约一致性，而不是伪造 Evaluation 结果：
 
-- Case Bundle 必须能够同时承载端到端质量、Reference completeness / provenance、模块诊断和 Failure Regression 关联；
+- Case Bundle 必须能够同时承载端到端质量、Finding-level Reference completeness / provenance、模块诊断和 Failure Regression 关联；
+- 同一 Case 允许不同 Finding 使用不同 completeness；Precision / Recall 只在 Finding 或兼容 slice 上解释，不对混合状态做强聚合；
 - 每个 Baseline / Candidate Comparison 必须能指向同一 Case version、Snapshot、Scope、pinned Variant 与显式 diff；
-- Planner Utility 的报告必须来自 forced standard / forced planned 配对，Router Utility 必须引用当前 Planner 的 forced-path 结果；
+- Planner Utility 的报告必须来自除 Planner 变量外其他条件相同的 forced standard / forced planned 配对，Router Utility 必须引用当前 Planner 的 forced-path 结果；
+- 没有明显 Planner 收益的 Case 不要求 `expectedRoute`；route hypothesis 只能是可选、可被结果推翻的诊断信息；
 - partial / unknown Reference 不得被文档或未来报告解释为强 Precision / Recall Ground Truth；
 - blind pairwise review 必须隐藏 Variant identity、随机 A/B 顺序、固定 rubric / Evidence visibility，并在质量判断后才合并成本；
 - Failure Diagnosis 只能关联 Stage 1.9 Trace，不能通过评测结果修改 Trace；真实 Failure 修复后才可创建新的 Regression Case version；

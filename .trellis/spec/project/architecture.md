@@ -1124,6 +1124,8 @@ Stage 1.5 先确认 Router 必须留下可追踪、可评估的决策信息；St
 - short wording but complex；
 - evidence-dependent / cross-stage investigation。
 
+这些是 workload slice，不是要求每条 Case 预先填写 `expectedRoute` 的标签表。没有明显 Planner Utility 的 Case 可以不设路径假设，先通过 Stage 1.10 forced-path 结果建立后验诊断。
+
 正确顺序为：
 
 ```text
@@ -1177,7 +1179,7 @@ B: planned_execution  → Planner → Agent Runtime
 | LLM Router 的模型、prompt、timeout 与调用适配 | Pending Implementation |
 | RouteDecision 的具体 Python 类型、序列化与文件布局 | Pending Implementation |
 | Router Trace 的具体 Schema、事件名与采集实现 | Pending Implementation；event family / ownership 已由 Stage 1.9 确认 |
-| Router Query Set、标签流程、准确率与校准方法 | Pending（Stage 1.10 Implementation / Real-run Calibration） |
+| Router Query Set、Finding / Utility review 与校准方法 | Pending（Stage 1.10 Implementation / Real-run Calibration；不要求每条 Case 预填 expectedRoute） |
 | Planner 的 Python / JSON 实现、模型参数、具体 bounds 与 Runtime adapter | Pending（Stage 1.6 Implementation / Evaluation）；Planner 的概念 Input、Plan Schema、重规划与执行语义已确认 |
 
 ## Stage 1.6: Planner
@@ -1641,7 +1643,7 @@ Trace failure 不回滚成功业务结果，但必须显式暴露并将 Trace �
 Evaluation 与 Regression 横切 Data Plane 和 Query Plane：
 
 - 端到端以 Evaluation Case Bundle 为 canonical truth，绑定 Dataset Snapshot、Data Access Scope、Reference Findings / Evidence 与 Review Policy。
-- Reference 必须表达 `exhaustive / partial / unknown` completeness 与 provenance；不使用唯一答案文本，也不把 partial / unknown Reference 外的真实 Evidence 机械判错。
+- Reference 必须针对具体 Finding 表达 `exhaustive / partial / unknown` completeness 与 provenance；不使用唯一答案文本，也不把 partial / unknown Finding 外的真实 Evidence 机械判错。Case 级完整度只能是 Finding 状态的派生摘要。
 - Design Seed、Core、Failure Regression 与 Calibration Slice 分层；Core 通过 versioned Suite 刷新并保留历史 composition / results。
 - Baseline 必须是 pinned Controlled Variant，Candidate 通过显式 diff；相同 Case 先做 forced standard / forced planned 的 Planner Utility，再评价 Router Utility。
 - quality、diagnosability、module diagnostics、latency、Token、Tool Call 与 cost 分轴报告；质量比较优先 blind、随机 A/B、同 rubric、同 Evidence visibility，不合成单一总分。
@@ -1667,13 +1669,14 @@ Evaluation Suite
 #### Case、Reference 与 Suite
 
 - Case Bundle 是所有端到端与模块诊断的共同事实源；纯模块 Fixture 不能冒充端到端质量 Case。
-- Reference 使用 Findings / Evidence / relation / uncertainty constraints，不要求唯一答案文本；保存 annotation completeness（`exhaustive / partial / unknown`）和 provenance。
+- Reference 按 Finding 组织：每个 Finding 有自己的 criterion、Evidence、relation、annotation completeness（`exhaustive / partial / unknown`）和 provenance；同一 Case 允许不同 Finding 使用不同完整度，Case 级摘要不得覆盖 Finding 级语义。
+- `route_hypothesis` 是可选诊断信息，不是必须填写的 `expectedRoute`；没有明显 Planner 收益的 Case 可以不标注路径。
 - Core Set 要随真实 workload 和新 Failure 通过新 Suite version 演进，历史清单与结果不可被覆盖；Seed 不产生 Gate。
 
 #### Baseline、Planner Utility 与 Router Utility
 
 - Baseline 是 pinned 的完整 Controlled Variant；`last_stable`、`minimal_control` 与 `chatlab_derived_seed` 用途分开，Candidate 必须显式声明 diff。
-- Planner Utility 采用强制路径：同一 Case 分别走 `Case → Agent Runtime` 与 `Case → Planner → Agent Runtime`；先比较质量 / 成本，再恢复 Router。
+- Planner Utility 采用强制路径：同一 Case 分别走 `Case → Agent Runtime` 与 `Case → Planner → Agent Runtime`；除 Planner 是否介入及其 guidance 外，Runtime、Model、Prompt、Tool、Retrieval、Evidence、Budget、Snapshot、Scope 与运行条件必须相同；先比较质量 / 成本，再恢复 Router。
 - Router Utility 只评价 Router 是否把“当前 Planner 确实有收益”的 Case 送入 planned path，不能用 Aggregate Route Accuracy 替代。
 
 #### Review、随机性与治理
@@ -1856,10 +1859,10 @@ Evaluation Suite
 ### Stage 1.10：Evaluation / Regression
 
 1. **Case Bundle canonical truth**：端到端 Case 绑定 Dataset Snapshot、Data Access Scope、Query、Reference Findings / Evidence、uncertainty constraints 与 Review Policy；模块评测从同一 Case 派生。
-2. **Reference completeness / provenance**：Reference 不使用唯一答案文本；完整度为 `exhaustive / partial / unknown`，并保存建立流程、时间、Scope、adjudication 与限制。
+2. **Finding-level Reference completeness / provenance**：Reference 不使用唯一答案文本；每个 Finding 的完整度为 `exhaustive / partial / unknown`，并保存建立流程、时间、Scope、adjudication 与限制；Case 级完整度只能由 Finding 状态派生。
 3. **Versioned Suite**：Design Seed、Core、Failure Regression 与 Calibration Slice 分层；Core 通过新 Suite version 刷新，历史 composition / result 不覆盖。
 4. **Pinned Controlled Variant**：Baseline 是完整、稳定、可定位的 Controlled Variant；Candidate 必须声明显式 diff；ChatLab-derived seed 不自动是 stable baseline。
-5. **Forced Planner Utility**：同一 Case 先比较 `Case → Agent Runtime` 与 `Case → Planner → Agent Runtime`，再恢复 Router 判断 Router Utility。
+5. **Forced Planner Utility**：同一 Case 先比较 `Case → Agent Runtime` 与 `Case → Planner → Agent Runtime`；除 Planner 是否介入及其 guidance 外，其余 Runtime、Model、Prompt、Tool、Retrieval、Evidence、Budget、Snapshot、Scope 与运行条件必须相同，再恢复 Router 判断 Router Utility。
 6. **Layered quality / diagnostics**：Finding Correctness、Evidence Completeness、Groundedness、Uncertainty Calibration、Relevance 与 Trace / retrieval / runtime / citation / cost diagnostics 分轴，不合成单一总分。
 7. **Blind paired review**：Baseline / Candidate 质量判断隐藏身份、随机 A/B 顺序、使用同一 rubric / Evidence visibility，先质量、后成本；Judge 不成为唯一真相源。
 8. **Stochastic comparison**：固定 Case / Snapshot / Scope / Variant 条件并保留重复 Run、分布和 provider / permission / Trace 不可用原因。
@@ -1891,7 +1894,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Stage 1.7 允许把 ChatLab 的 `max_tool_rounds`、history window、compression threshold 等**经验参数直接继承**作为 v1 baseline，但必须标注继承来源并保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。
 - OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向（Stage 1.7 已确认架构）；具体版本、集成方式与适配契约保持 Implementation Pending。
 - Stage 1.9 继承 ChatLab 的“Core / SDK Event 先转换成项目自有事件，再由 handler 驱动 stream / state / logging”与 Normal / Debug 记录详细度分离方向；Trivae 将该边界扩展到 Router、Planner、Retrieval、Evidence 与 Citation，并增加 query-scope coverage、Data Access Scope、privacy projection 与 retention contract。不复制 ChatLab 的 2000 字符截断、日志文件 / 数据库字段、具体格式或默认保留期；ChatLab 的 Debug 证据只支持“详细 model-visible facts 对 Failure Attribution 有价值”，不自动决定 Trivae 的权限和 retention。
-- Stage 1.10 继承 ChatLab evaluation-set 的稳定 Case identity、locale / chat type / scenario slice、planned case 的 expected evidence coverage、Route / Plan / Tool / usage / budget 可观察性与“baseline 在真实环境运行前保持 Pending”的治理方向；Trivae 将其扩展为 Snapshot / Scope / Reference Findings / Evidence / Review 的 Case Bundle、forced-path Planner Utility、blind paired comparison 和 versioned Regression。ChatLab 的 24 个 Case、expected route、静态结构测试与经验参数不自动成为 Trivae Benchmark、stable baseline 或最优值。
+- Stage 1.10 继承 ChatLab evaluation-set 的稳定 Case identity、locale / chat type / scenario slice、按具体 Finding 表达的 expected evidence coverage、Route / Plan / Tool / usage / budget 可观察性与“baseline 在真实环境运行前保持 Pending”的治理方向；Trivae 将其扩展为 Snapshot / Scope / Reference Findings / Evidence / Review 的 Case Bundle、forced-path Planner Utility、blind paired comparison 和 versioned Regression。ChatLab 的 24 个 Case、expected route 标签、静态结构测试与经验参数不自动成为 Trivae Benchmark、stable baseline 或最优值。
 - ChatLab 的固定关键词 Evidence Judge、固定时间聚类与 specialized Evidence Tool 不继承；Trivae 使用 question-specific criterion、`supports / contradicts / context`、`exhaustive / partial / unknown` Reference completeness 和人工复核。
 
 ## Pending Decisions

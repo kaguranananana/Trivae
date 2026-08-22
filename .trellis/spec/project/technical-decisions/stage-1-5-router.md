@@ -398,6 +398,8 @@ A: standard_execution → Agent Runtime
 B: planned_execution  → Planner → Agent Runtime
 ```
 
+这不是两套随意运行的流程：测量 Planner Utility 时，Case、Snapshot、Scope、Agent Runtime、Model、Prompt、Tool、Retrieval、Evidence、Budget、外部能力与运行条件必须完全相同，唯一受控变量是 Planner 是否介入及其 guidance。不同 Planner 版本比较时，Planner 版本是唯一变化；其他条件变化必须单独建 Comparison。
+
 至少比较：
 
 ```text
@@ -417,25 +419,25 @@ Latency
 
 ## 11. Representative Trivae Router Workload
 
-以下是结合当前真实产品使用方式整理的 **seed cases / design examples**，不是 Stage 1.10 Benchmark，也不是已经完成标注的 Evaluation Set。它们用于约束 Stage 1.5 的 Route 语义，初始 Route 仍需在后续 Evaluation 中验证。
+以下是结合当前真实产品使用方式整理的 **seed cases / design examples**，不是 Stage 1.10 Benchmark，也不是已经完成标注的 Evaluation Set。它们用于约束 Stage 1.5 的问题形态；表中的路径只是在有依据时记录的可选 hypothesis，不是 Evaluation Case 必填的 `expectedRoute`。没有明显 Planner Utility 的 Case 应保持未预设路径，先通过 Stage 1.10 forced-path 评测决定。
 
-| Query | 初始 Route |
+| Query | 可选路径 hypothesis（非 expectedRoute） |
 | --- | --- |
-| 最近群里分享了哪些 GitHub 仓库链接？ | `standard_execution` |
-| 最近群友推荐或自己做了哪些 Skills，分别有什么用途？ | `standard_execution` |
-| 最近哪些工具或模型被评价为不如其他方案，具体拿什么在比较？ | `standard_execution`（倾向） |
-| superpowers 从被推荐到被弃用经历了什么，现在替代方案是什么？ | `planned_execution` |
-| X 最近分享了哪些链接或资源？ | `standard_execution` |
-| X 最近表达了哪些技术观点或实践经验？ | `standard_execution` |
-| 最近大家对 Agent 开发方向的求职门槛有什么看法？ | `standard_execution` |
-| 最近大家怎么看计算机专业的就业前景？ | `standard_execution` |
-| 最近有哪些关于模型变差或降智的反馈？ | `standard_execution` |
-| 最近群里推荐了哪些值得看的学习资源或文档？ | `standard_execution` |
-| 跨群聊分析 X 最近有什么技术观点或建议？ | `standard_execution` |
+| 最近群里分享了哪些 GitHub 仓库链接？ | 未预设；先做 forced-path |
+| 最近群友推荐或自己做了哪些 Skills，分别有什么用途？ | 未预设；先做 forced-path |
+| 最近哪些工具或模型被评价为不如其他方案，具体拿什么在比较？ | 未预设；先做 forced-path |
+| superpowers 从被推荐到被弃用经历了什么，现在替代方案是什么？ | `planned_execution` candidate；仍需 forced-path 验证 |
+| X 最近分享了哪些链接或资源？ | 未预设；先做 forced-path |
+| X 最近表达了哪些技术观点或实践经验？ | 未预设；先做 forced-path |
+| 最近大家对 Agent 开发方向的求职门槛有什么看法？ | 未预设；先做 forced-path |
+| 最近大家怎么看计算机专业的就业前景？ | 未预设；先做 forced-path |
+| 最近有哪些关于模型变差或降智的反馈？ | 未预设；先做 forced-path |
+| 最近群里推荐了哪些值得看的学习资源或文档？ | 未预设；先做 forced-path |
+| 跨群聊分析 X 最近有什么技术观点或建议？ | 未预设；先做 forced-path |
 
-其中 `superpowers` 生命周期问题需要追踪“推荐 → 尝试 / 使用 → 反馈 → 问题 → 态度变化 → 弃用 → 替代方案 → 当前状态”的纵向状态转移，后续调查方向依赖前一阶段证据，因此是当前 seed workload 中明确的 `planned_execution` 示例。其余问题即使需要大量 Retrieval、Context Expansion、Evidence Collection 或 Semantic Synthesis，初始仍按标准路径处理，除非 Evaluation 证明存在真实的跨阶段依赖。
+其中 `superpowers` 生命周期问题需要追踪“推荐 → 尝试 / 使用 → 反馈 → 问题 → 态度变化 → 弃用 → 替代方案 → 当前状态”的纵向状态转移，后续调查方向依赖前一阶段证据，因此可以作为 `planned_execution` candidate；但它仍必须经过 forced standard / forced planned 比较。其余问题不预设 Route，即使需要大量 Retrieval、Context Expansion、Evidence Collection 或 Semantic Synthesis，也不能因为表面复杂度直接填 `expectedRoute`。
 
-该 seed workload 中 `standard_execution` 占多数只是对当前产品问题形态的初始观察，不是固定的类别先验、目标比例或 Stage 1.10 Benchmark 分布。
+该 seed workload 不规定 `standard_execution / planned_execution` 比例、类别先验、目标分布或 Stage 1.10 Benchmark 分布。
 
 ## 12. Explicitly Out of Scope
 
