@@ -34,3 +34,6 @@ logs/
 tmp/
 
 .obsidian/
+
+data/raw/
+data/*.sqlite3

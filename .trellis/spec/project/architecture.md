@@ -3,7 +3,7 @@
 > 状态：**Draft / In Progress**
 >
 > 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation、Stage 1.9 Trace / Observability、Stage 1.10 Evaluation 与 Stage 1.11 Application Boundary 架构确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1–1.11 completed（架构已沉淀，尚未实现）；Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Implementation / Product Interaction Pending。
+> 当前状态为：Stage 1.1–1.11 completed；M1 Data Plane ingestion vertical slice 已实现并完成真实数据校准；Stage 1.10 Evaluation / Real-run Calibration 与 Stage 1.11 Product Interaction 仍 Pending。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,9 +12,9 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1–1.11 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Implementation / Product Interaction |
+| 当前阶段   | Stage 1.1–1.11 completed；M1 ingestion 已实现；下一阶段为 Retrieval、Stage 1.10 Evaluation / Real-run Calibration 与 Stage 1.11 Product Interaction |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
-| 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
+| 业务实现   | M1 `src/trivae` ingestion、SQLite Canonical Store、Application facade 与 thin CLI 已实现；Query Plane 与产品交互按后续 Trellis task 实施 |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
 
 ## Goals
@@ -106,7 +106,7 @@ Raw QQ / Export Data
 
 #### Pending
 
-Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），Retrieval 架构已在 Stage 1.3 确认（见 [Stage 1.3: Retrieval Architecture](#stage-13-retrieval-architecture)，其中 Semantic 索引单位为 Conversation Chunk，且 Semantic / Lexical Index 均属 Derived Data）。Stage 1.4 已进一步确认第一版 structured / canonical persistent store 采用 SQLite。仍待后续阶段确定的是 SQLite Physical Schema、表结构、字段类型、索引、migration、transaction、具体持久化实现，以及 Vector Storage 是否独立、Chunk 具体切分参数、Embedding 模型与 Indexing Pipeline 的具体执行方式。
+Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），Retrieval 架构已在 Stage 1.3 确认（见 [Stage 1.3: Retrieval Architecture](#stage-13-retrieval-architecture)，其中 Semantic 索引单位为 Conversation Chunk，且 Semantic / Lexical Index 均属 Derived Data）。Stage 1.4 已确认第一版 structured / canonical persistent store 采用 SQLite；M1 已按单独 backend database contract 落地 ingestion 所需 physical schema、transaction 和幂等 provenance。仍待后续阶段确定的是 Retrieval/Vector Storage、Chunk 参数、Embedding 模型与 Indexing Pipeline，以及跨环境 migration/deployment 策略。
 
 ### Query Plane
 
@@ -2007,19 +2007,17 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 
 以下事项仍为 **Pending architecture specification**，不得在本阶段自行补齐或实现：
 
-- 第一版 SQLite Physical Schema 的表数量、字段类型、具体索引与持久化实现
+- M1 SQLite ingestion schema 已在 `.trellis/spec/backend/database-guidelines.md` 固化；后续 schema migration、部署/备份策略和 Retrieval derived store 仍 Pending
 - Data Access Scope 对 `execute_sql` 的具体 enforcement 机制（物理隔离、connection scope、SQL validation 或其他实现）
 - `execute_sql` 的具体 bounded execution mechanism（result fetching、cursor、adapter-level max rows 或其他实现）
 - Vector Store 实现、Chunk 具体切分参数、Embedding 模型、Indexing Pipeline 具体执行方式
 - Reranker 是否引入、Fusion 权重、merge / dedup / candidate selection 的具体算法（Pending Evaluation，由 Evaluation Set 决定）
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式（Derived Data 语义已确认，实现 Pending）
 - Retrieval Trace family、query-scope coverage 与 Failure Attribution 已由 Stage 1.9 确认；具体 Python / JSON Schema、事件名与采集实现 Pending
-- Ingestion 具体实现细节：Deduplicator 的 fingerprint 算法、失败处理与幂等执行方式
-- ChatSession / UserIdentity 缺少 authoritative stable ID 时的 fallback identity / matching strategy
-- 相同 stable message identity 对应 canonical payload 变化时的 update / mutation / conflict resolution semantics
-- Canonical Message Fingerprint 的具体字段组合、时间精度、canonicalization 与 hash algorithm
-- raw payload / source locator / structured content 的具体表示
-- Canonical timestamp 的 timezone / precision / 存储类型与转换实现
+- M1 ingestion 已确定并测试：结构化 fallback identity、文件级 transaction/record-level partial、source occurrence 幂等和 canonical first-wins + variant/conflict；后续规模化 Deduplicator、migration 与重处理策略仍 Pending
+- M1 已使用 `peerUid` / 文件明确群号作为 authoritative ChatSession identity；未来其他来源缺少 stable ID 时的 matching strategy 仍 Pending
+- M1 已将 raw payload、source locator、structured content 以 SQLite JSON/text 字段保存；跨来源 schema 演进仍 Pending
+- M1 canonical timestamp 使用 Unix 毫秒整数；其他来源的 timezone/precision 转换策略仍 Pending
 - Query-specific strategy 的具体指导机制与失败处理（由 Stage 1.10 Evaluation 在真实运行中校准，具体实现 Pending）
 - Router 具体规则 / regex、复杂度权重、confidence threshold、LLM 模型 / prompt / timeout、Python 类型与文件布局（Stage 1.5 已确认语义，具体实现保持 Pending）
 - Router Trace family、degradation / Error Code ownership 与 operational metric 维度已由 Stage 1.9 确认；具体 Schema、事件名与实现 Pending

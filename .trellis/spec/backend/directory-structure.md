@@ -1,6 +1,6 @@
 # Directory Structure
 
-> 目录与文件组织约定。**当前阶段（Stage 1.1–1.11 架构契约已完成，Evaluation Implementation / Calibration 与 Stage 1.11 Implementation / Product Interaction 待推进）：仍无业务代码。**
+> 目录与文件组织约定。M1 ingestion vertical slice 已落地；Retrieval、Query Plane、Evaluation 和 HTTP Product Interaction 仍待后续任务。
 
 ---
 
@@ -11,16 +11,21 @@
 ├── .trellis/          # Trellis 工作流（spec / tasks / workspace / scripts）
 ├── .opencode/         # OpenCode Trellis 集成（plugins / agents / commands / skills）
 ├── AGENTS.md          # AI 会话项目指令（Trellis 管理块 + 项目内容）
+├── pyproject.toml      # Python distribution metadata 与 CLI entry point
+├── src/trivae/         # 业务 package，按 ownership 分层
+├── tests/              # M1 unittest contract/integration tests
+├── data/raw/           # 用户提供的只读 QQ JSON 输入
 └── .gitattributes
 ```
 
-Stage 1.11 已确认未来业务代码的概念 package ownership，但尚未创建 `src/` 或业务文件：
+Stage 1.11 已确认 package ownership；M1 已创建当前实现所需的最小目录：
 
 ```text
 src/trivae/
-├── config/          # Settings / PathProvider
 ├── bootstrap/       # Composition Root / Application lifecycle
 ├── data/            # Canonical Model / Ingestion / Store / Indexing
+│   ├── ingestion/   # QQ Adapter 与 Shared Importer
+│   └── storage/     # SQLite Canonical Store
 ├── retrieval/       # Structured / Lexical / Semantic / Context Expansion
 ├── capabilities/    # Capability Contract / Tool Registry
 ├── query/           # Context / Router / Planner / Runtime / Evidence
@@ -38,7 +43,7 @@ package layout 与 Trivae Home 都是逻辑 ownership 语义，不要求一一�
 
 - **只按已确认边界创建业务结构**：Stage 1.11 已确认单 Python distribution、`src/trivae` 概念布局和 ownership；实际目录必须在对应 Implementation task 中按 ADR 落地。
 - **不提前创建实现细节**：具体文件、class、Schema、依赖、框架版本、DI 方式和测试工具链仍须等待实现任务确定。
-- 业务代码尚未出现（验收标准之一）。
+- 当前 M1 只创建 `bootstrap`、`data`、`interfaces` 与必要的 package 初始化文件；未实现的 Query Plane package 不提前创建。
 
 ## 后续阶段（实现任务启动后补充）
 

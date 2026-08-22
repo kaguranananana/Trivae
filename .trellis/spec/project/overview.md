@@ -34,7 +34,7 @@
 
 ## 当前阶段
 
-**Stage 1.1 已完成**：Stage 0 的 Git、Trellis 与工程规范已完成；Data Plane + Query Plane 的架构骨架已沉淀，业务代码仍为零。
+**Stage 1.1 已完成**：Stage 0 的 Git、Trellis 与工程规范已完成；Data Plane + Query Plane 的架构骨架已沉淀。
 
 **Stage 1.2（Data Model + Ingestion）已完成**：Canonical Data Model（Source / ChatSession / UserIdentity / Membership / Message / ImportBatch）、统一 Ingestion Pipeline、Shared Importer、Identity 与去重原则、Canonical Store 为 Source of Truth 已沉淀（见 [architecture.md](./architecture.md)）。
 
@@ -56,9 +56,9 @@
 
 **Stage 1.11（Application Boundary 与 Python 工程结构）已完成（架构边界）**：v1 采用单 Python distribution 与 `src/trivae` 概念 package layout；CLI 与 HTTP API 是薄 Interface Adapter，Evaluation 是拥有 Case / Variant / Runner / Review / Regression 语义的独立评测子系统，三者通过统一 Composition Root 进入同一个 Application / QueryOrchestrator；TrivaeApplication facade 覆盖 query、ingestion、conversations、evaluation、traces 与 lifecycle，产品路径不直接读取 Store；协议输入先经认证 / 本地授权策略或 Evaluation harness 派生 trusted Application context，再形成 Application-level QueryRequest；bootstrap 与 HTTP ASGI / Server App Factory、core/server lifecycle 的 ownership 已分离；Evaluation 通过显式 Controlled Variant / forced route 复用生产 execution core；HTTP 第一版保留 `/api/v1`，Streaming 优先使用 Normalized Event 的单向 projection；Tool Surface、CLI Surface 与 HTTP API Surface 分离；具体 package 文件、Schema、框架版本、runner、真实 baseline 与产品交互仍为 Implementation / Real-run Calibration Pending（见 [architecture.md](./architecture.md) 与 [stage-1-11-application-architecture.md](./technical-decisions/stage-1-11-application-architecture.md)）。
 
-当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Trace 实现 Schema / backend、Evaluation 实现 Schema / runner、真实 baseline、数值 threshold 与参数校准结果仍为 Pending，不能视为最终 Architecture Specification。
+当前架构文档仍为 `Draft / In Progress`。M1 SQLite ingestion schema 已在 backend code-spec 中落地并完成真实数据校准；Vector Store、Chunking 参数、Embedding、Trace 实现 Schema / backend、Evaluation 实现 Schema / runner、真实 baseline、数值 threshold 与参数校准结果仍为 Pending，不能视为最终 Architecture Specification。
 
-**当前任务**：Stage 1.10 架构契约与 Stage 1.11 Application Boundary 架构已完成，后续按主题推进 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Implementation / Product Interaction。尚未实现业务 package、Case authoring、Snapshot / Dataset、runner、Review workflow、真实 stable baseline、numerical threshold 或最终参数；在对应实现契约落地前不实现业务功能。
+**当前任务**：M1 ingestion vertical slice 已完成；后续按主题推进 Retrieval、Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Product Interaction。Case authoring、Snapshot / Dataset、runner、Review workflow、真实 stable baseline、numerical threshold 和最终参数仍未实现；在对应实现契约落地前不实现这些后续功能。
 
 ## 演进目标
 
