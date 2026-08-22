@@ -283,3 +283,24 @@ Completed M1 hardening validation, M2 read/structured/FTS5 lexical/context/resul
 ### Status
 
 [OK] **Completed**
+
+
+## Session 12: 沉淀全项目面试证据规范
+
+**Date**: 2026-08-22
+**Task**: 沉淀全项目面试证据规范
+**Branch**: `main`
+
+### Summary
+
+新增全项目实现任务的 Interview Defense Evidence 质量门槛，要求以 Trivae 自身问题、实现、测试和真实数据为证据；默认不以 ChatLab 或外部参考项目作为面试回答主线，并保留直接追问时的真实来源披露边界。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d391887` | (see git log) |
+
+### Status
+
+[OK] **Completed**
