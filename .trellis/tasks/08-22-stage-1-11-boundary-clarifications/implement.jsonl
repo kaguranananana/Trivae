@@ -1,0 +1,7 @@
+{"file":".trellis/spec/project/technical-decisions/stage-1-11-application-architecture.md","reason":"权威 ADR：补齐双层依赖规则、Application facade、factory/lifecycle ownership、trusted Query context 与 Evaluation 边界。"}
+{"file":".trellis/spec/project/architecture.md","reason":"同步项目级架构边界和 Stage 1.11 已确认决策。"}
+{"file":".trellis/spec/project/overview.md","reason":"同步对外架构摘要，避免传播 Evaluation 薄入口和混合依赖语义。"}
+{"file":".trellis/spec/project/workflow.md","reason":"同步实现阶段约束，明确 factory、lifecycle 和 trusted context。"}
+{"file":".trellis/spec/backend/index.md","reason":"同步 backend 文档导航对 Stage 1.11 边界的描述。"}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"说明 facade、接口和 infrastructure 的 ownership，不新增目录层。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"补充源码依赖、context 信任边界与后续实现验收提示。"}

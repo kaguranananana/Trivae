@@ -1,0 +1,5 @@
+{"file":".trellis/spec/project/technical-decisions/stage-1-11-application-architecture.md","checks":["包含 Runtime Call Flow 和 Source Dependency Rule","包含 Application facade、factory ownership、lifecycle ownership 与 trusted context","Evaluation 是独立子系统且 execution adapter 薄","Trivae Home 是逻辑命名空间"]}
+{"file":".trellis/spec/project/architecture.md","checks":["Stage 1.11 摘要与 ADR 术语一致","没有把 Evaluation 写成单纯薄入口","没有把运行时调用流当作源码依赖规则"]}
+{"file":".trellis/spec/project/overview.md","checks":["应用边界、facade、trusted context 和 lifecycle 摘要一致"]}
+{"file":".trellis/spec/backend/directory-structure.md","checks":["没有新增 ports、adapters、domain、usecases 等层","接口不直接读取 Store"]}
+{"file":".trellis/spec/backend/quality-guidelines.md","checks":["源码依赖和 Query context 信任边界可作为后续实现验收条件"]}

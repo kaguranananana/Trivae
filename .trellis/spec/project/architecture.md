@@ -139,7 +139,7 @@ Stage 1.5 已确认 Router 的两种 Route 为 `standard_execution` 与 `planned
 
 ### Application Boundary
 
-Stage 1.11 将外部入口收束为三个薄 Interface Adapter，并通过统一 Composition Root 进入同一个 Application / Query execution core：
+Stage 1.11 将外部入口划分为两类：CLI 与 HTTP API 是薄 Interface Adapter；Evaluation 是拥有 Case / Variant / Runner / Review / Regression 语义的独立评测子系统。三者都通过统一 Composition Root 进入同一个 Application / Query execution core：
 
 ```text
 CLI ─────────────┐
@@ -158,7 +158,13 @@ Evaluation ──────┘             │
                  CLI / API            Normalized Events
 ```
 
-CLI、HTTP API 与 Evaluation 不拥有 Router、Planner、Runtime、Retrieval、Evidence 或 Trace 的业务语义。共享的是 Application Service、QueryRequest 与 Normalized Event Boundary，不是让 CLI 通过本地 HTTP 调用 API。
+CLI 与 HTTP API 不拥有 Router、Planner、Runtime、Retrieval、Evidence 或 Trace 的业务语义；Evaluation 只要求其进入生产 execution core 的 execution adapter 保持薄，不复制第二套 execution semantics。共享的是 Application Service、QueryRequest 与 Normalized Event Boundary，不是让 CLI 通过本地 HTTP 调用 API。
+
+TrivaeApplication facade 包含 query、ingestion、conversations、evaluation、traces 与 lifecycle；Conversation、Import、Trace 等产品路径均通过对应 Application service 进入，不直接读取 Store。
+
+bootstrap 持有 Trivae Application Factory；interfaces/api 持有 HTTP ASGI / Server App Factory。core Application lifecycle 管理核心 Store、Index、Provider、Runtime 与 Trace / Conversation resource，HTTP server lifecycle 管理 ASGI、listener、socket 与连接；server 完成在途请求后再调用 application.close。
+
+Protocol input 不等于 trusted Application context。data_access_scope、特权 execution_overrides 与 trace_profile 必须由认证、本地授权策略或 Evaluation harness 派生，普通客户端不能通过 wire 字段自行扩权或启用特权模式。
 
 Composition Root 集中创建 Settings / Paths、Store、Index、Retrieval、Capability、Tool Registry、Router、Planner、Runtime Adapter、Evidence / Citation、Trace Collector 与 QueryOrchestrator，并把它们交给可管理生命周期的 Application 对象。具体 Python class、依赖注入方式与 Schema 属于 Implementation Pending。
 
@@ -1536,36 +1542,53 @@ Stage 1.11 负责把 Stage 1.1–1.10 已确认的内部边界映射到 Python �
 ### Confirmed Architecture
 
 - v1 使用一个 Python distribution，package root 采用 `src/trivae`；内部按架构 ownership 划分 `config`、`bootstrap`、`data`、`retrieval`、`capabilities`、`query`、`conversation`、`observability`、`evaluation` 与 `interfaces` 等概念包。
-- CLI、HTTP API、Evaluation 是三个薄入口；三者都通过 Composition Root 获取同一 Application，并将各自输入转换为 Application-level `QueryRequest`。
+- CLI 与 HTTP API 是薄 Interface Adapter；Evaluation 是独立评测子系统，但其进入共享 execution core 的 execution adapter 保持薄。三者都通过 Composition Root 获取同一 Application，并将各自输入转换为 Application-level `QueryRequest`。
+- `TrivaeApplication` facade 包含 query、ingestion、conversations、evaluation、traces 与 lifecycle；Conversation、Import、Trace 等产品路径均通过对应 Application service 进入，不直接读取 Store。
+- bootstrap 持有 Trivae Application Factory；interfaces/api 持有 HTTP ASGI / Server App Factory。core Application lifecycle 与 HTTP server lifecycle 分离，server 完成在途请求后再调用 application.close。
+- Protocol input 不等于 trusted Application context；data_access_scope、特权 execution_overrides 与 trace_profile 必须由认证、本地授权策略或 Evaluation harness 派生，普通客户端不能自行扩权。
 - `QueryOrchestrator` 是 Query 的唯一 Application entry，统一组织 Context → Router → 可选 Planner → Agent Runtime → Tool / Retrieval → Evidence / Citation → Finalization。
-- Evaluation 通过显式 Controlled Variant、forced route 或 execution override 复用同一 Query execution core，不复制 eval-specific Router、Runtime、Tool 或 Retrieval 主链路。
-- CLI / API / Evaluation 共享 Settings、PathProvider、Application lifecycle、request / trace correlation、canonical Error semantics 与 Normalized Event Projection。
+- Evaluation 通过显式 Controlled Variant、forced route 或 execution override 复用同一 Query execution core，不复制 eval-specific Router、Runtime、Tool 或 Retrieval 主链路；Case、Variant、Runner、Review、Comparison 与 Regression 仍属于 Evaluation 自身语义。
+- CLI / API / Evaluation 共享 Settings、PathProvider、core Application lifecycle、request / trace correlation、canonical Error semantics 与 Normalized Event Projection；HTTP server lifecycle 单独由 HTTP interface / CLI serve 管理。
 - OpenAI Agents SDK Event 只能经过 Runtime Adapter 转为 Trivae-owned Runtime Event；CLI / API / UI 与 Trace Collector 不直接依赖 SDK event 类型。
 - HTTP 第一版保留 `/api/v1` 版本边界；查询 Streaming 优先使用 Normalized Event 的单向 SSE-like projection，不在当前阶段引入 WebSocket。
 - Tool Surface、CLI Surface、HTTP API Surface 分开治理；Agent Tool 不自动成为公共命令或 endpoint。
 
 ### Dependency Direction
 
-```text
-interfaces/cli ───┐
-interfaces/api ───┼──> Application / Query Orchestrator
-evaluation ───────┘              │
-                                 ▼
-                         Router / Planner / Runtime
-                                 │
-                         Capabilities / Retrieval
-                                 │
-                                 ▼
-                           Data / Infrastructure
+#### Runtime Call Flow
 
-All stages ──> Normalized Event Boundary ──> Observability
+```text
+CLI / HTTP / Evaluation execution adapter
+  -> TrivaeApplication
+  -> QueryOrchestrator
+  -> Context / Router / Planner / Runtime
+  -> Capability / Retrieval
+  -> Data
 ```
 
-底层模块不得反向依赖 CLI / API framework；Capability Contract 不向上暴露 OpenAI Agents SDK 类型；Data 不依赖 Agent Runtime；Evaluation 不复制生产 execution core。具体 module file、class、依赖版本、Schema 与 DI 方式保持 Implementation Pending。
+这条箭头描述运行时调用顺序，不等价于 Python import 方向。所有产品路径先进入 TrivaeApplication 的对应 facade，再进入 application service。
+
+#### Source Dependency Rule
+
+```text
+interfaces / evaluation adapters
+  -> application / query contracts
+  -> Trivae-owned business contracts
+
+concrete infrastructure adapters
+  -> Trivae-owned business contracts
+
+bootstrap / composition root
+  -> contracts + concrete implementations
+```
+
+Trivae-owned business contracts 不导入 SQLite、FastAPI、Typer 或具体 provider SDK；concrete infrastructure adapters 可以实现或依赖 Trivae-owned contracts；interfaces 依赖 Application facade，不直接读取 Store、Index 或 provider；bootstrap 可以组装契约和具体实现。本规则不新增 ports、adapters、domain、usecases 等层级。
+
+具体 module file、class、依赖版本、Schema 与 DI 方式保持 Implementation Pending。
 
 ### Stage 1.11 Deferred
 
-业务 package 尚未创建。`pyproject.toml`、Python / JSON / Database Schema、Typer / FastAPI / SSE / SDK 版本、Application factory 实现、API wire schema、CLI 输出、Evaluation runner、真实 baseline、数值 threshold 与生命周期参数仍属于 Implementation / Real-run Calibration Pending。
+业务 package 尚未创建。`pyproject.toml`、Python / JSON / Database Schema、Typer / FastAPI / SSE / SDK 版本、create_application / create_http_app 实现、API wire schema、CLI 输出、Evaluation runner、trusted context 派生策略、真实 baseline、数值 threshold 与 lifecycle 参数仍属于 Implementation / Real-run Calibration Pending。
 
 完整 rationale、Package Layout、Composition Root、Failure Cases、ChatLab 继承 / 适配 / 暂不继承与 Reopen Conditions 见 [Stage 1.11 Application Architecture ADR](./technical-decisions/stage-1-11-application-architecture.md)。
 
@@ -1942,13 +1965,13 @@ Evaluation Suite
 ### Stage 1.11：Application Boundary 与 Python 工程结构
 
 1. **Single Python distribution**：v1 使用一个 Python distribution，内部采用 `src/trivae` 与按架构 ownership 划分的概念 package；不直接复制 ChatLab 的多 workspace monorepo。
-2. **Thin interfaces**：CLI、HTTP API、Evaluation 都是薄 Interface Adapter，不拥有 Router、Planner、Runtime、Retrieval、Evidence 或 Trace 的业务语义。
-3. **Single application entry**：Composition Root 创建统一的 Application；CLI、API、Evaluation 都将输入转换为 Application-level `QueryRequest`，进入同一个 `QueryOrchestrator`。
-4. **Evaluation reuses execution core**：Evaluation 的 forced route、Controlled Variant 与 execution override 必须显式可 Trace，并复用生产 Query execution core；不复制 eval-specific Runtime、Retrieval 或 Tool 链路。
-5. **Centralized lifecycle**：Settings、PathProvider、Store、Index、Capability、Tool Registry、Router、Planner、Runtime Adapter、Evidence / Citation、Trace Collector 与 Application lifecycle 由 Composition Root 统一装配；不允许 import-time 全局资源副作用。
+2. **Surface separation**：CLI 与 HTTP API 是薄 Interface Adapter；Evaluation 是独立评测子系统，但其进入生产 execution core 的 execution adapter 保持薄，不复制第二套 execution semantics。
+3. **Single application entry**：bootstrap 的 Trivae Application Factory 创建统一的 Application；CLI、API、Evaluation 都将输入转换为 Application-level `QueryRequest`，进入同一个 `QueryOrchestrator`。
+4. **Evaluation reuses execution core**：Evaluation 的 Case / Variant / Runner / Review / Regression 属于独立评测语义；其 forced route、Controlled Variant 与 execution override 必须显式可 Trace，并通过薄 execution adapter 复用生产 Query execution core，不复制 eval-specific Runtime、Retrieval 或 Tool 链路。
+5. **Separated lifecycle**：Settings、PathProvider、Store、Index、Capability、Tool Registry、Router、Planner、Runtime Adapter、Evidence / Citation、Trace Collector 与 core Application lifecycle 由 bootstrap 统一装配；HTTP ASGI、listener、socket 与 server lifecycle 由 interfaces/api / CLI serve 管理；不允许 import-time 全局资源副作用。
 6. **Trivae-owned event boundary**：SDK Event 先经 Runtime Adapter 转换为 Trivae Runtime Event，再进入 Normalized Query Event；Stream Projection 与 Trace Collector 从同一语义边界派生。
 7. **Cross-entry correlation**：`request_id`、`trace_id` 与 canonical Error 从入口开始保留；CLI / HTTP 只做 presentation / protocol projection，不重新定义错误语义。
-8. **Dependency direction**：interfaces / evaluation → Application / Query → domain → infrastructure；底层不反向依赖 CLI / HTTP framework，业务 contract 不暴露 SDK 类型。
+8. **Two dependency rules**：Runtime Call Flow 与 Source Dependency Rule 分开记录；业务 contract 不依赖具体 infrastructure，concrete adapter 可以依赖 Trivae contract，bootstrap 可以组装两者；不新增 ports、adapters、domain、usecases 层级。
 9. **Separate surfaces**：Tool Surface、CLI Surface、HTTP API Surface 独立治理；Agent Tool 不自动成为公共命令或 endpoint。
 10. **Versioned HTTP boundary**：第一版保留 `/api/v1`；Streaming 优先使用 Normalized Event 的单向 SSE-like projection，WebSocket、UI、MCP、Daemon 与 self-update 暂不继承。
 11. **Deferred implementation**：package 文件、Python / JSON / Database Schema、框架版本、DI 方式、API wire schema、Evaluation runner、真实 baseline 与数值参数仍为 Implementation / Real-run Calibration Pending。

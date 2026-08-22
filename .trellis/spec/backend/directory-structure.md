@@ -32,6 +32,8 @@ src/trivae/
 
 上图只表达 architecture ownership，不表示目录已经存在，也不冻结具体文件、class、Schema 或依赖版本。正式依据为 [Stage 1.11 Application Architecture ADR](../project/technical-decisions/stage-1-11-application-architecture.md)。
 
+package layout 与 Trivae Home 都是逻辑 ownership 语义，不要求一一映射为物理目录、文件或数据库表。bootstrap 负责 Trivae Application Factory 与 core resource lifecycle；interfaces/api 负责 HTTP ASGI / Server App Factory 与 server lifecycle；接口层通过 Application facade 进入，不直接读取 Store、Index 或 provider。
+
 ## 约定（当前架构阶段生效）
 
 - **只按已确认边界创建业务结构**：Stage 1.11 已确认单 Python distribution、`src/trivae` 概念布局和 ownership；实际目录必须在对应 Implementation task 中按 ADR 落地。
