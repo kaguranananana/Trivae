@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/project/architecture.md", "reason": "核对 Stage 1.10 章节与全局 Confirmed/Pending、ChatLab 边界一致"}
+{"file": ".trellis/spec/project/technical-decisions.md", "reason": "核对 ADR 索引、阶段状态与旧 Stage 后续路由"}
+{"file": ".trellis/spec/project/overview.md", "reason": "核对当前阶段从 Stage 1.10 完成路由到 Stage 1.11"}
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "核对 Evaluation 原则没有制造指标、阈值或虚假质量结论"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md", "reason": "核对 Evaluation 不改写 Trace，operational metric 不被当作 quality proof"}
+{"file": ".trellis/tasks/08-22-stage-1-10-evaluation/research/chatlab-evaluation-architecture-analysis.md", "reason": "核对 ChatLab 继承、适配与不继承结论都有本地代码证据"}

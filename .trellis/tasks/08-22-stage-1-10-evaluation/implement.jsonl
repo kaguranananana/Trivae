@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/project/architecture.md", "reason": "Stage 1.10 主架构章节、Evaluation 横切章节、Confirmed/Pending 与阶段顺序的权威汇总"}
+{"file": ".trellis/spec/project/technical-decisions.md", "reason": "ADR 索引、状态与跨阶段 Pending 路由需要同步"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-5-router.md", "reason": "Router Evaluation 必须以 Planner Utility 和 standard/planned paired comparison 为核心"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-8-evidence-citation.md", "reason": "Evidence/Citation 的 entailment、sufficiency、coverage、stopping 与 repair 边界"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md", "reason": "Trace 事实、post-run Diagnosis、operational metrics 与 quality Evaluation 的边界"}
+{"file": ".trellis/tasks/08-22-stage-1-10-evaluation/research/chatlab-evaluation-architecture-analysis.md", "reason": "ChatLab Evaluation、Router/Planner、参数与 Evidence 的继承和偏离证据"}
