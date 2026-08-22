@@ -261,3 +261,25 @@ Implemented QQ V5/0.1.0 ingestion into SQLite Canonical Store; merged 14 raw fil
 ### Status
 
 [OK] **Completed**
+
+
+## Session 11: M1-M3 fast-track retrieval implementation
+
+**Date**: 2026-08-22
+**Task**: M1-M3 fast-track retrieval implementation
+**Branch**: `main`
+
+### Summary
+
+Completed M1 hardening validation, M2 read/structured/FTS5 lexical/context/result contracts, and M3 search_messages capability/tool. Added real-data calibration, regression coverage, docs, and quality evidence; stopped before M4 runtime.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7bad41b` | (see git log) |
+| `1a954b4` | (see git log) |
+
+### Status
+
+[OK] **Completed**
