@@ -1,7 +1,7 @@
 # Error Handling
 
 > 错误处理长期原则（源自工程原则第 1、3 节）。
-> 具体异常类型体系、错误契约等待 Architecture Specification。
+> Stage 1.9 已确认跨层 Error Code ownership 与 Failure Attribution 原则；具体异常类型和完整 Error Code 枚举仍待实现。
 
 ---
 
@@ -28,10 +28,17 @@
 - 测试覆盖
 - 相关指标
 
-## 架构级错误处理（Pending）
+## 架构级错误处理
 
-以下内容等待 Architecture Specification：
+已确认：
 
-- 异常类型体系 / 错误码设计
-- Tool 参数错误处理策略
-- Agent Loop 错误恢复策略
+- 首个破坏本层 contract 的组件拥有 Error Code；Wrapper 跨层传播时不得改名覆盖根因。
+- Failure Attribution 区分 `origin_stage`、`observed_stage`、handling 与 Query terminal outcome。
+- Router / Planner degradation、Tool Contract Error、Runtime Failure、User Abort 与 Budget exhaustion 分开表达。
+- 未分类 Tool / Adapter 异常不得转换成 generic model-visible Tool Error 来吞掉实现缺陷。
+
+仍 Pending：
+
+- 具体异常类型体系、完整 Error Code 枚举与 Exception mapping
+- user-facing error message 与 API mapping
+- 实现层 logging / Trace payload Schema

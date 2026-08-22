@@ -50,9 +50,11 @@
 
 **Stage 1.8（Evidence / Citation）已完成**：Answer 使用 claim-level Citation，并与 Evidence Panel 共用同一结构化 Answer Artifact；Final Evidence 按 claim / finding 组织，可包含 Message Source 与 Structured Result Source；Citation 必须来自当前 Run 实际取得且在 Data Access Scope 内的 Tool Result。用户可通过会话、作者、精确时间和 bounded 原始上下文复核来源，全量聊天留在原社交平台。invalid / unresolved Citation 会显式阻止 Answer 提交，第一版不新增 Evidence Tool、Evidence Agent、固定关键词 Judge、自动 citation repair 或 Runtime-owned Evidence State Machine（见 [architecture.md](./architecture.md) 与 [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md)）。
 
-当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Trace、Evaluation 与各模块具体实现 Schema 仍为 Pending，不能视为最终 Architecture Specification。
+**Stage 1.9（Trace / Observability）已完成**：完整 Query Execution 使用 Trivae-owned normalized event boundary；Trace 以 versioned append-only event、单 Trace sequence 与 operation causality 支持跨 Router、Planner、Runtime、Tool、Retrieval、Evidence、Citation 和 Answer commit 的 Failure Attribution。query-scope coverage、Error Code ownership、data minimization、retention / privacy 分层与独立 Trace Store 原则已确认；具体 Python / JSON Schema、Error Code 枚举、storage backend 与 retention 时长仍为 Implementation Pending（见 [architecture.md](./architecture.md) 与 [stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md)）。
 
-**当前任务**：Stage 1.8 已完成，等待进入 Stage 1.9 Trace / Observability。在对应架构细节确认前不实现业务功能。
+当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Trace 实现 Schema / backend、Evaluation 与各模块具体实现 Schema 仍为 Pending，不能视为最终 Architecture Specification。
+
+**当前任务**：Stage 1.9 已完成，等待进入 Stage 1.10 Evaluation。尚未确认 Evaluation Dataset、quality metrics、threshold / gate 与参数校准；在对应架构细节确认前不实现业务功能。
 
 ## 演进目标
 

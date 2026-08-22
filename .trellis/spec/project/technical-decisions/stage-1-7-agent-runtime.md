@@ -138,7 +138,7 @@ Trivae 的 Agent Runtime 定义为：
 | Conversation History | Trivae 是 source of truth，不交给 SDK 私有 Session 做唯一持久化 |
 | SDK Events | 转换成 Trivae-owned Runtime Events，不向上暴露 SDK 类型 |
 | Retry / Model Fallback | v1 不增加 Trivae-specific 自动 retry / fallback |
-| Trace | Runtime 暴露观察点，正式 Trace Schema 留到 Stage 1.9 |
+| Trace | Runtime 暴露观察点；Stage 1.9 已确认正式 normalized event / Trace conceptual boundary，具体 Schema / 实现 Pending |
 
 ### Why
 
@@ -403,7 +403,7 @@ Stage 1.7 冻结最小提交边界，具体表结构与 transaction 实现保持
 - Tool Call / Tool Result 必须保持结构化关联，不能 flatten 成无法 replay 的纯文本。
 - `COMPLETED` 仅在 SDK Run 真正完成后提交完整 assistant message。
 - `ABORTED` / `FAILED` 可以保留 partial output 与已发生 Tool 记录用于诊断或恢复，但必须携带非完成状态，默认不能作为一个完整 assistant turn 参与后续 Conversation replay。
-- request / run identity 必须让 canonical conversation item、Runtime Event 与后续 Trace 能够关联；具体字段与存储 Schema 留给实现和 Stage 1.9。
+- request / run identity 必须让 canonical conversation item、Runtime Event 与 Trace 能够关联；Stage 1.9 已确认 `request_id / trace_id / event_id / operation causality` 的概念语义，具体字段类型与存储 Schema 留给实现。
 
 ### Why
 
@@ -596,7 +596,7 @@ final synthesis fatal failure
 
 OpenAI Agents SDK 自身可能把 Function Tool 异常格式化成模型可见的 generic error。Trivae Tool Adapter 必须显式接管该边界：只映射已知 Tool Contract Error；未知异常继续抛出并使 Run `FAILED`，保留原始错误与 Trace，不能用 generic Tool Result 静默吞掉程序缺陷。
 
-具体 Error Code 名字留给 Stage 1.9，Stage 1.7 不抢 Trace Schema 的工作。
+Stage 1.9 已确认 Error Code 由 contract owner namespace 拥有、跨层传播不改名；具体 Error Code 枚举与 Exception mapping 仍留给实现，Stage 1.7 不抢 Trace Schema 的工作。
 
 ## 10. Decision 9：Abort 生命周期
 
@@ -673,7 +673,7 @@ FastAPI
 直接返回 SDK StreamEvent
 ```
 
-否则 Stage 1.11 API 和 Stage 1.9 Trace 都会被 SDK 类型绑定。Stage 1.7 只冻结**事件边界存在**，不抢先定义最终 Trace Schema。
+否则 Stage 1.11 API 和正式 Trace 都会被 SDK 类型绑定。Stage 1.7 先冻结**事件边界存在**；Stage 1.9 已将 Runtime Event 纳入全 Query normalized event family，并确认 conceptual envelope，具体 Schema / 实现仍 Pending。
 
 ## 12. Decision 11：Runtime lifecycle 状态机
 
@@ -732,7 +732,7 @@ User Abort ───────────────→ ABORTED
 Fatal Runtime Error ──────→ FAILED
 ```
 
-注意 `ROUTING / PLANNING` 属于整个 Query Execution lifecycle，但不属于内部 Agent Loop。这样既方便 Stage 1.9 做 end-to-end Trace，也不破坏 Stage 1.5 / 1.6 的模块边界。
+注意 `ROUTING / PLANNING` 属于整个 Query Execution lifecycle，但不属于内部 Agent Loop。Stage 1.9 的 end-to-end normalized event boundary 保留了这一层级，不把 Router / Planner 伪装成 Runtime 内部事件。
 
 ## 13. Decision 12：Planner→Runtime Adapter 契约
 
@@ -779,7 +779,7 @@ OpenAI Agents SDK 默认开启 built-in tracing（记录 generation、tool call�
 
 > **不要把 OpenAI SDK 自带 Trace 当成项目正式 Trace，也不要默认向其外部 Trace 后端导出完整运行数据。**
 
-原因不是"不需要 Trace"，而是 Stage 1.9 还没决定：
+原因不是"不需要 Trace"。Stage 1.7 当时尚未决定：
 
 ```text
 Trace Schema
@@ -797,10 +797,10 @@ SDK Hooks / Stream Events
         ↓
 Trivae normalized events
         ↓
-Stage 1.9 Trace Collector
+Trivae Trace Collector
 ```
 
-Trivae 配置必须显式关闭 SDK built-in external tracing，等 Stage 1.9 明确数据策略后再决定是否接入；不能依赖 SDK 版本的默认值。这也更接近 ChatLab 自己维护 `aiLogger + AgentEventHandler` 的方式，而不是让 SDK 内部状态成为产品观测契约。
+Stage 1.9 已确认 Trivae 配置继续显式关闭 SDK built-in external tracing，不能依赖 SDK 版本默认值；未来 exporter 只能消费 privacy-projected Trivae Event，不能绕过 Collector 直接导出 SDK raw event。这也更接近 ChatLab 自己维护 `aiLogger + AgentEventHandler` 的方式，而不是让 SDK 内部状态成为产品观测契约。
 
 ## 15. ChatLab Baseline 与 Trivae 差异
 
@@ -850,7 +850,7 @@ Core Event → Event Handler → UI / CLI Stream 的事件归一化
 | 15 | **Streaming canonical path** | `SDK StreamEvent → adapter → Trivae Runtime Event → CLI / API / UI`；禁止直接返回 SDK StreamEvent。 |
 | 16 | **Runtime lifecycle 状态机** | `CONTEXT_PREPARING → ROUTING → (PLANNING) → AGENT_PREPARING → RUNNING → (FINALIZING) → COMPLETED`；任意阶段 `ABORTED` / `FAILED`。 |
 | 17 | **Planner soft guidance 注入** | `Validated Plan → Plan Guidance Renderer → LLM-visible soft instructions → Agent Runtime`；Runtime 不读取 plan.steps 逐条执行。 |
-| 18 | **SDK built-in Trace 不当正式 Trace** | Trivae 显式关闭 SDK external tracing；`SDK Hooks / Stream Events → Trivae normalized events → Stage 1.9 Trace Collector`。 |
+| 18 | **SDK built-in Trace 不当正式 Trace** | Trivae 显式关闭 SDK external tracing；`SDK Hooks / Stream Events → Trivae normalized runtime events → Normalized Query Event boundary → Trace Collector`。 |
 | 19 | **ChatLab 经验参数可直接继承** | 作为 v1 baseline 直接继承，标注继承来源，保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。 |
 | 20 | **明确不引入清单** | 见 [Section 2 明确不引入](#2-decision-1thin-agent-runtime--sdk-承载通用-agent-loop)：手写 Loop、Multi-Agent、Handoff、Step Executor、Workflow Engine、Replanning、Runtime-owned Evidence State Machine、SDK Session canonical、SDK 类型泄漏、mid-run 压缩、应用级 retry / fallback 等。 |
 
@@ -890,14 +890,14 @@ Evidence-aware stopping 第一版仅作 Agent guidance
 machine-enforced gate 与具体参数仍由 Stage 1.10 Evaluation 决定
 ```
 
-### Stage 1.9 Pending
+### Stage 1.9 已解除的 Pending
 
 ```text
-Runtime Event 最终 Schema
-Trace 字段 / storage
-Error Code 命名
-Retrieval / Agent Trace Schema
-SDK tracing 是否最终接入
+Runtime Event / Trace conceptual envelope、event family 与 operation causality 已确认
+Failure Attribution 与 Error Code ownership 已确认
+Trace storage / privacy / retention 原则已确认
+SDK built-in external tracing 继续显式关闭
+具体 Python / JSON Schema、Error Code 枚举、Collector / Store backend 与 exporter 实现保持 Implementation Pending
 ```
 
 ### Stage 1.10 Pending
@@ -981,6 +981,6 @@ standard    planned
 - OpenAI Agents SDK 的版本行为变化导致 Trivae 无法维持薄适配层，或出现不可接受的 streaming / cancellation 缺陷；
 - Evaluation 证明 mid-run compaction 对 Trivae workload 有不可替代的价值，且 Failure Attribution 代价可控；
 - 真实业务需求确实需要当前明确排除的 multi-agent、handoff、replanning 或 mid-run compaction 语义；
-- Stage 1.9 决定正式 Trace 需要 SDK built-in tracing 直接接入，且数据策略评估通过。
+- 新技术约束证明正式 Trace 必须直接接入 SDK built-in tracing 才能取得不可替代的诊断事实，且 Stage 1.9 的 privacy / retention / export 边界评估通过。
 
 单纯因为"标准 Agent 架构通常更复杂""未来可能有 UI"或"以后可能有用"不能重新打开 Confirmed 决策。

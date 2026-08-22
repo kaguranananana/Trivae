@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed / Completed（Stage 1.8）**
 >
-> 本 ADR 冻结 Evidence / Citation 的领域语义、职责边界与失败语义，不冻结 Python class、数据库表、JSON 字段名、SDK structured output、API endpoint 或 UI 组件。业务实现、Trace Schema 与 Evaluation 参数不属于本阶段。
+> 本 ADR 冻结 Evidence / Citation 的领域语义、职责边界与失败语义，不冻结 Python class、数据库表、JSON 字段名、SDK structured output、API endpoint 或 UI 组件。业务实现与 Evaluation 参数不属于本阶段；Evidence / Citation Trace 的 conceptual boundary 后由 Stage 1.9 确认，具体 Schema / 实现仍 Pending。
 
 ## 0. Architecture Governance
 
@@ -429,10 +429,11 @@ Citation Finalizer 属于 Answer Generation 的确定性提交边界，不是 Ag
 - Message edit / delete / mutation 后 snapshot 与 current value 的 diff 体验；
 - 平台 deep link 的具体支持矩阵。
 
-### Stage 1.9 Pending
+### Stage 1.9 已解除的 Pending
 
-- Evidence Selection、Citation validation、Answer finalization 的 Trace Event、字段、storage、metrics 与 Error Code；
-- Tool completeness / query-scope coverage 的最终事件表达。
+- Evidence Selection、Citation validation、Answer finalization 的 Trace family、Failure Attribution、Error Code ownership、storage / privacy / retention 原则与 operational metric 维度已确认；
+- Tool completeness / query-scope coverage 已确认以授权 effective scope 为基准，并与 truncation / availability / Evidence sufficiency 分轴；
+- 具体 Python / JSON Schema、事件名、Error Code 枚举、Collector / Store backend 与采集实现保持 Implementation Pending。
 
 ### Stage 1.10 Pending
 

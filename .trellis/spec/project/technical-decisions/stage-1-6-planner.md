@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed（Stage 1.6）**
 >
-> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界、失败契约、ChatLab 基线继承与 Trivae-specific 差异。Stage 1.6 已完成架构设计沉淀，但尚未实现；具体 Python 类型、模型、Prompt、参数、Trace Schema、Evaluation Dataset 与 Agent Runtime 生命周期仍保持 Pending。
+> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界、失败契约、ChatLab 基线继承与 Trivae-specific 差异。Stage 1.6 已完成架构设计沉淀，但尚未实现；Agent Runtime 生命周期后由 Stage 1.7 确认，Trace conceptual boundary 后由 Stage 1.9 确认；具体 Python 类型、模型、Prompt、参数、Trace serialization 与 Evaluation Dataset 仍保持 Pending。
 
 ---
 
@@ -647,7 +647,7 @@ failed
 skipped
 ```
 
-某 Step 是否执行、是否跳过、Agent 是否偏离 Plan，未来由 Stage 1.9 Trace / Observability 观察；不在 Stage 1.6 把 Planner 做成 State Machine。
+某 Step 是否执行、是否跳过、Agent 是否偏离 Plan，不在 Planner 中维护。Stage 1.9 已确认第一版不创建 `steps[]` 的 running / done / failed 事实边界或 step-level execution trace；真实 Runtime / Tool operation 仍通过自己的 normalized event 观察，不能反推成 Planner Step State Machine。
 
 ## 8. Automatic Replanning
 
@@ -836,7 +836,7 @@ planned_execution
     Agent Runtime
 ```
 
-Planner failure 不允许让整个请求失败，也不允许被静默压成没有诊断意义的 `no plan`。未来 Trace 必须能做 Failure Attribution；Stage 1.6 只确认语义类别，不冻结 Stage 1.9 Trace Schema。
+Planner failure 不允许让整个请求失败，也不允许被静默压成没有诊断意义的 `no plan`。Stage 1.9 已确认 `origin_stage / observed_stage / handling / terminal outcome` 的 Failure Attribution 与 Planner event family；具体 Trace serialization 仍不在 Stage 1.6 冻结。
 
 ### 10.1 Failure Categories
 
@@ -1021,13 +1021,12 @@ Evidence / Citation 的领域语义与职责边界已由 Stage 1.8 确认
 具体 Python / JSON Schema、序列化与存储实现仍为 Implementation Pending
 ```
 
-### Stage 1.9 Pending
+### Stage 1.9 已解除的 Pending
 
 ```text
-Planner Trace Schema
-Planner failure event names / fields / storage
-Planner metrics
-是否需要 step-level execution trace
+Planner Trace family、Failure Attribution、Error Code ownership 与 operational metric 维度已确认
+第一版不创建 Planner step execution state 或 step-level execution trace
+具体 Python / JSON Schema、事件名、storage backend 与采集实现保持 Implementation Pending
 ```
 
 ### Stage 1.10 Pending

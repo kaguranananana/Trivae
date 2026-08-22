@@ -38,7 +38,7 @@
 - request_id、User Query、Router Decision、Plan/State、Tool Calls（含参数与结果）、Retrieval Query、Retrieval Candidates / Results、Evidence Selection、Final Evidence、Context、Final Answer；
 - 指标：Latency、Token Usage、Tool Call Count、Retry Count、Error Type、Model、Prompt Version。
 
-具体 Trace Schema 由正式架构决定，当前阶段不实现。
+Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverage、Error Code ownership、privacy / retention 与 Trace storage 的概念契约；具体 Python / JSON Schema、Collector / Store backend 与业务代码仍未实现。
 
 ## 5. Evaluation
 

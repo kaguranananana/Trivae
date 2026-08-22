@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime 与 Stage 1.8 Evidence / Citation 确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1–1.8 completed（架构已沉淀，尚未实现）；Stage 1.9–1.11 Pending。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation 与 Stage 1.9 Trace / Observability 确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1–1.9 completed（架构已沉淀，尚未实现）；Stage 1.10–1.11 Pending。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1–1.8 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.9 Trace / Observability |
+| 当前阶段   | Stage 1.1–1.9 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.10 Evaluation |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
@@ -552,18 +552,18 @@ Message Candidates 与 Structured Results 共同保留 provenance 与 trace meta
 ```text
 0 results
 +
-index coverage = 63%
+query-scope coverage = partial
 +
-partial = true
+known gap = part of requested time range is not indexed
 ```
 
 结论只能是：当前检索没有找到，但数据覆盖不足，无法确认不存在。因此 Semantic Retrieval 必须能显式暴露 coverage / partial / truncated 等完整性信息。
 
-> Coverage 的语义需要在后续阶段（Stage 1.9）进一步明确为 **query-scope coverage**：当查询限定在某个 session / time range 时，有意义的是"请求范围内的覆盖率"（requested scope coverage），而不是全局索引覆盖率（例如用户只查 2026 年 7 月某个群，全局索引覆盖 80% 没有意义，重要的是该范围内的覆盖 = 100%）。当前仅确认"必须显式暴露 coverage / partial / truncated"，具体口径与字段 Pending。
+> Stage 1.9 已将 Coverage 明确为 **query-scope coverage**：以 `requested query scope ∩ Data Access Scope` 后的 effective scope 为基准，索引缺失不能缩小 denominator；状态为 `complete / partial / none / unknown / not_applicable`，只有 numerator / denominator / unit 可靠且同口径时才提供 ratio。全局索引覆盖率不能替代当前 session / time range 的 coverage。
 
 ### Retrieval Trace（观察需求，非 Schema）
 
-本阶段只确定 **Retrieval 需要观察哪些信息及其目的**，**不实现具体存储格式或 Trace Schema**（Trace Schema、事件模型、存储与采集方式仍为 Pending 项）。
+Stage 1.3 先确定 Retrieval 需要观察哪些信息及其目的；Stage 1.9 已将这些观察项纳入全 Query normalized event boundary，并确认 query-scope coverage、Failure Attribution 与 storage 原则。具体 Python / JSON Schema 与采集实现仍 Pending。
 
 目的：答案错误时，能够回答"到底是没召回，还是召回了但 Agent 没用？"——这两个 Failure Case 的根因完全不同。
 
@@ -598,9 +598,9 @@ partial = true
 | Query-specific strategy | 是（由任务决定，不固定流水线） |
 | Semantic Index | Derived Data，可重建 |
 | Retrieval Result provenance | 必须保留（Message Candidates 与 Structured Results 共有） |
-| Partial / Coverage | 必须显式暴露（口径在 Stage 1.9 细化为 query-scope coverage） |
+| Partial / Coverage | 必须显式暴露；Stage 1.9 已细化为 query-scope coverage |
 | Evidence 判断 | 不在 Retrieval 层硬编码；Stage 1.8 已确认使用 question-specific criterion |
-| Retrieval Trace | 观察需求已确认；存储格式 / Schema 不提前实现 |
+| Retrieval Trace | 观察需求与 Stage 1.9 normalized event / storage 语义已确认；具体 Schema / 实现 Pending |
 
 #### Tunable / Pending Evaluation（由 Evaluation Set 决定）
 
@@ -619,7 +619,7 @@ partial = true
 | --- | --- |
 | Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式 | Pending architecture specification |
 | Semantic / Lexical Index 的具体存储与版本管理 | Pending architecture specification |
-| Retrieval Trace Schema、事件模型、存储与采集方式 | Pending（本阶段仅确认观察需求） |
+| Retrieval Trace 的具体 Python / JSON Schema、事件名与采集实现 | Pending Implementation；conceptual boundary 已由 Stage 1.9 确认 |
 | Tool / Capability Layer（Agent 看到哪些 Tool、如何命名） | Confirmed（Stage 1.4） |
 | Evidence / Citation | Confirmed（Stage 1.8）；具体 Python / JSON Schema 保持 Implementation Pending |
 | Candidate / Retrieval Result 具体数据结构 | Pending（与 Storage / Data Schema 联动） |
@@ -1084,7 +1084,7 @@ Router 需要在 Trace / Evaluation 中能够区分以下 Failure Case：
 
 Router 是 **execution optimization layer，而不是 request availability dependency**。Router 本身异常时，请求不能因此整体失败；决策应降级到可用的 Rule Decision，若没有合理 Rule Decision 则采用保守的 `standard_execution`，再由 Agent Runtime 继续处理。
 
-该降级是 Router 可用性契约要求的、范围明确且可观测的恢复路径，不等于允许 Tool / Retrieval 静默 fallback。降级原因、原始错误与最终 Route 必须能够被诊断记录；具体 Trace Schema 留给 Stage 1.9。
+该降级是 Router 可用性契约要求的、范围明确且可观测的恢复路径，不等于允许 Tool / Retrieval 静默 fallback。降级原因、原始错误与最终 Route 必须能够被诊断记录；Stage 1.9 已确认 `router` event family、failure ownership 与跨层传播语义，具体 Schema / 实现仍 Pending。
 
 ### Router 与 Tool / Retrieval 的边界
 
@@ -1111,7 +1111,7 @@ hybrid_route
 
 ### Trace 与 Evaluation 要求
 
-Stage 1.5 只确认 Router 必须留下可追踪、可评估的决策信息，不提前设计 Stage 1.9 Trace Schema 或 Stage 1.10 Evaluation Benchmark。
+Stage 1.5 先确认 Router 必须留下可追踪、可评估的决策信息；Stage 1.9 已将 Route Decision、degradation 与 failure 纳入 normalized Trace。本节仍不提前设计 Stage 1.10 Evaluation Benchmark。
 
 未来 Router Evaluation 应包含：
 
@@ -1134,7 +1134,7 @@ Stage 1.5 只确认 Router 必须留下可追踪、可评估的决策信息，�
     → 调整规则与参数
 ```
 
-具体 accuracy、error rate、threshold calibration、Trace Event Schema 和回归执行方式留待 Stage 1.9 / Stage 1.10。
+具体 Trace Python / JSON Schema 与采集实现保持 Implementation Pending；accuracy、error rate、threshold calibration 和回归执行方式留待 Stage 1.10。
 
 Router Evaluation 的最终目标不是得到漂亮的 Route Classification Accuracy，而是验证 Planner Invocation 是否带来实际下游收益。Stage 1.10 可以对同一个 Query 比较两条受控路径：
 
@@ -1176,7 +1176,7 @@ B: planned_execution  → Planner → Agent Runtime
 | Confidence threshold 与 LLM 触发 threshold | Pending Evaluation |
 | LLM Router 的模型、prompt、timeout 与调用适配 | Pending Implementation |
 | RouteDecision 的具体 Python 类型、序列化与文件布局 | Pending Implementation |
-| Router Trace Event Schema、故障记录格式与指标命名 | Pending（Stage 1.9） |
+| Router Trace 的具体 Schema、事件名与采集实现 | Pending Implementation；event family / ownership 已由 Stage 1.9 确认 |
 | Router Query Set、标签流程、准确率与校准方法 | Pending（Stage 1.10） |
 | Planner 的 Python / JSON 实现、模型参数、具体 bounds 与 Runtime adapter | Pending（Stage 1.6 Implementation / Evaluation）；Planner 的概念 Input、Plan Schema、重规划与执行语义已确认 |
 
@@ -1236,7 +1236,7 @@ Planner = Investigation Decomposition，不是 Tool Execution Planner。两条 R
 
 - Python class / package layout、Model、Prompt、Structured Output、具体 Schema、字段类型、bounds、DataSnapshot schema 与 Context 压缩：Implementation / Stage 1.7。
 - Planner latency budget 与 invocation policy、Evaluation Dataset、质量 / latency / token / Tool Call 指标、参数校准、是否增加 intent 类型、是否未来需要 replan：Stage 1.10。
-- Planner Trace Schema、failure event、metrics 与 step-level execution trace：Stage 1.9。
+- Planner Trace family、failure ownership 与 operational metric 维度已由 Stage 1.9 确认；具体 Schema / 事件名 / 采集实现 Pending。第一版不建立 Planner step execution state 或 step-level execution trace。
 - Evidence / Citation：Confirmed（Stage 1.8）；Planner `evidence_needed` 仍只表达 requirement。
 
 完整的 21 项 Confirmed Decisions、详细 Failure Case 与 Reopen Conditions 见 [Stage 1.6 Planner ADR](./technical-decisions/stage-1-6-planner.md)。
@@ -1334,7 +1334,7 @@ CONTEXT_PREPARING → ROUTING → (PLANNING) → AGENT_PREPARING
 
 ### SDK built-in Trace 不当正式 Trace
 
-Trivae 配置必须显式关闭 SDK built-in external tracing，不能依赖 SDK 版本默认值；`SDK Hooks / Stream Events → Trivae normalized events → Stage 1.9 Trace Collector`；正式 Trace Schema 留 Stage 1.9。
+Trivae 配置必须显式关闭 SDK built-in external tracing，不能依赖 SDK 版本默认值；`SDK Hooks / Stream Events → Trivae normalized runtime events → Normalized Query Event boundary → Trace Collector`。Stage 1.9 已确认正式 Trace 的语义边界，具体 Python / JSON Schema 与 Collector 实现仍 Pending。
 
 ### Stage 1.7 Confirmed Architecture Summary
 
@@ -1357,7 +1357,7 @@ Trivae 配置必须显式关闭 SDK built-in external tracing，不能依赖 SDK
 
 - Python package / module layout、具体 SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 具体类型、Tool 并发策略、Agent Model、Prompt 文案：Implementation。
 - `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字：Pending Evaluation（可继承 ChatLab 经验参数，标注来源）。
-- Runtime Event 最终 Schema、Trace 字段 / storage、Error Code 命名、SDK tracing 是否最终接入：Stage 1.9。
+- Runtime Event / Trace 的 conceptual envelope、Error Code ownership、storage 与 SDK tracing 边界已由 Stage 1.9 确认；具体 Python / JSON Schema、Error Code 枚举、Collector / Store backend 与 exporter 实现保持 Implementation Pending。
 - Agent correctness benchmark、budget / threshold 参数校准：Stage 1.10。
 - Evidence-aware stopping：Stage 1.8 已确认第一版只作 Agent guidance；machine-enforced gate 与参数留给 Stage 1.10。
 
@@ -1404,10 +1404,99 @@ Citation Finalizer 是 Answer Generation 的确定性提交边界，不是新的
 
 - Python / JSON / Database Schema、Claim binding 序列化、Structured Result locator、Conversation commit Schema：Implementation。
 - bounded context 数量、Citation 密度、Evidence Item 上限、Message mutation 后的 diff UX：Implementation / Evaluation。
-- Evidence / Citation Trace Event、Error Code、storage 与 metrics：Stage 1.9。
+- Evidence / Citation Trace family、Error Code ownership、storage 与 operational metric 边界已由 Stage 1.9 确认；具体 Schema、Error Code 枚举与实现保持 Implementation Pending。
 - semantic entailment、sufficiency、citation precision / recall、repair 与 machine-enforced stopping gate：Stage 1.10。
 
 完整的 16 项 Confirmed Decisions、ChatLab 代码证据、Failure Case 与 Reopen Conditions 见 [Stage 1.8 Evidence / Citation ADR](./technical-decisions/stage-1-8-evidence-citation.md)。
+
+## Stage 1.9: Trace / Observability
+
+> 本节只保留 Stage 1.9 的稳定架构契约。核心方向：**整个 Query Execution 使用 Trivae-owned normalized event boundary；Trace 保存跨 Router、Planner、Runtime、Tool、Retrieval、Evidence、Citation 与 Answer commit 的可回放事实，同时通过 data minimization、query-scope coverage 与明确 ownership 支持 Failure Attribution。**
+
+### Normalized Event Boundary
+
+```text
+Router / Planner / Runtime / Tool / Retrieval / Evidence / Citation
+                              │
+                              ▼
+                 Trivae Normalized Query Event
+                       ┌──────┴──────┐
+                       ▼             ▼
+              Stream Projection   Trace Collector
+              (CLI / API / UI)    (recordable projection)
+```
+
+Stage 1.7 的 `Trivae Runtime Event` 是全链路 normalized event 的 Runtime family。SDK Hook / StreamEvent 必须先经 Runtime Adapter 转换；Router、Planner、Retrieval 与 Finalization 保留自己的 domain payload，不伪装成 SDK event。Trace Collector 只负责 envelope、correlation、sequence、privacy projection、persistence 与 completeness，不驱动业务执行。
+
+Conceptual event envelope 至少表达 version、`event_id / trace_id / request_id`、单 Trace `sequence`、发生 / 观测时间、stage、operation、phase、`operation_id / parent_operation_id`、bounded payload、limitations 与 failure。它冻结语义，不冻结 Python / JSON / Database Schema。
+
+### Stable Event Families
+
+- Query / Context：received、context prepared / failed、terminal completed / failed / aborted；
+- Router：decision、degraded、failed invocation，并同时保留原始 failure 与最终 Route；
+- Planner：started、validated / sanitized、completed、failed、skipped；不创建 `steps[]` 的 execution state；
+- Runtime / Model：model turn、Tool Round、budget finalization、stream / cancellation 与 lifecycle terminal；
+- Tool / Retrieval：call / operation identity、status、arguments / query 的 bounded projection、result / candidate identity、latency、coverage / truncated / unavailable；
+- Evidence / Citation / Answer：selection、validation、finalization 与 Conversation Store commit 的成功 / 失败边界；
+- Trace：Collector / Store failure、sequence gap 与 incomplete 状态。
+
+逐 token stream 默认不永久记录；Chain-of-Thought、provider internal reasoning 与完整聊天 / Tool / Model payload 不进入默认 Trace。
+
+### Failure Attribution 与 Error Ownership
+
+Failure 同时表达 `origin_stage`、`observed_stage`、`error_code`、category、cause operation 与 handling。首个破坏 contract 的层拥有 Error Code；Wrapper 只传播，不以自己的 generic code 覆盖根因。Query terminal outcome 可以引用 underlying failure，但不能用 `QUERY.FAILED` 抹掉 `CITATION.*`、`RETRIEVAL.*` 或其他 owner code。
+
+Recovery / degradation 不抹掉已经发生的错误：Router / Planner failure 后 Query 可以完成；已知 Tool Contract Error 可以返回 Agent；未知 Tool / Adapter exception 显式使 Runtime failed。Abort、Budget exhaustion、degradation 与 terminal failure 分开。
+
+Online Trace 记录诊断事实，不自动宣称 Under-routing、Lexical Miss、Ranking Error、Evidence Selection Error 或 Answer Correctness 等需要人工复核 / Stage 1.10 Evaluation 才能确诊的质量 Root Cause。
+
+### Query-scope Coverage
+
+```text
+requested_query_scope ∩ Data Access Scope
+        ↓
+effective_query_scope
+        ↓
+coverage of this capability / index within that scope
+```
+
+Coverage 相对于当前授权查询范围表达，不能用全局索引百分比替代，也不能因为索引缺失而缩小 denominator。每个适用 operation 保留 `scope_reference / basis / basis_version / as_of / status / covered_units / eligible_units / unit / known_gaps` 的概念语义；只有 numerator、denominator 与 unit 可靠且同口径时才给 ratio。
+
+状态为 `complete / partial / none / unknown / not_applicable`。`unknown` 不得伪装成 `complete`；不同 Retrieval primitive 不做未经定义的 coverage 平均。Coverage、truncated、unavailable、Tool status 与 Evidence `sufficient / partial / insufficient` 保持分轴。
+
+即使 capability coverage 为 complete，也只说明对 Canonical Store 当前已知数据的执行完整性，不自动证明外部社交平台导入完整或现实中不存在该事实。
+
+### Privacy、Retention 与 Storage
+
+- Trace 默认保存 identity、结构事实、counts、latency、versions、Error Code、coverage 与 bounded references；不复制 Canonical Message Store、Conversation Store 或完整 Model Context。
+- User Query、Final Answer、Tool Result、Evidence 与 Message 优先保存稳定 reference；内容级诊断只允许显式开启 bounded sensitive snapshot，并使用更严格的访问与保留边界。
+- Trace 读取 / 外部导出不能扩大 Data Access Scope。OpenAI Agents SDK built-in external tracing 继续显式关闭；未来 exporter 只能消费 privacy-projected Trivae Event。
+- Retention 按 metadata、sensitive snapshot、aggregate metrics、Answer Artifact 与 canonical source 分层。Answer Artifact 服从 Conversation Store 生命周期，不随 Trace 到期；具体保留天数与角色矩阵留给部署 / 产品隐私决策。
+- Trace Store 是独立、append-only、versioned、reference-first 的事实存储；timeline、查询索引和 operational metrics 是可重建 projection。具体 backend、partition、buffering 与部署拓扑保持 Implementation Pending。
+- Trace persistence 不与 Answer Artifact commit 强行组成分布式事务。Trace failure 不回滚成功业务结果，但必须通过 `TRACE.*` operational error / health signal 显式暴露并标记 incomplete，禁止 silent loss。
+
+### Operational Metrics 与 Stage 1.10 边界
+
+Stage 1.9 只确认可以从 sanitized Trace 派生 Query / stage latency、terminal outcome、Router degradation、Planner failure category、model / prompt / token usage、Tool / Tool Round count、Tool status / Error Code、Retrieval strategy / candidate count / coverage、Evidence / Citation / Finalization structural outcome、abort / budget / trace incomplete 等 operational dimensions，不设 threshold。
+
+Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集、标签、accuracy / precision / recall、semantic entailment、Planner Utility、threshold、gate 与参数校准全部属于 Stage 1.10，本阶段不提前设计。
+
+### Stage 1.9 Confirmed Architecture Summary
+
+1. 一个 Trivae-owned normalized event boundary 横跨完整 Query Execution；Stream 与 Trace 是不同投影。
+2. Trace 以 versioned event、单 Trace sequence 和 operation causality 表达事实；状态与 metrics 是 derived projection。
+3. Failure Attribution 区分 origin、observation、handling 与 terminal outcome；恢复不抹掉失败。
+4. Error Code 由稳定 stage / contract owner namespace 拥有，跨层传播不改名。
+5. Query-scope coverage 基于授权 effective scope，支持 `complete / partial / none / unknown / not_applicable`，只在口径可靠时给 ratio。
+6. coverage / truncation / availability / Tool status / Evidence sufficiency 分轴表达。
+7. 默认 data minimization；不保存 Chain-of-Thought、逐 token stream或完整聊天 / Tool / Model payload 副本。
+8. Trace access / export 不扩大 Data Access Scope；SDK external tracing 保持关闭。
+9. Retention 分层；Answer Artifact 与 Canonical Source 不归 Trace Store 所有。
+10. Trace Store 独立、append-only、versioned、reference-first，backend 选型 Pending。
+11. Collector failure 显式产生 incomplete / operational failure，但不回滚成功业务结果。
+12. Operational metrics 无阈值；Stage 1.10 Evaluation Dataset、quality metric、threshold 与 gate 保持 Pending。
+
+完整 rationale、Failure Case、Validation Contract、Deferred 与 Reopen Conditions 见 [Stage 1.9 Trace / Observability ADR](./technical-decisions/stage-1-9-trace-observability.md)。
 
 
 ## Module Boundaries
@@ -1452,7 +1541,7 @@ Citation Finalizer 是 Answer Generation 的确定性提交边界，不是新的
 - 不维护 Step Execution State，不 Retry，不 Automatic Replanning。
 - 不把 `suggested_tools` 变成 Runtime 的 required tools；Agent 可以完全偏离 Plan。
 
-Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stage-16-planner)；Python class、模型、Prompt、具体 bounds、Trace 与 Evaluation 仍 Pending。
+Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stage-16-planner)；Trace family 与 failure ownership 已由 Stage 1.9 确认，Python class、模型、Prompt、具体 bounds、事件序列化实现与 Evaluation 仍 Pending。
 
 ### Agent Runtime
 
@@ -1467,8 +1556,8 @@ Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stag
 - Trivae Conversation Store 是 Conversation History 的 source of truth，经 Context Compiler 生成 SDK-compatible items；SDK / Provider conversation state 只作可重建 adapter state；streaming、完成、中止与失败记录遵守明确提交边界。
 - Tool Round 按一个包含 Tool Result 的模型轮次计数，同轮多个 Tool 仍为一轮；Trivae Budget 耗尽后 graceful final synthesis，SDK `max_turns` 为最终调用预留空间并仅作兜底。只有已知 Tool Contract Error 可恢复，未知 Tool / Adapter 异常显式 `FAILED`；Abort 采用协作式 cancellation，晚到结果不得重启执行；Streaming 为 canonical path（SDK StreamEvent → adapter → Trivae Runtime Event）。
 - Runtime lifecycle 状态机为 `CONTEXT_PREPARING → ROUTING → (PLANNING) → AGENT_PREPARING → RUNNING → (FINALIZING) → COMPLETED`；任意阶段 `ABORTED` / `FAILED`；ROUTING / PLANNING 属于 Query 生命周期而非内部 Agent Loop。
-- Trivae 配置显式关闭 SDK built-in external tracing，不依赖 SDK 默认值；`SDK Hooks / Stream Events → Trivae normalized events → Stage 1.9 Trace Collector`。
-- 具体 SDK 版本、Adapter 契约、参数数字、Runtime Event Schema 与 Trace 字段仍保持 Pending（见 [Stage 1.7 ADR](./technical-decisions/stage-1-7-agent-runtime.md)）。
+- Trivae 配置显式关闭 SDK built-in external tracing，不依赖 SDK 默认值；`SDK Hooks / Stream Events → Trivae normalized runtime events → Normalized Query Event boundary → Trace Collector`。
+- Stage 1.9 已确认 Runtime Event / Trace 的 conceptual envelope 与 ownership；具体 SDK 版本、Adapter 契约、参数数字、Python / JSON Schema 与 Trace 实现仍保持 Pending（见 [Stage 1.7 ADR](./technical-decisions/stage-1-7-agent-runtime.md) 与 [Stage 1.9 ADR](./technical-decisions/stage-1-9-trace-observability.md)）。
 
 ### Tool Layer
 
@@ -1490,7 +1579,7 @@ Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stag
 - Retrieval 是 Trivae 的业务核心之一。
 - Retrieval Result 与 Evidence 分离：召回候选不等同于最终引用证据。
 - Stage 1.3 已确认：Retrieval 由 Retrieval Composition、三个 Retrieval Primitives（Structured / Lexical / Semantic）与 Post-Retrieval Operator（Context Expansion）组成；Hybrid 是组合策略而非底层搜索引擎；Semantic 第一版 primary indexing unit 为 Conversation Chunk（Time-aware Parent + Small Child）；Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline；Retrieval Result 的 provenance 与 Partial / Coverage 必须显式暴露。
-- 仍未确定：Reranker、Fusion 权重、Chunk 具体参数、merge / dedup / candidate selection 的具体算法、Message-level 辅助语义索引（Pending Evaluation）；Vector Store、Embedding 模型、Indexing Pipeline 具体实现（Pending architecture specification）；Retrieval Trace Schema（Pending）。
+- Stage 1.9 已确认 Retrieval Trace family、query-scope coverage 与 Failure Attribution 语义；具体 Python / JSON Schema 与采集实现 Pending。仍未确定：Reranker、Fusion 权重、Chunk 具体参数、merge / dedup / candidate selection 的具体算法、Message-level 辅助语义索引（Pending Evaluation）；Vector Store、Embedding 模型、Indexing Pipeline 具体实现（Pending architecture specification）。
 
 概念边界保持为：
 
@@ -1536,13 +1625,15 @@ Retrieval Query
 
 ### Observability / Trace
 
-Observability 与 Trace 横切 Query Plane，目标是支持 Failure Attribution。一次查询最终应能区分 Router、Planner、Agent、Tool、Retrieval、Evidence 和 Answer 等阶段的中间状态与结果。
+Observability 与 Trace 横切 Query Plane，目标是支持 Failure Attribution。Stage 1.9 已确认：Router、Planner、Runtime、Tool、Retrieval、Evidence、Citation 与 Answer commit 共用 Trivae-owned normalized event boundary；Stream Projection 与 recordable Trace Projection 从同一语义边界派生。
 
-Stage 1.4 补充了 Tool 层内部可观测性要求：Tool 可以组合多个 Capability，但组合不得隐藏执行状态——一次 Tool Call 内部应能区分 Retrieval 未召回、Context Expansion 范围不合适、Agent 分析错误；Semantic 不可用时不得 silent fallback 为 Lexical 并返回普通结果。统一 Envelope 明确区分 zero hits / capability unavailable / invalid arguments / execution failure / partial / truncated，其中 Truncation 与 Partial Execution 保持独立。
+Trace 使用 versioned append-only event、单 Trace sequence 与 operation causality 保存事实。Failure Attribution 区分 origin、observation、handling 和 terminal outcome；恢复 / degradation 不抹掉原始 failure。Error Code 由 contract owner namespace 拥有，Wrapper 不改名覆盖根因。
 
-Stage 1.6 补充了 Planner 的 Failure Attribution 语义：generation_error、timeout、invalid_output、unavailable、aborted 等 Planner failure 不得静默压成 no plan；planned_execution 的 Router Decision 仍保留，Runtime 可以记录为 executed_without_plan。Plan 是否被执行、跳过或偏离只作为未来 Trace 的观察内容，不由 Planner 维护状态。
+Retrieval coverage 按 `requested query scope ∩ Data Access Scope` 后的 effective scope 表达；`complete / partial / none / unknown / not_applicable`、truncated、unavailable、Tool status 与 Evidence sufficiency 分轴保留。没有可靠 denominator 时必须是 `unknown`，不能用全局 coverage 或估算百分比伪装当前查询完整性。
 
-当前只确认逻辑覆盖范围，不确认具体 Trace Schema、存储、采集方式或指标命名。
+Trace 默认 data minimization，不保存 Chain-of-Thought、逐 token stream 或完整聊天 / Tool / Model payload 副本；读取与外部导出不得扩大 Data Access Scope。Trace Store 独立、append-only、versioned、reference-first，retention 按 metadata / sensitive snapshot / aggregate / Answer Artifact / canonical source 分层；具体 backend、Schema、时长与部署实现仍 Pending。
+
+Trace failure 不回滚成功业务结果，但必须显式暴露并将 Trace 标为 incomplete。完整事件 family、storage / privacy 原则、Failure Case 与 Reopen Conditions 见 [Stage 1.9 ADR](./technical-decisions/stage-1-9-trace-observability.md)。
 
 ### Evaluation / Regression
 
@@ -1590,10 +1681,10 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 4. **Semantic 第一版 primary indexing unit 为 Conversation Chunk**：默认不建立逐 Message 向量索引；采用 Time-aware Parent + Small Child 架构，命中 Child → 定位所属 Parent → Context Expansion。若 Evaluation 证明 Message-level retrieval 对特定 Failure Case 有价值，再作为辅助索引引入（Pending Evaluation）。
 5. **Query-specific strategy**：Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline。
 6. **Retrieval Result provenance 保留**：Retrieval Result 分 Message Candidates（lexical / semantic）与 Structured Results（scalar / aggregate / records），共同保留 provenance 与 trace metadata；不把所有结果压成单一 Candidate 类型。
-7. **Partial / Coverage 显式暴露**：不能"搜不到 = 不存在"；Semantic Retrieval 必须能表达 coverage / partial / truncated 等完整性信息（口径在 Stage 1.9 细化为 query-scope coverage）。
+7. **Partial / Coverage 显式暴露**：不能"搜不到 = 不存在"；Stage 1.9 已将 coverage 细化为基于授权 effective scope 的 query-scope coverage，并与 partial / truncated / unavailable 分轴表达。
 8. **Reranker 与 Fusion 权重不提前设计**：先建立 baseline，出现 Failure Case 并证明排序问题后再评估；Chunk 具体参数同样保持 Tunable。
 9. **Evidence 判断不在 Retrieval 层硬编码**：不复制 ChatLab 固定关键词判断 Evidence Status 的方案；Stage 1.8 已确认由 Final Synthesis 使用 question-specific criterion 选择和组织 Final Evidence。
-10. **Retrieval Trace 观察需求确定、Schema 不提前实现**：记录需要观察的检索信息（query / strategy / filters / lexical / semantic / context_expansion / final_candidates）及其目的；具体存储格式与 Trace Schema 保持 Pending。
+10. **Retrieval Trace 纳入全链路 normalized event**：记录 query / strategy / filters / lexical / semantic / context_expansion / final_candidates 及 query-scope coverage；Stage 1.9 已确认 envelope、Failure Attribution 与 storage 原则，具体 Python / JSON Schema 和实现保持 Pending。
 
 详细 rationale 与 trade-off 见 [technical-decisions/stage-1-3-retrieval-architecture.md](./technical-decisions/stage-1-3-retrieval-architecture.md)。
 
@@ -1676,7 +1767,7 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 13. **Streaming canonical path**：`SDK StreamEvent → adapter → Trivae Runtime Event → CLI / API / UI`；禁止直接返回 SDK StreamEvent。
 14. **Runtime lifecycle 状态机**：`CONTEXT_PREPARING → ROUTING → (PLANNING) → AGENT_PREPARING → RUNNING → (FINALIZING) → COMPLETED`；任意阶段 `ABORTED` / `FAILED`；ROUTING / PLANNING 属于 Query 生命周期。
 15. **Planner soft guidance 注入**：`Validated Plan → Plan Guidance Renderer → LLM-visible soft instructions → Agent Runtime`；Runtime 不读取 plan.steps 逐条执行。
-16. **SDK built-in Trace 不当正式 Trace**：Trivae 显式关闭 SDK external tracing，不依赖 SDK 默认值；`SDK Hooks / Stream Events → Trivae normalized events → Stage 1.9 Trace Collector`。
+16. **SDK built-in Trace 不当正式 Trace**：Trivae 显式关闭 SDK external tracing，不依赖 SDK 默认值；`SDK Hooks / Stream Events → Trivae normalized runtime events → Normalized Query Event boundary → Trace Collector`。
 17. **ChatLab 经验参数可直接继承**：作为 v1 baseline 直接继承，标注继承来源，保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。
 18. **明确不引入**：手写通用 Loop、Multi-Agent、Handoff、Planner Agent Loop、Step Executor、Workflow Engine、Replanning、Runtime-owned Evidence State Machine、SDK Session canonical、SDK 类型泄漏、mid-run 压缩、应用级 retry / fallback、自定义 Tool orchestration scheduler、硬编码 Retrieval workflow。
 
@@ -1700,6 +1791,24 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 
 详细 rationale、ChatLab 代码证据与 Reopen Conditions 见 [technical-decisions/stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md)。
 
+### Stage 1.9：Trace / Observability
+
+1. **Trivae-owned normalized event boundary**：完整 Query Execution 使用统一语义边界；Runtime Event 是其中一个 family，SDK raw event 不泄漏到产品或 Trace contract。
+2. **Stream / Trace projection 分离**：CLI / API / UI 与 Trace Collector 从同一语义事件派生不同投影，采用各自的数据最小化策略。
+3. **Version / identity / causality / sequence**：Conceptual envelope 表达 schema version、event / trace / request identity、单 Trace sequence、stage / operation / phase 与 parent operation。
+4. **Append-only facts**：事件是 Trace source of truth；timeline、状态与 metrics 是可重建 projection；缺少 terminal event 时标记 incomplete。
+5. **Failure Attribution**：区分 origin stage、observed stage、handling 与 Query terminal outcome；恢复 / degradation 不抹掉原始 failure。
+6. **Error Code ownership**：稳定 owner namespace 拥有 error semantics；跨层传播不改名，Query wrapper 不覆盖 underlying root code。
+7. **Query-scope coverage**：基于 `requested scope ∩ Data Access Scope` 后的 effective scope；索引缺口不能缩小 denominator，只有口径可靠时才给 ratio。
+8. **Coverage states / orthogonal axes**：`complete / partial / none / unknown / not_applicable` 与 truncated、unavailable、Tool status、Evidence sufficiency 分轴。
+9. **No online quality guess**：Trace 保存运行事实，不自动确诊需要人工复核或 Stage 1.10 Evaluation 的 quality Root Cause。
+10. **Privacy by default**：不记录 Chain-of-Thought、逐 token stream 或完整聊天 / Tool / Model payload 副本；内容诊断只允许受控 bounded snapshot。
+11. **Retention / access boundaries**：Trace 不扩大 Data Access Scope；metadata、sensitive snapshot、aggregate、Answer Artifact 与 canonical source 分层保留。
+12. **Independent Trace Store**：append-only、versioned、reference-first；backend 与实现 Pending；Trace failure 显式产生 incomplete，但不回滚成功业务结果。
+13. **Operational metrics only**：Stage 1.9 只确认无阈值运行维度；Evaluation Dataset、quality metric、threshold 与 gate 属于 Stage 1.10。
+
+详细 rationale、Failure Case 与 Reopen Conditions 见 [technical-decisions/stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md)。
+
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
 - ChatLab 的 `direct_response / tool_assisted / planned_execution` 是参考 taxonomy；Trivae 已确认将前两者合并为 `standard_execution`，并保留 `planned_execution` 作为唯一额外 Planner 路径。
@@ -1721,6 +1830,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Stage 1.7 继承 ChatLab 的 Thin Agent Core 架构（通用 Loop 由核心库承载、pre-run context compression、Trivae-owned conversation history、budget-exhausted graceful final synthesis、Tool Error 可恢复、事件归一化）；第一版由 OpenAI Agents SDK（Python）承载通用 Loop，替换 ChatLab 使用的 `@earendil-works/pi-agent-core`（TS），继承的是 runtime architecture 而非具体 library。
 - Stage 1.7 允许把 ChatLab 的 `max_tool_rounds`、history window、compression threshold 等**经验参数直接继承**作为 v1 baseline，但必须标注继承来源并保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。
 - OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向（Stage 1.7 已确认架构）；具体版本、集成方式与适配契约保持 Implementation Pending。
+- Stage 1.9 继承 ChatLab 的“Core / SDK Event 先转换成项目自有事件，再由 handler 驱动 stream / state / logging”方向；Trivae 将该边界扩展到 Router、Planner、Retrieval、Evidence 与 Citation，并增加 query-scope coverage、Data Access Scope、privacy projection 与 retention contract，不复制 ChatLab 的具体日志字段、文件格式或默认保留期。
 
 ## Pending Decisions
 
@@ -1732,7 +1842,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Vector Store 实现、Chunk 具体切分参数、Embedding 模型、Indexing Pipeline 具体执行方式
 - Reranker 是否引入、Fusion 权重、merge / dedup / candidate selection 的具体算法（Pending Evaluation，由 Evaluation Set 决定）
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式（Derived Data 语义已确认，实现 Pending）
-- Retrieval Trace Schema、事件模型、存储与采集方式（仅观察需求已确认）
+- Retrieval Trace family、query-scope coverage 与 Failure Attribution 已由 Stage 1.9 确认；具体 Python / JSON Schema、事件名与采集实现 Pending
 - Ingestion 具体实现细节：Deduplicator 的 fingerprint 算法、失败处理与幂等执行方式
 - ChatSession / UserIdentity 缺少 authoritative stable ID 时的 fallback identity / matching strategy
 - 相同 stable message identity 对应 canonical payload 变化时的 update / mutation / conflict resolution semantics
@@ -1741,24 +1851,26 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Canonical timestamp 的 timezone / precision / 存储类型与转换实现
 - Query-specific strategy 的具体指导机制与失败处理（Stage 1.10 Evaluation 边界）
 - Router 具体规则 / regex、复杂度权重、confidence threshold、LLM 模型 / prompt / timeout、Python 类型与文件布局（Stage 1.5 已确认语义，具体实现保持 Pending）
-- Router Trace Event Schema、故障记录格式与指标命名（Stage 1.9）
+- Router Trace family、degradation / Error Code ownership 与 operational metric 维度已由 Stage 1.9 确认；具体 Schema、事件名与实现 Pending
 - Router Query Set、标签流程、accuracy / error rate 口径与参数校准方式（Stage 1.10）
 - Planner 的具体 Python class / package layout、Model、Prompt、Structured Output 技术、temperature、max tokens、timeout
 - Plan 的具体 Python / JSON Schema、validator library、字段类型与序列化；概念字段与语义已由 Stage 1.6 确认
 - Plan 的具体 max steps、max success criteria、字段长度 limit 与其他 bounded 参数（Pending Evaluation / Implementation calibration）
 - Compact DataSnapshot 的完整 Schema、Conversation Context 的 history window / summarization / compression / token 控制（Stage 1.7 已确认 pre-run compression 机制，具体参数 Pending Evaluation）
-- Planner Trace Schema、failure event names / fields / storage 与 Planner metrics（Stage 1.9）
+- Planner Trace family、failure attribution 与 operational metric 维度已由 Stage 1.9 确认；具体 Schema、事件名与实现 Pending
 - Planner Evaluation Dataset、latency threshold、latency budget / invocation policy、cost budget、bounds calibration、是否需要更多 intent 类型与未来是否需要 replan（Stage 1.10）
-- 是否需要 step-level execution trace（Stage 1.9）
 - Agent Runtime 的具体 SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 具体类型、Conversation transaction / commit Schema、Tool 并发策略（Stage 1.7 已确认架构边界，具体实现保持 Pending Implementation）
 - Agent Runtime 的 `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字（Pending Evaluation；可继承 ChatLab 经验参数作为 v1 baseline，标注来源）
-- Runtime Event 最终 Schema、Error Code 命名、SDK built-in tracing 是否最终接入（Stage 1.9）
+- Runtime / Trace conceptual envelope 与 Error Code ownership 已由 Stage 1.9 确认；具体 Python / JSON Schema、完整 Error Code 枚举、Exception mapping 与 event version migration Pending
+- Trace Collector / Store / projector 的 package layout、API、transaction、backend、query index、partition、buffering 与 deployment topology
+- Trace sensitive snapshot 的 allowlist / redaction、角色权限、retention 具体时长、删除传播与 production capacity planning
+- OpenTelemetry 或其他 exporter 是否接入；若接入只能消费 privacy-projected Trivae Event，SDK built-in external tracing 当前继续显式关闭
 - Agent correctness benchmark、budget / threshold 参数校准（Stage 1.10）
 - Evidence-aware stopping 的 machine-enforced gate、minimum-citation / coverage gate 与参数（Stage 1.10；Stage 1.8 已确认第一版仅作 Agent guidance）
 - Answer Artifact 的 Python / JSON / Database Schema、Claim binding 序列化、Structured Result locator、bounded context 数量与 Message mutation 后的 snapshot / current diff UX（Stage 1.8 语义已确认，实现 Pending）
-- Evidence / Citation 的 Trace Event、Error Code、storage 与 metrics（Stage 1.9）
+- Evidence / Citation Trace family、Error Code ownership、storage 与 operational metric 原则已由 Stage 1.9 确认；具体 Schema、枚举与实现 Pending
 - semantic entailment、criterion quality、sufficiency、citation precision / recall 与 bounded repair Evaluation（Stage 1.10）
-- Evaluation Set、指标口径、Evaluation architecture 与 Regression 执行方式
+- Evaluation Dataset、quality metric、threshold / gate、Evaluation architecture 与 Regression 执行方式（Stage 1.10）
 - Context architecture 与上下文规模控制（Stage 1.7 已确认 RuntimeContext / Model Context 分离与 pre-run compression 机制，实现 Pending）
 - Answer Generation 的模型、Prompt、具体输出 Schema；invalid / unresolved Citation 阻止 Finalization 的失败语义已由 Stage 1.8 确认
 - CLI / API 边界
@@ -1768,7 +1880,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 
 ## Evolution Rule
 
-- Stage 1.9-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.10-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 

@@ -1,7 +1,7 @@
 # Stage 1.3: Retrieval Architecture Decisions
 
 > 状态：**Confirmed（Stage 1.3）**
-> 记录 Stage 1.3 真正形成的 Retrieval 架构决策及 rationale。仅覆盖 Retrieval 内部能力与组合策略；Agent 可见的 Tool 暴露方式后由 Stage 1.4 确认，Evidence / Citation 后由 Stage 1.8 确认；Trace Schema、Vector Store / Chunk 参数 / Embedding 模型等技术选型不在此文档内决定。
+> 记录 Stage 1.3 真正形成的 Retrieval 架构决策及 rationale。仅覆盖 Retrieval 内部能力与组合策略；Agent 可见的 Tool 暴露方式后由 Stage 1.4 确认，Evidence / Citation 后由 Stage 1.8 确认，Trace / query-scope coverage 语义后由 Stage 1.9 确认；具体 Trace Schema、Vector Store / Chunk 参数 / Embedding 模型等技术选型不在此文档内决定。
 > 参考 ChatLab 但不机械复制：所有参考仅作为 initial hypothesis / reference design，以 Trivae 的数据特点（高噪声技术群、短消息多、话题高速切换、多人插话严重）与业务目标为准。
 
 ---
@@ -208,7 +208,7 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 
 **Trade-off**：需要额外输出完整性字段，换取"0 结果 ≠ 不存在"的语义正确性与可归因性。
 
-**后续口径**：Coverage 的语义需在 Stage 1.9 进一步明确为 **query-scope coverage**——当查询限定在某个 session / time range 时，有意义的是"请求范围内的覆盖率"（requested scope coverage），而不是全局索引覆盖率。当前仅确认"必须显式暴露 coverage / partial / truncated"，具体口径与字段 Pending。
+**Stage 1.9 解除 Pending**：Coverage 已明确为 **query-scope coverage**——以 `requested query scope ∩ Data Access Scope` 后的 effective scope 为基准，索引缺口不能缩小 denominator；状态为 `complete / partial / none / unknown / not_applicable`，只有 numerator / denominator / unit 可靠且同口径时才提供 ratio。全局索引覆盖率不能替代当前 session / time range 的 coverage；coverage、truncated、unavailable、Tool status 与 Evidence sufficiency 分轴表达。
 
 ## 12. Evidence 判断不在 Retrieval 层硬编码
 
@@ -237,7 +237,7 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 | `context_expansion`（source_hits / expanded_ranges） | 定位 Context Expansion Error |
 | `final_candidates`（ids / source / rank） | 核对 provenance / 定位 Ranking Error |
 
-**不实现具体存储格式或 Trace Schema**：Trace Schema、事件模型、存储与采集方式保持 Pending（跨 Query Plane 的 Trace 整体尚未确认）。
+**Stage 1.9 解除架构 Pending**：上述观察项已纳入跨 Query Plane normalized event boundary；conceptual envelope、Failure Attribution、storage / privacy / retention 原则已确认。具体 Python / JSON Schema、事件名、Collector / Store backend 与采集实现仍 Pending Implementation。
 
 **Reason**：先确定"观察什么、为什么观察"，把格式留给 Trace 架构阶段；避免在需求未验证前锁定存储格式。
 
@@ -264,8 +264,8 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 - Query-specific strategy 的决策机制：Agent 自主选择 vs 规则 / Router 引导（Stage 1.4 / 1.10 边界）
 - Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式
-- Retrieval Trace Schema、事件模型、存储与采集方式（仅观察需求已确认）
+- Retrieval Trace 的具体 Python / JSON Schema、事件名与采集实现（conceptual boundary 已由 Stage 1.9 确认）
 - Tool / Capability Layer 已由 Stage 1.4 确认；具体实现 Schema 保持 Implementation Pending
 - Evidence / Citation 已由 Stage 1.8 确认；具体 Python / JSON Schema 保持 Implementation Pending
-- Coverage 的具体口径与字段（Stage 1.9 明确 query-scope coverage）
+- Coverage Descriptor 的具体 Python / JSON Schema（query-scope coverage 语义已由 Stage 1.9 确认）
 - Candidate / Retrieval Result 的具体数据结构（与 Storage / Data Schema 联动）

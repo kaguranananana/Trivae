@@ -1,7 +1,7 @@
 # Logging Guidelines
 
 > 日志与可观测性长期原则（源自工程原则第 4 节）。
-> 具体 Trace Schema / 日志格式由 Architecture Specification 决定。
+> Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverage、privacy / retention 与 Trace storage 的架构语义；具体 Python / JSON Schema 和 backend 仍待实现。
 
 ---
 
@@ -37,6 +37,16 @@
 
 ## Pending architecture specification
 
-- Trace Schema 的具体结构
+- Normalized Event / Failure / Coverage Descriptor 的具体 Python / JSON Schema 与事件名
 - 日志格式 / 级别体系
-- 指标采集与存储方式
+- Trace Collector / Store backend、指标采集与存储实现
+- sensitive snapshot allowlist / redaction、具体 retention 时长与访问角色
+
+## 已确认边界（Stage 1.9）
+
+- 一个 Trivae-owned normalized event boundary 横跨完整 Query Execution；SDK raw event 不成为产品或 Trace contract。
+- Trace 事件 append-only、versioned，并通过单 Trace sequence 与 operation causality 回放；metrics 是 derived projection。
+- Error Code 由 contract owner namespace 拥有；恢复 / degradation 不抹掉原始 failure。
+- Trace 默认不保存 Chain-of-Thought、逐 token stream 或完整聊天 / Tool / Model payload 副本。
+- Trace access / export 不扩大 Data Access Scope；SDK built-in external tracing 保持显式关闭。
+- Stage 1.9 operational metrics 不包含 Stage 1.10 quality threshold / gate。

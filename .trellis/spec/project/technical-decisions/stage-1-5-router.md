@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed（Stage 1.5）**
 >
-> 本文记录 Stage 1.5 Router 的取舍、理由、边界、Failure Case 与重新打开条件。Router 已完成架构设计沉淀，但尚未实现；具体规则、模型参数、Trace Schema 与 Evaluation Benchmark 不在本 ADR 中提前冻结。
+> 本文记录 Stage 1.5 Router 的取舍、理由、边界、Failure Case 与重新打开条件。Router 已完成架构设计沉淀，但尚未实现；具体规则、模型参数、Trace Schema 与 Evaluation Benchmark 不在本 ADR 中提前冻结。Router Trace 的 conceptual event / failure ownership 后由 Stage 1.9 确认，具体序列化与实现仍 Pending。
 
 ---
 
@@ -286,7 +286,7 @@ Router failure
     → Agent Runtime
 ```
 
-降级必须显式、可观测，不得把 Router 错误伪装成正常高置信判断。具体日志字段、Trace Event Schema 和指标由 Stage 1.9 确定。
+降级必须显式、可观测，不得把 Router 错误伪装成正常高置信判断。Stage 1.9 已确认 Router decision / degraded / failure event family、Error Code ownership 与 operational metric 维度；具体 Python / JSON Schema、事件名和采集实现仍 Pending。
 
 ### Failure Cases
 
@@ -444,6 +444,6 @@ Latency
 - Planner 的完整 Input、Plan Schema、步骤类型、步骤上限、retry、replan、state machine 或 execution semantics（Stage 1.6）；
 - Agent Runtime 的 Loop、Session、Streaming、Abort、SDK 版本与 Run Lifecycle（Stage 1.7）；
 - Evidence / Citation model 与证据选择（Stage 1.8）；
-- Router Trace Event Schema、存储、采集和完整指标命名（Stage 1.9）；
+- Router Trace 的具体 Python / JSON Schema、事件名、存储与采集实现（conceptual family / ownership 已由 Stage 1.9 确认）；
 - Router Evaluation Benchmark、标注平台、最终 accuracy / error rate 口径与参数校准（Stage 1.10）；
 - 具体 regex、复杂度权重、confidence threshold、LLM model、prompt、timeout、Python class 与文件布局。
