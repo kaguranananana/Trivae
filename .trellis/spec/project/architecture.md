@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation 与 Stage 1.9 Trace / Observability 确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1–1.9 completed（架构已沉淀，尚未实现）；Stage 1.10–1.11 Pending。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation、Stage 1.9 Trace / Observability 与 Stage 1.10 Evaluation 架构确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1–1.10 completed（架构已沉淀，尚未实现）；Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Pending。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1–1.9 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.10 Evaluation |
+| 当前阶段   | Stage 1.1–1.10 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
@@ -511,7 +511,7 @@ Semantic Candidates
 
 > **Retrieval Strategy 应该由任务决定，而不是所有 Query 固定执行同一个 Pipeline。**
 
-（Stage 1.4 已确认第一版由 Agent 组合调用 `lexical_search` / `semantic_search`；具体策略指导机制与失败处理留给 Stage 1.10 Evaluation 验证。）
+（Stage 1.4 已确认第一版由 Agent 组合调用 `lexical_search` / `semantic_search`；具体策略指导机制与失败处理由 Stage 1.10 Case / Variant 契约在真实运行中校准。）
 
 ### Reranker 与 Fusion 权重（第一版不提前设计）
 
@@ -611,7 +611,7 @@ Stage 1.3 先确定 Retrieval 需要观察哪些信息及其目的；Stage 1.9 �
 | Chunk 具体参数（时间 gap / 字符数 / 消息数 / token 上限 / overlap） | Pending Evaluation（不复制 ChatLab 默认数字） |
 | Message-level 辅助语义索引 | Pending Evaluation（第一版默认不建立；Evaluation 证明其对特定 Failure Case 有价值后再引入） |
 | 组合 / 选择具体算法（merge / dedup / candidate selection） | Pending Evaluation |
-| Query-specific strategy 的具体指导机制与失败处理 | Pending（Stage 1.10 Evaluation） |
+| Query-specific strategy 的具体指导机制与失败处理 | Pending（Stage 1.10 Implementation / Real-run Calibration） |
 
 #### Pending（后续阶段 / 架构实现前不决策）
 
@@ -1111,7 +1111,7 @@ hybrid_route
 
 ### Trace 与 Evaluation 要求
 
-Stage 1.5 先确认 Router 必须留下可追踪、可评估的决策信息；Stage 1.9 已将 Route Decision、degradation 与 failure 纳入 normalized Trace。本节仍不提前设计 Stage 1.10 Evaluation Benchmark。
+Stage 1.5 先确认 Router 必须留下可追踪、可评估的决策信息；Stage 1.9 已将 Route Decision、degradation 与 failure 纳入 normalized Trace。本节不实现 Evaluation Benchmark；Case / Reference、forced-path Utility、pinned Variant 与 paired Review 的语义见 Stage 1.10 ADR，具体运行仍 Pending。
 
 未来 Router Evaluation 应包含：
 
@@ -1134,7 +1134,7 @@ Stage 1.5 先确认 Router 必须留下可追踪、可评估的决策信息；St
     → 调整规则与参数
 ```
 
-具体 Trace Python / JSON Schema 与采集实现保持 Implementation Pending；accuracy、error rate、threshold calibration 和回归执行方式留待 Stage 1.10。
+具体 Trace Python / JSON Schema 与采集实现保持 Implementation Pending；accuracy、error rate、threshold calibration 和回归执行方式留待 Stage 1.10 Implementation / Real-run Calibration。
 
 Router Evaluation 的最终目标不是得到漂亮的 Route Classification Accuracy，而是验证 Planner Invocation 是否带来实际下游收益。Stage 1.10 可以对同一个 Query 比较两条受控路径：
 
@@ -1177,7 +1177,7 @@ B: planned_execution  → Planner → Agent Runtime
 | LLM Router 的模型、prompt、timeout 与调用适配 | Pending Implementation |
 | RouteDecision 的具体 Python 类型、序列化与文件布局 | Pending Implementation |
 | Router Trace 的具体 Schema、事件名与采集实现 | Pending Implementation；event family / ownership 已由 Stage 1.9 确认 |
-| Router Query Set、标签流程、准确率与校准方法 | Pending（Stage 1.10） |
+| Router Query Set、标签流程、准确率与校准方法 | Pending（Stage 1.10 Implementation / Real-run Calibration） |
 | Planner 的 Python / JSON 实现、模型参数、具体 bounds 与 Runtime adapter | Pending（Stage 1.6 Implementation / Evaluation）；Planner 的概念 Input、Plan Schema、重规划与执行语义已确认 |
 
 ## Stage 1.6: Planner
@@ -1235,7 +1235,7 @@ Planner = Investigation Decomposition，不是 Tool Execution Planner。两条 R
 详细 Pending 项见 ADR；Architecture 层只保留归属：
 
 - Python class / package layout、Model、Prompt、Structured Output、具体 Schema、字段类型、bounds、DataSnapshot schema 与 Context 压缩：Implementation / Stage 1.7。
-- Planner latency budget 与 invocation policy、Evaluation Dataset、质量 / latency / token / Tool Call 指标、参数校准、是否增加 intent 类型、是否未来需要 replan：Stage 1.10。
+- Planner latency budget 与 invocation policy、Evaluation Dataset、质量 / latency / token / Tool Call 指标、参数校准、是否增加 intent 类型、是否未来需要 replan：Stage 1.10 Implementation / Real-run Calibration（Case / Reference / forced-path 语义已确认）。
 - Planner Trace family、failure ownership 与 operational metric 维度已由 Stage 1.9 确认；具体 Schema / 事件名 / 采集实现 Pending。第一版不建立 Planner step execution state 或 step-level execution trace。
 - Evidence / Citation：Confirmed（Stage 1.8）；Planner `evidence_needed` 仍只表达 requirement。
 
@@ -1358,8 +1358,8 @@ Trivae 配置必须显式关闭 SDK built-in external tracing，不能依赖 SDK
 - Python package / module layout、具体 SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 具体类型、Tool 并发策略、Agent Model、Prompt 文案：Implementation。
 - `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字：Pending Evaluation（可继承 ChatLab 经验参数，标注来源）。
 - Runtime Event / Trace 的 conceptual envelope、Error Code ownership、storage 与 SDK tracing 边界已由 Stage 1.9 确认；具体 Python / JSON Schema、Error Code 枚举、Collector / Store backend 与 exporter 实现保持 Implementation Pending。
-- Agent correctness benchmark、budget / threshold 参数校准：Stage 1.10。
-- Evidence-aware stopping：Stage 1.8 已确认第一版只作 Agent guidance；machine-enforced gate 与参数留给 Stage 1.10。
+- Agent correctness benchmark、budget / threshold 参数校准：Stage 1.10 Implementation / Real-run Calibration。
+- Evidence-aware stopping：Stage 1.8 已确认第一版只作 Agent guidance；machine-enforced gate 与参数留给 Stage 1.10 Implementation / Real-run Calibration。
 
 完整的 20 项 Confirmed Decisions、详细 Failure Case 与 Reopen Conditions 见 [Stage 1.7 Agent Runtime ADR](./technical-decisions/stage-1-7-agent-runtime.md)。
 
@@ -1405,7 +1405,7 @@ Citation Finalizer 是 Answer Generation 的确定性提交边界，不是新的
 - Python / JSON / Database Schema、Claim binding 序列化、Structured Result locator、Conversation commit Schema：Implementation。
 - bounded context 数量、Citation 密度、Evidence Item 上限、Message mutation 后的 diff UX：Implementation / Evaluation。
 - Evidence / Citation Trace family、Error Code ownership、storage 与 operational metric 边界已由 Stage 1.9 确认；具体 Schema、Error Code 枚举与实现保持 Implementation Pending。
-- semantic entailment、sufficiency、citation precision / recall、repair 与 machine-enforced stopping gate：Stage 1.10。
+- semantic entailment、sufficiency、citation precision / recall、repair 与 machine-enforced stopping gate：Stage 1.10 Implementation / Real-run Calibration（quality axes、Review 与进入条件语义已确认）。
 
 完整的 16 项 Confirmed Decisions、ChatLab 代码证据、Failure Case 与 Reopen Conditions 见 [Stage 1.8 Evidence / Citation ADR](./technical-decisions/stage-1-8-evidence-citation.md)。
 
@@ -1480,7 +1480,7 @@ Coverage 相对于当前授权查询范围表达，不能用全局索引百分�
 
 Stage 1.9 只确认可以从 sanitized Trace 派生 Query / stage latency、terminal outcome、Router degradation、Planner failure category、model / prompt / token usage、Tool / Tool Round count、Tool status / Error Code、Retrieval strategy / candidate count / coverage、Evidence / Citation / Finalization structural outcome、abort / budget / trace incomplete 等 operational dimensions，不设 threshold。
 
-Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集、标签、accuracy / precision / recall、semantic entailment、Planner Utility、threshold、gate 与参数校准全部属于 Stage 1.10，本阶段不提前设计。
+Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集、标签、accuracy / precision / recall、semantic entailment、Planner Utility、threshold、gate 与参数校准全部属于 Stage 1.10；本阶段不实现这些内容，治理语义已在 Stage 1.10 ADR 确认。
 
 ### Stage 1.9 Confirmed Architecture Summary
 
@@ -1495,7 +1495,7 @@ Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集�
 9. Retention 按 metadata、Normal payload、Debug payload、aggregate、Answer Artifact 与 canonical source 分层；Stage 1.9 不强制 Debug 更短，Answer Artifact 与 Canonical Source 不归 Trace Store 所有。
 10. Trace Store 独立、append-only、versioned；reference 是稳定关联方式，Normal / Debug capture policy 决定允许内容的保存详细度，backend 选型 Pending。
 11. Collector failure 显式产生 incomplete / operational failure，但不回滚成功业务结果。
-12. Operational metrics 无阈值；Stage 1.10 Evaluation Dataset、quality metric、threshold 与 gate 保持 Pending。
+12. Operational metrics 无阈值；Stage 1.10 已确认 Evaluation Dataset / quality metric / threshold / gate 的治理语义，具体 Case、数值与实现仍 Pending。
 
 完整 rationale、Failure Case、Validation Contract、Deferred 与 Reopen Conditions 见 [Stage 1.9 Trace / Observability ADR](./technical-decisions/stage-1-9-trace-observability.md)。
 
@@ -1542,7 +1542,7 @@ Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集�
 - 不维护 Step Execution State，不 Retry，不 Automatic Replanning。
 - 不把 `suggested_tools` 变成 Runtime 的 required tools；Agent 可以完全偏离 Plan。
 
-Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stage-16-planner)；Trace family 与 failure ownership 已由 Stage 1.9 确认，Python class、模型、Prompt、具体 bounds、事件序列化实现与 Evaluation 仍 Pending。
+Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stage-16-planner)；Trace family 与 failure ownership 已由 Stage 1.9 确认，Python class、模型、Prompt、具体 bounds、事件序列化实现与 Evaluation runner / real-run calibration 仍 Pending（Evaluation contract 已由 Stage 1.10 确认）。
 
 ### Agent Runtime
 
@@ -1640,11 +1640,54 @@ Trace failure 不回滚成功业务结果，但必须显式暴露并将 Trace �
 
 Evaluation 与 Regression 横切 Data Plane 和 Query Plane：
 
-- 用固定 Evaluation Set 验证真实问题和真实改动。
-- 重要 Failure Case 应进入 Regression Test。
-- 指标应服务于质量、可靠性、延迟、Token、成本或可维护性判断。
+- 端到端以 Evaluation Case Bundle 为 canonical truth，绑定 Dataset Snapshot、Data Access Scope、Reference Findings / Evidence 与 Review Policy。
+- Reference 必须表达 `exhaustive / partial / unknown` completeness 与 provenance；不使用唯一答案文本，也不把 partial / unknown Reference 外的真实 Evidence 机械判错。
+- Design Seed、Core、Failure Regression 与 Calibration Slice 分层；Core 通过 versioned Suite 刷新并保留历史 composition / results。
+- Baseline 必须是 pinned Controlled Variant，Candidate 通过显式 diff；相同 Case 先做 forced standard / forced planned 的 Planner Utility，再评价 Router Utility。
+- quality、diagnosability、module diagnostics、latency、Token、Tool Call 与 cost 分轴报告；质量比较优先 blind、随机 A/B、同 rubric、同 Evidence visibility，不合成单一总分。
+- 重要 Failure Case 提升为 versioned Regression Case；Failure Diagnosis 只能引用 Stage 1.9 canonical Trace，不能改写 Trace。
 
-Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确定。
+Case authoring、Snapshot / Dataset 构建、runner、具体 Schema、真实 stable baseline、重复次数、统计方法、numerical threshold、参数校准与 CLI / API / UI 仍为 Implementation / Real-run Calibration / Stage 1.11 Pending。完整 rationale、11 个 Trivae-specific Design Seed 与 ChatLab 继承 / 偏离见 [Stage 1.10 ADR](./technical-decisions/stage-1-10-evaluation.md)。
+
+### Stage 1.10: Evaluation / Regression
+
+本阶段确认的是评测事实与治理契约，不是评测产品或执行器。架构主链路为：
+
+```text
+Evaluation Suite
+  → Case Bundle (Snapshot + Scope + Query + Reference + Review Policy)
+  → pinned Controlled Variant
+  → Evaluation Run (Answer + Trace reference + checks + operational facts)
+  → Review (deterministic / human / model-assisted)
+  → blind paired Comparison
+  → Failure Diagnosis
+  → versioned Failure Regression Set
+```
+
+#### Case、Reference 与 Suite
+
+- Case Bundle 是所有端到端与模块诊断的共同事实源；纯模块 Fixture 不能冒充端到端质量 Case。
+- Reference 使用 Findings / Evidence / relation / uncertainty constraints，不要求唯一答案文本；保存 annotation completeness（`exhaustive / partial / unknown`）和 provenance。
+- Core Set 要随真实 workload 和新 Failure 通过新 Suite version 演进，历史清单与结果不可被覆盖；Seed 不产生 Gate。
+
+#### Baseline、Planner Utility 与 Router Utility
+
+- Baseline 是 pinned 的完整 Controlled Variant；`last_stable`、`minimal_control` 与 `chatlab_derived_seed` 用途分开，Candidate 必须显式声明 diff。
+- Planner Utility 采用强制路径：同一 Case 分别走 `Case → Agent Runtime` 与 `Case → Planner → Agent Runtime`；先比较质量 / 成本，再恢复 Router。
+- Router Utility 只评价 Router 是否把“当前 Planner 确实有收益”的 Case 送入 planned path，不能用 Aggregate Route Accuracy 替代。
+
+#### Review、随机性与治理
+
+- deterministic checks 先行；人工负责 Ground Truth、争议 Case、关键 Gate 与 Judge 校准；model-assisted Judge 不是唯一真相源。
+- Baseline / Candidate 质量比较隐藏身份、随机 A/B 顺序、使用同一 rubric 与 Evidence visibility；先做质量判断，再合并成本指标。
+- stochastic path 保留重复 Run、分布和不可用原因；可复现承诺是输入 / Snapshot / Scope / Variant / 条件可重建并可统计比较，不是远程模型 bit-for-bit 重放。
+
+#### Hard Contract 与 Deferred
+
+- 当前确认 Scope violation、越权或 invalid / unresolved Citation、已修复 critical Regression 复发、以及无证据 Root Cause 声明均不可接受。
+- numerical threshold、重复次数、真实 stable baseline、Schema、runner、Judge workflow、参数和 machine-enforced stopping 留给 Implementation / Real-run Calibration；删除和权限变化优先于复现便利。
+
+完整 Decision Set、Failure Case、Reopen Conditions 与 T-EVAL-001–011 见 [Stage 1.10 Evaluation ADR](./technical-decisions/stage-1-10-evaluation.md)。
 
 ## Confirmed Decisions
 
@@ -1806,9 +1849,25 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 10. **Privacy by profile**：Normal 以结构化事实和 bounded / redacted actual content 为主；Debug 在当前 Data Access Scope 与 capture policy 允许时可保存完整或近完整的 model-visible / system-visible facts。两者都不记录 Chain-of-Thought、provider hidden reasoning、secrets 或越权数据。
 11. **Retention / access boundaries**：Trace 不扩大 Data Access Scope；metadata、Normal payload、Debug payload、aggregate、Answer Artifact 与 canonical source 分层保留，且 Stage 1.9 不强制 Debug 比 Normal 更短。
 12. **Independent Trace Store**：append-only、versioned；reference 是稳定关联方式，但不再作为唯一内容保存形态；backend 与实现 Pending；Trace failure 显式产生 incomplete，但不回滚成功业务结果。
-13. **Operational metrics only**：Stage 1.9 只确认无阈值运行维度；Evaluation Dataset、quality metric、threshold 与 gate 属于 Stage 1.10。
+13. **Operational metrics only**：Stage 1.9 只确认无阈值运行维度；Stage 1.10 负责 Evaluation 的 Case、质量轴、比较和 Gate 治理，具体实现与数值校准另行 Pending。
 
 详细 rationale、Failure Case 与 Reopen Conditions 见 [technical-decisions/stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md)。
+
+### Stage 1.10：Evaluation / Regression
+
+1. **Case Bundle canonical truth**：端到端 Case 绑定 Dataset Snapshot、Data Access Scope、Query、Reference Findings / Evidence、uncertainty constraints 与 Review Policy；模块评测从同一 Case 派生。
+2. **Reference completeness / provenance**：Reference 不使用唯一答案文本；完整度为 `exhaustive / partial / unknown`，并保存建立流程、时间、Scope、adjudication 与限制。
+3. **Versioned Suite**：Design Seed、Core、Failure Regression 与 Calibration Slice 分层；Core 通过新 Suite version 刷新，历史 composition / result 不覆盖。
+4. **Pinned Controlled Variant**：Baseline 是完整、稳定、可定位的 Controlled Variant；Candidate 必须声明显式 diff；ChatLab-derived seed 不自动是 stable baseline。
+5. **Forced Planner Utility**：同一 Case 先比较 `Case → Agent Runtime` 与 `Case → Planner → Agent Runtime`，再恢复 Router 判断 Router Utility。
+6. **Layered quality / diagnostics**：Finding Correctness、Evidence Completeness、Groundedness、Uncertainty Calibration、Relevance 与 Trace / retrieval / runtime / citation / cost diagnostics 分轴，不合成单一总分。
+7. **Blind paired review**：Baseline / Candidate 质量判断隐藏身份、随机 A/B 顺序、使用同一 rubric / Evidence visibility，先质量、后成本；Judge 不成为唯一真相源。
+8. **Stochastic comparison**：固定 Case / Snapshot / Scope / Variant 条件并保留重复 Run、分布和 provider / permission / Trace 不可用原因。
+9. **Failure Diagnosis boundary**：Diagnosis 只能关联 Stage 1.9 canonical Trace，不改写 Trace；修复后的真实 Failure 提升为 versioned Regression Case。
+10. **Governed reproducibility**：保证输入、Dataset、Scope、Variant 与条件可重建并可统计比较，不承诺外部模型 bit-for-bit；删除和权限变化优先于复现便利。
+11. **Deferred numbers**：没有真实 baseline、方差、review agreement 与 Failure Cost 前，不冻结 numerical threshold、重复次数、最终参数或 machine stopping。
+
+完整 rationale、Failure Case、T-EVAL-001–011 与 Reopen Conditions 见 [Stage 1.10 Evaluation ADR](./technical-decisions/stage-1-10-evaluation.md)。
 
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
@@ -1832,6 +1891,8 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Stage 1.7 允许把 ChatLab 的 `max_tool_rounds`、history window、compression threshold 等**经验参数直接继承**作为 v1 baseline，但必须标注继承来源并保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。
 - OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向（Stage 1.7 已确认架构）；具体版本、集成方式与适配契约保持 Implementation Pending。
 - Stage 1.9 继承 ChatLab 的“Core / SDK Event 先转换成项目自有事件，再由 handler 驱动 stream / state / logging”与 Normal / Debug 记录详细度分离方向；Trivae 将该边界扩展到 Router、Planner、Retrieval、Evidence 与 Citation，并增加 query-scope coverage、Data Access Scope、privacy projection 与 retention contract。不复制 ChatLab 的 2000 字符截断、日志文件 / 数据库字段、具体格式或默认保留期；ChatLab 的 Debug 证据只支持“详细 model-visible facts 对 Failure Attribution 有价值”，不自动决定 Trivae 的权限和 retention。
+- Stage 1.10 继承 ChatLab evaluation-set 的稳定 Case identity、locale / chat type / scenario slice、planned case 的 expected evidence coverage、Route / Plan / Tool / usage / budget 可观察性与“baseline 在真实环境运行前保持 Pending”的治理方向；Trivae 将其扩展为 Snapshot / Scope / Reference Findings / Evidence / Review 的 Case Bundle、forced-path Planner Utility、blind paired comparison 和 versioned Regression。ChatLab 的 24 个 Case、expected route、静态结构测试与经验参数不自动成为 Trivae Benchmark、stable baseline 或最优值。
+- ChatLab 的固定关键词 Evidence Judge、固定时间聚类与 specialized Evidence Tool 不继承；Trivae 使用 question-specific criterion、`supports / contradicts / context`、`exhaustive / partial / unknown` Reference completeness 和人工复核。
 
 ## Pending Decisions
 
@@ -1850,28 +1911,28 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Canonical Message Fingerprint 的具体字段组合、时间精度、canonicalization 与 hash algorithm
 - raw payload / source locator / structured content 的具体表示
 - Canonical timestamp 的 timezone / precision / 存储类型与转换实现
-- Query-specific strategy 的具体指导机制与失败处理（Stage 1.10 Evaluation 边界）
+- Query-specific strategy 的具体指导机制与失败处理（由 Stage 1.10 Evaluation 在真实运行中校准，具体实现 Pending）
 - Router 具体规则 / regex、复杂度权重、confidence threshold、LLM 模型 / prompt / timeout、Python 类型与文件布局（Stage 1.5 已确认语义，具体实现保持 Pending）
 - Router Trace family、degradation / Error Code ownership 与 operational metric 维度已由 Stage 1.9 确认；具体 Schema、事件名与实现 Pending
-- Router Query Set、标签流程、accuracy / error rate 口径与参数校准方式（Stage 1.10）
+- Router Query Set、标签流程、forced-path Planner Utility / Router Utility 的具体执行与参数校准（Stage 1.10 Implementation / Real-run Calibration）
 - Planner 的具体 Python class / package layout、Model、Prompt、Structured Output 技术、temperature、max tokens、timeout
 - Plan 的具体 Python / JSON Schema、validator library、字段类型与序列化；概念字段与语义已由 Stage 1.6 确认
 - Plan 的具体 max steps、max success criteria、字段长度 limit 与其他 bounded 参数（Pending Evaluation / Implementation calibration）
 - Compact DataSnapshot 的完整 Schema、Conversation Context 的 history window / summarization / compression / token 控制（Stage 1.7 已确认 pre-run compression 机制，具体参数 Pending Evaluation）
 - Planner Trace family、failure attribution 与 operational metric 维度已由 Stage 1.9 确认；具体 Schema、事件名与实现 Pending
-- Planner Evaluation Dataset、latency threshold、latency budget / invocation policy、cost budget、bounds calibration、是否需要更多 intent 类型与未来是否需要 replan（Stage 1.10）
+- Planner Evaluation Dataset、Planner Utility review、latency threshold、latency budget / invocation policy、cost budget、bounds calibration、是否需要更多 intent 类型与未来是否需要 replan（Stage 1.10 Implementation / Real-run Calibration）
 - Agent Runtime 的具体 SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 具体类型、Conversation transaction / commit Schema、Tool 并发策略（Stage 1.7 已确认架构边界，具体实现保持 Pending Implementation）
 - Agent Runtime 的 `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字（Pending Evaluation；可继承 ChatLab 经验参数作为 v1 baseline，标注来源）
 - Runtime / Trace conceptual envelope 与 Error Code ownership 已由 Stage 1.9 确认；具体 Python / JSON Schema、完整 Error Code 枚举、Exception mapping 与 event version migration Pending
 - Trace Collector / Store / projector 的 package layout、API、transaction、backend、query index、partition、buffering 与 deployment topology
 - Trace Profile 的配置来源 / 启用边界、Normal / Debug capture policy、redaction / secret stripping、角色权限、retention 具体时长、删除传播与 production capacity planning
 - OpenTelemetry 或其他 exporter 是否接入；若接入只能消费 privacy-projected Trivae Event，SDK built-in external tracing 当前继续显式关闭
-- Agent correctness benchmark、budget / threshold 参数校准（Stage 1.10）
-- Evidence-aware stopping 的 machine-enforced gate、minimum-citation / coverage gate 与参数（Stage 1.10；Stage 1.8 已确认第一版仅作 Agent guidance）
+- Agent correctness benchmark、quality axes、budget / threshold 与参数校准（Stage 1.10 Implementation / Real-run Calibration；Case / Reference / Review 语义已由 ADR 确认）
+- Evidence-aware stopping 的 machine-enforced gate、minimum-citation / coverage gate 与参数（Stage 1.10 Implementation / Real-run Calibration；Stage 1.8 已确认第一版仅作 Agent guidance）
 - Answer Artifact 的 Python / JSON / Database Schema、Claim binding 序列化、Structured Result locator、bounded context 数量与 Message mutation 后的 snapshot / current diff UX（Stage 1.8 语义已确认，实现 Pending）
 - Evidence / Citation Trace family、Error Code ownership、storage 与 operational metric 原则已由 Stage 1.9 确认；具体 Schema、枚举与实现 Pending
-- semantic entailment、criterion quality、sufficiency、citation precision / recall 与 bounded repair Evaluation（Stage 1.10）
-- Evaluation Dataset、quality metric、threshold / gate、Evaluation architecture 与 Regression 执行方式（Stage 1.10）
+- semantic entailment、criterion quality、sufficiency、citation precision / recall 与 bounded repair Evaluation 的具体 rubric / runner（Stage 1.10 Implementation / Real-run Calibration）
+- Evaluation Case authoring、Dataset / Snapshot 构建、Review workflow、result storage、quality metric 实现、threshold / gate、Evaluation runner 与 Regression 执行细节（Stage 1.10 Implementation / Real-run Calibration；总体 Evaluation architecture 已由 [Stage 1.10 ADR](./technical-decisions/stage-1-10-evaluation.md) 确认）
 - Context architecture 与上下文规模控制（Stage 1.7 已确认 RuntimeContext / Model Context 分离与 pre-run compression 机制，实现 Pending）
 - Answer Generation 的模型、Prompt、具体输出 Schema；invalid / unresolved Citation 阻止 Finalization 的失败语义已由 Stage 1.8 确认
 - CLI / API 边界
@@ -1881,7 +1942,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 
 ## Evolution Rule
 
-- Stage 1.10-1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 

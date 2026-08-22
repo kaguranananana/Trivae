@@ -408,7 +408,7 @@ retrieve_evidence
 | Search Result | 确认统一外层语义、strategy provenance 与结构化 Message Identity；不冻结实现 Schema |
 | Tool Envelope | 确认 `ok / partial / error` 等状态语义；不冻结实现 Schema；Truncation 与 Partial 分离 |
 
-### Pending Implementation / Evaluation（不重新打开架构方向）
+### Pending Implementation / Real-run Calibration（不重新打开架构方向）
 
 - Lexical Search 的具体上下文窗口；
 - Semantic Parent / Context Recovery 的具体范围策略；
@@ -417,6 +417,8 @@ retrieve_evidence
 - `execute_sql` 的具体 bounded execution mechanism；
 - Search Result / Tool Envelope 的最终 Python type、JSON serialization、字段命名与数据映射；
 - Specialized Analysis Tool 或高级组合 Tool 是否满足新增条件。
+
+Stage 1.10 已确认上述校准必须绑定 Case Bundle、Snapshot、Scope、pinned Baseline / Candidate 与 paired quality result；当前仍无 runner、Tool Evaluation Schema 或真实参数结论。
 
 ### Experimental
 

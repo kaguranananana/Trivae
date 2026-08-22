@@ -1,6 +1,6 @@
 # Backend Development Guidelines
 
-> Python 后端工程规范（Stage 1.1–1.9 架构决策已完成，Stage 1.10 Evaluation 待开始；当前仍无业务代码）。
+> Python 后端工程规范（Stage 1.1–1.10 架构决策已完成；Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 仍待推进；当前仍无业务代码）。
 > 具体代码模式在正式架构与首份业务代码落地后补充。
 
 ---

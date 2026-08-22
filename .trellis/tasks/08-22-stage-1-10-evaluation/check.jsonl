@@ -4,3 +4,4 @@
 {"file": ".trellis/spec/project/engineering-principles.md", "reason": "核对 Evaluation 原则没有制造指标、阈值或虚假质量结论"}
 {"file": ".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md", "reason": "核对 Evaluation 不改写 Trace，operational metric 不被当作 quality proof"}
 {"file": ".trellis/tasks/08-22-stage-1-10-evaluation/research/chatlab-evaluation-architecture-analysis.md", "reason": "核对 ChatLab 继承、适配与不继承结论都有本地代码证据"}
+{"file": ".trellis/tasks/08-22-stage-1-10-evaluation/research/formal-review-feedback.md", "reason": "核对七项正式评审反馈均进入 ADR 且未提前设计 Schema 或数值阈值"}

@@ -1,6 +1,6 @@
 # Directory Structure
 
-> 目录与文件组织约定。**当前阶段（Stage 1.1–1.9 架构决策已完成，Stage 1.10 待开始）：仍无业务代码。**
+> 目录与文件组织约定。**当前阶段（Stage 1.1–1.10 架构契约已完成，Evaluation Implementation / Calibration 与 Stage 1.11 待推进）：仍无业务代码。**
 
 ---
 

@@ -261,7 +261,7 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 - Fusion 权重与 merge / dedup / candidate selection 具体算法（Pending Evaluation）
 - Chunk 具体参数：时间 gap、有效字符数、消息数、token 上限、overlap（Pending Evaluation，不复制 ChatLab 默认值）
 - Message-level 辅助语义索引（Pending Evaluation，第一版默认不建立；Evaluation 证明其对特定 Failure Case 有价值后再引入）
-- Query-specific strategy 的决策机制：Agent 自主选择 vs 规则 / Router 引导（Stage 1.4 / 1.10 边界）
+- Query-specific strategy 的决策机制：Agent 自主选择 vs 规则 / Router 引导（Stage 1.4 已定职责边界；具体机制由 Stage 1.10 Implementation / Real-run Calibration 验证）
 - Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式
 - Semantic / Lexical Index 的具体存储、版本管理与重建执行方式
 - Retrieval Trace 的具体 Python / JSON Schema、事件名与采集实现（conceptual boundary 已由 Stage 1.9 确认）
@@ -269,3 +269,5 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 - Evidence / Citation 已由 Stage 1.8 确认；具体 Python / JSON Schema 保持 Implementation Pending
 - Coverage Descriptor 的具体 Python / JSON Schema（query-scope coverage 语义已由 Stage 1.9 确认）
 - Candidate / Retrieval Result 的具体数据结构（与 Storage / Data Schema 联动）
+
+Stage 1.10 已确认 Evaluation Case、Reference completeness / provenance、pinned Variant、paired comparison 与 Failure Regression 的治理契约。以上 Retrieval 参数、Reranker、Fusion、Chunk、Message-level index 和 Query-specific strategy 仍必须通过该契约的真实 Case / Calibration Slice 校准，不能把 ChatLab 默认值写成已确认数值。

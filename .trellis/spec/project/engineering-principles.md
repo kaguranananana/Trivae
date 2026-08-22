@@ -42,9 +42,13 @@ Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverag
 
 ## 5. Evaluation
 
-- 逐步建立固定 Evaluation Set，验证真实问题和真实改动。
-- 指标按模块选取真正有意义的（Router: accuracy/error rate；Retrieval: Recall@K/Precision@K；Tool: 参数校验错误率/执行成功率；Agent: 任务成功率/循环失败率；System: P95/超时率/外部失败率）。
-- **不要为了指标数量制造指标**。具体 Evaluation 架构由正式设计决定。
+- 端到端评测以 Evaluation Case Bundle 为 canonical truth，固定 Case、Dataset Snapshot、Data Access Scope 与受控 Variant 条件，验证真实问题和真实改动。
+- Reference 必须说明 `exhaustive / partial / unknown` annotation completeness 与 provenance；partial / unknown 不得机械推导强 Precision / Recall。
+- Router / Planner 先做 forced standard / forced planned 的 Planner Utility，再评价 Router 是否能识别值得调用 Planner 的 Case；不能只看 Route accuracy。
+- 质量轴（Finding Correctness、Evidence Completeness、Groundedness、Uncertainty Calibration、Relevance）与 Trace / latency / token / Tool Call 等模块诊断分开，不压成单一总分。
+- Baseline 必须是 pinned Controlled Variant，Candidate 只声明显式 diff；Core / Regression 通过 versioned Suite 演进并保留历史结果。
+- paired quality review 优先 blind、随机 A/B、同 rubric、同 Evidence visibility；Judge 不是唯一真相源，关键争议转人工。
+- 数值 threshold 与参数必须等待真实 baseline、随机方差、评审一致性与 Failure Cost；不能用 ChatLab 经验参数或静态 Seed 伪造质量结论。
 
 ## 6. 关键模块开发前必须回答的 7 问
 

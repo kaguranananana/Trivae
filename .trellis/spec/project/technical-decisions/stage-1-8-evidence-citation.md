@@ -435,11 +435,13 @@ Citation Finalizer 属于 Answer Generation 的确定性提交边界，不是 Ag
 - Tool completeness / query-scope coverage 已确认以授权 effective scope 为基准，并与 truncation / availability / Evidence sufficiency 分轴；
 - 具体 Python / JSON Schema、事件名、Error Code 枚举、Collector / Store backend 与采集实现保持 Implementation Pending。
 
-### Stage 1.10 Pending
+### Stage 1.10 Implementation / Real-run Calibration Pending
 
 - semantic entailment、criterion quality、sufficiency、citation precision / recall 的 Evaluation；
 - minimum-citation gate、coverage gate、citation repair 与 Evidence-aware stopping 参数；
 - bounded context、Citation 密度和 Answer Correctness 的 workload 校准。
+
+Stage 1.10 已确认 Citation / Evidence 质量必须置于 Case Bundle 的 Reference completeness / provenance、Groundedness、Citation coverage 与 blind paired review 中；本节保留具体 rubric、runner、真实结果和参数校准，不把结构校验当作语义质量证明。
 
 ## 19. Failure Cases
 

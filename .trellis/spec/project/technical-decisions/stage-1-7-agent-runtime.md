@@ -900,13 +900,15 @@ SDK built-in external tracing 继续显式关闭
 具体 Python / JSON Schema、Error Code 枚举、Collector / Store backend 与 exporter 实现保持 Implementation Pending
 ```
 
-### Stage 1.10 Pending
+### Stage 1.10 Implementation / Real-run Calibration Pending
 
 ```text
 Agent correctness benchmark
 budget / threshold 参数校准
 Tool 并发策略的验证
 ```
+
+Stage 1.10 已确认 Run 必须绑定完整 Controlled Variant，并以 Case / Snapshot / Scope 做 paired comparison；上述 Runtime correctness、budget、并发与参数仍需真实运行校准。
 
 以上 Pending 项不能因为 Stage 1.7 已 Confirmed 就被默认补全。除非新 Failure Case、技术约束、Evaluation 结果或业务需求触发 Reopen Reason，否则本 ADR 的 Confirmed 决策保持冻结。
 

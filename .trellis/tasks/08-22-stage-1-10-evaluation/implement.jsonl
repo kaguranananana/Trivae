@@ -4,3 +4,4 @@
 {"file": ".trellis/spec/project/technical-decisions/stage-1-8-evidence-citation.md", "reason": "Evidence/Citation 的 entailment、sufficiency、coverage、stopping 与 repair 边界"}
 {"file": ".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md", "reason": "Trace 事实、post-run Diagnosis、operational metrics 与 quality Evaluation 的边界"}
 {"file": ".trellis/tasks/08-22-stage-1-10-evaluation/research/chatlab-evaluation-architecture-analysis.md", "reason": "ChatLab Evaluation、Router/Planner、参数与 Evidence 的继承和偏离证据"}
+{"file": ".trellis/tasks/08-22-stage-1-10-evaluation/research/formal-review-feedback.md", "reason": "用户正式评审提出 forced-path、Reference completeness/provenance、Trivae seeds、Baseline identity、Snapshot/Core/Judge 边界"}

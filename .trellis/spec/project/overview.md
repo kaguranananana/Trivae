@@ -52,9 +52,11 @@
 
 **Stage 1.9（Trace / Observability）已完成（修订版）**：完整 Query Execution 使用 Trivae-owned normalized event boundary；Trace 以 versioned append-only event、单 Trace sequence 与 operation causality 支持跨 Router、Planner、Runtime、Tool、Retrieval、Evidence、Citation 和 Answer commit 的 Failure Attribution。query-scope coverage、Error Code ownership、`normal / debug` Trace Profile、model-visible execution facts 的记录边界、retention / privacy 分层与独立 Trace Store 原则已确认；具体 Python / JSON Schema、Error Code 枚举、capture policy、storage backend 与 retention 时长仍为 Implementation Pending（见 [architecture.md](./architecture.md) 与 [stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md)）。
 
-当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Trace 实现 Schema / backend、Evaluation 与各模块具体实现 Schema 仍为 Pending，不能视为最终 Architecture Specification。
+**Stage 1.10（Evaluation / Regression）已完成（架构契约）**：Evaluation Case Bundle 作为端到端 canonical truth；Reference 不使用唯一答案文本，并表达 `exhaustive / partial / unknown` annotation completeness 与 provenance；Design Seed、Core、Failure Regression、Calibration Slice 分层，Core 通过 versioned Suite 刷新且保留历史；Baseline 必须是 pinned Controlled Variant，Candidate 声明显式 diff；Planner Utility 先用 forced standard / forced planned 测量，再评价 Router Utility；quality 与 module diagnostics 分轴，paired quality review 使用 blind、随机 A/B、同 rubric、同 Evidence visibility；Snapshot 可重建但不绕过删除和权限变化；Failure Diagnosis 不能改写 Stage 1.9 canonical Trace（见 [architecture.md](./architecture.md) 与 [stage-1-10-evaluation.md](./technical-decisions/stage-1-10-evaluation.md)）。
 
-**当前任务**：Stage 1.9 已完成，等待进入 Stage 1.10 Evaluation。尚未确认 Evaluation Dataset、quality metrics、threshold / gate 与参数校准；在对应架构细节确认前不实现业务功能。
+当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Trace 实现 Schema / backend、Evaluation 实现 Schema / runner、真实 baseline、数值 threshold 与参数校准结果仍为 Pending，不能视为最终 Architecture Specification。
+
+**当前任务**：Stage 1.10 架构契约已完成，等待 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Evaluation 交互设计。尚未实现 Case authoring、Snapshot / Dataset、runner、Review workflow、真实 stable baseline、numerical threshold 或最终参数；在这些实现契约落地前不实现业务功能。
 
 ## 演进目标
 

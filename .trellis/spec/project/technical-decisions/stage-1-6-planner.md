@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed（Stage 1.6）**
 >
-> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界、失败契约、ChatLab 基线继承与 Trivae-specific 差异。Stage 1.6 已完成架构设计沉淀，但尚未实现；Agent Runtime 生命周期后由 Stage 1.7 确认，Trace conceptual boundary 后由 Stage 1.9 确认；具体 Python 类型、模型、Prompt、参数、Trace serialization 与 Evaluation Dataset 仍保持 Pending。
+> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界、失败契约、ChatLab 基线继承与 Trivae-specific 差异。Stage 1.6 已完成架构设计沉淀，但尚未实现；Agent Runtime 生命周期后由 Stage 1.7 确认，Trace conceptual boundary 后由 Stage 1.9 确认；具体 Python 类型、模型、Prompt、参数、Trace serialization、Evaluation Case authoring 与真实校准仍保持 Pending（Stage 1.10 的 Evaluation contract 已确认）。
 
 ---
 
@@ -1029,11 +1029,12 @@ Planner Trace family、Failure Attribution、Error Code ownership 与 operationa
 具体 Python / JSON Schema、事件名、storage backend 与采集实现保持 Implementation Pending
 ```
 
-### Stage 1.10 Pending
+### Stage 1.10 Implementation / Real-run Calibration Pending
 
 ```text
-Planner Evaluation Dataset
-planned vs standard、with planner vs without planner 的评测方法
+Planner Evaluation Case / Review workflow
+forced standard、forced planned 的 Planner Utility 评测方法
+Router 恢复后的 Router Utility 对照方法
 Planner latency threshold
 Planner cost budget
 Planner latency budget / invocation policy
@@ -1041,6 +1042,8 @@ Planner latency budget / invocation policy
 是否需要更多 intent 类型
 是否未来需要 replan
 ```
+
+Case Bundle、Reference completeness / provenance、pinned Variant、blind paired review 与 Regression 语义已由 [Stage 1.10 ADR](./stage-1-10-evaluation.md) 确认；本节只保留具体执行、真实 baseline、数值与参数校准。
 
 以上 Pending 项不能因为 Stage 1.6 已 Confirmed 就被默认补全。除非新 Failure Case、技术约束、Evaluation 结果或业务需求触发 Reopen Reason，否则本 ADR 的 Confirmed 决策保持冻结。
 

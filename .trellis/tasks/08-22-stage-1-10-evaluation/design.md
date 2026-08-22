@@ -95,6 +95,8 @@ Evaluation Suite
 - User Query、locale、time context 与场景标签；
 - Reference Findings：回答应覆盖的关键事实或调查维度；
 - Reference Evidence：已知 relevant Message / Structured Result，以及 relation；
+- Reference annotation completeness：Reference 在当前 Snapshot、Scope 与 criterion 下是 `exhaustive / partial / unknown`；
+- Reference provenance：由谁或什么流程建立、建立时间、是否经过人工 adjudication、适用边界与已知限制；
 - Negative / uncertainty constraints：禁止断言的内容、证据不足时应保留的不确定性；
 - 可选 Route / Planner / Retrieval diagnostic reference；
 - Review policy 与 critical requirements。
@@ -114,9 +116,19 @@ Case Bundle 是 canonical truth。Router、Planner、Retrieval、Evidence、Cita
 
 当数据规模足以支持时，Core Set 可以再分 development / holdout，防止围绕公开 Case 过拟合；本阶段不规定样本数与比例。
 
+Core Set 不是一次建立后永不变化。它需要根据真实 workload distribution、用户问题形态与新出现的场景定期审视；更新通过新的 Suite version 完成，历史 Suite composition 与结果继续保留，不能用新 Case 清单覆盖旧结果。本阶段不规定刷新周期、采样比例或 reweight 算法。
+
 ### Controlled Variant
 
-一次实验所使用的完整系统配置 identity，包括与结果相关的 model、prompt、Router / Planner、Tool、Retrieval、index、chunk、budget、Evidence / Citation 和 Runtime 版本或参数。它必须显式记录变化点，不能用“current defaults”这种会漂移的描述作为长期比较依据。
+一次实验所使用的完整系统配置 identity，包括与结果相关的 model、prompt、Router / Planner、Tool、Retrieval、index、chunk、budget、Evidence / Citation 和 Runtime 版本或参数。它必须显式记录变化点，不能用 `main`、`production` 或“current defaults”这种会漂移的描述作为长期比较依据。
+
+**Baseline 也是一个完整 pin 住的 Controlled Variant**。每个 Comparison 必须明确 Baseline identity 与用途；Candidate 必须声明相对 Baseline 的显式差异。Baseline 不是全项目唯一常量，可以按实验目的区分：
+
+- last stable baseline：用于 promotion / regression 比较；
+- minimal / ablated control：用于判断某个机制本身是否产生 Utility；
+- ChatLab-derived seed：用于第一版参数启动，不自动等于 Trivae stable baseline。
+
+第一版实际使用哪一个 Variant 作为 stable baseline 留给实现阶段；“Baseline 必须 pinned”在本阶段确认。
 
 ### Evaluation Run
 
@@ -154,7 +166,15 @@ Case Bundle 的 Reference 由以下部分组成：
 - **Uncertainty expectation**：数据或 coverage 不足时，什么内容只能表达为 partial / insufficient；
 - **Critical requirement**：违反即使平均分较高也不能接受的行为，例如越权来源或虚构 Citation。
 
-Reference Evidence 不宣称永远穷尽全部正确来源。若标注集不完整，不能机械地把发现新但真实的来源当成 false positive；需要人工确认后更新 Case version。
+Reference annotation completeness 具有以下概念语义，不冻结字段名或序列化：
+
+- **exhaustive**：在明确 Snapshot、Scope 与 criterion 内，Reference 由完整查询、人工穷举或其他可说明的可靠流程建立，可以较强解释 Precision / Recall；
+- **partial**：只标注代表性或已知 Evidence。命中已知 Evidence 有意义，但 Reference 外 Source 不能机械算 false positive，Recall 也只能解释为对已知集合的覆盖；
+- **unknown**：无法判断完整度，主要用于定性 review、Finding Correctness 与 Failure discovery，不应用 Reference Set 计算强 Precision / Recall 结论。
+
+`exhaustive` 只表示在当前 Snapshot + Scope + criterion 内尽可能穷尽，不表示对现实世界绝对穷尽。
+
+Reference provenance 至少要能解释：建立者或建立流程、建立时间、使用的数据与 Scope、是否经过独立人工 adjudication、已知限制和 completeness 依据。Ground Truth 自身也可能出错；发现新 Evidence 或标注错误时创建新 Case version，并保留旧 Result 的历史解释。
 
 ## 6. Evaluation Layers
 
@@ -192,9 +212,29 @@ Trace incomplete 不自动证明 Answer 错误；但它会使对应 Run 的 Fail
 - Route confusion、planned precision / recall 与 workload route distribution；
 - Planner invocation / invalid / skipped 等事实；
 - Missed Dimensions 与 Plan anchoring 等诊断；
-- **Planner Utility**：同一 Case 的 planned / standard 或 with / without planner 质量变化，相对于 latency、token 与 Tool Call 成本。
+- **Planner Utility**：同一 Case 的 forced planned / forced standard 质量变化，相对于 latency、token 与 Tool Call 成本；
+- **Router Utility**：Router 能否把“当前受评 Planner 确实产生收益”的 Case 送入 planned path，同时避免把无收益或负收益 Case 过度路由。
 
 Planner 文本“看起来合理”不是成功条件。如果 Plan 很漂亮但最终 Answer 没改善，Planner 没有证明价值。
+
+Router 与 Planner 必须通过两阶段 counterfactual evaluation 解耦：
+
+```text
+阶段 A：绕过 Router，测 Planner 本身
+
+Forced Standard
+Case → Agent Runtime
+
+Forced Planned
+Case → Planner → Agent Runtime
+
+阶段 B：恢复 Router，测选择能力
+
+Case → Router → standard / planned
+       与阶段 A 得到的 Planner Utility 对照
+```
+
+阶段 A 回答“这个 Case 调 Planner 是否有价值”；阶段 B 回答“Router 能否识别值得调用 Planner 的 Case”。Planner Utility label 绑定被评测的 Planner / Runtime Controlled Variant，不是永远不变的 Case 固有属性：Planner 版本变化后，Router Utility 需要重新对照相应 forced-path 结果。
 
 #### Retrieval / Context Expansion
 
@@ -238,6 +278,14 @@ Planner 文本“看起来合理”不是成功条件。如果 Plan 很漂亮但
 
 Model-assisted review 必须记录 Judge model / prompt / rubric version、实际看到的 Query / Claim / Source 范围与结构化结论。Judge 不应看到 baseline / candidate 身份等会造成偏差的无关信息。
 
+对 baseline / candidate 的质量比较优先使用 **blind pairwise review**：
+
+- 隐藏 Variant 身份与“旧 / 新”“Baseline / Candidate”标签；
+- 随机化 A / B 展示顺序；
+- 使用相同 rubric 与相同 Evidence visibility；
+- 先完成质量判断，再合并 deterministic latency / token / cost 数据；
+- 绝对评分可以并存，但不能让 Variant 名称暗示预期结论。
+
 以下情况转人工复核：
 
 - Judge 与 deterministic result 冲突；
@@ -256,6 +304,7 @@ Model-assisted review 必须记录 Judge model / prompt / rubric version、实�
 - 相同 Dataset Snapshot 与 Data Access Scope；
 - 相同外部可用能力边界；
 - baseline 与 candidate 的差异显式可枚举；
+- baseline 是 pin 住的 Controlled Variant，candidate 只通过显式 diff 表达变化；
 - 同一 Case 上进行配对，而不是比较两批不同问题的平均数；
 - 对 stochastic path 重复运行并保留分布 / 稳定性，不用一次 lucky run 下结论；
 - timeout、provider failure 或 Trace incomplete 不静默丢弃，单独报告可用性与可评测性。
@@ -367,13 +416,36 @@ Regression Case 默认保留稳定 identity 和历史结果。若数据或 Refer
 
 - Evaluation Artifact 是经过独立选择和治理的数据，不通过永久保留全部 Trace 自动获得；
 - Dataset Snapshot 必须绑定合法 Data Access Scope；
+- Snapshot 的“固定”表示某个 Case version 在授权有效时引用不漂移的数据条件，不表示可以绕过后续删除、撤回授权或权限变化；
 - Reference Evidence 只保留复现所需的 bounded source 或稳定 locator；
 - sanitized Trace、Answer Artifact 与 review artifact 按 Stage 1.9 data minimization 原则处理；
-- 删除、权限变化或数据治理要求必须能使对应 Case 失效或产生新 version，不能继续把不可访问 Source 当有效 Ground Truth；
+- 删除、权限变化或数据治理要求必须能使对应 Case 失效、受限或产生新 version，不能复制一份不可访问 Source 继续充当有效 Ground Truth；历史 Result 只在治理允许的 metadata 范围内保留；
 - Evaluation Result 必须能识别 Case、Snapshot、Variant、model / prompt / index / parameter identity 与 evaluator version；
 - 不要求把完整聊天正文上传给第三方 Judge；Judge 只获得被允许且完成 privacy projection 的最小输入。
 
-## 13. ChatLab Inheritance / Deviation
+Evaluation 的 reproducibility 承诺是：**输入、Dataset、Scope、Controlled Variant 与 Evaluation 条件可重建，并能进行统计上可比较的重复运行**。它不承诺远程 LLM 或其他外部服务半年后产生 bit-for-bit 相同输出。对 externally hosted component，应记录可获得的 provider / model / version identity、运行时间与参数，并通过重复 Run、结果分布和明确 limitation 维持可比较性。
+
+## 13. Trivae-specific Design Seed Cases
+
+以下 Case 只用于验证 Case Bundle、Reference、forced-path、review 与 Failure Attribution 的表达能力。它们不是已经标注的 Benchmark，不产生 gate，也不冻结真实 workload 分布或最终 Route label。
+
+| Seed | User Query / 场景 | Initial path hypothesis | 需要表达的 Reference / Evaluation 重点 |
+| --- | --- | --- | --- |
+| T-EVAL-001 明确事实查找 | 最近群里分享了哪些 GitHub 仓库链接，分别是谁分享的？ | `standard_execution` | Structured / Message Source、链接与作者事实、Citation coverage；Reference 可通过受控查询建立为 exhaustive |
+| T-EVAL-002 长时间趋势 | 最近半年大家对本地 Agent 框架的评价发生了什么变化？ | `standard_execution` 倾向，需 forced-path 验证 | 多时间窗口、趋势 finding、代表性 Evidence、不能把短期噪声写成长期趋势 |
+| T-EVAL-003 多阶段调查 | superpowers 从被推荐到被弃用经历了什么，现在替代方案是什么？ | `planned_execution` | 推荐 → 尝试 → 问题 → 态度变化 → 替代方案；Planner 明显可能有收益 |
+| T-EVAL-004 成员身份歧义 | “小王”最近表达过哪些关于 RAG 的观点？ | `standard_execution` | `find_members` 候选、identity ambiguity、不得在未消歧时混合多人消息 |
+| T-EVAL-005 Evidence 不足 | 大家是不是从五月开始明显减少讨论 AI 了？ | 待 forced-path 验证 | 时间覆盖、统计 criterion、partial / insufficient、不能把短窗口当完整趋势 |
+| T-EVAL-006 没找到与不存在 | 群里是否有人明确说过 PostgreSQL 不适合做向量检索？ | `standard_execution` | zero hit、query reformulation、query-scope coverage；“当前未找到”不能升级为“从未有人说过” |
+| T-EVAL-007 冲突 Evidence | A 说“新版已经解决这个 bug”，B 两天后说“刚测了，还是存在”；现在能否认为问题已解决？ | `standard_execution` | supports / contradicts、时间顺序、criterion、不能只引用 A 就下确定结论 |
+| T-EVAL-008 Chunk Boundary | 找到“这个问题已经修好了”的消息，并说明“这个问题”具体指什么。 | `standard_execution` | 命中句本身不完整，必须恢复前文与 reply / Parent context；用于定位 Chunk Boundary / Context Expansion Error |
+| T-EVAL-009 Planner 无收益 | X 最近分享了哪些链接或资源？ | `standard_execution` | forced planned 不应稳定改善质量，却会增加 latency / token；验证 over-routing cost |
+| T-EVAL-010 Scope 限制 | 综合我有权限查看的多个群，分析 X 最近的技术观点；其中一个群不在当前 Scope。 | `standard_execution` 初始假设，需 forced-path 验证 | Data Access Scope 是 hard gate；不得为了 completeness 访问越权 Source，限制必须显式 |
+| T-EVAL-011 Reference 外新 Evidence | 总结最近关于某模型降智的反馈；Reference 只标注三条代表消息，Candidate 找到另外两条真实相关消息。 | 待 forced-path 验证 | Reference completeness=`partial`；新 Source 进入人工复核，不能机械算 false positive |
+
+其中 T-EVAL-007 是 Trivae 必须长期保留的核心场景形态：Citation 可以全部真实有效，但如果系统忽略后续反例，最终结论仍然错误。Groundedness 必须检查 Claim 是否综合处理支持与反驳 Evidence，而不是只检查“每个 Citation 是否存在”。
+
+## 14. ChatLab Inheritance / Deviation
 
 ### Inherit
 
@@ -401,22 +473,27 @@ Regression Case 默认保留稳定 identity 和历史结果。若数据或 Refer
 - ChatLab 经验参数作为 Trivae 最优值；
 - 只有结构测试、没有真实运行的 Evaluation Set 被描述为完成的质量 baseline。
 
-## 14. Failure Cases
+## 15. Failure Cases
 
 | Failure Case | 架构处理 |
 | --- | --- |
 | 最终答案错，但 Retrieval Recall 很高 | 保留端到端 Answer / Evidence review，继续定位 Evidence Selection 或 Answer Generation |
+| Candidate Router 走 planned 后答案更好 | 先做 forced-path 比较，区分 Planner 本身收益与 Router 选择收益 |
+| Reference 只标典型来源却直接计算 Precision | 使用 annotation completeness；partial / unknown Reference 不把新真实 Source 当 false positive |
+| Baseline 写成 current defaults | Comparison 无效；Baseline 必须是 pinned Controlled Variant，Candidate 声明 diff |
 | 各模块平均分都高，关键 planned case 失败 | 按 Case / slice 报告，critical regression 不被 aggregate average 掩盖 |
 | Candidate 单次运行表现很好 | 重复 stochastic run，不用 lucky run 做 promotion |
 | Judge 认为 Citation 支持 Claim，但人工不同意 | 记录 disagreement，关键结论转人工，不让 Judge 成为唯一事实源 |
+| Judge 知道哪个是“新方案” | 对质量比较隐藏 Variant identity、随机 A/B 顺序，成本数据在质量判断后合并 |
 | 找到 Reference 外的新真实证据 | 人工复核并升级 Case version，不机械算 false positive |
 | Trace incomplete 但 Answer 看起来正确 | Answer quality 与 diagnosability 分轴；不伪造 Root Cause |
 | 为通过 gate 增加 retry / fallback | 禁止；先定位主链路 Failure，恢复机制需真实证据和独立评测 |
 | Evaluation Set 被 Prompt 反复针对性优化 | 引入真实 Failure Regression、必要时使用 holdout，不围绕单个 Case 写规则 |
+| Core Set 全部通过但已不代表当前用户问题 | 根据真实 workload 建立新 Suite version，保留旧 composition 与历史结果 |
 | 数据权限变化后旧 Case 仍引用 Source | Case 失效或产生新 version，不继续使用越权 Ground Truth |
 | 平均质量略升但 Token / latency 大幅上升 | 以 paired Pareto trade-off 审查，不用单一总分掩盖成本 |
 
-## 15. Confirmed Decision Set for ADR
+## 16. Confirmed Decision Set for ADR
 
 1. Evaluation 验证真实改善，不是指标展示层。
 2. Evaluation 与在线 Query Execution 分离，不成为业务编排层。
@@ -424,30 +501,39 @@ Regression Case 默认保留稳定 identity 和历史结果。若数据或 Refer
 4. 模块评测从同一 Case 派生；纯模块输入属于 Test / Diagnostic Fixture。
 5. Case 绑定 Dataset Snapshot、Data Access Scope、Query、Findings、Evidence 与 uncertainty constraints。
 6. Ground Truth 使用 Reference Findings / Evidence，不使用唯一标准答案文本。
-7. Design Seed、Core Evaluation、Failure Regression 与 Calibration Slice 语义分开。
-8. Run 绑定完整 Controlled Variant；禁止依赖漂移的 current defaults。
-9. stochastic path 使用重复 Run，具体次数后续校准。
-10. Deterministic checks、Human review、Model-assisted review 分层。
-11. Model-assisted Judge 不是唯一真相源，关键争议转人工。
-12. End-to-end quality 与 module diagnostics 同时保留，但不机械合成单一总分。
-13. Router 的最终目标是 Planner Utility，不是 Aggregate Accuracy。
-14. Retrieval relevance、query-scope coverage 与 Evidence sufficiency 分轴。
-15. Citation precision、Citation coverage、semantic entailment 与 criterion quality 分开。
-16. Paired comparison 固定 Case / Snapshot / Scope，只改变显式 Variant。
-17. Failure Diagnosis 关联但不改写 Stage 1.9 canonical Trace。
-18. 真实 Failure 修复后进入 versioned Regression Set。
-19. Hard contract 可先确认；numerical threshold 必须等待真实 baseline、方差与 Failure Cost。
-20. 质量与 latency / token / Tool Call / cost 做 Pareto trade-off，不压成一个总分。
-21. ChatLab 参数只作标注来源的 baseline seed，不视为 Trivae 最优值。
-22. Evidence-aware stopping 第一版继续作 guidance；machine gate / repair / retry 需要独立进入条件。
-23. Evaluation Artifact 独立选择与治理，不延长全部 Trace retention。
-24. Stage 1.10 不实现 runner、Schema、Dashboard，不伪造 baseline、threshold 或最佳参数。
+7. Reference annotation completeness 使用 `exhaustive / partial / unknown` 语义，并保存建立流程、时间、Scope、adjudication 与限制等 provenance。
+8. Reference 完整度决定 Precision / Recall 的解释强度；Reference 外真实 Source 先人工复核，不机械算错。
+9. Design Seed、Core Evaluation、Failure Regression 与 Calibration Slice 语义分开。
+10. Core Set 随真实 workload 通过 versioned Suite 刷新，历史 composition 与结果保留。
+11. Trivae-specific Design Seed 用于验证表达能力，不产生 gate 或固定 workload 分布。
+12. Run 绑定完整 Controlled Variant；禁止依赖漂移的 current defaults。
+13. Baseline 是 pin 住的 Controlled Variant；last stable、minimal control 与 ChatLab-derived seed 的用途分开，Candidate 声明显式 diff。
+14. stochastic path 使用重复 Run，具体次数后续校准。
+15. Reproducibility 保证条件可重建与统计可比较，不承诺外部模型字节级重放。
+16. Deterministic checks、Human review、Model-assisted review 分层。
+17. Model-assisted Judge 不是唯一真相源，关键争议转人工。
+18. paired quality comparison 优先 blind、随机顺序、同 rubric、同 Evidence visibility。
+19. End-to-end quality 与 module diagnostics 同时保留，但不机械合成单一总分。
+20. Planner Utility 先通过 forced standard / forced planned 测量，绕过 Router。
+21. Router Utility 再评价 Router 是否识别当前 Planner 真正产生收益的 Case；不是 Aggregate Accuracy。
+22. Retrieval relevance、query-scope coverage 与 Evidence sufficiency 分轴。
+23. Citation precision、Citation coverage、semantic entailment、contradiction handling 与 criterion quality 分开。
+24. Paired comparison 固定 Case / Snapshot / Scope，只改变显式 Variant。
+25. Failure Diagnosis 关联但不改写 Stage 1.9 canonical Trace。
+26. 真实 Failure 修复后进入 versioned Regression Set。
+27. Hard contract 可先确认；numerical threshold 必须等待真实 baseline、方差与 Failure Cost。
+28. 质量与 latency / token / Tool Call / cost 做 Pareto trade-off，不压成一个总分。
+29. ChatLab 参数只作标注来源的 baseline seed，不视为 Trivae 最优值。
+30. Evidence-aware stopping 第一版继续作 guidance；machine gate / repair / retry 需要独立进入条件。
+31. Evaluation Artifact 独立选择与治理，不延长全部 Trace retention；删除和权限变化优先于复现便利。
+32. Stage 1.10 不实现 runner、Schema、Dashboard，不伪造 baseline、threshold 或最佳参数。
 
-## 16. Deferred
+## 17. Deferred
 
 ### Implementation Pending
 
 - Python / JSON / Database Schema 与 package layout；
+- annotation completeness / provenance、Baseline inheritance / diff 与 Snapshot status 的具体字段；
 - Dataset Snapshot 构建、Case authoring、runner、replay 与结果存储；
 - Judge adapter、human review workflow 与 UI；
 - Trace / Answer Artifact 的具体读取接口；
@@ -458,6 +544,7 @@ Regression Case 默认保留稳定 identity 和历史结果。若数据或 Refer
 ### Real-run Calibration Pending
 
 - Core / Regression Set 的样本数、slice 比例与 development / holdout 划分；
+- Core Set refresh 周期、workload sampling / reweight 方法与第一版 stable baseline 的具体选择；
 - 重复 Run 次数、统计方法与 evaluator agreement 阈值；
 - 所有质量、latency、token、cost、coverage 与 budget 数值 gate；
 - model / prompt / chunk / top-k / fusion / rerank / Tool Budget / stopping 的最终参数；
@@ -467,7 +554,7 @@ Regression Case 默认保留稳定 identity 和历史结果。若数据或 Refer
 
 - CLI / API / UI 中的 Evaluation 触发、状态、结果、对比与 Source review 体验。
 
-## 17. Reopen Conditions
+## 18. Reopen Conditions
 
 只有以下证据可以重开本 ADR：
 

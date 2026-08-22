@@ -391,7 +391,7 @@ Stage 1.5 冻结的 Evaluation 原则是：
 
 > Router 的最终目标不是获得漂亮的 Route Classification Accuracy，而是验证 Planner Invocation 是否产生实际下游收益。
 
-Stage 1.10 应能够对同一个 Query 比较两条受控路径：
+Stage 1.10 已将上述原则落实为同一 Case 的 forced-path 评测契约（具体 runner、真实 baseline 与数值仍 Pending），先比较两条受控路径：
 
 ```text
 A: standard_execution → Agent Runtime
@@ -413,7 +413,7 @@ Latency
 
 ### Evaluation Boundary
 
-本阶段不冻结 Benchmark、具体指标实现或阈值；但 Stage 1.10 不能只看 Aggregate Accuracy，至少还应观察 `planned_execution` precision / recall、standard / planned 的基准比例，以及 Planner Invocation 的实际下游收益。
+本阶段不冻结 Benchmark、具体指标实现或阈值；Stage 1.10 ADR 已确认不能只看 Aggregate Accuracy，必须把 forced Planner Utility 与恢复 Router 后的 Router Utility 分开，并结合质量、成本、Case slice 和 stochastic Run 解释。具体执行见 [Stage 1.10 Evaluation ADR](./stage-1-10-evaluation.md)。
 
 ## 11. Representative Trivae Router Workload
 
@@ -445,5 +445,5 @@ Latency
 - Agent Runtime 的 Loop、Session、Streaming、Abort、SDK 版本与 Run Lifecycle（Stage 1.7）；
 - Evidence / Citation model 与证据选择（Stage 1.8）；
 - Router Trace 的具体 Python / JSON Schema、事件名、存储与采集实现（conceptual family / ownership 已由 Stage 1.9 确认）；
-- Router Evaluation Benchmark、标注平台、最终 accuracy / error rate 口径与参数校准（Stage 1.10）；
+- Router Evaluation Case / Review workflow、最终 accuracy / error rate 口径与参数校准（Stage 1.10 ADR 已确认 Case / Reference / paired 治理；具体实现与真实校准 Pending）；
 - 具体 regex、复杂度权重、confidence threshold、LLM model、prompt、timeout、Python class 与文件布局。

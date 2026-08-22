@@ -1,7 +1,7 @@
 # Logging Guidelines
 
 > 日志与可观测性长期原则（源自工程原则第 4 节）。
-> Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverage、privacy / retention 与 Trace storage 的架构语义；具体 Python / JSON Schema 和 backend 仍待实现。
+> Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverage、privacy / retention 与 Trace storage 的架构语义；Stage 1.10 已确认 Evaluation 对 Trace 的引用、诊断与不可改写边界；具体 Python / JSON Schema、Evaluation artifact 与 backend 仍待实现。
 
 ---
 
@@ -50,4 +50,4 @@
 - Trace 使用 `normal / debug` Profile：Normal 可保存 bounded / redacted actual content，Debug 可在 Data Access Scope 内保存完整或近完整的 model-visible / system-visible facts；两者都不保存 Chain-of-Thought、secrets 或越权数据。
 - Trace access / export 不扩大 Data Access Scope；SDK built-in external tracing 保持显式关闭。
 - Debug Profile 不改变业务授权；profile、capture policy、truncation 与 retention 必须可追踪，且 Local-first 开发环境可以由显式配置决定清理时机。
-- Stage 1.9 operational metrics 不包含 Stage 1.10 quality threshold / gate。
+- Stage 1.9 operational metrics 不自动证明 Stage 1.10 quality；Evaluation quality、numerical threshold、Review artifact 与 gate 仍需真实运行校准。

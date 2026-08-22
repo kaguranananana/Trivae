@@ -474,7 +474,7 @@ Stage 1.9 不定义：
 - Data Plane ingestion / indexing rebuild 的细粒度 event taxonomy；Stage 1.2 `ImportBatch` 语义保持有效；
 - OpenTelemetry 或其他 exporter 是否接入；若接入必须位于 privacy projection 之后。
 
-### Stage 1.10 Pending
+### Stage 1.10 Implementation / Real-run Calibration Pending
 
 - Evaluation Dataset、Failure Case labels、人工标注与 review rubric；
 - Router / Planner / Retrieval / Evidence / Citation / Answer quality metrics；
@@ -482,6 +482,8 @@ Stage 1.9 不定义：
 - latency、token、coverage、citation、budget、stopping 的 threshold / gate；
 - model / prompt / chunk / top-k / rerank / Tool Budget 参数校准；
 - bounded repair、automatic retry、Evidence-aware stopping 的 Evaluation 与进入条件。
+
+Stage 1.10 已确认 Evaluation 只引用 Stage 1.9 canonical Trace，不改写 Trace；Run / Review / Diagnosis 的具体 artifact、runner、quality rubric、真实 baseline、数值 gate 与 stopping 校准仍 Pending。
 
 ### Stage 1.11 Pending
 
