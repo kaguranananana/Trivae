@@ -11,6 +11,7 @@
 - 重要修复：保存 Failure Case → 加入测试集 → Regression Test。
 - Evaluation 优先用真实指标（Recall@K、Task Success Rate 等），避免仅凭主观感觉。
 - 固定 Evaluation Set 逐步建立；不制造无意义指标。
+- 每个实现任务完成时，按项目级 [Interview Defense Evidence](../project/interview-defense.md) 留下事实证据索引；不得虚构 Failure Case、性能数字或未验证的设计过程。
 
 ## 禁止模式
 

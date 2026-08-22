@@ -62,13 +62,27 @@ Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverag
 6. **Verification**：通过 Test / Evaluation / Metric / Regression 证明改善，避免仅凭主观感觉。
 7. **Regression**：重要修复后保存 Failure Case、加入测试集、增加 Regression Test，必要时增加 observability / validation / guardrail。
 
-## 7. 最小可验证改动
+## 7. 实现任务的证据化面试防守记录
+
+这条原则适用于以后所有实现任务，尤其是 Retrieval、Tool、Agent Runtime、Context、Evidence、Evaluation、Storage 等关键模块。实现文档除了说明“做了什么”，还必须能够基于真实证据回答“为什么这样设计、有哪些替代方案、失败如何定位、如何证明修改有效、规模扩大后会怎样、未来何时演进”。
+
+这不是面试话术要求，也不要求为了面试制造复杂度。只记录 architecture decision、implementation、test、真实数据运行、benchmark、evaluation 或真实 Failure Case 能证明的内容；没有证据时必须明确写成未知、`anticipated risk` 或 `waiting for evaluation evidence`，不得虚构 Failure Case、性能数字或设计过程。
+
+每个实现任务完成时，必须在实现/验证/评审记录中覆盖：Problem / Motivation、Design Rationale（problem → considered options → selected option → reason → trade-off）、Why not、Failure Cases、Evaluation / Evidence、Observability / Debugging、Scale / Performance、Boundary / Ownership、Evolution，以及简短的 `Interview Defense Notes` 事实索引。必须区分 `measured fact` 与 `engineering expectation`，也必须区分 `real failure`、`regression test case` 与 `anticipated risk`，以及 `permanently rejected` 与 `currently unnecessary / waiting for evaluation evidence`；后者需要写出 reconsideration trigger。
+
+质量门禁是：面试官连续追问“为什么、替代方案、失败、验证、debug、规模、扩展”时，仓库中的代码、测试和文档能指向事实来源；不能只回答“代码就是这么写的”，也不能靠虚构项目经历补齐。
+
+面试回答的默认叙事必须以 Trivae 自己的问题、约束、实现、测试和真实数据证据为中心，不把 ChatLab、参考实现或“参考某个成熟开源项目”作为设计理由、技术结论或答案主线。内部文档可以保留真实的参考来源；如果面试官直接询问参考来源，必须如实说明，并进一步解释 Trivae 的适配、取舍和验证，不能伪造完全独立的原创来源。
+
+详细模板见 [Interview Defense Evidence](./interview-defense.md)。
+
+## 8. 最小可验证改动
 
 - 发现问题：复现 → 定位 → 假设 → 最小修改 → 验证。
 - 只有现有结构明显阻碍正确性、可维护性或迭代时，才提出结构性调整。
 - 重大问题按 architecture.md 的规则处理（记录问题，停止改动，等待架构决策）。
 
-## 8. 禁止事项（当前阶段 / 未定架构时）
+## 9. 禁止事项（当前阶段 / 未定架构时）
 
 未由正式设计文档定义的内容（模块边界、数据模型、检索选型、Agent 架构、API 边界等）：
 

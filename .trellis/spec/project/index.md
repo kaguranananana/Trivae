@@ -15,6 +15,7 @@
 | [Development Workflow](./workflow.md)                 | 本项目开发工作流（Trellis 之上的项目规则）             | 开始新任务前         |
 | [Problem Records](./problem-records.md)               | 重要问题 / Failure Case 的记录模板与存放位置        | 修复重要问题时        |
 | [Technical Decisions](./technical-decisions.md)       | 重大技术决策（ADR）的沉淀方式                      | 做出重大决策时        |
+| [Interview Defense Evidence](./interview-defense.md) | 实现任务的事实证据、失败分析与面试追问索引           | 每个实现任务完成时     |
 
 ---
 
