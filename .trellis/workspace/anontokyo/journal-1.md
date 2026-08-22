@@ -177,3 +177,24 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Status
 
 [OK] **Completed**
+
+
+## Session 7: Refine Stage 1.10 finding-level references and planner controls
+
+**Date**: 2026-08-22
+**Task**: Refine Stage 1.10 finding-level references and planner controls
+**Branch**: `main`
+
+### Summary
+
+根据用户反馈修订 Stage 1.10：Reference completeness/provenance 下沉到 Finding 级别，允许同一 Case 的不同 Finding 使用不同完整度；Planner Utility 明确除 Planner 是否介入及其 guidance 外所有条件必须一致；没有明显 Planner 收益的 Case 不强制 expectedRoute，Router seed 改为可选 hypothesis 或未预设。同步正式 ADR、architecture、overview、workflow、engineering principles、Stage 1.5/1.8 ADR。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c33e5a7` | (see git log) |
+
+### Status
+
+[OK] **Completed**
