@@ -13,6 +13,7 @@ from trivae.data.model import ImportRunSummary
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalIndex
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
+from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeResult
 from trivae.retrieval.lexical import LexicalRetrieval
 from trivae.retrieval.structured import (
     AggregateQuery,
@@ -35,6 +36,7 @@ class TrivaeApplication:
         lexical_retrieval: LexicalRetrieval,
         capability_registry: CapabilityRegistry,
         lexical_index: SQLiteLexicalIndex | None = None,
+        agent_runtime: AgentRuntime | None = None,
     ) -> None:
         self.store = store
         self.importer = importer
@@ -43,6 +45,8 @@ class TrivaeApplication:
         self.lexical_retrieval = lexical_retrieval
         self.capability_registry = capability_registry
         self._lexical_index = lexical_index
+        # Runtime 是可注入且惰性创建的，检索-only caller 不需要 provider 配置。
+        self._agent_runtime = agent_runtime
 
     def import_directory(self, raw_directory: Path) -> ImportRunSummary:
         """让 CLI 通过 Application 进入 data ingestion，而不是直接读 Store。"""
@@ -76,6 +80,18 @@ class TrivaeApplication:
 
         return self.capability_registry.invoke(name, request, scope)
 
+    async def run_agent(self, request: AgentRunRequest) -> RuntimeResult:
+        """通过同一 Application composition path 执行 Agent Runtime。"""
+
+        if self._agent_runtime is None:
+            # 延迟导入和构造 provider，避免应用创建阶段触发密钥校验或网络 client。
+            from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+
+            self._agent_runtime = OpenAIAgentsRuntimeAdapter(
+                capability_registry=self.capability_registry,
+            )
+        return await self._agent_runtime.run(request)
+
     def close(self) -> None:
         """集中关闭 core resource；不在模块 import 时创建全局资源。"""
 
@@ -84,6 +100,8 @@ class TrivaeApplication:
             self._lexical_index.close()
         self.read_repository.close()
         self.store.close()
+        # 应用关闭后不再保留 runtime/provider 引用；client 生命周期不延伸到 Application 之外。
+        self._agent_runtime = None
 
     def __enter__(self) -> TrivaeApplication:
         return self
@@ -92,7 +110,10 @@ class TrivaeApplication:
         self.close()
 
 
-def create_application(database_path: Path) -> TrivaeApplication:
+def create_application(
+    database_path: Path,
+    agent_runtime: AgentRuntime | None = None,
+) -> TrivaeApplication:
     """Composition Root 统一装配 write/read/derived/retrieval/capability 组件。"""
 
     store = SQLiteCanonicalStore(database_path)
@@ -110,4 +131,5 @@ def create_application(database_path: Path) -> TrivaeApplication:
         structured_retrieval=structured_retrieval,
         lexical_retrieval=lexical_retrieval,
         capability_registry=capability_registry,
+        agent_runtime=agent_runtime,
     )

@@ -3,11 +3,14 @@ name = "trivae"
 version = "0.1.0"
 description = "High-noise group chat intelligence analysis system"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "openai-agents>=0.22,<0.23",
+]
 
 [project.optional-dependencies]
 dev = [
     "mypy>=1.15,<2",
+    "pytest>=8,<9",
     "ruff>=0.9,<1",
 ]
 

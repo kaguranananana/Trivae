@@ -18,6 +18,7 @@
 | [Error Handling](./error-handling.md) | 错误处理原则 | 已填 |
 | [Logging Guidelines](./logging-guidelines.md) | 日志与可观测性原则 | 已填 |
 | [Quality Guidelines](./quality-guidelines.md) | 测试与质量要求 | 已填 |
+| [Agent Runtime Guidelines](./agent-runtime-guidelines.md) | M4a Runtime、DeepSeek、SDK Tool 与跨层契约 | 已填 M4a baseline |
 | [Database Guidelines](./database-guidelines.md) | 数据库相关规范 | 已填 M1 SQLite Canonical Store contract；Retrieval/Derived Store 仍 Pending |
 
 ---

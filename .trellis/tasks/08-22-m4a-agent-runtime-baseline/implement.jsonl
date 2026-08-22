@@ -1,0 +1,11 @@
+{"file":".trellis/spec/project/architecture.md","reason":"Defines the M4a ownership boundary: Trivae AgentRuntime adapter over the SDK, local runtime context, capability boundary, and no SDK leakage into lower-layer contracts."}
+{"file":".trellis/spec/project/engineering-principles.md","reason":"Requires explicit contracts, root-cause fixes, observable errors, minimal scope, and tests that preserve existing behavior."}
+{"file":".trellis/spec/project/technical-decisions/stage-1-4-tool-capability-layer.md","reason":"Defines ExecutionScope, CapabilityRegistry, SearchMessagesTool, ToolEnvelope, bounded context, and terminal error semantics used by the SDK tool adapter."}
+{"file":".trellis/spec/project/technical-decisions/stage-1-7-agent-runtime.md","reason":"Defines Agent Runtime ownership, SDK loop delegation, context separation, termination policy, and deferred graceful synthesis boundary."}
+{"file":".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md","reason":"Defines the deferred normalized trace backend and the requirement not to expose internal runtime details; M4a disables hosted tracing."}
+{"file":".trellis/spec/project/technical-decisions/stage-1-11-application-architecture.md","reason":"Defines application composition and lifecycle expectations, including explicit dependencies and no import-time side effects."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Requires typed boundary errors, no silent catches, and clear ownership of recoverable versus terminal failures."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Defines validation and test quality expectations for the new runtime path."}
+{"file":".trellis/spec/backend/agent-runtime-guidelines.md","reason":"Records the concrete M4a runtime signatures, env contract, error matrix, test assertions, and SDK loop boundary."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Guides review of cross-layer contracts from model adapter through capability, retrieval, and storage."}
+{"file":".trellis/tasks/08-22-m4a-agent-runtime-baseline/research/openai-agents-sdk-deepseek.md","reason":"Records official SDK and DeepSeek findings used to choose Chat Completions, local context, max_turns, tracing behavior, and deterministic tests."}

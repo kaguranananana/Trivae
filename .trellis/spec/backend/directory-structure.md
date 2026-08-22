@@ -1,6 +1,6 @@
 # Directory Structure
 
-> 目录与文件组织约定。M1 ingestion、M2 Retrieval Core 和 M3 最小 Capability/Tool vertical slice 已落地；Query Plane、Evaluation 和 HTTP Product Interaction 仍待后续任务。
+> 目录与文件组织约定。M1 ingestion、M2 Retrieval Core、M3 最小 Capability/Tool vertical slice 和 M4a Agent Runtime baseline 已落地；M4b/M4c、Evaluation 和 HTTP Product Interaction 仍待后续任务。
 
 ---
 
@@ -43,7 +43,7 @@ package layout 与 Trivae Home 都是逻辑 ownership 语义，不要求一一�
 
 - **只按已确认边界创建业务结构**：Stage 1.11 已确认单 Python distribution、`src/trivae` 概念布局和 ownership；实际目录必须在对应 Implementation task 中按 ADR 落地。
 - **不提前创建实现细节**：具体文件、class、Schema、依赖、框架版本、DI 方式和测试工具链仍须等待实现任务确定。
-- M1 先只创建 `bootstrap`、`data`、`interfaces`；M2/M3 implementation task 已按确认边界实际创建 `retrieval`、`capabilities` 和 data/storage read/derived adapter。未实现的 Query Plane package 仍不提前创建。
+- M1 先只创建 `bootstrap`、`data`、`interfaces`；M2/M3 implementation task 已按确认边界实际创建 `retrieval`、`capabilities` 和 data/storage read/derived adapter；M4a implementation task 已按确认边界创建 `config` 与 `query/runtime`。未实现的 Router、Planner、Evidence 等 Query Plane package 仍不提前创建。
 
 ## 当前已落地的 M2/M3 物理文件
 
@@ -66,9 +66,28 @@ src/trivae/
     └── sqlite_lexical.py    # rebuildable FTS5 derived index
 ```
 
-这些文件属于本轮已实现的 ownership；Semantic、Hybrid、Reranker、Router、Planner、Runtime、Evidence、Trace 和 Evaluation package 仍没有物理壳文件。
+这些文件属于前序已实现的 ownership；Semantic、Hybrid、Reranker、Router、Planner、Evidence、Trace 和 Evaluation package 仍没有物理壳文件。
+
+## 当前已落地的 M4a 物理文件
+
+```text
+src/trivae/
+├── config/
+│   ├── __init__.py
+│   └── settings.py        # DeepSeek env contract 与 secret-safe settings
+└── query/
+    ├── __init__.py
+    └── runtime/
+        ├── __init__.py
+        ├── contracts.py    # SDK-independent AgentRuntime request/context/result
+        ├── openai_adapter.py  # OpenAI Agents SDK / DeepSeek adapter
+        ├── openai_tools.py    # search_messages thin SDK tool adapter
+        └── prompt.py           # short model-visible instructions
+```
+
+M4a 的具体 env、request/result、错误矩阵和测试断言见 [Agent Runtime Guidelines](./agent-runtime-guidelines.md)。Runtime adapter 是唯一允许直接依赖 OpenAI Agents SDK 的新业务模块；`capabilities/`、`retrieval/` 与 `data/` 不反向依赖 SDK。
 
 ## 后续阶段（实现任务启动后补充）
 
-- Python package / module boundary → 已由 Stage 1.11 定义概念 ownership；实际文件与 import direction 随 Implementation task 落地。
+- Python package / module boundary → 已由 Stage 1.11 定义概念 ownership；M4a 已落地 `config` 与 `query/runtime`；其余 Query Plane 文件仍随对应 Implementation task 落地。
 - 测试目录布局 → 当前继续使用 unittest；M1/M2/M3 contract/integration tests 分文件维护，真实数据校准记录在 task validation artifact，不把 raw 数据复制到 tests。

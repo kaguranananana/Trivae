@@ -1,0 +1,10 @@
+{"file":".trellis/spec/project/architecture.md","reason":"Check that runtime, application, capability, retrieval, and data ownership remain separated after implementation."}
+{"file":".trellis/spec/project/technical-decisions/stage-1-4-tool-capability-layer.md","reason":"Check scope enforcement, safe ToolEnvelope projection, error semantics, and no bypass around CapabilityRegistry."}
+{"file":".trellis/spec/project/technical-decisions/stage-1-7-agent-runtime.md","reason":"Check SDK-owned loop, local context boundary, explicit max-turn termination, and no premature Router/Planner behavior."}
+{"file":".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md","reason":"Check no unsupported hosted tracing or partial normalized Trace implementation is introduced."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Check unexpected exceptions remain visible and no fallback/silent degradation masks the root cause."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Check unit/integration coverage and required quality-gate commands."}
+{"file":".trellis/spec/backend/agent-runtime-guidelines.md","reason":"Check the implementation against the concrete M4a runtime and provider contract recorded after implementation."}
+{"file":".trellis/tasks/08-22-m4a-agent-runtime-baseline/prd.md","reason":"Validate implementation against M4a scope, acceptance criteria, configuration contract, and explicit out-of-scope items."}
+{"file":".trellis/tasks/08-22-m4a-agent-runtime-baseline/design.md","reason":"Validate actual file boundaries, provider path, tool adapter, lifecycle, tests, and rollback against the approved design."}
+{"file":".trellis/tasks/08-22-m4a-agent-runtime-baseline/research/openai-agents-sdk-deepseek.md","reason":"Re-check implementation assumptions against the recorded official API findings."}
