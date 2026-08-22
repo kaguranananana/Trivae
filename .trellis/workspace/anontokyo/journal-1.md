@@ -198,3 +198,24 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Status
 
 [OK] **Completed**
+
+
+## Session 8: Finalize Stage 1.11 application architecture
+
+**Date**: 2026-08-22
+**Task**: Finalize Stage 1.11 application architecture
+**Branch**: `main`
+
+### Summary
+
+完成 Stage 1.11 Application Boundary 与 Python 工程结构架构文档：新增 ADR，确认单 Python distribution、src/trivae 概念 package ownership、Composition Root、统一 QueryOrchestrator、CLI/API/Evaluation 薄入口、QueryRequest、Normalized Event、Trace/Error projection、/api/v1 与 surface separation；同步总架构、技术决策索引、项目状态和后端规范。通过 Trellis 校验、链接检查、内容断言与 git diff --check，归档任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8dd83af` | (see git log) |
+
+### Status
+
+[OK] **Completed**

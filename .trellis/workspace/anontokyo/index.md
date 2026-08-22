@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
+- **Total Sessions**: 8
 - **Last Active**: 2026-08-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~200 | Active |
+| `journal-1.md` | ~221 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-08-22 | Finalize Stage 1.11 application architecture | `8dd83af` | `main` |
 | 7 | 2026-08-22 | Refine Stage 1.10 finding-level references and planner controls | `c33e5a7` | `main` |
 | 6 | 2026-08-22 | Finalize Stage 1.10 Evaluation architecture | `52c816d` | `main` |
 | 5 | 2026-08-21 | Stage 1.8 Evidence / Citation 架构决策 | `53d1b38`, `b41b50e` | `main` |
