@@ -219,3 +219,24 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Status
 
 [OK] **Completed**
+
+
+## Session 9: Clarify Stage 1.11 application boundary contracts
+
+**Date**: 2026-08-22
+**Task**: Clarify Stage 1.11 application boundary contracts
+**Branch**: `main`
+
+### Summary
+
+修订 Stage 1.11 权威 ADR 与项目/backend 同步文档：分离 Runtime Call Flow 与 Source Dependency Rule，补齐 TrivaeApplication facade、Trivae Application Factory、HTTP ASGI / Server App Factory、core/server lifecycle、trusted Query context、Evaluation 独立子系统与 Trivae Home logical namespace；通过 task、链接、内容断言和 diff 检查。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `94e824a` | (see git log) |
+
+### Status
+
+[OK] **Completed**
