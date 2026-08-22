@@ -2,8 +2,8 @@
 
 > 状态：**Draft / In Progress**
 >
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation、Stage 1.9 Trace / Observability 与 Stage 1.10 Evaluation 架构确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1–1.10 completed（架构已沉淀，尚未实现）；Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Pending。
+> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation、Stage 1.9 Trace / Observability、Stage 1.10 Evaluation 与 Stage 1.11 Application Boundary 架构确认内容，不是完整且最终的 Architecture Specification。
+> 当前状态为：Stage 1.1–1.11 completed（架构已沉淀，尚未实现）；Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Implementation / Product Interaction Pending。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,7 +12,7 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1–1.10 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 |
+| 当前阶段   | Stage 1.1–1.11 completed（架构已沉淀，尚未实现）；下一阶段为 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Implementation / Product Interaction |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
 | 业务实现   | 当前无业务代码；后续按已确认架构与 Trellis task 实施                                                                                                                                                                              |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
@@ -136,6 +136,31 @@ User Query + Runtime-injected Context
 Stage 1.5 已确认 Router 的两种 Route 为 `standard_execution` 与 `planned_execution`。两种 Route 最终都进入同一个 Agent Runtime；只有 `planned_execution` 在进入 Agent Runtime 前额外经过 Planner，且 Planner 输出的是 soft execution guidance，不是另一套 Agent Runtime 或强制 Workflow。
 
 `direct_response`、`tool_assisted`、`planned_execution` 是 ChatLab 的参考 taxonomy，不表示 Trivae 当前保留三个 Route。
+
+### Application Boundary
+
+Stage 1.11 将外部入口收束为三个薄 Interface Adapter，并通过统一 Composition Root 进入同一个 Application / Query execution core：
+
+```text
+CLI ─────────────┐
+HTTP API ────────┼──> Application / QueryOrchestrator
+Evaluation ──────┘             │
+                               ↓
+                  Context → Router → Planner? → Agent Runtime
+                               ↓
+                    Tool / Capability → Retrieval
+                               ↓
+                    Evidence / Citation → Answer Artifact
+                               │
+                    ┌──────────┴──────────┐
+                    ↓                     ↓
+             Stream Projection       Trace Collector
+                 CLI / API            Normalized Events
+```
+
+CLI、HTTP API 与 Evaluation 不拥有 Router、Planner、Runtime、Retrieval、Evidence 或 Trace 的业务语义。共享的是 Application Service、QueryRequest 与 Normalized Event Boundary，不是让 CLI 通过本地 HTTP 调用 API。
+
+Composition Root 集中创建 Settings / Paths、Store、Index、Retrieval、Capability、Tool Registry、Router、Planner、Runtime Adapter、Evidence / Citation、Trace Collector 与 QueryOrchestrator，并把它们交给可管理生命周期的 Application 对象。具体 Python class、依赖注入方式与 Schema 属于 Implementation Pending。
 
 ## Stage 1.2: Data Model + Ingestion
 
@@ -1288,7 +1313,7 @@ OpenAIAgentsRuntimeAdapter
 OpenAI Agents SDK
 ```
 
-未来替换 SDK 主要替换 **OpenAI Agents Runtime Adapter** 与 **OpenAI Function Tool Adapter**，而不是 Retrieval、SQLite、Context Expansion、Identity 等业务系统。这里确认的是概念替换面，不冻结 Python package / module layout 或具体文件名。Capability 不绑定具体 Runtime（Stage 1.4）的约束在 Stage 1.7 继续保留并扩展到 Runtime / Tool 的 SDK 接触面。
+未来替换 SDK 主要替换 **OpenAI Agents Runtime Adapter** 与 **OpenAI Function Tool Adapter**，而不是 Retrieval、SQLite、Context Expansion、Identity 等业务系统。这里确认的是 SDK 的概念替换面；Stage 1.11 已确认单 distribution 与概念 package ownership，但不冻结具体文件名、class 或 adapter 实现。Capability 不绑定具体 Runtime（Stage 1.4）的约束在 Stage 1.7 继续保留并扩展到 Runtime / Tool 的 SDK 接触面。
 
 ### Context 两种分离
 
@@ -1357,7 +1382,7 @@ Trivae 配置必须显式关闭 SDK built-in external tracing，不能依赖 SDK
 
 ### Stage 1.7 Pending 路由
 
-- Python package / module layout、具体 SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 具体类型、Tool 并发策略、Agent Model、Prompt 文案：Implementation。
+- 具体 package 文件、SDK 版本、Adapter 契约与实现、RuntimeContext / Agent Model Context 类型、Tool 并发策略、Agent Model、Prompt 文案：Implementation；概念 package ownership 已由 Stage 1.11 确认。
 - `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字：Pending Evaluation（可继承 ChatLab 经验参数，标注来源）。
 - Runtime Event / Trace 的 conceptual envelope、Error Code ownership、storage 与 SDK tracing 边界已由 Stage 1.9 确认；具体 Python / JSON Schema、Error Code 枚举、Collector / Store backend 与 exporter 实现保持 Implementation Pending。
 - Agent correctness benchmark、budget / threshold 参数校准：Stage 1.10 Implementation / Real-run Calibration。
@@ -1501,6 +1526,48 @@ Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集�
 
 完整 rationale、Failure Case、Validation Contract、Deferred 与 Reopen Conditions 见 [Stage 1.9 Trace / Observability ADR](./technical-decisions/stage-1-9-trace-observability.md)。
 
+
+## Stage 1.11: Application Boundary 与 Python 工程结构
+
+### Responsibility
+
+Stage 1.11 负责把 Stage 1.1–1.10 已确认的内部边界映射到 Python 工程的 package ownership、外部入口和生命周期。它不实现业务代码，也不重新设计前序 Stage 的内部执行语义。
+
+### Confirmed Architecture
+
+- v1 使用一个 Python distribution，package root 采用 `src/trivae`；内部按架构 ownership 划分 `config`、`bootstrap`、`data`、`retrieval`、`capabilities`、`query`、`conversation`、`observability`、`evaluation` 与 `interfaces` 等概念包。
+- CLI、HTTP API、Evaluation 是三个薄入口；三者都通过 Composition Root 获取同一 Application，并将各自输入转换为 Application-level `QueryRequest`。
+- `QueryOrchestrator` 是 Query 的唯一 Application entry，统一组织 Context → Router → 可选 Planner → Agent Runtime → Tool / Retrieval → Evidence / Citation → Finalization。
+- Evaluation 通过显式 Controlled Variant、forced route 或 execution override 复用同一 Query execution core，不复制 eval-specific Router、Runtime、Tool 或 Retrieval 主链路。
+- CLI / API / Evaluation 共享 Settings、PathProvider、Application lifecycle、request / trace correlation、canonical Error semantics 与 Normalized Event Projection。
+- OpenAI Agents SDK Event 只能经过 Runtime Adapter 转为 Trivae-owned Runtime Event；CLI / API / UI 与 Trace Collector 不直接依赖 SDK event 类型。
+- HTTP 第一版保留 `/api/v1` 版本边界；查询 Streaming 优先使用 Normalized Event 的单向 SSE-like projection，不在当前阶段引入 WebSocket。
+- Tool Surface、CLI Surface、HTTP API Surface 分开治理；Agent Tool 不自动成为公共命令或 endpoint。
+
+### Dependency Direction
+
+```text
+interfaces/cli ───┐
+interfaces/api ───┼──> Application / Query Orchestrator
+evaluation ───────┘              │
+                                 ▼
+                         Router / Planner / Runtime
+                                 │
+                         Capabilities / Retrieval
+                                 │
+                                 ▼
+                           Data / Infrastructure
+
+All stages ──> Normalized Event Boundary ──> Observability
+```
+
+底层模块不得反向依赖 CLI / API framework；Capability Contract 不向上暴露 OpenAI Agents SDK 类型；Data 不依赖 Agent Runtime；Evaluation 不复制生产 execution core。具体 module file、class、依赖版本、Schema 与 DI 方式保持 Implementation Pending。
+
+### Stage 1.11 Deferred
+
+业务 package 尚未创建。`pyproject.toml`、Python / JSON / Database Schema、Typer / FastAPI / SSE / SDK 版本、Application factory 实现、API wire schema、CLI 输出、Evaluation runner、真实 baseline、数值 threshold 与生命周期参数仍属于 Implementation / Real-run Calibration Pending。
+
+完整 rationale、Package Layout、Composition Root、Failure Cases、ChatLab 继承 / 适配 / 暂不继承与 Reopen Conditions 见 [Stage 1.11 Application Architecture ADR](./technical-decisions/stage-1-11-application-architecture.md)。
 
 ## Module Boundaries
 
@@ -1649,7 +1716,7 @@ Evaluation 与 Regression 横切 Data Plane 和 Query Plane：
 - quality、diagnosability、module diagnostics、latency、Token、Tool Call 与 cost 分轴报告；质量比较优先 blind、随机 A/B、同 rubric、同 Evidence visibility，不合成单一总分。
 - 重要 Failure Case 提升为 versioned Regression Case；Failure Diagnosis 只能引用 Stage 1.9 canonical Trace，不能改写 Trace。
 
-Case authoring、Snapshot / Dataset 构建、runner、具体 Schema、真实 stable baseline、重复次数、统计方法、numerical threshold、参数校准与 CLI / API / UI 仍为 Implementation / Real-run Calibration / Stage 1.11 Pending。完整 rationale、11 个 Trivae-specific Design Seed 与 ChatLab 继承 / 偏离见 [Stage 1.10 ADR](./technical-decisions/stage-1-10-evaluation.md)。
+Case authoring、Snapshot / Dataset 构建、runner、具体 Schema、真实 stable baseline、重复次数、统计方法、numerical threshold 与参数校准仍为 Stage 1.10 Implementation / Real-run Calibration Pending；CLI / API / UI 的具体触发、结果展示与交互承接 Stage 1.11 ADR，但实现仍 Pending。完整 rationale、11 个 Trivae-specific Design Seed 与 ChatLab 继承 / 偏离见 [Stage 1.10 ADR](./technical-decisions/stage-1-10-evaluation.md)。
 
 ### Stage 1.10: Evaluation / Regression
 
@@ -1872,6 +1939,22 @@ Evaluation Suite
 
 完整 rationale、Failure Case、T-EVAL-001–011 与 Reopen Conditions 见 [Stage 1.10 Evaluation ADR](./technical-decisions/stage-1-10-evaluation.md)。
 
+### Stage 1.11：Application Boundary 与 Python 工程结构
+
+1. **Single Python distribution**：v1 使用一个 Python distribution，内部采用 `src/trivae` 与按架构 ownership 划分的概念 package；不直接复制 ChatLab 的多 workspace monorepo。
+2. **Thin interfaces**：CLI、HTTP API、Evaluation 都是薄 Interface Adapter，不拥有 Router、Planner、Runtime、Retrieval、Evidence 或 Trace 的业务语义。
+3. **Single application entry**：Composition Root 创建统一的 Application；CLI、API、Evaluation 都将输入转换为 Application-level `QueryRequest`，进入同一个 `QueryOrchestrator`。
+4. **Evaluation reuses execution core**：Evaluation 的 forced route、Controlled Variant 与 execution override 必须显式可 Trace，并复用生产 Query execution core；不复制 eval-specific Runtime、Retrieval 或 Tool 链路。
+5. **Centralized lifecycle**：Settings、PathProvider、Store、Index、Capability、Tool Registry、Router、Planner、Runtime Adapter、Evidence / Citation、Trace Collector 与 Application lifecycle 由 Composition Root 统一装配；不允许 import-time 全局资源副作用。
+6. **Trivae-owned event boundary**：SDK Event 先经 Runtime Adapter 转换为 Trivae Runtime Event，再进入 Normalized Query Event；Stream Projection 与 Trace Collector 从同一语义边界派生。
+7. **Cross-entry correlation**：`request_id`、`trace_id` 与 canonical Error 从入口开始保留；CLI / HTTP 只做 presentation / protocol projection，不重新定义错误语义。
+8. **Dependency direction**：interfaces / evaluation → Application / Query → domain → infrastructure；底层不反向依赖 CLI / HTTP framework，业务 contract 不暴露 SDK 类型。
+9. **Separate surfaces**：Tool Surface、CLI Surface、HTTP API Surface 独立治理；Agent Tool 不自动成为公共命令或 endpoint。
+10. **Versioned HTTP boundary**：第一版保留 `/api/v1`；Streaming 优先使用 Normalized Event 的单向 SSE-like projection，WebSocket、UI、MCP、Daemon 与 self-update 暂不继承。
+11. **Deferred implementation**：package 文件、Python / JSON / Database Schema、框架版本、DI 方式、API wire schema、Evaluation runner、真实 baseline 与数值参数仍为 Implementation / Real-run Calibration Pending。
+
+完整 rationale、Package Layout、Composition Root、Failure Case、ChatLab 继承 / 适配 / 暂不继承与 Reopen Conditions 见 [Stage 1.11 Application Architecture ADR](./technical-decisions/stage-1-11-application-architecture.md)。
+
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
 - ChatLab 的 `direct_response / tool_assisted / planned_execution` 是参考 taxonomy；Trivae 已确认将前两者合并为 `standard_execution`，并保留 `planned_execution` 作为唯一额外 Planner 路径。
@@ -1938,14 +2021,14 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Evaluation Case authoring、Dataset / Snapshot 构建、Review workflow、result storage、quality metric 实现、threshold / gate、Evaluation runner 与 Regression 执行细节（Stage 1.10 Implementation / Real-run Calibration；总体 Evaluation architecture 已由 [Stage 1.10 ADR](./technical-decisions/stage-1-10-evaluation.md) 确认）
 - Context architecture 与上下文规模控制（Stage 1.7 已确认 RuntimeContext / Model Context 分离与 pre-run compression 机制，实现 Pending）
 - Answer Generation 的模型、Prompt、具体输出 Schema；invalid / unresolved Citation 阻止 Finalization 的失败语义已由 Stage 1.8 确认
-- CLI / API 边界
-- Python package / module layout
+- CLI / API / Evaluation 的具体协议 Schema、状态 / 结果展示、鉴权与产品交互（Stage 1.11 已确认 Application Boundary，具体实现 Pending）
+- Python package 的具体文件、class / interface signature、DI 方式与依赖锁定（Stage 1.11 已确认概念 package ownership，具体实现 Pending）
 - 其他模块的 Retry / Fallback 策略（Stage 1.5 Router 的显式可用性降级契约除外）
 - 会明显改变系统复杂度的新依赖或基础设施
 
 ## Evolution Rule
 
-- Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 每次只更新对应的架构章节，不提前填充其他 Pending 项。
+- Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Implementation / Product Interaction 每次只更新对应的架构章节，不提前填充其他 Pending 项；Stage 1.11 的 Application Boundary 已由本文件与 ADR 确认。
 - 每个新决策应保留问题、证据、候选方案、决定、原因、trade-off 和验证方式；必要时同步到 [technical-decisions.md](./technical-decisions.md)。
 - Stage 1.1-1.11 全部完成后，统一审查本文件，才可将状态从 Draft / In Progress 升级为最终 Architecture Specification。
 

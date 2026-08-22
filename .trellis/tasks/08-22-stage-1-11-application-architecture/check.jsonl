@@ -1,0 +1,4 @@
+{"file":".trellis/spec/project/technical-decisions.md","reason":"检查新增 Stage 1.11 ADR 的索引位置、状态与 Deferred 路由。"}
+{"file":".trellis/spec/project/architecture.md","reason":"检查总架构是否正确反映 Stage 1.11 已确认但业务实现仍 Pending，且未重开 Stage 1.1–1.10。"}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"检查概念 package layout 与‘尚无业务代码’状态是否一致，避免文档制造虚假实现进度。"}
+{"file":".trellis/spec/project/engineering-principles.md","reason":"检查根因优先、错误透明、可观测性与 Evaluation 复用 execution core 的项目原则没有被新文档削弱。"}

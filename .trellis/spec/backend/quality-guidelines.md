@@ -31,4 +31,5 @@
 ## Pending architecture specification
 
 - Evaluation 的具体实现框架、Case / Dataset Schema、runner、Review workflow、数值指标口径与 threshold；Stage 1.10 的 Case Bundle、Reference、Suite、Baseline、paired comparison 与 Review 治理语义已确认
+- Stage 1.11 的 Application factory、QueryRequest 最终 Schema、CLI / API wire contract、Evaluation runner 与具体 package 文件；Application Boundary、Composition Root、统一 execution core 与 package ownership 已确认
 - 工具链具体选型（formatter / linter / test runner 版本与配置）

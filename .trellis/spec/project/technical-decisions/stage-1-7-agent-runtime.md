@@ -227,7 +227,7 @@ OpenAI Agents Runtime Adapter
 OpenAI Function Tool Adapter
 ```
 
-而不是 Retrieval、SQLite、Context Expansion、Identity 等整个业务系统。这里确认的是概念替换面，不冻结 Python package / module layout 或具体文件名。Stage 1.4 已要求 Capability 不能绑定具体 Runtime，Stage 1.7 把该约束扩展到 Runtime 与 Tool 的 SDK 接触面。
+而不是 Retrieval、SQLite、Context Expansion、Identity 等整个业务系统。这里确认的是 SDK 的概念替换面；Stage 1.11 已确认单 distribution 与概念 package ownership，但不冻结具体文件名、class 或 adapter 实现。Stage 1.4 已要求 Capability 不能绑定具体 Runtime，Stage 1.7 把该约束扩展到 Runtime 与 Tool 的 SDK 接触面。
 
 ### Why
 

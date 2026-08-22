@@ -485,11 +485,11 @@ Stage 1.9 不定义：
 
 Stage 1.10 已确认 Evaluation 只引用 Stage 1.9 canonical Trace，不改写 Trace；Run / Review / Diagnosis 的具体 artifact、runner、quality rubric、真实 baseline、数值 gate 与 stopping 校准仍 Pending。
 
-### Stage 1.11 Pending
+### Stage 1.11 Application Boundary 已确认；实现 Pending
 
 - CLI / API / UI 对 Trace identity、terminal status、error 与 source review 的具体 exposure；
 - public / operator-facing Trace 查询接口与返回 Schema；
-- streaming transport 与 replay API。
+- streaming transport 与 replay API；入口必须复用 Stage 1.11 的 Application、Normalized Event 与 Trace correlation 边界。
 
 ## 17. Failure Cases
 

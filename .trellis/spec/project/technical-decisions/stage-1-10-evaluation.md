@@ -357,9 +357,9 @@ Evaluation Artifact 是独立选择和治理的数据，不因评测需要永久
 - quality、latency、token、cost、coverage、budget 的数值 Gate；
 - model、prompt、chunk、top-k、fusion、rerank、Tool budget、stopping、repair / retry 的最终参数和是否引入。
 
-### Stage 1.11 Pending
+### Stage 1.11 Application Boundary 已确认；实现 Pending
 
-- CLI / API / UI 中的 Evaluation 触发、状态、结果、对比和 Source review 体验。
+- CLI / API / UI 中的 Evaluation 触发、状态、结果、对比和 Source review 体验的具体产品交互与实现；Application Boundary、统一 Query execution core 与入口适配原则见 [Stage 1.11 ADR](./stage-1-11-application-architecture.md)。
 
 ## 21. Reopen Conditions
 

@@ -54,9 +54,11 @@
 
 **Stage 1.10（Evaluation / Regression）已完成（架构契约）**：Evaluation Case Bundle 作为端到端 canonical truth；Reference 按具体 Finding 表达 `exhaustive / partial / unknown` annotation completeness 与 provenance，Case 级完整度只能派生；Design Seed、Core、Failure Regression、Calibration Slice 分层，Core 通过 versioned Suite 刷新且保留历史；Baseline 必须是 pinned Controlled Variant，Candidate 声明显式 diff；Planner Utility 先在除 Planner 是否介入及其 guidance 外其他条件完全相同的 forced standard / forced planned 路径上测量，再评价 Router Utility；没有明显 Planner 收益的 Case 不强制填写 `expectedRoute`；quality 与 module diagnostics 分轴，paired quality review 使用 blind、随机 A/B、同 rubric、同 Evidence visibility；Snapshot 可重建但不绕过删除和权限变化；Failure Diagnosis 不能改写 Stage 1.9 canonical Trace（见 [architecture.md](./architecture.md) 与 [stage-1-10-evaluation.md](./technical-decisions/stage-1-10-evaluation.md)）。
 
+**Stage 1.11（Application Boundary 与 Python 工程结构）已完成（架构边界）**：v1 采用单 Python distribution 与 `src/trivae` 概念 package layout；CLI、HTTP API、Evaluation 是薄入口，通过统一 Composition Root 进入同一个 Application / QueryOrchestrator；三类入口共享 Application-level QueryRequest、Settings / Paths、Lifecycle、Trace correlation、canonical Error 与 Normalized Event Projection；Evaluation 通过显式 Controlled Variant / forced route 复用生产 execution core；HTTP 第一版保留 `/api/v1`，Streaming 优先使用 Normalized Event 的单向 projection；Tool Surface、CLI Surface 与 HTTP API Surface 分离；具体 package 文件、Schema、框架版本、runner、真实 baseline 与产品交互仍为 Implementation / Real-run Calibration Pending（见 [architecture.md](./architecture.md) 与 [stage-1-11-application-architecture.md](./technical-decisions/stage-1-11-application-architecture.md)）。
+
 当前架构文档仍为 `Draft / In Progress`。第一版 SQLite Physical Schema、Vector Store、Chunking 参数、Embedding、Trace 实现 Schema / backend、Evaluation 实现 Schema / runner、真实 baseline、数值 threshold 与参数校准结果仍为 Pending，不能视为最终 Architecture Specification。
 
-**当前任务**：Stage 1.10 架构契约已完成，等待 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Evaluation 交互设计。尚未实现 Case authoring、Snapshot / Dataset、runner、Review workflow、真实 stable baseline、numerical threshold 或最终参数；在这些实现契约落地前不实现业务功能。
+**当前任务**：Stage 1.10 架构契约与 Stage 1.11 Application Boundary 架构已完成，后续按主题推进 Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Implementation / Product Interaction。尚未实现业务 package、Case authoring、Snapshot / Dataset、runner、Review workflow、真实 stable baseline、numerical threshold 或最终参数；在对应实现契约落地前不实现业务功能。
 
 ## 演进目标
 

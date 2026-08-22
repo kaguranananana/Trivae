@@ -1,7 +1,7 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2–1.10 的关键决策分别记录于本页索引的对应 ADR；Stage 1.11 Pending。
+> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2–1.11 的关键决策分别记录于本页索引的对应 ADR。
 
 ---
 
@@ -22,8 +22,9 @@
 | Stage 1.8 | Confirmed / Completed | Evidence · Citation · Source review | [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md) |
 | Stage 1.9 | Confirmed / Completed（修订版） | Normalized Trace · Failure Attribution · Coverage · Normal/Debug Profiles · Privacy / Retention · Error Ownership | [stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md) |
 | Stage 1.10 | Confirmed / Completed（架构契约） | Evaluation Case Bundle · Reference completeness / provenance · pinned Baseline · forced-path Planner Utility · blind paired review · Regression | [stage-1-10-evaluation.md](./technical-decisions/stage-1-10-evaluation.md) |
+| Stage 1.11 | Confirmed / Completed（架构边界） | Application Boundary · Composition Root · Python package ownership · unified Query execution core · CLI / API / Evaluation adapters | [stage-1-11-application-architecture.md](./technical-decisions/stage-1-11-application-architecture.md) |
 
-Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)，Stage 1.11 的实现与产品交互尚未标记完成。
+Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；业务实现、产品交互与实现级契约仍 Pending。
 
 ## 决策问题链
 
@@ -86,7 +87,7 @@ Regression
 - 状态：Draft / In Progress，不是最终 Architecture Specification。
 - 内容：Data Plane + Query Plane、Query 主链路、Router / Planner / Agent Runtime / Tool Layer / Retrieval / Evidence 的一级职责边界。
 - 记录位置：[architecture.md](./architecture.md)。
-- 后续：Stage 1.2-1.10 已分别确认；Stage 1.10 的实现 / 校准与 Stage 1.11 完成后再统一升级文档状态。
+- 后续：Stage 1.2-1.11 已分别确认；Stage 1.10 的实现 / 校准与 Stage 1.11 的业务实现、产品交互和实现级契约仍按各自阶段推进。
 
 ### Stage 1.2：Data Model + Ingestion
 
@@ -150,4 +151,4 @@ Regression
 - 状态：**Confirmed / Completed（架构契约）**。本阶段完成 Evaluation 的 Case、Reference、Suite、Baseline、Review、paired comparison、Failure Diagnosis 与 Reproducibility 语义；不实现 runner、Schema、真实 baseline、数值 gate 或最终参数。
 - 内容：端到端 Evaluation Case Bundle 是 canonical truth；Reference 按具体 Finding 组织，每个 Finding 表达 `exhaustive / partial / unknown` completeness 与 provenance，Case 级完整度只能派生；Design Seed、Core、Failure Regression、Calibration Slice 分层，Core 通过 versioned Suite 刷新并保留历史；Baseline 是 pinned Controlled Variant，Candidate 声明显式 diff；Planner Utility 先通过除 Planner 是否介入及其 guidance 外其他条件完全相同的 forced standard / forced planned 测量，再评价 Router Utility；没有明显 Planner 收益的 Case 不强制填写 `expectedRoute`；quality 与 module diagnostics 分轴，paired quality review 使用 blind、随机 A/B、同 rubric、同 Evidence visibility；Snapshot 可重建但不绕过删除与权限变化；Stage 1.9 Trace 只能被引用、不能被 Diagnosis 改写。
 - 记录位置：[technical-decisions/stage-1-10-evaluation.md](./technical-decisions/stage-1-10-evaluation.md)（详细 rationale、Decision Set、Trivae-specific Seeds、ChatLab 继承 / 偏离、Deferred 与 Reopen Conditions），[architecture.md](./architecture.md)（整体视图）。
-- 后续：Case authoring、Dataset / Snapshot、runner、Review workflow、具体 Schema、真实 stable baseline、重复次数、统计方法、numerical threshold、参数校准与 CLI / API / UI 属于 Implementation / Real-run Calibration / Stage 1.11。
+- 后续：Case authoring、Dataset / Snapshot、runner、Review workflow、具体 Schema、真实 stable baseline、重复次数、统计方法、numerical threshold 与参数校准属于 Implementation / Real-run Calibration；CLI / API / UI 的具体实现与产品交互承接 Stage 1.11 ADR，具体契约仍 Pending。

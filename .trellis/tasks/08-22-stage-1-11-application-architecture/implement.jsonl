@@ -1,0 +1,5 @@
+{"file":".trellis/spec/project/architecture.md","reason":"同步 Stage 1.11 的高层 Application Boundary、Module Boundaries、Confirmed Decisions 与 Pending 路由。"}
+{"file":".trellis/spec/project/technical-decisions.md","reason":"将 Stage 1.11 ADR 加入技术决策索引，并保持 Stage 状态与后续实现边界一致。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-10-evaluation.md","reason":"承接 Evaluation 的 Case Bundle、Controlled Variant、forced-path 与同一 execution core 契约，避免 Stage 1.11 复制评测链路。"}
+{"file":".trellis/spec/project/workflow.md","reason":"遵守项目当前架构阶段、文档沉淀与 Pending architecture specification 规则。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 CLI、API、Evaluation、Application、Event、Trace 与 Error 跨层契约是否只拥有一份语义。"}
