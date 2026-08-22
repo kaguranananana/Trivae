@@ -107,7 +107,7 @@ Normalized Query Event
 ├── parent_operation_id?
 ├── outcome?                    # ok / partial / error / aborted；只在适用边界出现
 ├── duration?
-├── payload                     # 由 stage owner 定义的 bounded domain facts
+├── payload                     # 由 stage owner 定义；详细度受 Trace Profile / capture policy 控制
 ├── limitations?                # coverage / truncated / unavailable 等，不折叠成 evidence sufficiency
 └── failure?                    # 结构化归因，见 Decision 5
 ```
@@ -118,7 +118,7 @@ Normalized Query Event
 - `event_id` 是事件身份；`operation_id / parent_operation_id` 表达跨组件因果关系，例如 Agent Tool Call → Tool Execution → Retrieval Operation；
 - `sequence` 用于单 Trace 确定性回放，`occurred_at` 表达源组件发生时间，`observed_at` 表达 Collector 接收时间；不能只依赖 wall-clock timestamp 排序；
 - `phase` 表达真实发生的边界事实。不能因为最终请求成功，就把先前 `planner.failed` 改写为 `planner.completed`；
-- `payload` 只包含定位当前边界所需事实，不能放 Chain-of-Thought；Router `reason` 仍是短诊断说明，不是隐藏推理；
+- `payload` 由 stage owner 定义当前边界所需的 domain facts；实际记录详细度受 Trace Profile / capture policy 控制，不能放 Chain-of-Thought；Router `reason` 仍是短诊断说明，不是隐藏推理；
 - 具体字段命名、类型、nullable 规则、serialization、event version migration 和 package layout 属于 Implementation Pending。
 
 ## 4. Decision 3：跨阶段 normalized event families
@@ -131,12 +131,14 @@ Normalized Query Event
 | Router | decision、degraded、failed invocation | `route / confidence / reason / source`、Rule / LLM path、原始 failure、最终 Route |
 | Planner | started、validated / sanitized、completed、failed、skipped | invocation reason、Plan identity / version、validation facts、failure category、`executed_without_plan` |
 | Runtime / Model | runtime started、model turn completed / failed、budget reached、final synthesis started、runtime terminal | model、prompt version、usage、Tool Round、budget reason、lifecycle transition |
-| Tool | call started、completed、partial、contract error、aborted | tool name、bounded argument projection、result identity、status、latency、error code |
+| Tool | call started、completed、partial、contract error、aborted | tool name、argument / result diagnostic projection（profile-governed）、result identity、status、latency、error code |
 | Retrieval | operation started / completed / partial / failed、context expansion | query / rewrite projection、strategy、filters、index / model version、candidate counts / ids / ranks、query-scope coverage、truncated / unavailable |
-| Evidence | selection completed / failed | criterion identity / bounded snapshot、selected Evidence / Source identities、sufficiency、limitations |
+| Evidence | selection completed / failed | criterion / selected Evidence diagnostic facts（profile-governed）、selected Evidence / Source identities、sufficiency、limitations |
 | Citation | validation completed / failed | validated / unresolved binding counts、locator / scope validation outcome、owned error code |
-| Answer | finalization completed / failed、commit completed / failed | Answer Artifact identity、Assistant Message identity、commit boundary；不重复保存完整 Artifact |
+| Answer | finalization completed / failed、commit completed / failed | Answer Artifact identity、Assistant Message identity、commit boundary；commit event 不复制 canonical Answer Artifact，Debug capture 可按 Profile 保存当次 Final Answer 内容 |
 | Trace | collector degraded / incomplete | missing sequence / operation、collector or storage error、trace completeness status |
+
+表中的 `projection`、`diagnostic facts` 与 `snapshot` 描述的是 Event Family 的语义内容，不是所有 Profile 的固定截断规则。具体保存多少由 `normal / debug` Profile 与 capture policy 决定；Answer 的 commit ownership 仍归 Conversation Store / Answer Artifact，和 Debug 为解释执行而保存当次 Final Answer 内容是两件事。
 
 以下不建立为第一版事实边界：
 
@@ -441,7 +443,7 @@ Stage 1.9 不定义：
 
 1. Query Plane 使用一个 Trivae-owned normalized event boundary；Runtime Event 是其中一个 family。
 2. Stream Projection 与 recordable Trace Projection 从同一语义边界派生，但采用不同数据最小化策略。
-3. Conceptual envelope 包含 version、identity、correlation、sequence、time、stage、operation、phase、causality、bounded payload / limitation / failure。
+3. Conceptual envelope 包含 version、identity、correlation、sequence、time、stage、operation、phase、causality、profile-governed payload、limitation 与 failure。
 4. Trace 事件 append-only；状态、timeline 与 metrics 是可重建 projection。
 5. Failure Attribution 区分 origin stage、observed stage、handling 与 terminal query outcome。
 6. Recovery / degradation 不抹掉原始错误；Tool failure、Runtime failure、Abort 与 Budget 分开。

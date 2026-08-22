@@ -1428,7 +1428,7 @@ Router / Planner / Runtime / Tool / Retrieval / Evidence / Citation
 
 Stage 1.7 的 `Trivae Runtime Event` 是全链路 normalized event 的 Runtime family。SDK Hook / StreamEvent 必须先经 Runtime Adapter 转换；Router、Planner、Retrieval 与 Finalization 保留自己的 domain payload，不伪装成 SDK event。Trace Collector 只负责 envelope、correlation、sequence、privacy projection、persistence 与 completeness，不驱动业务执行。
 
-Conceptual event envelope 至少表达 version、`event_id / trace_id / request_id`、单 Trace `sequence`、发生 / 观测时间、stage、operation、phase、`operation_id / parent_operation_id`、bounded payload、limitations 与 failure。它冻结语义，不冻结 Python / JSON / Database Schema。
+Conceptual event envelope 至少表达 version、`event_id / trace_id / request_id`、单 Trace `sequence`、发生 / 观测时间、stage、operation、phase、`operation_id / parent_operation_id`、由 Trace Profile / capture policy 控制详细度的 payload、limitations 与 failure。它冻结语义，不冻结 Python / JSON / Database Schema。
 
 ### Stable Event Families
 
