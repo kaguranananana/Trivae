@@ -156,3 +156,24 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Status
 
 [OK] **Completed**
+
+
+## Session 6: Finalize Stage 1.10 Evaluation architecture
+
+**Date**: 2026-08-22
+**Task**: Finalize Stage 1.10 Evaluation architecture
+**Branch**: `main`
+
+### Summary
+
+完成 Stage 1.10 Evaluation / Regression 正式架构文档：新增 ADR，明确 Case Bundle、Reference completeness/provenance、versioned Suite、pinned Baseline、forced-path Planner Utility、blind paired review、Snapshot reproducibility、Failure Diagnosis 与 11 个 Trivae Seed；同步 architecture、technical-decisions、旧 ADR 路由、项目与后端规范；通过 task validate 与 git diff --check，未创建业务代码或伪造真实结果。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `52c816d` | (see git log) |
+
+### Status
+
+[OK] **Completed**
