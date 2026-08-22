@@ -325,3 +325,24 @@ Completed M1 hardening validation, M2 read/structured/FTS5 lexical/context/resul
 ### Status
 
 [OK] **Completed**
+
+
+## Session 14: Implement M4 Query Execution Core
+
+**Date**: 2026-08-23
+**Task**: Implement M4 Query Execution Core
+**Branch**: `main`
+
+### Summary
+
+Completed the M4 query execution core: two-route Router, bounded Planner, shared QueryOrchestrator, streamed OpenAI Agents runtime with tool budget/finalization/cancellation/events, secret-safe errors, provider/application lifecycle, deterministic tests, live DeepSeek smoke, and synchronized specs.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6acd9e9` | (see git log) |
+
+### Status
+
+[OK] **Completed**
