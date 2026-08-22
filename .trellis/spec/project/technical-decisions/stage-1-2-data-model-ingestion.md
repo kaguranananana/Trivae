@@ -77,6 +77,14 @@
 
 **Trade-off**：需要定义统一的 canonical timestamp 语义，换取跨 Source 时间查询的一致性；具体存储格式留给 Schema 阶段。
 
+## 10. M1 落地校准：seq 是可缺省的排序提示
+
+**Decision**：M1 将 `seq` 作为 optional ordering hint，而不是必需消息字段。缺失、`null` 或空字符串允许进入 Canonical Model 并规范化为 `None`；非空但无法解析为整数仍是记录级验证错误。`timestamp` 继续是必需的有效整数。
+
+**Reason**：当前 QQ 导出数据的 `seq` 虽然全部存在，但上游导出模型允许空序号；M1 的 identity 与写入链路不依赖 `seq` 必须存在，缺失时可以用 `timestamp + internal_message_id` 提供确定性排序。将“当前样本全有”误写成 source contract 会把上游合法空值变成不必要的失败。
+
+**Validation**：真实 14 文件全量导入的 `received=494628`、`inserted=473236`、`duplicate=21392`、`conflict=2775`、`error=0` 保持不变；新增测试覆盖缺省 `seq` 接受、非法非空 `seq` 拒绝和非法 `timestamp` 拒绝。
+
 ---
 
 ## Pending（本阶段不决策）

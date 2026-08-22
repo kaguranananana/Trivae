@@ -37,6 +37,8 @@
 
 - ChatSession identity：`platform + external_chat_id`；QQ 新版优先 `chatInfo.peerUid`，旧版只读取文件名中明确的群号，不按群名猜测。
 - Message identity：同一 session 优先按 `source_message_id` 去重；缺失时使用包含 session、sender、seq、timestamp、type、content 和 reply locator 的结构化 identity key，不使用 content-only key 或哈希。
+- `timestamp` 是必需的有效整数；`seq` 是可缺省的排序提示。缺失、`null` 或空字符串的 `seq` 规范化为 `None`，非空但非法的 `seq` 仍产生记录级错误。缺失 `seq` 时，查询排序使用 `timestamp` 与 `internal_message_id` 的确定性 tie-breaker。
+- Error code 由异常类型声明并由 Importer 原样投影到存储；错误消息只用于诊断，不参与分类。当前 M1 类型映射为 `SOURCE_FORMAT_INVALID`、`SOURCE_ID_INVALID`、`RECORD_INVALID` 和通用 `INGESTION_INVALID`。
 - `ImportRunSummary.to_dict()` 必须返回 `totals` 和逐文件 `batches`；每个 batch 至少包含 `received_count`、`inserted_count`、`duplicate_count`、`conflict_count`、`error_count`、`status`。
 - 每条输入消息在 `message_sources` 中保留 source file + record index provenance；canonical payload 不被后续冲突输入静默覆盖，冲突写入 `message_variants`。
 - 每个输入文件独立 transaction；单条记录错误可提交其他有效记录并将 batch 标为 `partial`，文件级解析/身份错误必须形成 `failed` batch。
@@ -47,7 +49,9 @@
 | --- | --- | --- |
 | `metadata`/`chatInfo`/`messages` 类型错误或 JSON 非法 | 文件级失败 | `import_batches.status=failed`、`import_errors.error_count=1`、CLI 非零 |
 | 无 `peerUid` 且文件名无明确群号 | 文件级失败 | `SourceIdentityError`，禁止按群名合并 |
-| 单条消息缺少/非法 `timestamp`、`seq` 或 content 结构 | 记录级错误 | `import_errors` 定位到 `messages[index]`，batch=`partial` |
+| 单条消息缺少/非法 `timestamp` 或 content 结构 | 记录级错误 | `import_errors` 定位到 `messages[index]`，batch=`partial` |
+| 单条消息的 `seq` 缺失、`null` 或空字符串 | 接受并规范化为 `None` | 不产生错误；排序由 `timestamp` 与 `internal_message_id` 保证确定性 |
+| 单条消息的非空 `seq` 非法 | 记录级错误 | `error_code=RECORD_INVALID`，batch=`partial` |
 | 已存在相同 session + source message ID | 不新增 `messages` | `duplicate_count` 增加，来源 occurrence 保留 |
 | 已存在消息的 invariant projection 不同 | 不覆盖 canonical | `conflict_count` 增加，写入 `message_variants` |
 | 同一文件同一记录再次导入 | 幂等重放 | 不新增 message/source/variant，只报告 duplicate |
@@ -58,10 +62,17 @@
 - Base：同一目录再次导入，`inserted=0`、`duplicate=494628`，`messages`、`message_sources`、`message_variants` 行数保持不变。
 - Bad：使用群名作为 session key、直接覆盖冲突 raw payload、或捕获异常后继续报告成功；这些都会破坏来源可追溯性，禁止实现。
 
+### 5.1 M1 真实数据校准
+
+- 当前 14 个真实 QQ 导出文件的 `seq` 均存在且可解析为整数，因此本次将 `seq` 改为可缺省提示不会改变既有全量统计。
+- 当前 2775 个 conflict 与 18617 个 `duplicate_equal` 的 projection 对比中，没有发现“结构化语义不同但 projection 相等”的真实样本。已观察到的 equal 差异集中在导出器表示层：文本占位符空白、`at` 元素拆分/顺序、图片占位符与尺寸元数据、空 URL 与缺失 URL。
+- 因此 M1 不扩大 `canonical_projection()`；若未来出现 mention identity、reply target 或附件 identity 不同而 projection 仍相等，必须先增加可复现 Failure Case，再最小化扩展 projection 并重跑全量统计。
+
 ### 6. Tests Required
 
 - Adapter unit tests：V5 文件名群号、0.1.0 `peerUid`、两种 message type、timestamp、reply、结构化 fallback。
 - Store/import integration tests：同群多文件合并、跨群同 ID 分离、duplicate/conflict provenance、记录级错误可见、幂等重跑。
+- Failure-path tests：缺省/非法 `seq`、非法 `timestamp`、文件级格式/身份错误、未知异常回滚、CLI 非零退出与 typed error code。
 - Real-run assertions：`sources=14`、`chat_sessions=7`、`messages=473236`、`message_sources=494628`、`import_errors=0`，并逐 session 校验消息数。
 
 ### 7. Wrong vs Correct

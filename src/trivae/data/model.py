@@ -7,23 +7,32 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, ClassVar
 
 
 class IngestionError(Exception):
     """导入链路中可以向用户明确展示的已分类错误。"""
 
+    # 机器可读错误码由异常类型拥有，与面向人的错误消息保持独立。
+    error_code: ClassVar[str] = "INGESTION_INVALID"
+
 
 class SourceFormatError(IngestionError):
     """外部文件不是当前支持的 QQ 导出结构。"""
+
+    error_code: ClassVar[str] = "SOURCE_FORMAT_INVALID"
 
 
 class SourceIdentityError(IngestionError):
     """无法从来源中取得稳定的群身份。"""
 
+    error_code: ClassVar[str] = "SOURCE_ID_INVALID"
+
 
 class RecordValidationError(IngestionError):
     """单条消息不能转换为 Canonical Message。"""
+
+    error_code: ClassVar[str] = "RECORD_INVALID"
 
 
 @dataclass(frozen=True)
@@ -78,6 +87,7 @@ class CanonicalMessage:
     platform: str
     source_message_id: str | None
     fallback_identity_key: str | None
+    # seq 是可缺省的排序提示；缺失时由 timestamp 与内部 ID 提供确定性顺序。
     seq: int | None
     timestamp: int
     message_type: str
@@ -102,6 +112,8 @@ class CanonicalMessage:
 
         同一条消息在不同导出器中的 display name 可能变化；这些字段属于
         Membership 事实，不应因为名称变化就把消息判成另一条逻辑消息。
+        content_json/raw_payload_json 继续保留在 Canonical Store 和冲突 provenance
+        中，但不参与当前已用真实数据校准过的 invariant projection。
         """
 
         return {

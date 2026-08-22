@@ -13,7 +13,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from trivae.data.model import (
     CanonicalMessage,
@@ -22,7 +21,6 @@ from trivae.data.model import (
     IngestionError,
     SourceDescriptor,
 )
-
 
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
@@ -313,7 +311,6 @@ class SQLiteCanonicalStore:
 
         self.begin()
         try:
-            source_id = f"qq_chat_exporter:{source_file}"
             batch_id = self.create_batch(
                 source_file=source_file,
                 session_id=None,

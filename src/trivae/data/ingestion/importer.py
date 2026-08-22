@@ -118,7 +118,7 @@ class SharedImporter:
                         batch_id=batch_id,
                         source_id=parsed.source.source_id,
                         record_index=record_index,
-                        error_code="RECORD_INVALID",
+                        error_code=exc.error_code,
                         error_message=str(exc),
                         raw_locator=f"{parsed.source.file_name}#messages[{record_index}]",
                     )
@@ -156,9 +156,5 @@ class SharedImporter:
     def _error_code(error: IngestionError) -> str:
         """把已知导入异常投影成稳定、可检索的 batch error code。"""
 
-        message = str(error)
-        if "JSON" in message or "source root" in message or "metadata" in message:
-            return "SOURCE_FORMAT_INVALID"
-        if "external_chat_id" in message:
-            return "SOURCE_ID_INVALID"
-        return "INGESTION_INVALID"
+        # 只读取异常类型声明的 code，避免文案改动导致错误分类漂移。
+        return error.error_code

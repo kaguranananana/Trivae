@@ -22,7 +22,6 @@ from trivae.data.model import (
     SourceIdentityError,
 )
 
-
 _GROUP_ID_IN_PARENTHESIS = re.compile(r"\((?P<group_id>\d+)\)\.json$")
 _GROUP_ID_IN_STAMPED_NAME = re.compile(r"_(?P<group_id>\d+)_\d{8}_\d+\.json$")
 _CONTENT_MARKER = re.compile(r"\[(图片|文件|视频|语音):\s*([^\]]+)\]")

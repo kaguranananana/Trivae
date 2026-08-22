@@ -241,6 +241,8 @@ Platform / Source Message ID（平台原始 ID，如 QQ message_id）
 
 Canonicalization 必须保持查询、证据追溯和未来重新处理所需的信息，不应因为 normalization 丢失关键原始语义（如 URL、代码、@mention、图片 / 文件、reply / forward、富文本 message segments）。具体 structured content / raw payload / source locator 表示在后续 Data Schema 阶段确定，当前 Pending。
 
+M1 落地校准：`seq` 是可缺省的排序提示，不是 Canonical Message 的必需事实；缺失时由 `timestamp` 与 `internal_message_id` 提供确定性排序，非空非法值仍按记录错误处理。M1 对 `canonical_projection()` 的字段保持最小集合：真实 14 文件的 duplicate/conflict 样本尚未证明 structured content 存在 false equal，因此不因表示层差异扩大 projection；未来若出现 mention、reply 或附件 identity 的真实 false equal，再由 Failure Case 驱动最小扩展。
+
 Canonical timestamp 必须能够表达一个确定的时间点，且不因 Source 的 timezone、timestamp precision 或转换规则导致跨 Source 时间语义不一致。具体数据库类型与存储格式（UTC datetime / Unix 毫秒 / TIMESTAMPTZ 等）保持 Pending。
 
 后续 Evidence / Citation 应能够通过 Message 追溯到原始聊天记录：
