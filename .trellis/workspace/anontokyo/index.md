@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 9
+- **Total Sessions**: 10
 - **Last Active**: 2026-08-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~242 | Active |
+| `journal-1.md` | ~263 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 10 | 2026-08-22 | Import real QQ chat records | `b249ee7` | `main` |
 | 9 | 2026-08-22 | Clarify Stage 1.11 application boundary contracts | `94e824a` | `main` |
 | 8 | 2026-08-22 | Finalize Stage 1.11 application architecture | `8dd83af` | `main` |
 | 7 | 2026-08-22 | Refine Stage 1.10 finding-level references and planner controls | `c33e5a7` | `main` |

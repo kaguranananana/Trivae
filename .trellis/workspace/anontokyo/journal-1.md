@@ -240,3 +240,24 @@ Stage 0 bootstrap: filled backend specs with Python engineering principles, adde
 ### Status
 
 [OK] **Completed**
+
+
+## Session 10: Import real QQ chat records
+
+**Date**: 2026-08-22
+**Task**: Import real QQ chat records
+**Branch**: `main`
+
+### Summary
+
+Implemented QQ V5/0.1.0 ingestion into SQLite Canonical Store; merged 14 raw files into 7 sessions, preserved provenance and conflicts, verified 473236 canonical messages and idempotent rerun.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b249ee7` | (see git log) |
+
+### Status
+
+[OK] **Completed**
