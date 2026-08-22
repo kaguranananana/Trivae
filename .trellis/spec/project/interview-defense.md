@@ -153,7 +153,7 @@ Evidence: architecture / decision / code / test / benchmark / failure case
 
 ## M5a Evidence / Citation 事实索引
 
-M5a 的事实来源集中在 [task PRD](../../tasks/08-23-m5-evidence-citation-finalization/prd.md)、[design](../../tasks/08-23-m5-evidence-citation-finalization/design.md)、[implementation](../../tasks/08-23-m5-evidence-citation-finalization/implement.md) 与 [validation](../../tasks/08-23-m5-evidence-citation-finalization/validation.md)：
+M5a 的事实来源集中在归档的 [task PRD](../../tasks/archive/2026-08/08-23-m5-evidence-citation-finalization/prd.md)、[design](../../tasks/archive/2026-08/08-23-m5-evidence-citation-finalization/design.md)、[implementation](../../tasks/archive/2026-08/08-23-m5-evidence-citation-finalization/implement.md) 与 [validation](../../tasks/archive/2026-08/08-23-m5-evidence-citation-finalization/validation.md)：
 
 - 为什么不能只返回 `[1]`：`QueryResult.answer_artifact` 保存 claim-level binding，`query/evidence.py` 再确定性解析 source identity；显示编号不承担 provenance。
 - 为什么需要 current-run provenance：测试覆盖 fabricated run/tool/result/item ID、old run 和 scope violation；source 必须命中本轮 Tool Result，不能从 prior assistant context 借用。

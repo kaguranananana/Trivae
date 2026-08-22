@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
+- **Total Sessions**: 15
 - **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~348 | Active |
+| `journal-1.md` | ~369 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-08-23 | M5 Evidence Citation Finalization | `275bc4a` | `codex/m5-evidence-citation-finalization` |
 | 14 | 2026-08-23 | Implement M4 Query Execution Core | `6acd9e9` | `main` |
 | 13 | 2026-08-22 | Implement M4a Agent Runtime Baseline | `e562aec` | `main` |
 | 12 | 2026-08-22 | 沉淀全项目面试证据规范 | `d391887` | `main` |

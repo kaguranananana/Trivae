@@ -346,3 +346,24 @@ Completed the M4 query execution core: two-route Router, bounded Planner, shared
 ### Status
 
 [OK] **Completed**
+
+
+## Session 15: M5 Evidence Citation Finalization
+
+**Date**: 2026-08-23
+**Task**: M5 Evidence Citation Finalization
+**Branch**: `codex/m5-evidence-citation-finalization`
+
+### Summary
+
+Implemented the M5a Evidence/Citation vertical slice: structured AnswerArtifact, claim bindings, current-run ToolResult provenance, Message/Structured Source validation, trusted hydration, explicit finalization failures, Query integration, deterministic tests and docs. Quality gates: 113 passed, ruff, mypy, CLI, Trellis validation and diff check passed. DeepSeek smoke completed but returned plain text after tool execution; INVALID_ANSWER_ARTIFACT was preserved explicitly and documented.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `275bc4a` | (see git log) |
+
+### Status
+
+[OK] **Completed**
