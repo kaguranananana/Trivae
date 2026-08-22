@@ -304,3 +304,24 @@ Completed M1 hardening validation, M2 read/structured/FTS5 lexical/context/resul
 ### Status
 
 [OK] **Completed**
+
+
+## Session 13: Implement M4a Agent Runtime Baseline
+
+**Date**: 2026-08-22
+**Task**: Implement M4a Agent Runtime Baseline
+**Branch**: `main`
+
+### Summary
+
+完成 M4a Agent Runtime vertical slice：新增 DeepSeek 配置、Trivae-owned AgentRuntime 契约、OpenAI Agents SDK Chat Completions 适配器、search_messages SDK tool、惰性 Application runtime 注入及 deterministic tests；补充 backend runtime spec。pytest 80 passed，ruff/mypy/CLI/task validate 全部通过；真实 DeepSeek live smoke 因无本地 API key 未测。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e562aec` | (see git log) |
+
+### Status
+
+[OK] **Completed**
