@@ -20,7 +20,7 @@
 | Stage 1.6 | Confirmed / Completed | Thin pre-execution investigation planner | [stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md) |
 | Stage 1.7 | Confirmed / Completed | Agent Loop · SDK · Runtime lifecycle | [stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md) |
 | Stage 1.8 | Confirmed / Completed | Evidence · Citation · Source review | [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md) |
-| Stage 1.9 | Confirmed / Completed | Normalized Trace · Failure Attribution · Coverage · Privacy / Retention · Error Ownership | [stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md) |
+| Stage 1.9 | Confirmed / Completed（修订版） | Normalized Trace · Failure Attribution · Coverage · Normal/Debug Profiles · Privacy / Retention · Error Ownership | [stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md) |
 
 Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)，Stage 1.10 及之后尚未标记完成。
 
@@ -139,7 +139,7 @@ Regression
 
 ### Stage 1.9：Trace / Observability
 
-- 状态：**Confirmed / Completed（Stage 1.9）**。本阶段完成跨 Query Plane Trace / Observability 架构决策沉淀；业务代码、具体 Schema 与 storage backend 尚未实现。
-- 内容：一个 Trivae-owned normalized event boundary 横跨 Context、Router、Planner、Runtime、Tool、Retrieval、Evidence、Citation 与 Answer commit；Stream / Trace 使用不同 projection；conceptual envelope 保留 version、identity、correlation、sequence 与 operation causality；append-only event 为 Trace source of truth；Failure Attribution 区分 origin / observation / handling / terminal outcome；query-scope coverage 以授权 effective scope 为基准并支持 `complete / partial / none / unknown / not_applicable`；Error Code 由 contract owner namespace 拥有；Trace 默认 data minimization，不保存 Chain-of-Thought、逐 token stream 或完整业务 payload 副本；retention 分层；Trace Store 独立、versioned、reference-first；Collector failure 显式产生 incomplete 但不回滚成功业务结果；Stage 1.9 只确认 operational metric dimensions，不设置质量阈值。
+- 状态：**Confirmed / Completed（Stage 1.9，修订版）**。本阶段完成跨 Query Plane Trace / Observability 架构决策沉淀；业务代码、具体 Schema 与 storage backend 尚未实现。
+- 内容：一个 Trivae-owned normalized event boundary 横跨 Context、Router、Planner、Runtime、Tool、Retrieval、Evidence、Citation 与 Answer commit；Stream / Trace 使用不同 projection；conceptual envelope 保留 version、identity、correlation、sequence 与 operation causality；append-only event 为 Trace source of truth；Failure Attribution 区分 origin / observation / handling / terminal outcome；query-scope coverage 以授权 effective scope 为基准并支持 `complete / partial / none / unknown / not_applicable`；Error Code 由 contract owner namespace 拥有；Trace 采用 `normal / debug` Profile，Normal 允许 bounded / redacted actual content，Debug 在授权范围内允许完整或近完整的 model-visible / system-visible facts，但两者都排除 secrets、越权数据和 hidden Chain-of-Thought；retention 分层且不强制 Debug 比 Normal 更短；Trace Store 独立、versioned、append-only；Collector failure 显式产生 incomplete 但不回滚成功业务结果；Stage 1.9 只确认 operational metric dimensions，不设置质量阈值。
 - 记录位置：[technical-decisions/stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md)（详细 rationale、Failure Case、Validation Contract 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与跨切面边界）。
 - 后续：具体 Python / JSON Schema、Error Code 枚举、Collector / Store backend、retention 时长与 privacy enforcement 属于 Implementation；Evaluation Dataset、quality metrics、threshold / gate 与参数校准属于 Stage 1.10。

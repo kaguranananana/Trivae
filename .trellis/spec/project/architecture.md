@@ -1440,7 +1440,7 @@ Conceptual event envelope 至少表达 version、`event_id / trace_id / request_
 - Evidence / Citation / Answer：selection、validation、finalization 与 Conversation Store commit 的成功 / 失败边界；
 - Trace：Collector / Store failure、sequence gap 与 incomplete 状态。
 
-逐 token stream 默认不永久记录；Chain-of-Thought、provider internal reasoning 与完整聊天 / Tool / Model payload 不进入默认 Trace。
+逐 token stream 默认不永久记录；Normal 与 Debug 都排除 Chain-of-Thought、provider hidden reasoning 与 secrets。完整聊天 / Tool / Model payload 不是 Normal 的默认形态，但在 Debug capture policy 与当前 Data Access Scope 允许时可保存完整或近完整的 model-visible / system-visible facts。
 
 ### Failure Attribution 与 Error Ownership
 
@@ -1468,11 +1468,12 @@ Coverage 相对于当前授权查询范围表达，不能用全局索引百分�
 
 ### Privacy、Retention 与 Storage
 
-- Trace 默认保存 identity、结构事实、counts、latency、versions、Error Code、coverage 与 bounded references；不复制 Canonical Message Store、Conversation Store 或完整 Model Context。
-- User Query、Final Answer、Tool Result、Evidence 与 Message 优先保存稳定 reference；内容级诊断只允许显式开启 bounded sensitive snapshot，并使用更严格的访问与保留边界。
+- Trace 使用两个正式 Profile：`normal` 与 `debug`。Normal 以结构化事实为主，但允许对 User Query、Prompt / Context、Tool、Retrieval、Evidence、Citation 和 Answer 保存有诊断价值的 bounded / redacted actual content；不再规定默认永远 reference-only。
+- Debug 在本次 Run 的 Data Access Scope 内，允许保存完整或近完整的 model-visible / system-visible execution facts，包括实际 Model Context、Tool arguments / results、Retrieval / Context Expansion、Evidence / Citation 中间结果和 Final Answer；Profile identity、capture policy 与 truncation 必须可回放。
+- 任何 Profile 都不得保存 credentials / API keys / access tokens / connection strings、越权数据、provider hidden reasoning 或 hidden Chain-of-Thought；Debug 不改变 Data Access Scope。
 - Trace 读取 / 外部导出不能扩大 Data Access Scope。OpenAI Agents SDK built-in external tracing 继续显式关闭；未来 exporter 只能消费 privacy-projected Trivae Event。
-- Retention 按 metadata、sensitive snapshot、aggregate metrics、Answer Artifact 与 canonical source 分层。Answer Artifact 服从 Conversation Store 生命周期，不随 Trace 到期；具体保留天数与角色矩阵留给部署 / 产品隐私决策。
-- Trace Store 是独立、append-only、versioned、reference-first 的事实存储；timeline、查询索引和 operational metrics 是可重建 projection。具体 backend、partition、buffering 与部署拓扑保持 Implementation Pending。
+- Retention 按 metadata、Normal payload、Debug payload、aggregate metrics、Answer Artifact 与 canonical source 分层。Stage 1.9 不强制 Debug 比 Normal 更短；Local-first 开发环境可以按显式配置保留到人工清理，生产环境必须由部署策略明确 retention、访问和删除边界。
+- Trace Store 是独立、append-only、versioned 的事实存储；reference 是稳定关联方式，但 Normal / Debug capture policy 可以保存允许的 bounded、完整或近完整内容。具体 backend、partition、buffering 与部署拓扑保持 Implementation Pending。
 - Trace persistence 不与 Answer Artifact commit 强行组成分布式事务。Trace failure 不回滚成功业务结果，但必须通过 `TRACE.*` operational error / health signal 显式暴露并标记 incomplete，禁止 silent loss。
 
 ### Operational Metrics 与 Stage 1.10 边界
@@ -1489,10 +1490,10 @@ Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集�
 4. Error Code 由稳定 stage / contract owner namespace 拥有，跨层传播不改名。
 5. Query-scope coverage 基于授权 effective scope，支持 `complete / partial / none / unknown / not_applicable`，只在口径可靠时给 ratio。
 6. coverage / truncation / availability / Tool status / Evidence sufficiency 分轴表达。
-7. 默认 data minimization；不保存 Chain-of-Thought、逐 token stream或完整聊天 / Tool / Model payload 副本。
+7. Trace Profile 为 `normal / debug`；Normal 可保存 bounded / redacted actual content，Debug 可在授权范围内保存完整或近完整的 model-visible / system-visible facts；两者都不保存 Chain-of-Thought、secrets 或越权数据。
 8. Trace access / export 不扩大 Data Access Scope；SDK external tracing 保持关闭。
-9. Retention 分层；Answer Artifact 与 Canonical Source 不归 Trace Store 所有。
-10. Trace Store 独立、append-only、versioned、reference-first，backend 选型 Pending。
+9. Retention 按 metadata、Normal payload、Debug payload、aggregate、Answer Artifact 与 canonical source 分层；Stage 1.9 不强制 Debug 更短，Answer Artifact 与 Canonical Source 不归 Trace Store 所有。
+10. Trace Store 独立、append-only、versioned；reference 是稳定关联方式，Normal / Debug capture policy 决定允许内容的保存详细度，backend 选型 Pending。
 11. Collector failure 显式产生 incomplete / operational failure，但不回滚成功业务结果。
 12. Operational metrics 无阈值；Stage 1.10 Evaluation Dataset、quality metric、threshold 与 gate 保持 Pending。
 
@@ -1631,7 +1632,7 @@ Trace 使用 versioned append-only event、单 Trace sequence 与 operation caus
 
 Retrieval coverage 按 `requested query scope ∩ Data Access Scope` 后的 effective scope 表达；`complete / partial / none / unknown / not_applicable`、truncated、unavailable、Tool status 与 Evidence sufficiency 分轴保留。没有可靠 denominator 时必须是 `unknown`，不能用全局 coverage 或估算百分比伪装当前查询完整性。
 
-Trace 默认 data minimization，不保存 Chain-of-Thought、逐 token stream 或完整聊天 / Tool / Model payload 副本；读取与外部导出不得扩大 Data Access Scope。Trace Store 独立、append-only、versioned、reference-first，retention 按 metadata / sensitive snapshot / aggregate / Answer Artifact / canonical source 分层；具体 backend、Schema、时长与部署实现仍 Pending。
+Trace 使用 `normal / debug` 两个显式 Profile：Normal 以结构化事实和 bounded / redacted actual content 为主，Debug 在本次 Run 的 Data Access Scope 内允许完整或近完整记录 model-visible / system-visible execution facts。任何 Profile 都排除 Chain-of-Thought、secrets 与越权数据；读取与外部导出不得扩大 Data Access Scope。Trace Store 独立、append-only、versioned，retention 按 metadata / Normal payload / Debug payload / aggregate / Answer Artifact / canonical source 分层；Stage 1.9 不强制 Debug 比 Normal 更短，具体 backend、Schema、时长与部署实现仍 Pending。
 
 Trace failure 不回滚成功业务结果，但必须显式暴露并将 Trace 标为 incomplete。完整事件 family、storage / privacy 原则、Failure Case 与 Reopen Conditions 见 [Stage 1.9 ADR](./technical-decisions/stage-1-9-trace-observability.md)。
 
@@ -1802,9 +1803,9 @@ Evaluation Set、指标口径、评测执行方式和框架均待 Stage 1.10 确
 7. **Query-scope coverage**：基于 `requested scope ∩ Data Access Scope` 后的 effective scope；索引缺口不能缩小 denominator，只有口径可靠时才给 ratio。
 8. **Coverage states / orthogonal axes**：`complete / partial / none / unknown / not_applicable` 与 truncated、unavailable、Tool status、Evidence sufficiency 分轴。
 9. **No online quality guess**：Trace 保存运行事实，不自动确诊需要人工复核或 Stage 1.10 Evaluation 的 quality Root Cause。
-10. **Privacy by default**：不记录 Chain-of-Thought、逐 token stream 或完整聊天 / Tool / Model payload 副本；内容诊断只允许受控 bounded snapshot。
-11. **Retention / access boundaries**：Trace 不扩大 Data Access Scope；metadata、sensitive snapshot、aggregate、Answer Artifact 与 canonical source 分层保留。
-12. **Independent Trace Store**：append-only、versioned、reference-first；backend 与实现 Pending；Trace failure 显式产生 incomplete，但不回滚成功业务结果。
+10. **Privacy by profile**：Normal 以结构化事实和 bounded / redacted actual content 为主；Debug 在当前 Data Access Scope 与 capture policy 允许时可保存完整或近完整的 model-visible / system-visible facts。两者都不记录 Chain-of-Thought、provider hidden reasoning、secrets 或越权数据。
+11. **Retention / access boundaries**：Trace 不扩大 Data Access Scope；metadata、Normal payload、Debug payload、aggregate、Answer Artifact 与 canonical source 分层保留，且 Stage 1.9 不强制 Debug 比 Normal 更短。
+12. **Independent Trace Store**：append-only、versioned；reference 是稳定关联方式，但不再作为唯一内容保存形态；backend 与实现 Pending；Trace failure 显式产生 incomplete，但不回滚成功业务结果。
 13. **Operational metrics only**：Stage 1.9 只确认无阈值运行维度；Evaluation Dataset、quality metric、threshold 与 gate 属于 Stage 1.10。
 
 详细 rationale、Failure Case 与 Reopen Conditions 见 [technical-decisions/stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md)。
@@ -1830,7 +1831,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Stage 1.7 继承 ChatLab 的 Thin Agent Core 架构（通用 Loop 由核心库承载、pre-run context compression、Trivae-owned conversation history、budget-exhausted graceful final synthesis、Tool Error 可恢复、事件归一化）；第一版由 OpenAI Agents SDK（Python）承载通用 Loop，替换 ChatLab 使用的 `@earendil-works/pi-agent-core`（TS），继承的是 runtime architecture 而非具体 library。
 - Stage 1.7 允许把 ChatLab 的 `max_tool_rounds`、history window、compression threshold 等**经验参数直接继承**作为 v1 baseline，但必须标注继承来源并保留 Evaluation 校准路径；不无条件照抄，也不拒绝继承。
 - OpenAI Agents SDK 是当前 Python Agent Runtime 的映射方向（Stage 1.7 已确认架构）；具体版本、集成方式与适配契约保持 Implementation Pending。
-- Stage 1.9 继承 ChatLab 的“Core / SDK Event 先转换成项目自有事件，再由 handler 驱动 stream / state / logging”方向；Trivae 将该边界扩展到 Router、Planner、Retrieval、Evidence 与 Citation，并增加 query-scope coverage、Data Access Scope、privacy projection 与 retention contract，不复制 ChatLab 的具体日志字段、文件格式或默认保留期。
+- Stage 1.9 继承 ChatLab 的“Core / SDK Event 先转换成项目自有事件，再由 handler 驱动 stream / state / logging”与 Normal / Debug 记录详细度分离方向；Trivae 将该边界扩展到 Router、Planner、Retrieval、Evidence 与 Citation，并增加 query-scope coverage、Data Access Scope、privacy projection 与 retention contract。不复制 ChatLab 的 2000 字符截断、日志文件 / 数据库字段、具体格式或默认保留期；ChatLab 的 Debug 证据只支持“详细 model-visible facts 对 Failure Attribution 有价值”，不自动决定 Trivae 的权限和 retention。
 
 ## Pending Decisions
 
@@ -1863,7 +1864,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Agent Runtime 的 `max_tool_rounds`、SDK `max_turns`、history window、compression threshold、Tool Result token budget 等具体数字（Pending Evaluation；可继承 ChatLab 经验参数作为 v1 baseline，标注来源）
 - Runtime / Trace conceptual envelope 与 Error Code ownership 已由 Stage 1.9 确认；具体 Python / JSON Schema、完整 Error Code 枚举、Exception mapping 与 event version migration Pending
 - Trace Collector / Store / projector 的 package layout、API、transaction、backend、query index、partition、buffering 与 deployment topology
-- Trace sensitive snapshot 的 allowlist / redaction、角色权限、retention 具体时长、删除传播与 production capacity planning
+- Trace Profile 的配置来源 / 启用边界、Normal / Debug capture policy、redaction / secret stripping、角色权限、retention 具体时长、删除传播与 production capacity planning
 - OpenTelemetry 或其他 exporter 是否接入；若接入只能消费 privacy-projected Trivae Event，SDK built-in external tracing 当前继续显式关闭
 - Agent correctness benchmark、budget / threshold 参数校准（Stage 1.10）
 - Evidence-aware stopping 的 machine-enforced gate、minimum-citation / coverage gate 与参数（Stage 1.10；Stage 1.8 已确认第一版仅作 Agent guidance）

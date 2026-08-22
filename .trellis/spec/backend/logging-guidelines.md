@@ -40,13 +40,14 @@
 - Normalized Event / Failure / Coverage Descriptor 的具体 Python / JSON Schema 与事件名
 - 日志格式 / 级别体系
 - Trace Collector / Store backend、指标采集与存储实现
-- sensitive snapshot allowlist / redaction、具体 retention 时长与访问角色
+- Trace Profile 的配置来源 / 启用边界、Normal / Debug capture policy、redaction / secret stripping、具体 retention 时长与访问角色
 
 ## 已确认边界（Stage 1.9）
 
 - 一个 Trivae-owned normalized event boundary 横跨完整 Query Execution；SDK raw event 不成为产品或 Trace contract。
 - Trace 事件 append-only、versioned，并通过单 Trace sequence 与 operation causality 回放；metrics 是 derived projection。
 - Error Code 由 contract owner namespace 拥有；恢复 / degradation 不抹掉原始 failure。
-- Trace 默认不保存 Chain-of-Thought、逐 token stream 或完整聊天 / Tool / Model payload 副本。
+- Trace 使用 `normal / debug` Profile：Normal 可保存 bounded / redacted actual content，Debug 可在 Data Access Scope 内保存完整或近完整的 model-visible / system-visible facts；两者都不保存 Chain-of-Thought、secrets 或越权数据。
 - Trace access / export 不扩大 Data Access Scope；SDK built-in external tracing 保持显式关闭。
+- Debug Profile 不改变业务授权；profile、capture policy、truncation 与 retention 必须可追踪，且 Local-first 开发环境可以由显式配置决定清理时机。
 - Stage 1.9 operational metrics 不包含 Stage 1.10 quality threshold / gate。
