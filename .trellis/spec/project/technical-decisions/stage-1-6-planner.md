@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed（Stage 1.6）**
 >
-> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界、失败契约、ChatLab 基线继承与 Trivae-specific 差异。Stage 1.6 已完成架构设计沉淀，但尚未实现；Agent Runtime 生命周期后由 Stage 1.7 确认，Trace conceptual boundary 后由 Stage 1.9 确认；具体 Python 类型、模型、Prompt、参数、Trace serialization、Evaluation Case authoring 与真实校准仍保持 Pending（Stage 1.10 的 Evaluation contract 已确认）。
+> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界、失败契约、ChatLab 基线继承与 Trivae-specific 差异。Stage 1.6 已完成架构设计沉淀；M4 已落地 bounded validation/sanitization、soft guidance 和 graceful skip。Agent Runtime 生命周期后由 Stage 1.7 确认，Trace conceptual boundary 后由 Stage 1.9 确认；具体 Python 参数、Trace serialization、Evaluation Case authoring 与真实校准仍保持 Pending（Stage 1.10 的 Evaluation contract 已确认）。
 
 ---
 

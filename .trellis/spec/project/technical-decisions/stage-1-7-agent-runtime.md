@@ -2,7 +2,9 @@
 
 > 状态：**Confirmed（Stage 1.7）**
 >
-> 本文记录 Stage 1.7 Agent Runtime 的架构定位、SDK 选型、Agent Loop 承载方式、Context 与 Conversation History 归属、生命周期语义、终止条件、Abort / Streaming 契约、Planner→Runtime adapter，以及 SDK 与 Capability 的解耦边界。Stage 1.7 已完成架构设计沉淀，但尚未实现；具体 SDK 版本、Adapter 契约、参数数字、Runtime Event Schema 与 Trace 字段仍保持 Pending。
+> 本文记录 Stage 1.7 Agent Runtime 的架构定位、SDK 选型、Agent Loop 承载方式、Context 与 Conversation History 归属、生命周期语义、终止条件、Abort / Streaming 契约、Planner→Runtime adapter，以及 SDK 与 Capability 的解耦边界。Stage 1.7 已完成架构设计沉淀；具体 SDK 版本、Adapter 契约、参数数字、Runtime Event Schema 与 Trace 字段以实现规范和验证记录为准。
+>
+> 实现状态补充（M4）：`QueryRequest → Router → optional Planner → shared AgentRuntime`、SDK 0.22.0 streamed adapter、tool-round finalization、RuntimeEvent、cancellation 和 Application lifecycle 已在 M4 Query Execution Core 中落地；Conversation persistence、Trace backend、Evidence 和 Evaluation 仍按各自 Implementation task 保持 Pending。
 
 ---
 

@@ -112,24 +112,24 @@ Regression
 
 ### Stage 1.5：Router
 
-- 状态：**Confirmed / Completed（Stage 1.5）**。本阶段完成 Router 架构决策沉淀；Router 尚未实现。
+- 状态：**Confirmed / Completed（Stage 1.5）**。本阶段完成 Router 架构决策沉淀；M4 已落地两路 rule-first Router 与可选 strict-JSON completion fallback。
 - 内容：Router 作为 execution-complexity classifier / Planner gate；两路 Route（`standard_execution` / `planned_execution`）；两种 Route 进入同一个 Agent Runtime；Planner 为 planned path 提供 soft guidance；Runtime 注入 Router Context / Data Snapshot / Capability Summary；严格区分 Evidence dependency / Dependent semantic investigation 与普通 Retrieval / Synthesis；明确 Data Scope Size、Retrieval Volume、Tool Call Count 等 non-signals；Rule-first + LLM fallback；conservative default；Router failure graceful degradation；Router 与 Tool / Retrieval / Planner 的职责边界；Route Decision 的 Trace / Evaluation 语义；真实 Trivae seed workload；Planner Utility 优先于单独的 Route Classification Accuracy。
 - 记录位置：[technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)（详细 rationale），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：Stage 1.6 已确认 Planner 的 Input、Plan Schema、步骤类型、重规划与执行语义；Stage 1.9 已确认 Router Trace family、degradation 与 Error Code ownership；具体 Schema / 实现 Pending；Stage 1.10 已确认 Router Case、forced-path Planner Utility、Router Utility 与 paired Review 语义，具体运行与参数校准仍 Pending。
+- 后续：Stage 1.6 已确认 Planner 的 Input、Plan Schema、步骤类型、重规划与执行语义；Stage 1.9 已确认 Router Trace family、degradation 与 Error Code ownership；具体 Trace Schema / 参数校准仍 Pending；Stage 1.10 已确认 Router Case、forced-path Planner Utility、Router Utility 与 paired Review 语义，具体运行与参数校准仍 Pending。
 
 ### Stage 1.6：Planner
 
-- 状态：**Confirmed / Completed（Stage 1.6）**。本阶段完成 Planner 架构决策沉淀；Planner 尚未实现。
+- 状态：**Confirmed / Completed（Stage 1.6）**。本阶段完成 Planner 架构决策沉淀；M4 已落地 bounded validation/sanitization、soft guidance 和 graceful skip。
 - 内容：Planner 定义为 Thin pre-execution investigation planner；只在 `planned_execution` 进入 Agent Runtime 前运行一次；`standard_execution` 与 `planned_execution` 使用同一个 Agent Runtime；Plan 是 soft investigation guidance，不是 Workflow；Planner Input 由 Runtime 注入 `user_query`、`query_context`、compact `data_snapshot` 与 `capability_summary`；第一版采用轻量 Plan Schema（version / title / intent / steps.goal / suggested_tools / evidence_needed / success_criteria）；suggested_tools 是 advisory hint，不生成 Tool Arguments；evidence_needed 不是 Stage 1.8 Evidence Object；Plan 经过 deterministic validation / sanitization；hallucinated Tool 被过滤；Plan bounded；Planner failure graceful degradation 且不重写 Router Decision；第一版不 automatic replan、不 Planner-owned state、不 Planner-specific retry / regeneration、不增加 LLM Plan Validator。
 - 记录位置：[technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：Stage 1.7 已确认 Agent Loop / SDK / Runtime lifecycle，Stage 1.8 已确认 Evidence / Citation；Stage 1.9 已确认 Planner / Router / Agent / Evidence Trace 与 Observability 语义；具体 Schema / 实现 Pending；Stage 1.10 已确认 Planner forced-path Utility 与质量轴，具体运行、评审与参数校准仍 Pending。
+- 后续：Stage 1.7 已确认 Agent Loop / SDK / Runtime lifecycle，Stage 1.8 已确认 Evidence / Citation；Stage 1.9 已确认 Planner / Router / Agent / Evidence Trace 与 Observability 语义；具体 Trace Schema / 参数校准仍 Pending；Stage 1.10 已确认 Planner forced-path Utility 与质量轴，具体运行、评审与参数校准仍 Pending。
 
 ### Stage 1.7：Agent Runtime
 
-- 状态：**Confirmed / Completed（Stage 1.7）**。本阶段完成 Agent Runtime 架构决策沉淀；Agent Runtime 尚未实现。
+- 状态：**Confirmed / Completed（Stage 1.7）**。本阶段完成 Agent Runtime 架构决策沉淀；M4 已落地 SDK 0.22.0 streamed adapter、RuntimeEvent、tool budget、abort 和 lifecycle；Conversation/Trace/Evaluation 仍 Pending。
 - 内容：继承 ChatLab 的 Thin Agent Core 架构，由 OpenAI Agents SDK 承载通用 Agent Loop；Trivae 拥有外层执行编排、Context、Conversation History、Tool Adapter、生命周期语义与事件契约；Thin Agent Runtime + 单 Agent + 两种 Route 用同一个 Runtime；OpenAI Agents SDK 通过概念性的 Runtime / Function Tool Adapter 接入，不冻结文件布局；RuntimeContext（local）与 Agent Model Context（LLM-visible）分离且 Data Access Scope 硬执行；Trivae Conversation Store 为 source of truth，SDK / Provider conversation state 只作可重建 adapter state，streaming、完成、中止与失败记录有明确提交边界；pre-run Context 压缩（不做 mid-run compaction）；Tool Round 按一个包含 Tool Result 的模型轮次计数，Trivae Budget 先触发 graceful final synthesis，SDK `max_turns` 预留最终模型调用并只作兜底；仅已知 Tool Contract Error 可由 Agent 恢复，未知 Tool / Adapter 异常显式 `FAILED`；Abort 采用协作式 cancellation，晚到结果不得重启执行；Streaming 为 canonical path；Runtime lifecycle 状态机；Planner soft guidance 注入；Trivae 显式关闭 SDK built-in external tracing；ChatLab 经验参数可直接继承但标注来源并保留 Evaluation 校准。
 - 记录位置：[technical-decisions/stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：Stage 1.8 已确认 Evidence / Citation；Stage 1.9 已确认 Runtime / Evidence / Citation Event family、Trace conceptual envelope、Error Code ownership 与 Observability；具体 Schema / 实现 Pending；Stage 1.10 已确认 correctness / diagnosability 以及成本分轴，Runtime 参数和真实结果仍 Pending。
+- 后续：Stage 1.8 已确认 Evidence / Citation；Stage 1.9 已确认 Runtime / Evidence / Citation Event family、Trace conceptual envelope、Error Code ownership 与 Observability；具体 Trace Schema / 实现 Pending；Stage 1.10 已确认 correctness / diagnosability 以及成本分轴，Runtime 参数和真实结果仍 Pending。
 
 ### Stage 1.8：Evidence / Citation
 

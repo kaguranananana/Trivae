@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed（Stage 1.5）**
 >
-> 本文记录 Stage 1.5 Router 的取舍、理由、边界、Failure Case 与重新打开条件。Router 已完成架构设计沉淀，但尚未实现；具体规则、模型参数、Trace Schema 与 Evaluation Benchmark 不在本 ADR 中提前冻结。Router Trace 的 conceptual event / failure ownership 后由 Stage 1.9 确认，具体序列化与实现仍 Pending。
+> 本文记录 Stage 1.5 Router 的取舍、理由、边界、Failure Case 与重新打开条件。Router 已完成架构设计沉淀；M4 已落地两路 rule-first implementation 与可选 strict-JSON fallback。具体规则参数、Trace Schema 与 Evaluation Benchmark 不在本 ADR 中冻结。Router Trace 的 conceptual event / failure ownership 后由 Stage 1.9 确认，具体序列化与实现仍 Pending。
 
 ---
 

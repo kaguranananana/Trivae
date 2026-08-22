@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "High-noise group chat intelligence analysis system"
 requires-python = ">=3.12"
 dependencies = [
-    "openai-agents>=0.22,<0.23",
+    # 当前 streamed/cancellation contract 已按本地验证的 SDK API 固定到 0.22.0。
+    "openai-agents==0.22.0",
 ]
 
 [project.optional-dependencies]

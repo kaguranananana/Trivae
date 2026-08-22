@@ -58,7 +58,7 @@
 
 当前架构文档仍为 `Draft / In Progress`。M1 SQLite ingestion schema 已在 backend code-spec 中落地并完成真实数据校准；Vector Store、Chunking 参数、Embedding、Trace 实现 Schema / backend、Evaluation 实现 Schema / runner、真实 baseline、数值 threshold 与参数校准结果仍为 Pending，不能视为最终 Architecture Specification。
 
-**当前任务**：M1 ingestion vertical slice 已完成；后续按主题推进 Retrieval、Stage 1.10 Implementation / Real-run Calibration 与 Stage 1.11 Product Interaction。Case authoring、Snapshot / Dataset、runner、Review workflow、真实 stable baseline、numerical threshold 和最终参数仍未实现；在对应实现契约落地前不实现这些后续功能。
+**当前任务状态**：M1 ingestion、M2/M3 Retrieval/Capability、M4a Agent Runtime baseline 与 M4 Query Execution Core 已实现并完成 deterministic validation。当前 Query 主链路为 `QueryRequest → Router → optional Planner → shared AgentRuntime → QueryResult`；Evidence/Citation、Trace backend、Evaluation implementation、HTTP Product Interaction、Conversation persistence schema、真实 stable baseline 和数值参数校准仍未实现，继续按对应实现契约推进。
 
 ## 演进目标
 

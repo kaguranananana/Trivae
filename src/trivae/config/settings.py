@@ -9,6 +9,7 @@ from typing import Mapping
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 _SUPPORTED_PROVIDER = "deepseek"
 _DEFAULT_MAX_TURNS = 8
+_DEFAULT_MAX_TOOL_ROUNDS = 3
 
 
 class SettingsError(ValueError):
@@ -24,6 +25,7 @@ class DeepSeekSettings:
     provider: str
     model_name: str
     max_turns: int
+    max_tool_rounds: int = _DEFAULT_MAX_TOOL_ROUNDS
 
     def __repr__(self) -> str:
         """调试时只显示密钥存在性，绝不显示密钥正文。"""
@@ -32,7 +34,8 @@ class DeepSeekSettings:
             "DeepSeekSettings("
             "api_key='[REDACTED]', "
             f"base_url={self.base_url!r}, provider={self.provider!r}, "
-            f"model_name={self.model_name!r}, max_turns={self.max_turns!r})"
+            f"model_name={self.model_name!r}, max_turns={self.max_turns!r}, "
+            f"max_tool_rounds={self.max_tool_rounds!r})"
         )
 
     def to_safe_dict(self) -> dict[str, object]:
@@ -44,6 +47,7 @@ class DeepSeekSettings:
             "provider": self.provider,
             "model_name": self.model_name,
             "max_turns": self.max_turns,
+            "max_tool_rounds": self.max_tool_rounds,
         }
 
 
@@ -72,8 +76,16 @@ def load_settings(environ: Mapping[str, str] | None = None) -> DeepSeekSettings:
         max_turns = int(max_turns_text)
     except ValueError as exc:
         raise SettingsError("TRIVAE_MAX_TURNS must be a positive integer") from exc
-    if max_turns <= 0:
+    if max_turns <= 0 or max_turns_text != str(max_turns):
         raise SettingsError("TRIVAE_MAX_TURNS must be a positive integer")
+
+    max_tool_rounds_text = values.get("TRIVAE_MAX_TOOL_ROUNDS", str(_DEFAULT_MAX_TOOL_ROUNDS)).strip()
+    try:
+        max_tool_rounds = int(max_tool_rounds_text)
+    except ValueError as exc:
+        raise SettingsError("TRIVAE_MAX_TOOL_ROUNDS must be a positive integer") from exc
+    if max_tool_rounds <= 0 or max_tool_rounds_text != str(max_tool_rounds):
+        raise SettingsError("TRIVAE_MAX_TOOL_ROUNDS must be a positive integer")
 
     return DeepSeekSettings(
         api_key=api_key,
@@ -81,4 +93,5 @@ def load_settings(environ: Mapping[str, str] | None = None) -> DeepSeekSettings:
         provider=provider,
         model_name=model_name,
         max_turns=max_turns,
+        max_tool_rounds=max_tool_rounds,
     )

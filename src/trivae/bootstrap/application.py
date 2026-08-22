@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 
 from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, ToolEnvelope
@@ -13,6 +14,10 @@ from trivae.data.model import ImportRunSummary
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalIndex
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
+from trivae.query.contracts import QueryRequest, QueryResult
+from trivae.query.orchestrator import QueryOrchestrator
+from trivae.query.planner import Planner, SoftPlanner
+from trivae.query.router import Router, RuleRouter
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeResult
 from trivae.retrieval.lexical import LexicalRetrieval
 from trivae.retrieval.structured import (
@@ -37,6 +42,8 @@ class TrivaeApplication:
         capability_registry: CapabilityRegistry,
         lexical_index: SQLiteLexicalIndex | None = None,
         agent_runtime: AgentRuntime | None = None,
+        router: Router | None = None,
+        planner: Planner | None = None,
     ) -> None:
         self.store = store
         self.importer = importer
@@ -47,6 +54,10 @@ class TrivaeApplication:
         self._lexical_index = lexical_index
         # Runtime 是可注入且惰性创建的，检索-only caller 不需要 provider 配置。
         self._agent_runtime = agent_runtime
+        self._router = router
+        self._planner = planner
+        self._query_orchestrator: QueryOrchestrator | None = None
+        self._closed = False
 
     def import_directory(self, raw_directory: Path) -> ImportRunSummary:
         """让 CLI 通过 Application 进入 data ingestion，而不是直接读 Store。"""
@@ -83,6 +94,31 @@ class TrivaeApplication:
     async def run_agent(self, request: AgentRunRequest) -> RuntimeResult:
         """通过同一 Application composition path 执行 Agent Runtime。"""
 
+        self._ensure_open()
+        return await self._get_agent_runtime().run(request)
+
+    async def query(self, request: QueryRequest) -> QueryResult:
+        """Query 的正式 Application 入口，standard/planned 共享同一 runtime。"""
+
+        self._ensure_open()
+        runtime = self._get_agent_runtime()
+        if self._query_orchestrator is None:
+            completion = getattr(runtime, "complete_text", None)
+            if not callable(completion):
+                completion = None
+            self._router = self._router or RuleRouter(completion=completion)
+            self._planner = self._planner or SoftPlanner(completion=completion)
+            self._query_orchestrator = QueryOrchestrator(
+                runtime,
+                self._router,
+                self._planner,
+                capability_names=self.capability_registry.names(),
+            )
+        return await self._query_orchestrator.run(request)
+
+    def _get_agent_runtime(self) -> AgentRuntime:
+        """惰性构造 provider runtime，保持检索-only Application 无 provider 依赖。"""
+
         if self._agent_runtime is None:
             # 延迟导入和构造 provider，避免应用创建阶段触发密钥校验或网络 client。
             from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
@@ -90,18 +126,56 @@ class TrivaeApplication:
             self._agent_runtime = OpenAIAgentsRuntimeAdapter(
                 capability_registry=self.capability_registry,
             )
-        return await self._agent_runtime.run(request)
+        return self._agent_runtime
+
+    def _ensure_open(self) -> None:
+        """关闭后的 Application 不能静默重建资源或继续发起请求。"""
+
+        if self._closed:
+            raise RuntimeError("application is closed")
+
+    async def aclose(self) -> None:
+        """先关闭 runtime/provider，再关闭 data resources；重复调用安全且无副作用。"""
+
+        if self._closed:
+            return
+        self._closed = True
+        runtime = self._agent_runtime
+        try:
+            if runtime is not None:
+                close = getattr(runtime, "aclose", None)
+                if callable(close):
+                    result = close()
+                    if inspect.isawaitable(result):
+                        await result
+        finally:
+            # 即使某一个 close 失败，也继续释放其余资源；原始 close 异常最终仍会向上暴露。
+            try:
+                try:
+                    if self._lexical_index is not None:
+                        self._lexical_index.close()
+                finally:
+                    try:
+                        self.read_repository.close()
+                    finally:
+                        self.store.close()
+            finally:
+                self._agent_runtime = None
+                self._query_orchestrator = None
 
     def close(self) -> None:
-        """集中关闭 core resource；不在模块 import 时创建全局资源。"""
+        """同步 lifecycle 包装；运行中的 event loop 必须显式使用 await aclose。"""
 
-        # 先释放 derived/read connections，再关闭 write store，避免生命周期交叉。
-        if self._lexical_index is not None:
-            self._lexical_index.close()
-        self.read_repository.close()
-        self.store.close()
-        # 应用关闭后不再保留 runtime/provider 引用；client 生命周期不延伸到 Application 之外。
-        self._agent_runtime = None
+        try:
+            import asyncio
+
+            asyncio.get_running_loop()
+        except RuntimeError:
+            import asyncio
+
+            asyncio.run(self.aclose())
+            return
+        raise RuntimeError("application.close() cannot run inside an event loop; use await aclose()")
 
     def __enter__(self) -> TrivaeApplication:
         return self
@@ -109,10 +183,20 @@ class TrivaeApplication:
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
         self.close()
 
+    async def __aenter__(self) -> TrivaeApplication:
+        self._ensure_open()
+        return self
+
+    async def __aexit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        await self.aclose()
+
 
 def create_application(
     database_path: Path,
     agent_runtime: AgentRuntime | None = None,
+    *,
+    router: Router | None = None,
+    planner: Planner | None = None,
 ) -> TrivaeApplication:
     """Composition Root 统一装配 write/read/derived/retrieval/capability 组件。"""
 
@@ -132,4 +216,6 @@ def create_application(
         lexical_retrieval=lexical_retrieval,
         capability_registry=capability_registry,
         agent_runtime=agent_runtime,
+        router=router,
+        planner=planner,
     )
