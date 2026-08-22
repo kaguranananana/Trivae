@@ -423,3 +423,16 @@ Stage 1.10 已确认上述校准必须绑定 Case Bundle、Snapshot、Scope、pi
 ### Experimental
 
 当前没有已批准的 Experimental 偏离。任何未来偏离 ChatLab 或上述 Confirmed 决策的实验，都必须先记录 Reopen Reason、验证方法与退出条件。
+
+## 18. M3 Implementation Slice: `search_messages`
+
+M2/M3 implementation task 已落地第一条 Retrieval-facing capability：registry 名称为 `search_messages`，其内部组合 Lexical Retrieval 与 bounded automatic Context Expansion，再投影为 Stage 1.4 统一 Tool Envelope。它是本轮对 Stage 1.4 概念 `lexical_search` surface 的 Trivae implementation adaptation，不代表增加 Hybrid、Semantic 或 Runtime orchestration。
+
+已验证的实现边界：
+
+- Capability 继承 trusted session/time scope，并拒绝越权 filter 和超过 trusted max result 的输入。
+- Retrieval Core 拥有 FTS query、canonical projection hydration、context merge/dedup/order/trim；Tool handler 不导入 SQLite。
+- `ok`、`partial`、`error` 与 `meta.truncated` 分离；zero hit 是正常结果；invalid argument、capability unavailable、execution error 分开投影。
+- 经验窗口默认值仍属于 implementation baseline，而不是 Evaluation-confirmed optimal parameter；下一轮以真实 Case Bundle 重新校准。
+
+M3 本轮不实现 `semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` 的 Tool surface，也不进入 Router/Planner/Runtime；这些保持下一条 vertical slice 的 scope。

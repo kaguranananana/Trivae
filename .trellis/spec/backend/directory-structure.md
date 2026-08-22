@@ -1,6 +1,6 @@
 # Directory Structure
 
-> 目录与文件组织约定。M1 ingestion vertical slice 已落地；Retrieval、Query Plane、Evaluation 和 HTTP Product Interaction 仍待后续任务。
+> 目录与文件组织约定。M1 ingestion、M2 Retrieval Core 和 M3 最小 Capability/Tool vertical slice 已落地；Query Plane、Evaluation 和 HTTP Product Interaction 仍待后续任务。
 
 ---
 
@@ -43,9 +43,32 @@ package layout 与 Trivae Home 都是逻辑 ownership 语义，不要求一一�
 
 - **只按已确认边界创建业务结构**：Stage 1.11 已确认单 Python distribution、`src/trivae` 概念布局和 ownership；实际目录必须在对应 Implementation task 中按 ADR 落地。
 - **不提前创建实现细节**：具体文件、class、Schema、依赖、框架版本、DI 方式和测试工具链仍须等待实现任务确定。
-- 当前 M1 只创建 `bootstrap`、`data`、`interfaces` 与必要的 package 初始化文件；未实现的 Query Plane package 不提前创建。
+- M1 先只创建 `bootstrap`、`data`、`interfaces`；M2/M3 implementation task 已按确认边界实际创建 `retrieval`、`capabilities` 和 data/storage read/derived adapter。未实现的 Query Plane package 仍不提前创建。
+
+## 当前已落地的 M2/M3 物理文件
+
+```text
+src/trivae/
+├── retrieval/
+│   ├── __init__.py
+│   ├── structured.py       # Read Contract、Structured/Lexical result types、repository Protocol
+│   ├── lexical.py          # FTS hit → Retrieval Result 编排
+│   └── context.py          # bounded context merge/dedup/trim/hit preservation
+├── capabilities/
+│   ├── __init__.py
+│   ├── contracts.py        # trusted scope、input、envelope、typed errors
+│   ├── search_messages.py  # Retrieval-facing Capability
+│   ├── registry.py         # explicit Tool registry
+│   └── tools.py            # thin search_messages Tool wrapper
+└── data/storage/
+    ├── sqlite.py            # M1 canonical write store
+    ├── sqlite_read.py       # M2 read-side SQL/projection/context/FTS query adapter
+    └── sqlite_lexical.py    # rebuildable FTS5 derived index
+```
+
+这些文件属于本轮已实现的 ownership；Semantic、Hybrid、Reranker、Router、Planner、Runtime、Evidence、Trace 和 Evaluation package 仍没有物理壳文件。
 
 ## 后续阶段（实现任务启动后补充）
 
 - Python package / module boundary → 已由 Stage 1.11 定义概念 ownership；实际文件与 import direction 随 Implementation task 落地。
-- 测试目录布局 → 随首份业务代码的确定落地（预计 pytest 结构，具体工具链在业务实现任务启动前确定）。
+- 测试目录布局 → 当前继续使用 unittest；M1/M2/M3 contract/integration tests 分文件维护，真实数据校准记录在 task validation artifact，不把 raw 数据复制到 tests。

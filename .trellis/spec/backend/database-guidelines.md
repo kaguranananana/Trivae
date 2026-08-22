@@ -1,13 +1,13 @@
 # Database Guidelines
 
-> 状态：**M1 已实现 SQLite Canonical Store；Retrieval/Derived Index 等后续存储仍 Pending**
-> Stage 1.4 已确认第一版 persistent store 使用 SQLite；本节的 M1 物理 schema 是当前 ingestion vertical slice 的实现契约，不提前决定后续 Retrieval/Embedding 存储。
+> 状态：**M1 SQLite Canonical Store、M2 read/FTS5 derived boundary 已实现；Semantic/Vector 等后续存储仍 Pending**
+> Stage 1.4 已确认第一版 persistent store 使用 SQLite；本节同时记录 M1 canonical、M2 read/FTS5 derived 和 M3 读取边界的实际实现契约。
 
 ---
 
 ## 当前结论
 
-- M1 ingestion 已采用 SQLite 并实现下方最小 physical schema；Retrieval/Embedding derived store、迁移演进和跨环境部署策略仍等待后续 Architecture Specification。
+- M1 ingestion 已采用 SQLite 并实现下方最小 physical schema；M2 Structured/FTS5 read boundary 已在实现任务中落地；Semantic/Embedding derived store、迁移演进和跨环境部署策略仍等待后续 Architecture Specification。
 - 以下为 Stage 1.2 已确认的**数据库无关原则**，后续任何存储实现都必须满足：
 
 ### 已确认的数据库无关原则
@@ -95,7 +95,32 @@ write_variant_when_projection_differs(incoming)
 
 ## 后续待决内容（后续架构到达后）
 
-- Retrieval structured/lexical/semantic 的 derived store 与查询模式
+- Semantic/Vector/Chunk 的 derived store 与查询模式
 - 跨环境 migration / backup / deployment 策略
 - Vector Store、Embedding 与 Chunk 的物理 schema
 - Query Plane 的数据访问 scope 与保留策略
+
+## M2 Retrieval Read / Derived Index Contract
+
+### Read adapter
+
+- `SQLiteCanonicalReadRepository` 使用独立 `mode=ro` connection 和 `PRAGMA query_only=ON`；Retrieval 不持有 Store connection，不返回 `sqlite3.Row`。
+- SQL、列选择、scope predicates、aggregate expressions、ordering 和 FTS query 全部集中在 `data/storage`；值使用 parameter binding。
+- Retrieval projection 只包含 internal/source ID、session、sender identity snapshot、timestamp、optional seq、message type、normalized content、reply locator、recalled/system；raw payload、`content_json`、`canonical_projection_json` 不出边界。
+- source/reply message ID 必须与显式 `session_ids` 同时出现；session predicate 不能省略。时间范围为 `[start_timestamp, end_timestamp)`。
+- 消息排序显式为 timestamp、present seq、missing seq、internal ID；missing seq 的稳定顺序不代表恢复平台真实顺序。
+- `total_hits`/`returned_count`、`coverage`/`partial`/`truncated` 分别表达匹配总数、返回数、数据覆盖、内部部分完成和 bounded 截断。
+- Structured aggregate 支持总数以及按 session、sender、UTC month 分组；NULL sender 保留为真实 NULL bucket，不伪造身份。
+
+### FTS5 derived index
+
+- `messages_fts` 是 SQLite FTS5 virtual table，字段为 `internal_message_id UNINDEXED`、`session_id UNINDEXED`、`source_message_id UNINDEXED` 和 `content_text`；它只服务 lexical retrieval，不是 canonical/evidence source of truth。
+- `SQLiteLexicalIndex.rebuild()` 在显式调用时从 `messages` 全量重建，失败回滚 derived transaction；删除 FTS table 不影响 canonical messages。
+- Read adapter 在 lexical 查询前比较 FTS row count 与 canonical message count；缺失或 stale index 显式返回 `RETRIEVAL_LEXICAL_INDEX`，不静默 LIKE 降级。
+- FTS5 当前使用 `unicode61` literal AND query；它与 LIKE 的 substring 语义不同，尤其中文命中数必须按 lexical contract 和真实校准解释，不能把两个数字当成同一集合。
+- 当前不加入自动异步同步；canonical import 后通过 `rebuild_lexical_index()` 明确重建。若后续出现 stale-index 运维 Failure Case，再由证据驱动增量同步/版本标记设计。
+
+### M3 read-facing boundary
+
+- `search_messages` 是本轮最小 Tool registry 名称；Capability 继承 trusted session/time scope、验证 bound，再调用 Retrieval Core 的 lexical + automatic context expansion。
+- Tool envelope 只投影 `ok`/`partial`/`error`、`meta.truncated`、typed error 和 Retrieval Result；Tool 不执行 SQL、构造 FTS expression 或实现 context merge/order/trim。

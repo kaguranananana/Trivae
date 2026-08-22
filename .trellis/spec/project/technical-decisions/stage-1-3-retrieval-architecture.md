@@ -255,6 +255,16 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 
 ---
 
+## 15. Trivae M2 Lexical Index Calibration
+
+**Decision**：M2 在当前 Python/SQLite runtime 通过实际 `CREATE VIRTUAL TABLE ... USING fts5` 探测后采用 SQLite FTS5 作为第一版 local lexical derived index；Canonical Store 继续是 Source of Truth，index 可从 `messages` 全量 rebuild。LIKE 只作为真实校准基线，不作为产品 fallback。
+
+**Evidence**：在只读复制的 473,236-message canonical DB 上，FTS5 rebuild indexed 473,236 rows，实测约 4.0s；代表性 FTS query latency 约 95–172ms，LIKE baseline 约 179–226ms。结构化查询继续使用既有 `idx_messages_session_time`。这些是当前 calibration slice 的 measured fact，不是普遍性能保证。
+
+**Trade-off**：FTS5 以 token 语义换取本地索引查询速度和可 rebuild 生命周期；`unicode61` 与 LIKE 的 substring 语义不同，中文/子串命中数差异必须在结果和 validation 中显式说明。若真实 Evaluation 证明中文 substring recall 是主导 Failure Case，再评估 tokenizer/trigram/其他 derived strategy；当前不静默切换。
+
+**Operational contract**：缺失或 row-count stale 的 `messages_fts` 显式报告 lexical index unavailable/stale；删除 derived table 不影响 canonical facts；导入后由显式 rebuild path 更新，当前不引入未经验证的异步同步。
+
 ## Pending（本阶段不决策，随后续阶段解除）
 
 - Reranker（Pending Evaluation，第一版不引入）
