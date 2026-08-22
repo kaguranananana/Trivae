@@ -49,4 +49,4 @@
 
 ## 当前记录
 
-（暂无 — 当前无业务代码，无需要长期沉淀的 Failure Case）
+当前没有需要单独升级为长期 Problem 文件的 `real failure`；M5a 的结构性 regression cases、设计取舍和未执行 live smoke 说明集中记录在 [M5a validation.md](../../tasks/08-23-m5-evidence-citation-finalization/validation.md)。后续若真实运行复现 provider/model 组合、scope、persistence 或 citation composition failure，再按本索引建立独立 Problem Record。

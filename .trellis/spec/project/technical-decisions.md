@@ -19,7 +19,7 @@
 | Stage 1.5 | Confirmed / Completed | Router 与 Planner gating | [stage-1-5-router.md](./technical-decisions/stage-1-5-router.md) |
 | Stage 1.6 | Confirmed / Completed | Thin pre-execution investigation planner | [stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md) |
 | Stage 1.7 | Confirmed / Completed | Agent Loop · SDK · Runtime lifecycle | [stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md) |
-| Stage 1.8 | Confirmed / Completed | Evidence · Citation · Source review | [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md) |
+| Stage 1.8 | Confirmed / Completed；M5a implemented | Evidence · Citation · Source review | [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md) |
 | Stage 1.9 | Confirmed / Completed（修订版） | Normalized Trace · Failure Attribution · Coverage · Normal/Debug Profiles · Privacy / Retention · Error Ownership | [stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md) |
 | Stage 1.10 | Confirmed / Completed（架构契约） | Evaluation Case Bundle · Reference completeness / provenance · pinned Baseline · forced-path Planner Utility · blind paired review · Regression | [stage-1-10-evaluation.md](./technical-decisions/stage-1-10-evaluation.md) |
 | Stage 1.11 | Confirmed / Completed（架构边界） | Application Boundary · Composition Root · Python package ownership · unified Query execution core · CLI / API / Evaluation adapters | [stage-1-11-application-architecture.md](./technical-decisions/stage-1-11-application-architecture.md) |

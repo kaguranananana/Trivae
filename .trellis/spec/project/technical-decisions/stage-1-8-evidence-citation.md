@@ -474,7 +474,7 @@ Stage 1.10 已确认 Citation / Evidence 质量必须置于 Case Bundle 的 **Fi
 
 ## 21. Validation / Regression Contract
 
-当前仓库没有业务代码，本阶段不伪造实现测试。实现阶段至少应验证：
+Stage 1.8 决策形成时尚没有业务实现；M5a 已将以下回归项落到实现与 deterministic tests。后续 Conversation persistence / UI 实现仍需继续验证：
 
 ```text
 所有数据性 claim 均能解析到存在的 Evidence Item
@@ -490,3 +490,24 @@ bounded source viewer 高亮被引消息且不加载全量会话
 Tool Budget 耗尽后的 final synthesis 只使用已取得来源并显式标记限制
 不存在 retrieve_evidence Tool、固定关键词 Judge、Evidence Agent 或 Runtime Evidence State Machine
 ```
+
+## 22. M5a Implementation Status
+
+M5a `m5-evidence-citation-finalization` 在不重开 Stage 1.8 语义的前提下完成了最小 vertical slice：
+
+- `query/evidence.py` 拥有 Trivae-owned `AnswerArtifact`、`EvidenceItem`、`CitationBinding`、`MessageSource` 与 `StructuredSource`；`supports / contradicts / context` 和 `sufficient / partial / insufficient` 保持双轴语义。
+- Runtime Tool adapter 为每次已知 Tool Result 建立 `run_id / tool_call_id / tool_result_id / result_item_id`，只携带 bounded canonical message projection 或 structured locator/value，不暴露 SDK raw object。
+- `QueryOrchestrator` 只对 `completed` RuntimeResult 调用 finalizer；finalizer 确定性校验 ID、current-run provenance、scope、message/structured locator 和 value，并从可信 projection hydrate session、author、timestamp、timezone、safe excerpt。
+- plain text 仍可用于不依赖聊天数据的普通回答；发生 Tool execution 后，最终合成必须是结构化 JSON Artifact，即使没有可用 Evidence，也需通过结构化限制字段明确表达结果。
+- invalid / unresolved Citation 通过 `finalization_error` 显式返回；不会删除 binding、替换来源、自动 retry 或 fallback。Validator 不判断自然语言 semantic entailment。
+- M5a 的提交边界是 `QueryResult.answer_artifact`：只有 finalization 成功才暴露正式 `final_answer`。Conversation / Assistant Message durable commit 仍拆到 M5b，尚未声称 Evidence 已持久化。
+
+### M5a Regression Evidence
+
+`tests/test_evidence.py` 覆盖 good / base / bad contract、malformed binding、fabricated provenance、old run、scope violation、trusted hydration、structured locator/value、Tool completeness 与 Evidence sufficiency 分轴，以及 SQLite `search_messages → Tool Result → final synthesis → validated AnswerArtifact` 集成链路。完整测试、ruff、mypy、CLI、Trellis validation 与 `git diff --check` 的实际结果记录在 M5a task 的 `validation.md`。
+
+### M5a Deferred / Reopen Boundary
+
+- Conversation / Assistant Message persistence、历史 Evidence replay 和 fresh follow-up enforcement 属于 M5b；M5a 不创建第二套 durable schema。
+- Trace backend、Evaluation semantic quality、citation precision/recall、minimum-citation gate、repair policy 与 bounds calibration 仍分别属于 M6/M7 或 real-run calibration。
+- 当前实现没有改变 ChatLab 继承项，也没有新增 Evidence Tool、Evidence Agent、固定关键词 Judge、固定时间 Evidence Group 或 Runtime-owned Evidence State Machine。

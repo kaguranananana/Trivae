@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Mapping
 
 from trivae.capabilities.contracts import ExecutionScope
+from trivae.query.evidence import AnswerArtifact, FinalizationErrorInfo
 from trivae.query.runtime.contracts import AgentRunRequest, ModelContextMessage, RuntimeResult
 
 if TYPE_CHECKING:
@@ -124,12 +125,31 @@ class QueryResult:
     route_decision: "RouteDecision"
     plan: "Plan | None" = None
     diagnostics: tuple[QueryDiagnostic, ...] = ()
+    # 只有 finalizer 成功后该字段才非空，形成 M5 的 validated commit boundary。
+    answer_artifact: AnswerArtifact | None = None
+    finalization_error: FinalizationErrorInfo | None = None
 
     @property
     def final_answer(self) -> str | None:
-        """返回 runtime 的最终答案。"""
+        """只返回已经通过 finalization 的回答文本。"""
+
+        return None if self.answer_artifact is None else self.answer_artifact.answer_text
+
+    @property
+    def runtime_answer(self) -> str | None:
+        """保留低层 Runtime 原始文本投影，供诊断使用而不冒充 validated answer。"""
 
         return self.runtime_result.final_answer
+
+    @property
+    def is_successful(self) -> bool:
+        """只有 Runtime completed 且 Answer Artifact 已验证才算 Query 成功。"""
+
+        return (
+            self.runtime_result.termination == "completed"
+            and self.answer_artifact is not None
+            and self.finalization_error is None
+        )
 
     @property
     def termination(self) -> str:

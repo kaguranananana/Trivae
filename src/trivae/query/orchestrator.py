@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from trivae.query.contracts import QueryDiagnostic, QueryRequest, QueryResult
+from trivae.query.evidence import AnswerFinalizationError, FinalizationErrorInfo, finalize_answer
 from trivae.query.planner import Planner, PlannerResult, render_plan_guidance
 from trivae.query.router import Router
 from trivae.query.runtime.contracts import AgentRuntime
@@ -59,11 +60,38 @@ class QueryOrchestrator:
 
         runtime_request = request.to_runtime_request(plan_guidance)
         runtime_result = await self.runtime.run(runtime_request)
+        if runtime_result.termination != "completed":
+            # Runtime failure/abort/max-turn 不能被包装成 Evidence partial 或成功回答。
+            return QueryResult(
+                runtime_result=runtime_result,
+                route_decision=decision,
+                plan=plan,
+                diagnostics=tuple(diagnostics),
+            )
+
+        try:
+            # Finalizer 只读取同一个 RuntimeResult 携带的 current-run provenance。
+            answer_artifact = finalize_answer(
+                runtime_result.final_answer or "",
+                run_id=runtime_result.run_id,
+                tool_results=runtime_result.tool_results,
+                scope=request.scope,
+            )
+        except AnswerFinalizationError as exc:
+            # citation 错误显式暴露；不删除 binding、不自动替换 source、不重试模型。
+            return QueryResult(
+                runtime_result=runtime_result,
+                route_decision=decision,
+                plan=plan,
+                diagnostics=tuple(diagnostics),
+                finalization_error=FinalizationErrorInfo(exc.code, exc.message, exc.path),
+            )
         return QueryResult(
             runtime_result=runtime_result,
             route_decision=decision,
             plan=plan,
             diagnostics=tuple(diagnostics),
+            answer_artifact=answer_artifact,
         )
 
     def _planner_diagnostic(self, result: PlannerResult) -> QueryDiagnostic:

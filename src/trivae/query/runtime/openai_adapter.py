@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
@@ -89,6 +90,8 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         if isinstance(runtime_context, RuntimeContext):
             # 先固定本 turn 的编号，避免并发/顺序执行的多个 tool call 被误计成不同 round。
             runtime_context.current_tool_round = self._state.tool_rounds + 1
+            # 新模型轮次开始时清掉缺少 provider call ID 的旧 local mapping。
+            runtime_context.current_tool_call_id = None
         # 达到产品预算后，下一次模型调用必须保持无工具状态。
         if self._state.finalizing:
             agent.tools.clear()
@@ -129,12 +132,17 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
     async def on_tool_start(self, context: Any, agent: Any, tool: Any) -> None:
         """tool 开始事件只保留名称和 SDK 提供的 call id。"""
 
+        runtime_context = getattr(context, "context", None)
+        if not isinstance(runtime_context, RuntimeContext):
+            raise RuntimeError("SDK tool start did not contain Trivae RuntimeContext")
         tool_name = getattr(context, "tool_name", None) or getattr(tool, "name", None)
-        tool_call_id = getattr(context, "tool_call_id", None)
+        provider_tool_call_id = getattr(context, "tool_call_id", None)
         if not isinstance(tool_name, str) or not tool_name:
             raise RuntimeError("SDK tool start did not provide a stable tool name")
-        if not isinstance(tool_call_id, str) or not tool_call_id:
-            tool_call_id = None
+        if not isinstance(provider_tool_call_id, str) or not provider_tool_call_id:
+            provider_tool_call_id = None
+        # hook 只在 local context 建立 provider→Trivae ID 映射，不把 provider ID 向上暴露。
+        tool_call_id = runtime_context.allocate_tool_call_id(provider_tool_call_id)
         self._state.pending.append(
             _PendingEvent(
                 "tool_started",
@@ -151,11 +159,13 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         if not isinstance(runtime_context, RuntimeContext):
             raise RuntimeError("SDK tool context did not contain Trivae RuntimeContext")
         tool_name = getattr(context, "tool_name", None) or getattr(tool, "name", None)
-        tool_call_id = getattr(context, "tool_call_id", None)
+        provider_tool_call_id = getattr(context, "tool_call_id", None)
         if not isinstance(tool_name, str) or not tool_name:
             raise RuntimeError("SDK tool end did not provide a stable tool name")
-        if not isinstance(tool_call_id, str) or not tool_call_id:
-            tool_call_id = None
+        if not isinstance(provider_tool_call_id, str) or not provider_tool_call_id:
+            provider_tool_call_id = None
+        # 工具 adapter 已经记录 Trivae-owned call；这里用同一映射找到它。
+        tool_call_id = runtime_context.resolve_tool_call_id(provider_tool_call_id)
 
         tool_call = self._find_tool_call(runtime_context.tool_calls, tool_call_id, tool_name)
         if tool_call is None:
@@ -311,7 +321,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         yield self._event(state, "run_started")
         if self._abort_is_set(abort_event):
             state.aborted = True
-            result = self._aborted_result((), 0)
+            result = self._aborted_result((), 0, None, ())
             yield self._event(state, "aborted", result=result)
             return
 
@@ -368,6 +378,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 result = self._aborted_result(
                     tuple(context.tool_calls) if context is not None else (),
                     state.tool_rounds,
+                    context.run_id if context is not None else None,
+                    tuple(context.tool_results) if context is not None else (),
                 )
                 yield self._event(state, "aborted", result=result)
                 return
@@ -394,6 +406,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 tool_calls=tuple(context.tool_calls) if context is not None else (),
                 usage=usage,
                 tool_rounds=state.tool_rounds,
+                run_id=context.run_id if context is not None else None,
+                tool_results=tuple(context.tool_results) if context is not None else (),
             )
             state.settled = True
             yield self._event(state, "completed", result=result)
@@ -402,6 +416,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 result = self._aborted_result(
                     tuple(context.tool_calls) if context is not None else (),
                     state.tool_rounds,
+                    context.run_id if context is not None else None,
+                    tuple(context.tool_results) if context is not None else (),
                 )
                 yield self._event(state, "aborted", result=result)
                 return
@@ -422,6 +438,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 result = self._aborted_result(
                     tuple(context.tool_calls) if context is not None else (),
                     state.tool_rounds,
+                    context.run_id if context is not None else None,
+                    tuple(context.tool_results) if context is not None else (),
                 )
                 yield self._event(state, "aborted", result=result)
                 return
@@ -451,6 +469,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         if unknown:
             raise ValueError(f"requested capability is not registered: {sorted(unknown)!r}")
         return RuntimeContext(
+            run_id=request.request_id or f"run-{uuid.uuid4().hex}",
             scope=request.scope,
             capability_registry=self.capability_registry,
             available_capabilities=request.available_capabilities,
@@ -568,9 +587,17 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             ),
             usage=usage,
             tool_rounds=state.tool_rounds,
+            run_id=context.run_id if context is not None else None,
+            tool_results=tuple(context.tool_results) if context is not None else (),
         )
 
-    def _aborted_result(self, tool_calls: tuple[RuntimeToolCall, ...], tool_rounds: int) -> RuntimeResult:
+    def _aborted_result(
+        self,
+        tool_calls: tuple[RuntimeToolCall, ...],
+        tool_rounds: int,
+        run_id: str | None,
+        tool_results: tuple[Any, ...],
+    ) -> RuntimeResult:
         """构造 cancellation terminal result；取消不伪装成完成。"""
 
         return RuntimeResult(
@@ -586,6 +613,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 diagnostic_type="abort_event",
             ),
             tool_rounds=tool_rounds,
+            run_id=run_id,
+            tool_results=tool_results,
         )
 
     @staticmethod

@@ -150,3 +150,14 @@ Evidence: architecture / decision / code / test / benchmark / failure case
 ```
 
 如果答案只能是“代码就是这么写的”，记录不合格；如果必须虚构项目经历才能补齐，记录方式不合格。
+
+## M5a Evidence / Citation 事实索引
+
+M5a 的事实来源集中在 [task PRD](../../tasks/08-23-m5-evidence-citation-finalization/prd.md)、[design](../../tasks/08-23-m5-evidence-citation-finalization/design.md)、[implementation](../../tasks/08-23-m5-evidence-citation-finalization/implement.md) 与 [validation](../../tasks/08-23-m5-evidence-citation-finalization/validation.md)：
+
+- 为什么不能只返回 `[1]`：`QueryResult.answer_artifact` 保存 claim-level binding，`query/evidence.py` 再确定性解析 source identity；显示编号不承担 provenance。
+- 为什么需要 current-run provenance：测试覆盖 fabricated run/tool/result/item ID、old run 和 scope violation；source 必须命中本轮 Tool Result，不能从 prior assistant context 借用。
+- 为什么 Retrieval Candidate 不等于 Final Evidence：Retrieval 只提供 bounded candidate / structured result，Agent final synthesis 组织 question-specific finding，validator 只验证结构、locator、scope 和可信 hydration。
+- 为什么不引入 Evidence Agent / Judge：Stage 1.8 ownership 与当前实现都把 semantic entailment 留给 M7 Evaluation；M5 没有第二套 Agent Loop。
+- 为什么 invalid citation 不 silent fallback：finalizer 通过 `finalization_error` 阻止正式 `final_answer`，不会删 binding、换来源或 retry；对应 bad cases 在 `tests/test_evidence.py`。
+- 当前限制：Conversation / Assistant Message durable persistence 仍是 M5b；Trace backend、semantic quality 和 bounds calibration 仍待 M6/M7 或 real-run evidence。

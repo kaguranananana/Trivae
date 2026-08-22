@@ -1,12 +1,12 @@
 # Agent Runtime and Query Execution Guidelines
 
-M4 Query Execution Core 的可执行边界。Router、Planner、QueryOrchestrator 是 Trivae-owned application layer；OpenAI Agents SDK 只允许出现在 runtime adapter。当前实现按本地验证的 `openai-agents==0.22.0` 编写，后续升级必须重新验证本文件的行为契约。
+M4 Query Execution Core 与 M5 Evidence Finalization 的可执行边界。Router、Planner、QueryOrchestrator 和 Answer Finalizer 是 Trivae-owned application layer；OpenAI Agents SDK 只允许出现在 runtime adapter。当前实现按本地验证的 `openai-agents==0.22.0` 编写，后续升级必须重新验证本文件的行为契约。
 
 ## 1. Scope / Trigger
 
 - Trigger: M4a baseline 需要补齐两路 query orchestration、bounded soft planning、streaming/cancellation、tool-round finalization 和 provider/application lifecycle。
 - Scope: `config`、`query`、runtime adapter、Application composition root、Capability tool adapter 及其 deterministic tests。
-- Out of scope: storage schema、semantic/vector/hybrid retrieval、Evidence/Citation、Trace Store、Evaluation runner、HTTP/SSE、UI、multi-agent、workflow/step executor、automatic replan、app-level retry/fallback。
+- Out of scope: Conversation / Assistant Message storage schema、semantic/vector/hybrid retrieval、Trace Store、Evaluation runner、HTTP/SSE、UI、multi-agent、workflow/step executor、automatic replan、app-level retry/fallback。
 
 ## 2. Signatures
 
@@ -107,6 +107,8 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 - 同一模型 turn 产生一个或多个 Tool Call 并形成 Tool Result，计为一个 `tool_round`。达到 `max_tool_rounds` 后进入 `finalizing`，清空 agent tools，允许额外一次无工具 final synthesis；正常结果为 `completed`。
 - `max_turns` 只作 SDK absolute backstop；撞上时 `termination == "max_turns_exceeded"`、error code `MAX_TURNS_EXCEEDED`、category `absolute_backstop`。
 - `completed` 只能在 SDK `stream_events()` 完整消费和 cleanup 后发出。abort 是 terminal intent：不启动新 model/tool work，不做 final synthesis，不发 `completed`；最终 termination 为 `aborted`。
+- M5 Tool Result 额外携带 Trivae-owned `run_id`、`tool_call_id`、`tool_result_id` 和 bounded source projections；Runtime 只传递 provenance，不选择 Evidence、不拥有 Citation State Machine。
+- 只有 `termination == "completed"` 的 RuntimeResult 才进入 QueryOrchestrator 的 Answer Finalizer；validated Answer Artifact 才能作为 Query 的正式 `final_answer`，invalid citation 显式失败。
 - Runtime 持有 model/provider client；`aclose()` 必须真实 await `model.close()` 和 `AsyncOpenAI.close()`（若存在），且幂等。Application `aclose()` 还要释放 lexical/read/store；同步 `close()` 在 running loop 中必须显式报错并要求调用 `await aclose()`。
 
 ### Error projection
@@ -130,6 +132,7 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 | Non-text final output | `failed` + `INVALID_FINAL_OUTPUT` |
 | Provider/network exception | `failed` + secret-safe `RUNTIME_ERROR`；无 retry/fallback |
 | User abort before/during run | `aborted`；无 final synthesis、无 completed，等待 SDK cleanup |
+| Invalid / unresolved citation after completed runtime | Query 返回 `finalization_error`；不返回 validated answer、不删除 binding、不自动修复 |
 | Closed runtime/application reused | 显式 lifecycle error；不得静默重建 provider/resource |
 
 ## 5. Good / Base / Bad Cases
@@ -149,6 +152,7 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 - Orchestrator：两路共享 runtime、scope identity、whitelist、router/planner degraded 仍执行、scope 不进入 model input。
 - Runtime：既有 SQLite/tool pipeline、known error recovery、unknown terminal error、multiple calls one round、budget finalization/tool invisibility、SDK backstop、invalid final、secret-safe provider failure、stream/content/tool/usage events、abort before/during/late result、completed-after-cleanup、idempotent close。
 - Application：无 provider 的 retrieval-only construction、query 进入 Orchestrator、async/sync lifecycle 和所有已创建 resources close。
+- M5 Evidence：Answer Artifact、claim binding、finding/source contract、current-run provenance、scope/locator validation、trusted message hydration、structured result resolution、invalid citation failure。
 - Static gates：`pytest -q`、`ruff check src tests`、`mypy src`、CLI help、Trellis validation、`git diff --check`；live DeepSeek smoke 只能 opt-in，不进入默认 suite。
 
 ## 7. Wrong vs Correct

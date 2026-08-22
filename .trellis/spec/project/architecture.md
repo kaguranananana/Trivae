@@ -1976,9 +1976,23 @@ Evaluation Suite
 8. **Two dependency rules**：Runtime Call Flow 与 Source Dependency Rule 分开记录；业务 contract 不依赖具体 infrastructure，concrete adapter 可以依赖 Trivae contract，bootstrap 可以组装两者；不新增 ports、adapters、domain、usecases 层级。
 9. **Separate surfaces**：Tool Surface、CLI Surface、HTTP API Surface 独立治理；Agent Tool 不自动成为公共命令或 endpoint。
 10. **Versioned HTTP boundary**：第一版保留 `/api/v1`；Streaming 优先使用 Normalized Event 的单向 SSE-like projection，WebSocket、UI、MCP、Daemon 与 self-update 暂不继承。
-11. **Deferred implementation**：package 文件、Python / JSON / Database Schema、框架版本、DI 方式、API wire schema、Evaluation runner、真实 baseline 与数值参数仍为 Implementation / Real-run Calibration Pending。
+11. **Deferred implementation**：Conversation / Assistant Message persistence schema、Trace implementation、package 细节的长期演进、API wire schema、Evaluation runner、真实 baseline 与数值参数仍为 Implementation / Real-run Calibration Pending；M5a 已落地 Evidence / Citation finalization 的第一版 Python contract。
 
 完整 rationale、Package Layout、Composition Root、Failure Case、ChatLab 继承 / 适配 / 暂不继承与 Reopen Conditions 见 [Stage 1.11 Application Architecture ADR](./technical-decisions/stage-1-11-application-architecture.md)。
+
+### M5a：Evidence / Citation implementation status
+
+M5a 保持 Stage 1.8 已确认的 ownership 与主链路，在 Query Plane 形成以下实现边界：
+
+```text
+Runtime Tool Result
+  → bounded current-run provenance
+  → Agent final synthesis JSON
+  → query/evidence.py parser + deterministic finalizer
+  → QueryResult.answer_artifact 或 finalization_error
+```
+
+`query/evidence.py` 是 Trivae-owned contract，定义 Answer Artifact、claim binding、finding-oriented Evidence、Message / Structured Source、Tool Result record 和 trusted metadata hydration；`query/runtime/` 只产生并传递 provenance，`retrieval/` 仍只返回 candidates / structured results，Application facade 不自行拼装 Evidence。M5a 的 durable Conversation / Assistant Message commit 尚未实现，validated Artifact 以 QueryResult 字段作为可验证的提交前边界，后续 M5b 才接入持久化。
 
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
@@ -2038,12 +2052,12 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - OpenTelemetry 或其他 exporter 是否接入；若接入只能消费 privacy-projected Trivae Event，SDK built-in external tracing 当前继续显式关闭
 - Agent correctness benchmark、quality axes、budget / threshold 与参数校准（Stage 1.10 Implementation / Real-run Calibration；Case / Reference / Review 语义已由 ADR 确认）
 - Evidence-aware stopping 的 machine-enforced gate、minimum-citation / coverage gate 与参数（Stage 1.10 Implementation / Real-run Calibration；Stage 1.8 已确认第一版仅作 Agent guidance）
-- Answer Artifact 的 Python / JSON / Database Schema、Claim binding 序列化、Structured Result locator、bounded context 数量与 Message mutation 后的 snapshot / current diff UX（Stage 1.8 语义已确认，实现 Pending）
+- Answer Artifact 的 Durable Database Schema、Conversation commit / replay、Message mutation 后的 snapshot / current diff UX 与长期 Claim binding migration 仍 Pending；M5a 已落地第一版 Python / JSON finalization contract、Structured Result locator 与 calibrated bounded source limits，具体参数仍待 Evaluation 校准
 - Evidence / Citation Trace family、Error Code ownership、storage 与 operational metric 原则已由 Stage 1.9 确认；具体 Schema、枚举与实现 Pending
 - semantic entailment、criterion quality、sufficiency、citation precision / recall 与 bounded repair Evaluation 的具体 rubric / runner（Stage 1.10 Implementation / Real-run Calibration）
 - Evaluation Case authoring、Dataset / Snapshot 构建、Review workflow、result storage、quality metric 实现、threshold / gate、Evaluation runner 与 Regression 执行细节（Stage 1.10 Implementation / Real-run Calibration；总体 Evaluation architecture 已由 [Stage 1.10 ADR](./technical-decisions/stage-1-10-evaluation.md) 确认）
 - Context architecture 与上下文规模控制（Stage 1.7 已确认 RuntimeContext / Model Context 分离与 pre-run compression 机制，实现 Pending）
-- Answer Generation 的模型、Prompt、具体输出 Schema；invalid / unresolved Citation 阻止 Finalization 的失败语义已由 Stage 1.8 确认
+- Answer Generation 的长期模型、Prompt 演进与版本化输出 Schema 仍 Pending；M5a 已实现第一版结构化 final synthesis prompt / parser，invalid / unresolved Citation 阻止 Finalization 的失败语义已由 Stage 1.8 确认
 - CLI / API / Evaluation 的具体协议 Schema、状态 / 结果展示、鉴权与产品交互（Stage 1.11 已确认 Application Boundary，具体实现 Pending）
 - Python package 的具体文件、class / interface signature、DI 方式与依赖锁定（Stage 1.11 已确认概念 package ownership，具体实现 Pending）
 - 其他模块的 Retry / Fallback 策略（Stage 1.5 Router 的显式可用性降级契约除外）

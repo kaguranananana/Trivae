@@ -13,6 +13,7 @@ from trivae.capabilities.contracts import (
     ToolError,
 )
 from trivae.capabilities.registry import CapabilityRegistry
+from trivae.query.evidence import build_tool_result_record
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
 
 
@@ -62,11 +63,11 @@ class SearchMessagesSDKToolAdapter:
 
             runtime_context = context.context
             # SDK 版本可能把 call id 放在 wrapper 或 typed local context 上，二者都只投影为安全字符串。
-            tool_call_id = getattr(context, "tool_call_id", None)
-            if not isinstance(tool_call_id, str):
-                tool_call_id = getattr(runtime_context, "current_tool_call_id", None)
-            if not isinstance(tool_call_id, str):
-                tool_call_id = None
+            provider_tool_call_id = getattr(context, "tool_call_id", None)
+            if not isinstance(provider_tool_call_id, str):
+                provider_tool_call_id = None
+            # SDK ID 只用于 local mapping；正式 contract 使用由 Runtime 分配的 Trivae ID。
+            tool_call_id = runtime_context.resolve_tool_call_id(provider_tool_call_id)
             if "search_messages" not in runtime_context.available_capabilities:
                 # 工具不可见时仍被调用属于 Runtime invariant，不能伪装成普通结果。
                 raise RuntimeError("search_messages was invoked outside the allowed capability set")
@@ -109,6 +110,17 @@ class SearchMessagesSDKToolAdapter:
                     raise
 
             error_code = envelope.error.code if envelope.error is not None else None
+            # 一个已知 ToolEnvelope 一定对应一个 Trivae-owned Tool Result identity。
+            tool_result_id = f"{tool_call_id}/result"
+            record = build_tool_result_record(
+                run_id=runtime_context.run_id,
+                tool_call_id=tool_call_id,
+                tool_result_id=tool_result_id,
+                tool_name="search_messages",
+                envelope=envelope,
+                scope=runtime_context.scope,
+            )
+            runtime_context.tool_results.append(record)
             # 这里记录一次 tool call；同一模型回合的多个调用由 Runtime hook 统一计为一轮。
             runtime_context.tool_calls.append(
                 RuntimeToolCall(
@@ -116,10 +128,13 @@ class SearchMessagesSDKToolAdapter:
                     envelope.status,
                     error_code,
                     tool_call_id=tool_call_id,
+                    tool_result_id=tool_result_id,
                     round=runtime_context.current_tool_round,
                 )
             )
-            # to_dict 只包含既有 bounded ToolEnvelope 的安全字段，不返回 SDK/SQLite 对象。
-            return envelope.to_dict()
+            # Tool Result 除既有数据外只增加安全 locator，供 final synthesis 提出可验证引用。
+            result_payload = envelope.to_dict()
+            result_payload["provenance"] = record.to_model_provenance()
+            return result_payload
 
         return search_messages

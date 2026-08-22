@@ -7,6 +7,7 @@ from typing import AsyncIterator, Literal, Mapping, Protocol
 
 from trivae.capabilities.contracts import ExecutionScope
 from trivae.capabilities.registry import CapabilityRegistry
+from trivae.query.evidence import ToolResultRecord
 
 
 class AgentRuntimeContractError(ValueError):
@@ -78,6 +79,8 @@ class RuntimeToolCall:
     error_code: str | None = None
     tool_call_id: str | None = None
     round: int | None = None
+    # M5 provenance 扩展放在原有字段之后，保留 M4 positional projection 的顺序。
+    tool_result_id: str | None = None
 
     @property
     def tool_round(self) -> int | None:
@@ -98,6 +101,40 @@ class RuntimeContext:
     aborted: bool = False
     abort_event: object | None = None
     current_tool_round: int = 1
+    # run_id 是当前执行的本地关联键，不把 provider call ID 当成公共身份。
+    run_id: str = "run-unknown"
+    tool_results: list[ToolResultRecord] = field(default_factory=list)
+    current_tool_call_id: str | None = None
+    # provider call ID 只存在 adapter local context，用于把 SDK hook 对回 Trivae-owned identity。
+    _provider_tool_call_ids: dict[str, str] = field(default_factory=dict, repr=False)
+    _next_tool_call_number: int = field(default=0, repr=False)
+
+    def resolve_tool_call_id(self, provider_tool_call_id: str | None) -> str:
+        """为一次 SDK tool call 分配稳定的 Trivae-owned identity。"""
+
+        if provider_tool_call_id is None and self.current_tool_call_id is not None:
+            return self.current_tool_call_id
+        if provider_tool_call_id is not None:
+            existing = self._provider_tool_call_ids.get(provider_tool_call_id)
+            if existing is not None:
+                self.current_tool_call_id = existing
+                return existing
+        self._next_tool_call_number += 1
+        local_id = f"{self.run_id}/tool-call/{self._next_tool_call_number}"
+        if provider_tool_call_id is not None:
+            self._provider_tool_call_ids[provider_tool_call_id] = local_id
+        self.current_tool_call_id = local_id
+        return local_id
+
+    def allocate_tool_call_id(self, provider_tool_call_id: str | None) -> str:
+        """在 tool-start 边界为缺少 provider ID 的调用强制分配新 identity。"""
+
+        if provider_tool_call_id is not None:
+            return self.resolve_tool_call_id(provider_tool_call_id)
+        self._next_tool_call_number += 1
+        local_id = f"{self.run_id}/tool-call/{self._next_tool_call_number}"
+        self.current_tool_call_id = local_id
+        return local_id
 
 
 @dataclass(frozen=True)
@@ -123,6 +160,9 @@ class RuntimeResult:
     error: RuntimeErrorInfo | None = None
     usage: Mapping[str, int | float] | None = None
     tool_rounds: int = 0
+    # M5 只携带 bounded provenance projection，不携带 SDK raw result。
+    run_id: str | None = None
+    tool_results: tuple[ToolResultRecord, ...] = ()
 
     @property
     def answer(self) -> str | None:

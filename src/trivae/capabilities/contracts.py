@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal, Mapping, Sequence
 
-from trivae.retrieval.structured import RetrievalResult
+from trivae.retrieval.structured import (
+    RetrievalResult,
+    StructuredAggregateResult,
+    StructuredMessageResult,
+)
+
+ToolData = RetrievalResult | StructuredMessageResult | StructuredAggregateResult
 
 
 class CapabilityContractError(Exception):
@@ -113,7 +119,7 @@ class ToolEnvelope:
     """统一表达 ok/partial/error 与 truncation 的薄 envelope。"""
 
     status: Literal["ok", "partial", "error"]
-    data: RetrievalResult | None
+    data: ToolData | None
     meta: Mapping[str, object]
     error: ToolError | None
 
@@ -123,7 +129,7 @@ class ToolEnvelope:
         data: object | None
         if self.data is None:
             data = None
-        else:
+        elif isinstance(self.data, RetrievalResult):
             data = {
                 "strategy": self.data.strategy,
                 "query": self.data.query.to_dict(),
@@ -140,6 +146,40 @@ class ToolEnvelope:
                 "expanded_messages": [asdict(message) for message in self.data.expanded_messages],
                 "total_hits": self.data.total_hits,
                 "returned_messages": self.data.returned_messages,
+                "coverage": asdict(self.data.coverage),
+                "partial": self.data.partial,
+                "truncated": self.data.truncated,
+                "metadata": {
+                    "filters": dict(self.data.metadata.filters),
+                    "ordering": self.data.metadata.ordering,
+                    "latency_ms": self.data.metadata.latency_ms,
+                    "details": dict(self.data.metadata.details),
+                },
+            }
+        elif isinstance(self.data, StructuredMessageResult):
+            data = {
+                "strategy": self.data.strategy,
+                "query": self.data.query.to_dict(),
+                "messages": [asdict(message) for message in self.data.messages],
+                "total_hits": self.data.total_hits,
+                "returned_count": self.data.returned_count,
+                "coverage": asdict(self.data.coverage),
+                "partial": self.data.partial,
+                "truncated": self.data.truncated,
+                "metadata": {
+                    "filters": dict(self.data.metadata.filters),
+                    "ordering": self.data.metadata.ordering,
+                    "latency_ms": self.data.metadata.latency_ms,
+                    "details": dict(self.data.metadata.details),
+                },
+            }
+        else:
+            # Aggregate 结果拥有自己的 locator/value 语义，不能套成 MessageHit。
+            data = {
+                "strategy": self.data.strategy,
+                "query": self.data.query.to_dict(),
+                "total_count": self.data.total_count,
+                "buckets": [asdict(bucket) for bucket in self.data.buckets],
                 "coverage": asdict(self.data.coverage),
                 "partial": self.data.partial,
                 "truncated": self.data.truncated,

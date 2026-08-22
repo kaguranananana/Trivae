@@ -203,6 +203,8 @@ class MessageProjection:
     reply_to_source_message_id: str | None
     recalled: bool
     system: bool
+    # session display 是可信 canonical projection 的一部分，供 Citation finalizer hydrate 快照。
+    session_display: str = ""
 
 
 @dataclass(frozen=True)

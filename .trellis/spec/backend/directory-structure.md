@@ -1,6 +1,6 @@
 # Directory Structure
 
-> 目录与文件组织约定。M1 ingestion、M2 Retrieval Core、M3 最小 Capability/Tool vertical slice、M4a Agent Runtime baseline 和 M4 Query Execution Core 已落地；Evaluation 和 HTTP Product Interaction 仍待后续任务。
+> 目录与文件组织约定。M1 ingestion、M2 Retrieval Core、M3 最小 Capability/Tool vertical slice、M4a Agent Runtime baseline、M4 Query Execution Core 和 M5 Evidence/Citation finalization vertical slice 已落地；Conversation persistence、Evaluation 和 HTTP Product Interaction 仍待后续任务。
 
 ---
 
@@ -43,7 +43,7 @@ package layout 与 Trivae Home 都是逻辑 ownership 语义，不要求一一�
 
 - **只按已确认边界创建业务结构**：Stage 1.11 已确认单 Python distribution、`src/trivae` 概念布局和 ownership；实际目录必须在对应 Implementation task 中按 ADR 落地。
 - **不提前创建实现细节**：具体文件、class、Schema、依赖、框架版本、DI 方式和测试工具链仍须等待实现任务确定。
-- M1 先只创建 `bootstrap`、`data`、`interfaces`；M2/M3 implementation task 已按确认边界实际创建 `retrieval`、`capabilities` 和 data/storage read/derived adapter；M4a/M4 implementation task 已按确认边界创建 `config`、`query` contracts/router/planner/orchestrator/runtime。Evidence、Trace 和 Evaluation package 仍随对应任务落地。
+- M1 先只创建 `bootstrap`、`data`、`interfaces`；M2/M3 implementation task 已按确认边界实际创建 `retrieval`、`capabilities` 和 data/storage read/derived adapter；M4a/M4 implementation task 已按确认边界创建 `config`、`query` contracts/router/planner/orchestrator/runtime；M5 implementation task 已在 `query/evidence.py` 落地 Answer Artifact、provenance 与 finalization。Conversation、Trace 和 Evaluation package 仍随对应任务落地。
 
 ## 当前已落地的 M2/M3 物理文件
 
@@ -82,6 +82,7 @@ src/trivae/
     ├── router.py             # two-route rule-first Router
     ├── planner.py            # bounded validated soft Planner
     ├── orchestrator.py       # shared Query application entry
+    ├── evidence.py           # Answer Artifact、Evidence/Citation contract 与 trusted finalization
     └── runtime/
         ├── __init__.py
         ├── contracts.py      # SDK-independent request/context/result/event
@@ -90,9 +91,9 @@ src/trivae/
         └── prompt.py         # short model-visible instructions
 ```
 
-M4 的 env、Query/Runtime request/result/event、错误矩阵和测试断言见 [Agent Runtime Guidelines](./agent-runtime-guidelines.md)。Runtime adapter 是唯一允许直接依赖 OpenAI Agents SDK 的新业务模块；`query` application contracts、`capabilities/`、`retrieval/` 与 `data/` 不反向依赖 SDK。
+M4 的 env、Query/Runtime request/result/event 与 M5 finalization 边界见 [Agent Runtime Guidelines](./agent-runtime-guidelines.md)。Runtime adapter 是唯一允许直接依赖 OpenAI Agents SDK 的新业务模块；`query` application contracts、`query/evidence.py`、`capabilities/`、`retrieval/` 与 `data/` 不反向依赖 SDK。
 
 ## 后续阶段（实现任务启动后补充）
 
-- Python package / module boundary → 已由 Stage 1.11 定义概念 ownership；M4 已落地 `config`、Query contracts、Router、Planner、Orchestrator 与 `query/runtime`；Evidence、Trace、Evaluation 仍随对应 Implementation task 落地。
+- Python package / module boundary → 已由 Stage 1.11 定义概念 ownership；M5 已落地 `query/evidence.py`，拥有 Answer Artifact、Tool Result provenance、Citation validation 与 trusted hydration；Conversation persistence、Trace、Evaluation 仍随对应 Implementation task 落地。
 - 测试目录布局 → 当前继续使用 unittest；M1/M2/M3 contract/integration tests 分文件维护，真实数据校准记录在 task validation artifact，不把 raw 数据复制到 tests。

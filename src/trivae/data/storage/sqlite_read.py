@@ -23,6 +23,7 @@ from trivae.retrieval.structured import (
 PROJECTION_COLUMNS = """
     m.internal_message_id,
     m.session_id,
+    s.name AS session_display,
     m.source_message_id,
     m.sender_user_id,
     m.sender_platform_id,
@@ -98,6 +99,7 @@ def _row_to_projection(row: sqlite3.Row) -> MessageProjection:
     return MessageProjection(
         internal_message_id=str(row["internal_message_id"]),
         session_id=str(row["session_id"]),
+        session_display=str(row["session_display"] or ""),
         source_message_id=row["source_message_id"],
         sender_user_id=row["sender_user_id"],
         sender_platform_id=row["sender_platform_id"],
@@ -154,6 +156,7 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             f"""
             SELECT {PROJECTION_COLUMNS}
             FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
             WHERE {where_sql}
             ORDER BY {ORDER_BY_SQL}
             LIMIT ?
@@ -251,6 +254,7 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             INNER JOIN messages AS m
               ON m.internal_message_id = f.internal_message_id
              AND m.session_id = f.session_id
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
             WHERE messages_fts MATCH ? AND {where_sql}
             ORDER BY lexical_score ASC, {ORDER_BY_SQL}
             LIMIT ?
@@ -306,6 +310,7 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
                 f"""
                 SELECT {PROJECTION_COLUMNS}
                 FROM messages AS m
+                INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
                 WHERE m.session_id = ? AND {boundary_sql}
                 ORDER BY {ORDER_BY_SQL_DESC}
                 LIMIT ?
@@ -328,6 +333,7 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
                 f"""
                 SELECT {PROJECTION_COLUMNS}
                 FROM messages AS m
+                INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
                 WHERE m.session_id = ? AND {boundary_sql}
                 ORDER BY {ORDER_BY_SQL}
                 LIMIT ?
@@ -345,6 +351,7 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             f"""
             SELECT {PROJECTION_COLUMNS}
             FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
             WHERE m.session_id = ? AND m.internal_message_id = ?
             """,
             (session_id, internal_message_id),
