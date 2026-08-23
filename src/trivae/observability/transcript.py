@@ -100,6 +100,8 @@ def format_execution_transcript(
             _render_router(lines, event)
         elif event.operation == "router.degraded":
             _render_router_degradation(lines, event)
+        elif event.operation == "planner.started":
+            _render_planner_started(lines, event)
         elif event.operation in {"planner.completed", "planner.failed", "planner.skipped"}:
             _render_planner(lines, event)
         elif event.operation == "model.turn" and event.phase == "started":
@@ -259,6 +261,7 @@ def _render_planner(lines: list[str], event: NormalizedQueryEvent) -> None:
     if event.operation == "planner.completed":
         lines.append("[PLANNER]")
         lines.append("status: completed")
+        lines.extend(_planner_observation_lines(payload))
         lines.append(f"title: {_pretty_value(payload.get('title'))}")
         lines.append(f"intent: {_pretty_value(payload.get('intent'))}")
         lines.append("steps:")
@@ -284,12 +287,63 @@ def _render_planner(lines: list[str], event: NormalizedQueryEvent) -> None:
         "[PLANNER]",
         (
             "status: failed" if event.operation == "planner.failed" else "status: skipped",
+            *_planner_observation_lines(payload),
             f"error_code: {_pretty_value(payload.get('error_code') or _failure_value(failure, 'error_code'))}",
             f"failure category: {_pretty_value(payload.get('failure_category') or _failure_value(failure, 'category'))}",
+            f"failure detail: {_pretty_value(payload.get('failure_detail_code'))}",
+            f"parse stage: {_pretty_value(payload.get('parse_stage'))}",
+            f"diagnostic: {_pretty_value(payload.get('diagnostic'))}",
             f"handling: {_failure_value(failure, 'handling') or '-'}",
             f"fallback: {'executed_without_plan' if 'executed_without_plan' in event.limitations else '-'}",
         ),
     )
+
+
+def _render_planner_started(lines: list[str], event: NormalizedQueryEvent) -> None:
+    """渲染 Planner invocation boundary，让 timeout/request 在没有 response 时仍可见。"""
+
+    payload = event.payload
+    request = payload.get("completion_request")
+    request_mapping = request if isinstance(request, Mapping) else {}
+    _section(
+        lines,
+        "[PLANNER]",
+        (
+            "status: started",
+            f"route: {_pretty_value(payload.get('route'))}",
+            f"provider: {_pretty_value(request_mapping.get('provider'))}",
+            f"model: {_pretty_value(request_mapping.get('model'))}",
+            f"completion timeout_seconds: {_pretty_value(payload.get('completion_timeout_seconds'))}",
+            f"request max_tokens: {_pretty_value(request_mapping.get('max_tokens'))}",
+            f"json mode: {_pretty_value(request_mapping.get('json_mode'))}",
+        ),
+    )
+
+
+def _planner_observation_lines(payload: Mapping[str, object]) -> tuple[str, ...]:
+    """渲染 Planner 的 Provider/预算/响应事实，不重新解析或猜测 response。"""
+
+    request = payload.get("completion_request")
+    request_mapping = request if isinstance(request, Mapping) else {}
+    provider = payload.get("provider") or request_mapping.get("provider")
+    model = payload.get("model") or request_mapping.get("model")
+    lines = [
+        f"provider: {_pretty_value(provider)}",
+        f"model: {_pretty_value(model)}",
+        f"planner latency_ms: {_pretty_value(payload.get('planner_latency_ms'))}",
+        f"provider latency_ms: {_pretty_value(payload.get('provider_latency_ms'))}",
+        f"request max_tokens: {_pretty_value(request_mapping.get('max_tokens'))}",
+        f"json mode: {_pretty_value(request_mapping.get('json_mode'))}",
+        f"finish_reason: {_pretty_value(payload.get('finish_reason'))}",
+        f"usage: {_pretty_value(payload.get('usage'))}",
+        f"output_tokens: {_pretty_value(payload.get('output_tokens'))}",
+        f"response length: {_pretty_value(payload.get('response_length'))}",
+    ]
+    response_content = payload.get("response_content")
+    if isinstance(response_content, str):
+        # 只有 Debug capture 才会带 response_content；这里直接显示同源安全文本。
+        lines.extend(("output:", response_content))
+    return tuple(lines)
 
 
 def _render_model_turn_with_context(

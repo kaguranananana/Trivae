@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "failure_id": "deepseek_planner_failure_attribution",
+  "layer": "planner_provider_boundary",
+  "owner": "planner",
+  "status": "fixed_with_stochastic_observation_pending",
+  "historical_errors": [
+    "PLANNER_INVALID_OUTPUT",
+    "PLANNER_TIMEOUT"
+  ],
+  "evidence": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "completion_max_tokens": 2048,
+    "json_mode": true,
+    "baseline_forced_planned_runs": 10,
+    "baseline_invalid_output": 8,
+    "baseline_timeout": 2,
+    "baseline_timeout_ms": [10003.3, 10003.8],
+    "controlled_15_second_timeout_max_response_ms": 14726.8,
+    "representative_invalid_output": {
+      "finish_reason": "stop",
+      "output_tokens": 432,
+      "response_length": 724,
+      "parse_stage": "intent_validation",
+      "failure_detail_code": "invalid_intent"
+    }
+  },
+  "root_cause": {
+    "invalid_output": "合法 JSON 的 intent 不是 Plan 允许的枚举；Prompt 未显式列出该枚举和数组约束",
+    "timeout": "Planner 独立 10 秒 wait_for 在 Provider response 之前取消了真实 14-16 秒请求"
+  },
+  "minimal_fix": {
+    "planner_timeout_seconds": 20,
+    "prompt_contract_enumerates_intent": true,
+    "prompt_contract_enumerates_array_shapes": true,
+    "planner_retry": false,
+    "planner_fallback": false,
+    "parser_relaxation": false,
+    "debug_failure_attribution": true
+  },
+  "regression": [
+    "tests/test_query_execution_core.py",
+    "tests/test_agent_runtime.py"
+  ],
+  "real_validation": {
+    "post_fix_forced_planned_runs": 10,
+    "post_fix_planner_completed": 10,
+    "post_fix_planner_failed": 0,
+    "post_fix_planner_latency_ms": {
+      "min": 3928.4,
+      "median": 6778.6,
+      "max": 15810.3
+    },
+    "post_fix_query_completed": 9,
+    "post_fix_query_runtime_error": 1,
+    "runtime_error_is_planner_failure": false
+  },
+  "remaining_diagnostics": [
+    "Provider latency remains stochastic",
+    "Planner soft degradation remains the intentional failure policy"
+  ]
+}

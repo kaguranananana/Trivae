@@ -174,7 +174,10 @@ class QueryOrchestrator:
                     phase="started",
                     operation_id=planner_operation_id,
                     parent_operation_id=query_operation_id,
-                    payload={"route": decision.route},
+                    payload={
+                        "route": decision.route,
+                        **self._planner_request_payload(),
+                    },
                 )
             try:
                 planner_result = await self.planner.plan(context)
@@ -228,6 +231,7 @@ class QueryOrchestrator:
                                 }
                                 for step in plan.steps
                             ],
+                            **self._planner_observation_payload(planner_result, trace),
                         },
                     )
             else:
@@ -250,6 +254,8 @@ class QueryOrchestrator:
                         payload={
                             "error_code": error_code,
                             "failure_category": None if planner_failure is None else planner_failure.code,
+                            **self._planner_observation_payload(planner_result, trace),
+                            **self._planner_failure_payload(planner_failure),
                         },
                         limitations=("executed_without_plan",),
                         failure=FailureInfo(
@@ -259,6 +265,9 @@ class QueryOrchestrator:
                             category="planner_failure",
                             handling="executed_without_plan",
                             cause_operation_id=planner_operation_id,
+                            diagnostic_reference=(
+                                None if planner_failure is None else planner_failure.detail_code
+                            ),
                         ),
                     )
                     trace.emit(
@@ -464,3 +473,74 @@ class QueryOrchestrator:
                 message="planner returned no plan",
             )
         return QueryDiagnostic(stage="planner", code=f"PLANNER_{failure.code.upper()}", message=failure.message)
+
+    def _planner_request_payload(self) -> dict[str, object]:
+        """从 SoftPlanner 读取 timeout/request projection，timeout 时也保留调用边界事实。"""
+
+        payload: dict[str, object] = {}
+        timeout = getattr(self.planner, "completion_timeout_seconds", None)
+        if isinstance(timeout, (int, float)) and not isinstance(timeout, bool):
+            payload["completion_timeout_seconds"] = timeout
+        request = getattr(self.planner, "completion_request", None)
+        if isinstance(request, dict) and request:
+            # request 已由 Runtime adapter 约束为普通非敏感值，不在这里复制 SDK 对象。
+            payload["completion_request"] = dict(request)
+        return payload
+
+    @staticmethod
+    def _planner_observation_payload(
+        result: PlannerResult,
+        trace: TraceCollector | None,
+    ) -> dict[str, object]:
+        """把 Planner observation 映射为 normal/debug 共享的安全运行事实。"""
+
+        observation = result.observation
+        if observation is None:
+            return {}
+        payload: dict[str, object] = {
+            "provider": observation.provider,
+            "model": observation.model,
+            "completion_request": dict(observation.request),
+            "planner_latency_ms": observation.latency_ms,
+            "provider_latency_ms": observation.provider_latency_ms,
+            "finish_reason": observation.finish_reason,
+            "usage": None if observation.usage is None else dict(observation.usage),
+            "response_length": (
+                None if observation.response_content is None else len(observation.response_content)
+            ),
+            "parse_stage": observation.parse_stage,
+        }
+        usage = observation.usage
+        if usage is not None:
+            # Provider 可能使用 output_tokens 或 completion_tokens，Trace 统一提供一个易读别名。
+            for key in ("output_tokens", "completion_tokens"):
+                value = usage.get(key)
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    payload["output_tokens"] = value
+                    break
+        # Prompt/response 正文只在 debug profile 落盘，normal Trace 保留长度和结构化元数据。
+        if trace is not None and trace.profile == "debug":
+            payload["prompt"] = observation.prompt
+            if observation.response_content is not None:
+                payload["response_content"] = observation.response_content
+        return payload
+
+    @staticmethod
+    def _planner_failure_payload(failure: object) -> dict[str, object]:
+        """附加 Planner-owned 的细分类，不把 Provider exception 正文暴露给调用者。"""
+
+        if failure is None:
+            return {}
+        detail_code = getattr(failure, "detail_code", None)
+        parse_stage = getattr(failure, "parse_stage", None)
+        diagnostic = getattr(failure, "diagnostic", None)
+        exception_type = getattr(failure, "exception_type", None)
+        payload: dict[str, object] = {
+            "failure_detail_code": detail_code,
+            "parse_stage": parse_stage,
+        }
+        if isinstance(diagnostic, str) and diagnostic:
+            payload["diagnostic"] = diagnostic
+        if isinstance(exception_type, str) and exception_type:
+            payload["exception_type"] = exception_type
+        return payload

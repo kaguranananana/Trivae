@@ -51,3 +51,4 @@
 
 - [DeepSeek Tool/Provenance contract failure](./problems/deepseek-tool-provenance.md)：真实 Provider 曾产生越过 trusted `max_results` 的 `limit`，并把两个 Tool Result 的 locator 字段拼接为一个消息来源；已通过 provider-facing schema、self-contained provenance projection、Prompt 约束和 regression test 修复。
 - [DeepSeek structured output budget failure](./problems/deepseek-structured-output-budget.md)：真实多轮 Run 在未固定最终 JSON 输出预算时产生 `INVALID_ANSWER_ARTIFACT`；已在同一 Provider Runtime boundary 固定 JSON mode、显式预算和紧凑 artifact 指令，严格 Finalizer 与 Planner degraded 事实保持不变。
+- [DeepSeek Planner failure attribution](./problems/deepseek-planner-failure-attribution.md)：真实 Planner 的 invalid output 定位到 `intent_validation` contract，timeout 定位到 10 秒 `wait_for` 提前取消；已通过 Prompt contract、20 秒 timeout 校准和阶段化 Debug Trace 修复，未改变 Planner degraded 架构。

@@ -605,7 +605,24 @@ class QueryStreamAdapter:
             metadata["parent_operation_id"] = event.parent_operation_id
         if event.outcome is not None:
             metadata["outcome"] = event.outcome
-        for key in ("source", "confidence", "reason"):
+        # Route/Planner 的结构化诊断只复制已 capture 的普通值，不把 raw SDK payload 带进实时接口。
+        for key in (
+            "source",
+            "confidence",
+            "reason",
+            "provider",
+            "model",
+            "completion_request",
+            "planner_latency_ms",
+            "provider_latency_ms",
+            "finish_reason",
+            "usage",
+            "output_tokens",
+            "response_length",
+            "parse_stage",
+            "failure_detail_code",
+            "diagnostic",
+        ):
             if key in event.payload:
                 metadata[key] = event.payload[key]
         return metadata

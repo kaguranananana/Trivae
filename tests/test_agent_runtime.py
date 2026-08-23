@@ -162,6 +162,43 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(completions.kwargs["response_format"], {"type": "json_object"})
         self.assertEqual(completions.kwargs["max_tokens"], 2048)
 
+    def test_provider_completion_observation_projects_finish_usage_and_empty_content(self) -> None:
+        """验证 Planner 所需的 finish_reason、usage 和空 content 都来自公开 response 字段。"""
+
+        class RecordingCompletions:
+            def __init__(self, content: str | None) -> None:
+                self.content = content
+
+            async def create(self, **kwargs: object) -> object:
+                return SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            finish_reason="length",
+                            message=SimpleNamespace(content=self.content),
+                        )
+                    ],
+                    usage=SimpleNamespace(
+                        prompt_tokens=11,
+                        completion_tokens=2048,
+                        total_tokens=2059,
+                    ),
+                )
+
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=ScriptedModel([]))
+        runtime._provider_client = SimpleNamespace(
+            chat=SimpleNamespace(completions=RecordingCompletions(None))
+        )
+
+        result = asyncio.run(runtime.complete_text_with_observation("return a JSON object"))
+
+        self.assertIsNone(result.content)
+        assert result.observation is not None
+        self.assertEqual(result.observation.finish_reason, "length")
+        self.assertEqual(result.observation.usage["output_tokens"], 2048)
+        self.assertEqual(result.observation.request["max_tokens"], 2048)
+        self.assertTrue(result.observation.request["json_mode"])
+        self.assertNotIn("api_key", result.observation.request)
+
     def test_search_tool_schema_exposes_trusted_result_bound(self) -> None:
         """验证 provider schema 暴露本次 trusted result bound，但仍保留 Capability 校验。"""
 

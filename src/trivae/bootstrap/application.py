@@ -335,11 +335,21 @@ class TrivaeApplication:
             )
             runtime = self._get_agent_runtime()
             if self._query_orchestrator is None:
+                # Router 仍只需要文本；Planner 优先使用同一 runtime 提供的 metadata-aware boundary。
                 completion = getattr(runtime, "complete_text", None)
                 if not callable(completion):
                     completion = None
+                planner_completion = getattr(runtime, "complete_text_with_observation", None)
+                if not callable(planner_completion):
+                    planner_completion = completion
+                completion_request = getattr(runtime, "completion_request_projection", None)
+                planner_request = completion_request() if callable(completion_request) else None
+                # 两个 optional completion 仍共享同一 provider/runtime，不创建第二个 Planner client。
                 self._router = self._router or RuleRouter(completion=completion)
-                self._planner = self._planner or SoftPlanner(completion=completion)
+                self._planner = self._planner or SoftPlanner(
+                    completion=planner_completion,
+                    completion_request=planner_request,
+                )
                 self._query_orchestrator = QueryOrchestrator(
                     runtime,
                     self._router,

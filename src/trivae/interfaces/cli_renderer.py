@@ -142,6 +142,23 @@ class CliEventRenderer:
 
         if event.type == "plan.failed":
             self._line(f"✗ Plan failed: {self._error_text(event)}")
+            if self._verbose and event.metadata:
+                # verbose 只显示 normalized Planner facts；response 正文留给完整 Debug Trace。
+                keys = (
+                    "provider",
+                    "model",
+                    "planner_latency_ms",
+                    "provider_latency_ms",
+                    "finish_reason",
+                    "output_tokens",
+                    "response_length",
+                    "parse_stage",
+                    "failure_detail_code",
+                    "diagnostic",
+                )
+                details = {key: event.metadata[key] for key in keys if key in event.metadata}
+                if details:
+                    self._line(f"  {self._format_mapping(details, max_items=12, max_chars=1800)}")
             return
         if not event.plan:
             self._line("Plan: completed")

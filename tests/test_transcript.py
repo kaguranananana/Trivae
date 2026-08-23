@@ -286,6 +286,42 @@ def _build_trace() -> StoredTrace:
 class TranscriptTests(unittest.TestCase):
     """验证 Transcript 只从 StoredTrace 派生并保留人工定位所需事实。"""
 
+    def test_planner_started_transcript_shows_provider_request_projection(self) -> None:
+        trace = StoredTrace(
+            trace_id="trace-planner-started",
+            request_id="request-planner-started",
+            profile="debug",
+            started_at="2026-08-23T00:00:00+00:00",
+            terminal_at="2026-08-23T00:00:01+00:00",
+            terminal_outcome="completed",
+            events=(
+                _event(
+                    1,
+                    "planner.started",
+                    stage="planner",
+                    phase="started",
+                    operation_id="planner",
+                    payload={
+                        "route": "planned_execution",
+                        "completion_timeout_seconds": 20.0,
+                        "completion_request": {
+                            "provider": "deepseek",
+                            "model": "deepseek-v4-flash",
+                            "max_tokens": 2048,
+                            "json_mode": True,
+                        },
+                    },
+                ),
+            ),
+        )
+        transcript = format_execution_transcript(trace)
+
+        self.assertIn("status: started", transcript)
+        self.assertIn("provider: deepseek", transcript)
+        self.assertIn("completion timeout_seconds: 20.0", transcript)
+        self.assertIn("request max_tokens: 2048", transcript)
+        self.assertIn("json mode: true", transcript)
+
     def test_transcript_contains_execution_chain_and_model_visible_tool_result(self) -> None:
         trace = _build_trace()
         transcript = format_execution_transcript(trace)

@@ -9,6 +9,7 @@ import json
 import uuid
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import Any, Literal, cast
 
 from agents import Agent, MaxTurnsExceeded, RunConfig, RunHooks, Runner, set_tracing_disabled
@@ -18,6 +19,7 @@ from openai import AsyncOpenAI
 
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.settings import DeepSeekSettings, load_settings
+from trivae.query.completion import CompletionObservation, CompletionResult
 from trivae.query.runtime.contracts import (
     AgentRunRequest,
     AgentRuntime,
@@ -964,10 +966,35 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
     async def complete_text(self, prompt: str) -> str:
         """为 Router/Planner 提供同一 provider client 的纯文本 completion。"""
 
+        # 兼容 Router 等只需要文本的调用者，同时让 Planner 使用下方 metadata-aware 方法。
+        result = await self.complete_text_with_observation(prompt)
+        # Provider 空 content 继续显式失败，避免把空字符串交给 JSON parser 猜测。
+        if not isinstance(result.content, str) or not result.content.strip():
+            raise RuntimeError("provider completion returned no text")
+        return result.content.strip()
+
+    def completion_request_projection(self) -> dict[str, object]:
+        """返回 Router/Planner completion 的 provider-facing 安全请求投影。"""
+
+        # 这些字段是实际发送给 Chat Completions 的非敏感参数，不包含 API key/header。
+        return {
+            "provider": self._provider_name,
+            "model": self._model_name,
+            "temperature": 0,
+            "max_tokens": self.completion_max_tokens,
+            "json_mode": True,
+            "response_format": dict(_FINAL_SYNTHESIS_RESPONSE_FORMAT),
+        }
+
+    async def complete_text_with_observation(self, prompt: str) -> CompletionResult:
+        """执行一次 JSON completion，并返回安全的 request/response/usage/finish 投影。"""
+
         if self._closed:
             raise RuntimeError("runtime is closed")
         if self._provider_client is None:
             raise RuntimeError("injected runtime model has no provider completion client")
+        request_projection = self.completion_request_projection()
+        started = perf_counter()
         response = await self._provider_client.chat.completions.create(
             model=self._model_name,
             messages=[
@@ -979,10 +1006,28 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             response_format=cast(Any, _FINAL_SYNTHESIS_RESPONSE_FORMAT),
             max_tokens=self.completion_max_tokens,
         )
-        content = response.choices[0].message.content
-        if not isinstance(content, str) or not content.strip():
-            raise RuntimeError("provider completion returned no text")
-        return content.strip()
+        # 只读取公开 choices/message 字段；不保存 SDK response 或 raw repr。
+        choices = getattr(response, "choices", None)
+        choice = choices[0] if isinstance(choices, (list, tuple)) and choices else None
+        message = None if choice is None else getattr(choice, "message", None)
+        content = None if message is None else getattr(message, "content", None)
+        # finish_reason 是判断 Provider length 截断的关键事实，缺失时保持 None。
+        finish_reason = None if choice is None else getattr(choice, "finish_reason", None)
+        if not isinstance(finish_reason, str):
+            finish_reason = None
+        # usage 只投影常见的数字字段，不跨 boundary 传递 SDK Usage 对象。
+        usage = self._project_completion_usage(response)
+        observation = CompletionObservation(
+            provider=self._provider_name,
+            model=self._model_name,
+            request=request_projection,
+            latency_ms=(perf_counter() - started) * 1000,
+            finish_reason=finish_reason,
+            usage=usage,
+            response_content=content if isinstance(content, str) else None,
+        )
+        # content 非字符串时返回 None，让 SoftPlanner 将其归为 provider response 阶段失败。
+        return CompletionResult(content if isinstance(content, str) else None, observation)
 
     async def aclose(self) -> None:
         """幂等关闭 model 和 provider client，确保连接不会跨越 Application。"""
@@ -1020,3 +1065,24 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 if isinstance(value, (int, float)) and not isinstance(value, bool):
                     totals[field_name] = totals.get(field_name, 0) + value
         return totals or None
+
+    @staticmethod
+    def _project_completion_usage(response: Any) -> dict[str, int | float] | None:
+        """把 Chat Completion usage 转成普通数字，保留 output token 诊断。"""
+
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return None
+        projected: dict[str, int | float] = {}
+        # 不同 OpenAI-compatible provider 可能使用 prompt/completion 或 input/output 命名。
+        for source_name, target_name in (
+            ("prompt_tokens", "input_tokens"),
+            ("input_tokens", "input_tokens"),
+            ("completion_tokens", "output_tokens"),
+            ("output_tokens", "output_tokens"),
+            ("total_tokens", "total_tokens"),
+        ):
+            value = getattr(usage, source_name, None)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                projected[target_name] = value
+        return projected or None

@@ -15,6 +15,7 @@ from trivae.bootstrap.application import create_application
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import ToolEnvelope
 from trivae.config.settings import load_settings
+from trivae.query.completion import CompletionObservation, CompletionResult
 from trivae.query.contracts import QueryRequest
 from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import SoftPlanner, render_plan_guidance
@@ -146,10 +147,19 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("soft plan guidance", guidance.lower())
         self.assertNotIn("execute(...)" , guidance)
 
+    def test_prompt_spells_out_the_existing_plan_contract(self) -> None:
+        prompt = SoftPlanner._build_prompt(self._context())
+        self.assertIn("intent MUST be exactly one of", prompt)
+        self.assertIn("summary, trend, relationship, search, comparison, evidence, mixed", prompt)
+        self.assertIn("steps MUST be a JSON array", prompt)
+        self.assertIn("success_criteria MUST be a non-empty JSON array", prompt)
+
     def test_malformed_and_structurally_invalid_plan_fail_explicitly(self) -> None:
         malformed = asyncio.run(SoftPlanner(lambda _: "{bad").plan(self._context()))
         self.assertIsNone(malformed.plan)
         self.assertEqual(malformed.failure.code, "invalid_output")
+        self.assertEqual(malformed.failure.detail_code, "json_decode_error")
+        self.assertEqual(malformed.failure.parse_stage, "json_decode")
 
         invalid = asyncio.run(
             SoftPlanner(lambda _: '{"version":1,"title":"x","intent":"evidence","steps":[],"success_criteria":[]}').plan(
@@ -158,6 +168,96 @@ class PlannerTests(unittest.TestCase):
         )
         self.assertIsNone(invalid.plan)
         self.assertEqual(invalid.failure.code, "invalid_output")
+        self.assertEqual(invalid.failure.detail_code, "empty_steps")
+        self.assertEqual(invalid.failure.parse_stage, "steps_validation")
+
+    def test_plan_contract_failures_are_classified_by_field(self) -> None:
+        cases = (
+            (
+                "invalid_intent",
+                '{"version":1,"title":"x","intent":"other","steps":[{"goal":"g"}],"success_criteria":["c"]}',
+                "intent_validation",
+            ),
+            (
+                "missing_steps",
+                '{"version":1,"title":"x","intent":"evidence","success_criteria":["c"]}',
+                "steps_validation",
+            ),
+            (
+                "invalid_steps",
+                '{"version":1,"title":"x","intent":"evidence","steps":null,"success_criteria":["c"]}',
+                "steps_validation",
+            ),
+            (
+                "empty_success_criteria",
+                '{"version":1,"title":"x","intent":"evidence","steps":[{"goal":"g"}],"success_criteria":[]}',
+                "success_criteria_validation",
+            ),
+        )
+        for detail_code, raw, parse_stage in cases:
+            with self.subTest(detail_code=detail_code):
+                result = asyncio.run(SoftPlanner(lambda _: raw).plan(self._context()))
+                self.assertIsNone(result.plan)
+                self.assertEqual(result.failure.code, "invalid_output")
+                self.assertEqual(result.failure.detail_code, detail_code)
+                self.assertEqual(result.failure.parse_stage, parse_stage)
+
+    def test_empty_provider_content_is_not_reported_as_json_decode_error(self) -> None:
+        observation = CompletionObservation(
+            provider="deepseek",
+            model="deepseek-v4-flash",
+            request={"max_tokens": 2048, "json_mode": True},
+            finish_reason="stop",
+            response_content=None,
+        )
+        result = asyncio.run(
+            SoftPlanner(lambda _: CompletionResult(None, observation)).plan(self._context())
+        )
+        self.assertIsNone(result.plan)
+        self.assertEqual(result.failure.code, "generation_error")
+        self.assertEqual(result.failure.detail_code, "empty_response")
+        self.assertEqual(result.failure.parse_stage, "provider_response")
+        self.assertEqual(result.observation.provider, "deepseek")
+
+    def test_provider_length_is_classified_before_json_parsing(self) -> None:
+        observation = CompletionObservation(
+            provider="deepseek",
+            model="deepseek-v4-flash",
+            request={"max_tokens": 2048, "json_mode": True},
+            finish_reason="length",
+            usage={"output_tokens": 2048},
+            response_content='{"version":1',
+        )
+        result = asyncio.run(
+            SoftPlanner(lambda _: CompletionResult('{"version":1', observation)).plan(self._context())
+        )
+        self.assertIsNone(result.plan)
+        self.assertEqual(result.failure.code, "invalid_output")
+        self.assertEqual(result.failure.detail_code, "provider_length")
+        self.assertEqual(result.failure.parse_stage, "provider_response")
+        self.assertEqual(result.observation.finish_reason, "length")
+
+    def test_provider_timeout_keeps_request_projection_and_timeout_stage(self) -> None:
+        async def slow_completion(_: str) -> str:
+            await asyncio.sleep(0.05)
+            return "{}"
+
+        planner = SoftPlanner(
+            slow_completion,
+            completion_timeout_seconds=0.001,
+            completion_request={
+                "provider": "deepseek",
+                "model": "deepseek-v4-flash",
+                "max_tokens": 2048,
+                "json_mode": True,
+            },
+        )
+        result = asyncio.run(planner.plan(self._context()))
+        self.assertIsNone(result.plan)
+        self.assertEqual(result.failure.code, "timeout")
+        self.assertEqual(result.failure.detail_code, "completion_timeout")
+        self.assertEqual(result.failure.parse_stage, "provider_request")
+        self.assertEqual(result.observation.request["max_tokens"], 2048)
 
     def test_unavailable_planner_is_a_degraded_optional_stage(self) -> None:
         result = asyncio.run(SoftPlanner().plan(self._context()))
@@ -215,6 +315,53 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(result.runtime_result.final_answer, "recorded")
         self.assertEqual(result.diagnostics[0].code, "PLANNER_UNAVAILABLE")
         self.assertEqual(len(runtime.requests), 1)
+
+    def test_planner_failure_trace_keeps_debug_provider_and_parse_facts(self) -> None:
+        from trivae.observability.collector import TraceCollector
+        from trivae.observability.sqlite import SQLiteTraceStore
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteTraceStore(Path(directory) / "trace.sqlite3")
+            trace = TraceCollector(
+                store,
+                trace_id="trace-planner-debug",
+                request_id="request-planner-debug",
+                profile="debug",
+            )
+            observation = CompletionObservation(
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                request={"max_tokens": 2048, "json_mode": True},
+                finish_reason="stop",
+                usage={"output_tokens": 12},
+                response_content='{"version":1,"title":"x","intent":"bad"}',
+            )
+            runtime = _RecordingRuntime()
+            orchestrator = QueryOrchestrator(
+                runtime,
+                RuleRouter(),
+                SoftPlanner(lambda _: CompletionResult(observation.response_content, observation)),
+                capability_names=("search_messages",),
+            )
+            result = asyncio.run(
+                orchestrator.run(
+                    QueryRequest(
+                        "找出完整证据链，并比较前后观点变化",
+                        ExecutionScope(),
+                        trace_profile="debug",
+                    ),
+                    trace=trace,
+                )
+            )
+            self.assertEqual(result.diagnostics[0].code, "PLANNER_INVALID_OUTPUT")
+            events = store.read_trace("trace-planner-debug").events
+            failure_event = next(event for event in events if event.operation == "planner.failed")
+            self.assertEqual(failure_event.payload["parse_stage"], "intent_validation")
+            self.assertEqual(failure_event.payload["failure_detail_code"], "invalid_intent")
+            self.assertEqual(failure_event.payload["finish_reason"], "stop")
+            self.assertIn("response_content", failure_event.payload)
+            self.assertEqual(len(runtime.requests), 1)
+            store.close()
 
 
 class RuntimeExecutionTests(unittest.TestCase):

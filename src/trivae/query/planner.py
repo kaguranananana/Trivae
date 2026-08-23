@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+from time import perf_counter
 from typing import Literal, Protocol
 
-from trivae.query.completion import CompletionCallback, complete_text
+from trivae.query.completion import (
+    CompletionCallback,
+    CompletionResult,
+    invoke_completion,
+)
 from trivae.query.contracts import QueryContext
 
 PlanIntent = Literal["summary", "trend", "relationship", "search", "comparison", "evidence", "mixed"]
@@ -15,6 +21,7 @@ _INTENTS = {"summary", "trend", "relationship", "search", "comparison", "evidenc
 _MAX_STEPS = 5
 _MAX_CRITERIA = 5
 _MAX_FIELD_LENGTH = 240
+_DEFAULT_COMPLETION_TIMEOUT_SECONDS = 20.0
 
 
 @dataclass(frozen=True)
@@ -44,11 +51,51 @@ class Plan:
 
 
 @dataclass(frozen=True)
+class PlannerObservation:
+    """一次 Planner 调用的安全事实，供 Trace 进行阶段化投影。"""
+
+    # prompt 是 Planner 实际构造的 model-visible 文本，仅在 debug Trace 中保存正文。
+    prompt: str
+    # 该耗时包含 wait_for，能直接判断是否撞到 Planner 独立 timeout。
+    latency_ms: float
+    # completion request 是 provider-facing 的非敏感参数投影。
+    request: Mapping[str, object]
+    # 下列字段来自 Provider response，缺失时保留 None，不猜测。
+    provider: str | None = None
+    model: str | None = None
+    provider_latency_ms: float | None = None
+    finish_reason: str | None = None
+    usage: Mapping[str, int | float] | None = None
+    response_content: str | None = None
+    # parse_stage/detail 由 Planner-owned parser 填写，明确拒绝发生在哪个 contract。
+    parse_stage: str | None = None
+    failure_detail_code: str | None = None
+
+
+class PlannerParseError(ValueError):
+    """把 JSON decode 与 Plan contract 失败转换成稳定、可测试的内部分类。"""
+
+    def __init__(self, detail_code: str, parse_stage: str, diagnostic: str) -> None:
+        # detail_code 是 Trace/debug 诊断键，不直接替换业务层 coarse error code。
+        self.detail_code = detail_code
+        # parse_stage 表达首次拒绝的 contract 边界。
+        self.parse_stage = parse_stage
+        # diagnostic 只描述本地 parser contract，不复制 Provider exception 正文。
+        self.diagnostic = diagnostic
+        super().__init__(diagnostic)
+
+
+@dataclass(frozen=True)
 class PlannerFailure:
     """Planner 失败的安全分类，不携带 provider 原始异常。"""
 
     code: Literal["generation_error", "timeout", "invalid_output", "unavailable", "aborted"]
     message: str
+    # 业务层继续使用 code；以下字段只增加 debug attribution，不改变 degradation 语义。
+    detail_code: str | None = None
+    parse_stage: str | None = None
+    diagnostic: str | None = None
+    exception_type: str | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +104,8 @@ class PlannerResult:
 
     plan: Plan | None
     failure: PlannerFailure | None = None
+    # 成功和失败都携带同一次 completion 的安全事实，Orchestrator 决定是否写入 Trace。
+    observation: PlannerObservation | None = None
 
 
 class Planner(Protocol):
@@ -76,7 +125,8 @@ class SoftPlanner:
         self,
         completion: CompletionCallback | None = None,
         *,
-        completion_timeout_seconds: float = 10.0,
+        completion_timeout_seconds: float = _DEFAULT_COMPLETION_TIMEOUT_SECONDS,
+        completion_request: Mapping[str, object] | None = None,
     ) -> None:
         """不注入 completion 时明确返回 unavailable，不创建隐藏 provider。"""
 
@@ -84,27 +134,151 @@ class SoftPlanner:
             raise ValueError("completion_timeout_seconds must be positive")
         self._completion = completion
         self._completion_timeout_seconds = completion_timeout_seconds
+        # timeout 时 Provider 可能没有 response，因此预先保存非敏感 request projection。
+        self._completion_request = {} if completion_request is None else dict(completion_request)
+
+    @property
+    def completion_timeout_seconds(self) -> float:
+        """返回本次 Planner 使用的独立 completion timeout。"""
+
+        return self._completion_timeout_seconds
+
+    @property
+    def completion_request(self) -> dict[str, object]:
+        """返回可进入 Trace 的 provider request projection，不暴露 callback/SDK 对象。"""
+
+        return dict(self._completion_request)
 
     async def plan(self, context: QueryContext) -> PlannerResult:
         """完成一次调用并严格解析；不会执行 plan steps。"""
 
         if self._completion is None:
             return PlannerResult(None, PlannerFailure("unavailable", "planner completion is not configured"))
+        prompt = self._build_prompt(context)
+        started = perf_counter()
         try:
-            raw = await asyncio.wait_for(
-                complete_text(self._completion, self._build_prompt(context)),
+            completion_result = await asyncio.wait_for(
+                invoke_completion(self._completion, prompt),
                 timeout=self._completion_timeout_seconds,
             )
         except asyncio.TimeoutError:
-            return PlannerResult(None, PlannerFailure("timeout", "planner completion timed out"))
-        except Exception:
-            return PlannerResult(None, PlannerFailure("generation_error", "planner completion failed"))
+            observation = self._observation(prompt, started, None, parse_stage="provider_request")
+            return PlannerResult(
+                None,
+                PlannerFailure(
+                    "timeout",
+                    "planner completion timed out",
+                    detail_code="completion_timeout",
+                    parse_stage="provider_request",
+                ),
+                observation,
+            )
+        except Exception as exc:
+            observation = self._observation(
+                prompt,
+                started,
+                None,
+                parse_stage="provider_request",
+                failure_detail_code="provider_exception",
+            )
+            return PlannerResult(
+                None,
+                PlannerFailure(
+                    "generation_error",
+                    "planner completion failed",
+                    detail_code="provider_exception",
+                    parse_stage="provider_request",
+                    exception_type=type(exc).__name__,
+                ),
+                observation,
+            )
 
+        observation = self._observation(prompt, started, completion_result)
+        raw = completion_result.content
+        # Provider length 先于 JSON parser 归因，避免把截断事实误报成普通 syntax error。
+        if observation.finish_reason == "length":
+            return PlannerResult(
+                None,
+                PlannerFailure(
+                    "invalid_output",
+                    "planner completion was truncated by the provider",
+                    detail_code="provider_length",
+                    parse_stage="provider_response",
+                ),
+                replace(observation, parse_stage="provider_response", failure_detail_code="provider_length"),
+            )
+        # 空 content 是 Provider response contract 失败，不进入 json.loads 猜测阶段。
+        if not isinstance(raw, str) or not raw.strip():
+            return PlannerResult(
+                None,
+                PlannerFailure(
+                    "generation_error",
+                    "planner completion returned empty output",
+                    detail_code="empty_response",
+                    parse_stage="provider_response",
+                ),
+                replace(observation, parse_stage="provider_response", failure_detail_code="empty_response"),
+            )
         try:
             plan = self._parse(raw, context.available_capabilities)
-        except Exception:
-            return PlannerResult(None, PlannerFailure("invalid_output", "planner completion was invalid"))
-        return PlannerResult(plan)
+        except PlannerParseError as exc:
+            failed_observation = replace(
+                observation,
+                parse_stage=exc.parse_stage,
+                failure_detail_code=exc.detail_code,
+            )
+            return PlannerResult(
+                None,
+                PlannerFailure(
+                    "invalid_output",
+                    "planner completion was invalid",
+                    detail_code=exc.detail_code,
+                    parse_stage=exc.parse_stage,
+                    diagnostic=exc.diagnostic,
+                ),
+                failed_observation,
+            )
+        # 成功结果也保留 parse stage，方便 Debug Transcript 明确显示 decode/validation 已通过。
+        return PlannerResult(plan, observation=replace(observation, parse_stage="plan_validation"))
+
+    def _observation(
+        self,
+        prompt: str,
+        started: float,
+        completion_result: CompletionResult | None,
+        *,
+        parse_stage: str | None = None,
+        failure_detail_code: str | None = None,
+    ) -> PlannerObservation:
+        """把 completion callback 结果规整成不含 SDK 对象的 Planner observation。"""
+
+        completion = None if completion_result is None else completion_result.observation
+        # Provider response request 优先；timeout/exception 则使用构造时的 projection。
+        request = dict(self._completion_request)
+        if completion is not None and completion.request:
+            request = dict(completion.request)
+        # Provider content 优先使用 adapter 的原始公开文本，fake 没提供时使用 callback 文本。
+        response_content = None if completion_result is None else completion_result.content
+        if completion is not None and completion.response_content is not None:
+            response_content = completion.response_content
+        # provider/model 从 response observation 读取，timeout 时从 request projection 读取。
+        provider = None if completion is None else completion.provider
+        model = None if completion is None else completion.model
+        provider = provider or _optional_text(request.get("provider"))
+        model = model or _optional_text(request.get("model"))
+        return PlannerObservation(
+            prompt=prompt,
+            latency_ms=(perf_counter() - started) * 1000,
+            request=request,
+            provider=provider,
+            model=model,
+            provider_latency_ms=None if completion is None else completion.latency_ms,
+            finish_reason=None if completion is None else completion.finish_reason,
+            usage=None if completion is None else completion.usage,
+            response_content=response_content,
+            parse_stage=parse_stage,
+            failure_detail_code=failure_detail_code,
+        )
 
     @staticmethod
     def _build_prompt(context: QueryContext) -> str:
@@ -114,9 +288,14 @@ class SoftPlanner:
         history = "\n".join(f"{message.role}: {message.content}" for message in context.prior_context)
         return (
             "Create a concise soft plan for this Trivae query. Return JSON only with keys: "
-            "version (1), title, intent, steps, success_criteria. Each step has goal, "
-            "suggested_tools, evidence_needed. Use only the supplied capabilities. "
-            "The plan is guidance only, not an executable workflow.\n"
+            "version (1), title, intent, steps, success_criteria. "
+            "intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. "
+            "steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, "
+            "suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array "
+            "of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at "
+            "most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a "
+            "string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied "
+            "capabilities. The plan is guidance only, not an executable workflow. Keep every text concise.\n"
             f"locale: {context.locale}\nquery: {context.query}\n"
             f"prior model context:\n{history or '<none>'}\n"
             f"available capabilities: {list(context.available_capabilities)!r}\n"
@@ -127,34 +306,55 @@ class SoftPlanner:
     def _parse(cls, raw: str, available_capabilities: tuple[str, ...]) -> Plan:
         """严格解析、过滤未知 capability、去重并应用 5/5 bounded contract。"""
 
-        payload = json.loads(raw)
+        try:
+            payload = json.loads(raw)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise PlannerParseError(
+                "json_decode_error",
+                "json_decode",
+                "planner output is not valid JSON",
+            ) from exc
         if not isinstance(payload, dict):
-            raise ValueError("planner output must be a JSON object")
+            raise PlannerParseError("invalid_root", "root_validation", "planner output must be a JSON object")
         if payload.get("version") != 1:
-            raise ValueError("planner version must be 1")
+            raise PlannerParseError("invalid_version", "version_validation", "planner version must be 1")
 
         title = cls._text(payload.get("title"), "title")
         raw_intent = payload.get("intent")
         if raw_intent not in _INTENTS:
-            raise ValueError("planner intent is invalid")
-        raw_steps = payload.get("steps")
+            raise PlannerParseError("invalid_intent", "intent_validation", "planner intent is invalid")
+        if "steps" not in payload:
+            raise PlannerParseError("missing_steps", "steps_validation", "planner steps are required")
+        raw_steps = payload["steps"]
         raw_criteria = payload.get("success_criteria")
-        if not isinstance(raw_steps, list) or not isinstance(raw_criteria, list):
-            raise ValueError("planner steps and success_criteria must be lists")
+        if not isinstance(raw_steps, list):
+            raise PlannerParseError("invalid_steps", "steps_validation", "planner steps must be a list")
+        if not isinstance(raw_criteria, list):
+            raise PlannerParseError(
+                "invalid_success_criteria",
+                "success_criteria_validation",
+                "planner success_criteria must be a list",
+            )
 
         allowed = set(available_capabilities)
         steps: list[PlanStep] = []
         for raw_step in raw_steps[:_MAX_STEPS]:
             if not isinstance(raw_step, dict):
-                raise ValueError("planner step must be an object")
+                raise PlannerParseError("invalid_step", "steps_validation", "planner step must be an object")
             goal = cls._text(raw_step.get("goal"), "step goal")
             capabilities = cls._names(raw_step.get("suggested_tools", ()), allowed)
             evidence = cls._texts(raw_step.get("evidence_needed", ()), "evidence_needed")
             steps.append(PlanStep(goal, capabilities, evidence))
 
         criteria = cls._texts(raw_criteria[:_MAX_CRITERIA], "success_criteria")
-        if not steps or not criteria:
-            raise ValueError("planner output must contain usable steps and criteria")
+        if not steps:
+            raise PlannerParseError("empty_steps", "steps_validation", "planner steps must not be empty")
+        if not criteria:
+            raise PlannerParseError(
+                "empty_success_criteria",
+                "success_criteria_validation",
+                "planner success_criteria must not be empty",
+            )
         return Plan(
             version=1,
             title=title,
@@ -168,7 +368,17 @@ class SoftPlanner:
         """规范化单个文本字段，限制大小并拒绝空值。"""
 
         if not isinstance(value, str) or not value.strip():
-            raise ValueError(f"planner {field_name} must be non-empty text")
+            detail_code = {
+                "title": "invalid_title",
+                "step goal": "invalid_step_goal",
+                "success_criteria": "invalid_success_criteria",
+                "evidence_needed": "invalid_evidence_needed",
+            }.get(field_name, "invalid_text")
+            raise PlannerParseError(
+                detail_code,
+                f"{field_name.replace(' ', '_')}_validation",
+                f"planner {field_name} must be non-empty text",
+            )
         return value.strip()[:_MAX_FIELD_LENGTH]
 
     @classmethod
@@ -176,7 +386,12 @@ class SoftPlanner:
         """规范化文本数组；空数组可作为 step 的可选 evidence。"""
 
         if not isinstance(values, (list, tuple)):
-            raise ValueError(f"planner {field_name} must be a list")
+            detail_code = "invalid_success_criteria" if field_name == "success_criteria" else "invalid_evidence_needed"
+            raise PlannerParseError(
+                detail_code,
+                f"{field_name}_validation",
+                f"planner {field_name} must be a list",
+            )
         result: list[str] = []
         for value in values:
             text = cls._text(value, field_name)
@@ -189,14 +404,28 @@ class SoftPlanner:
         """只保留 registry 白名单内的 capability，并按首次出现顺序去重。"""
 
         if not isinstance(values, (list, tuple)):
-            raise ValueError("planner suggested_tools must be a list")
+            raise PlannerParseError(
+                "invalid_suggested_tools",
+                "suggested_tools_validation",
+                "planner suggested_tools must be a list",
+            )
         result: list[str] = []
         for value in values:
             if not isinstance(value, str):
-                raise ValueError("planner capability name must be text")
+                raise PlannerParseError(
+                    "invalid_suggested_tools",
+                    "suggested_tools_validation",
+                    "planner capability name must be text",
+                )
             if value in allowed and value not in result:
                 result.append(value)
         return tuple(result)
+
+
+def _optional_text(value: object) -> str | None:
+    """只从 request projection 读取非空 identity，不把未知对象格式化进 Trace。"""
+
+    return value if isinstance(value, str) and value else None
 
 
 def render_plan_guidance(plan: Plan) -> str:
