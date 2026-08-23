@@ -10,6 +10,35 @@
 - **实施**：`trellis-implement`（或 inline 模式直接实现）→ `trellis-check` 质量检查 → lint / type-check / tests 全绿。
 - **收尾**：`trellis-update-spec` 沉淀新知 → 批量 commit → `/trellis:finish-work` 归档并记录会话。
 
+## Agent 执行闭环
+
+以下规则适用于 Trellis Phase 2 的实现与检查，不改变 Trellis 的 task、review、spec update 和 commit gate，也不把产品 Agent Loop 变成第二套 workflow。每轮工作按以下顺序推进：
+
+```text
+理解目标 → 建立/确认 baseline → 最小修改 → 真实验证 → 读取结果
+→ 根据证据调整 → 回归验证 → 沉淀必要知识
+```
+
+1. **理解目标与边界**：读取当前 task artifacts、相关 spec、architecture / ADR，明确最小行为差距、预期修改文件、非目标和完成条件。关键模块仍先回答 engineering-principles.md 第 6 节的 7 问。
+2. **建立或确认 baseline**：优先复现当前行为，运行最小相关测试 / 命令并记录结果。若没有可靠 baseline 或验证方式，先建立最小可复现 case、测试、evaluation 或验证命令，再修改实现。
+3. **做最小有效修改**：只修改验证当前假设所需的范围；不因局部问题顺手重构，不用无依据的 fallback、retry、兼容分支或特殊规则掩盖根因。
+4. **执行真实验证**：根据变更类型运行对应测试、regression、lint / type-check、CLI / API、benchmark / evaluation 或文档一致性检查，并保留命令 exit code 与关键输出。文档任务不需要伪造产品测试，但必须检查链接、引用、结构和 diff 的一致性。
+5. **读取结果并归因**：失败时读取实际 assertion、日志、Trace、输出或 evaluation 结果，判断 Root Cause 和 Failure Attribution；测试失败优先检查实现，不为了让错误实现通过而改测试。
+6. **仅基于新证据迭代**：每一轮必须产生新证据或改变排查策略。若结果否定当前假设，调整假设和最小修改；连续尝试没有新信息时停止，不做盲目重复。
+7. **回归与知识沉淀**：确认修复后运行回归验证。只有具有复发价值的问题才新增 Regression Test、Problem Record、spec、Technical Decision 或 troubleshooting knowledge；普通小 Bug 不制造文档噪声。
+8. **完成或升级**：只有完成条件已满足且有真实证据支持时才报告完成。若触及长期原则中定义的 Agent → Human 边界，停止扩大修改范围，按该原则整理证据并升级给人。
+
+### 明确停止条件
+
+以下任一条件成立时，Agent 不得继续扩大自主修改：
+
+- 连续尝试没有产生新证据或改变策略；
+- 修改范围开始超出当前 task，或需要补充未确认的设计；
+- 无法建立可靠的最小验证方式；
+- 现象指向 architecture、public contract、核心语义、不可逆操作或其他高风险边界。
+
+此时可以继续做不改变外部状态的复现、日志 / Trace 阅读和方案整理，但不应擅自把局部修复扩展成架构重设计。升级格式和边界清单见 [engineering-principles.md](./engineering-principles.md) 第 10 节。
+
 ## 项目规则
 
 ### 1. 架构未定时禁止自行决定

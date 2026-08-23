@@ -10,6 +10,8 @@
 4. **Incremental development** — one task at a time
 5. **Capture learnings** — after each task, review and write new knowledge back to spec
 
+Trivae-specific engineering principles and the Agent execution overlay live in [`.trellis/spec/project/engineering-principles.md`](spec/project/engineering-principles.md) and [`.trellis/spec/project/workflow.md`](spec/project/workflow.md). Read them with the relevant package specs; do not duplicate their project rules in this Trellis mechanics document.
+
 ---
 
 ## Trellis System

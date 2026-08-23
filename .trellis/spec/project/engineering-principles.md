@@ -76,11 +76,14 @@ Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverag
 
 详细模板见 [Interview Defense Evidence](./interview-defense.md)。
 
-## 8. 最小可验证改动
+## 8. 最小可验证改动与证据化完成
 
 - 发现问题：复现 → 定位 → 假设 → 最小修改 → 验证。
 - 只有现有结构明显阻碍正确性、可维护性或迭代时，才提出结构性调整。
 - 重大问题按 architecture.md 的规则处理（记录问题，停止改动，等待架构决策）。
+- 每轮修改都应验证当前假设；如果没有产生新证据或改变排查策略，不重复尝试。
+- 完成状态必须由与变更直接相关、可复现的证据支持，不能只依据“代码已经修改”“看起来正确”或 Agent 的自然语言声明。证据可以是 automated test、regression test、lint / type-check、命令 exit code、可复现案例、benchmark / evaluation、CLI / API 实际输出，或 diff 与既有 contract / spec 的一致性检查；按任务选择最小但真实的证据，不机械要求所有类型。
+- 如果缺少可靠验证方式，先建立最小可复现 case、测试、evaluation 或验证命令；在此之前不得把任务标记为完成。若连最小验证也无法建立，应按第 10 节停止并升级。
 
 ## 9. 禁止事项（当前阶段 / 未定架构时）
 
@@ -88,3 +91,45 @@ Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverag
 
 - 不自行补全，标记 `Pending architecture specification`；
 - 发现已有架构重大问题：记录 `Problem / Evidence / Impact / Possible Options` 后停止对应改动，等待新决策。
+
+## 10. 有界自主与 Agent → Human 升级边界
+
+自主闭环是执行权，不是无限设计权限。Coding Agent 只有在目标、行为边界和验收条件能由现有 task、contract、spec 或已确认 Architecture Decision 明确约束时，才应自行分析、修改、验证和迭代。默认优先继承适用于 Trivae 的 ChatLab-first 设计；实现中的局部问题不能单独成为重新设计架构的理由。
+
+### 允许 Agent 自主闭环的范围
+
+在满足上述前提、修改局部、风险低且存在真实验证方式时，Agent 可以自行处理：
+
+- 局部 bug 修复；
+- 已明确 contract 下的小功能与实现细节；
+- 测试补充、lint / type / import 等工程问题；
+- 已确认设计内的小范围重构；
+- 文档与实际实现同步；
+- 测试、日志或 evaluation 暴露出的局部 Failure Case。
+
+这些事项仍必须遵守根因优先、Smallest Effective Change、错误透明和 Evidence-driven 验证原则；自主范围不授权新增无依据的 fallback、retry、兼容分支、抽象或基础设施。
+
+### 必须停止扩大修改范围并升级给人的情况
+
+| 边界 | 触发条件 |
+| --- | --- |
+| 整体架构与模块 ownership | 会改变系统整体架构、模块边界、依赖方向或职责归属 |
+| 已确认决策 | 需要修改 Confirmed Architecture Decision / Technical Decision，或重新打开既有 ADR |
+| Public contract / data model | 需要重大改变 public contract、API、数据模型、schema、持久化语义或兼容策略 |
+| 核心行为语义 | 会改变 Router、Planner、Retrieval、Agent Runtime、Evidence / Citation 或其他核心链路的语义 |
+| ChatLab 基线 | 需要偏离已确认且适用于 Trivae 的 ChatLab 设计，或不能证明当前基线不适用 |
+| 重要 trade-off / 设计不确定性 | 存在多个合理方案且质量、复杂度、成本、延迟、可维护性或风险取舍重要，或 Agent 无法用现有证据判断哪种设计正确 |
+| Evaluation 暴露的系统性问题 | Failure / Evaluation 结果可能要求重新设计，而不只是局部修复 |
+| 不可逆或高风险操作 | 数据迁移、删除、破坏性变更，以及 security、credential、permission 边界变化 |
+| 依赖与基础设施 | 需要明显的 dependency、运行时、部署或基础设施层重大变更 |
+| 范围与验证边界 | 修改明显超出当前 task，连续尝试没有产生新证据，或无法建立可靠验证方式 |
+
+遇到上述情况，Agent 可以继续做不改变外部状态的诊断、复现和证据整理，但不得沿未经决定的方向继续扩大修改。升级说明至少应包含：
+
+```text
+当前现象 → 已有证据 / Failure Case → Root Cause 判断及不确定性
+→ 已尝试方案及结果 → 为什么现有设计可能不足
+→ 候选方案与 trade-off → 需要人工决定的问题
+```
+
+具体的 ChatLab 继承 / 偏离、ADR Reopen、Architecture Problem Handling 和模块级 Failure Contract，分别以 [architecture.md](./architecture.md)、[technical-decisions.md](./technical-decisions.md) 及对应 ADR 为准。本原则不取消已经确认的模块级 degradation contract（例如 Router 的显式、可观测降级），也不允许 Agent 自行新增或扩大这类例外。
