@@ -29,4 +29,4 @@
 - [x] `./.venv/bin/mypy`（47 source files）
 - [x] `git diff --check`
 - [x] 更新 Failure Case / validation 文档与 project Problem Record。
-- [ ] `trellis-check` 等价质量检查通过后提交、推送当前分支并确认工作树 clean。
+- [x] `trellis-check` 等价质量检查通过后提交、推送当前分支并确认工作树 clean。
