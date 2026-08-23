@@ -21,6 +21,7 @@ DEFAULT_EMBEDDING_NORMALIZED = True
 DEFAULT_QUERY_INSTRUCTION = (
     "Given a chat history search query, retrieve relevant conversation messages that answer the query"
 )
+_DEFAULT_MPS_CACHE_RELEASE_INTERVAL = 16
 
 
 class SentenceTransformerEmbeddingProvider:
@@ -35,12 +36,19 @@ class SentenceTransformerEmbeddingProvider:
         normalized: bool = DEFAULT_EMBEDDING_NORMALIZED,
         query_instruction: str = DEFAULT_QUERY_INSTRUCTION,
         batch_size: int = 8,
+        mps_cache_release_interval: int = _DEFAULT_MPS_CACHE_RELEASE_INTERVAL,
         model_loader: Callable[[str], Any] | None = None,
     ) -> None:
         if not isinstance(model, str) or not model.strip():
             raise ValueError("embedding model must be non-empty")
         if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("embedding batch_size must be positive")
+        if (
+            isinstance(mps_cache_release_interval, bool)
+            or not isinstance(mps_cache_release_interval, int)
+            or mps_cache_release_interval <= 0
+        ):
+            raise ValueError("MPS cache release interval must be positive")
         self._identity = EmbeddingModelIdentity(
             provider=DEFAULT_EMBEDDING_PROVIDER,
             model=model,
@@ -50,6 +58,8 @@ class SentenceTransformerEmbeddingProvider:
             query_instruction=query_instruction,
         )
         self._batch_size = batch_size
+        self._mps_cache_release_interval = mps_cache_release_interval
+        self._document_batch_count = 0
         self._model_loader = model_loader
         self._model: Any | None = None
 
@@ -77,7 +87,11 @@ class SentenceTransformerEmbeddingProvider:
         if not normalized_texts:
             return ()
         encoded = self._encode(normalized_texts)
-        return self._validate_vectors(encoded, len(normalized_texts))
+        vectors = self._validate_vectors(encoded, len(normalized_texts))
+        self._document_batch_count += 1
+        if self._document_batch_count % self._mps_cache_release_interval == 0:
+            self._release_mps_cache()
+        return vectors
 
     def embed_query(self, text: str) -> tuple[float, ...]:
         """只给 query 添加 Qwen3 retrieval instruction，并返回单个向量。"""
@@ -86,7 +100,23 @@ class SentenceTransformerEmbeddingProvider:
         instructed = f"Instruct: {self.identity.query_instruction}\nQuery: {normalized_texts[0]}"
         encoded = self._encode((instructed,))
         vectors = self._validate_vectors(encoded, 1)
+        # Query traffic 没有长 rebuild 的 batch rhythm；每次完成后释放空闲 MPS cache。
+        self._release_mps_cache()
         return vectors[0]
+
+    def _release_mps_cache(self) -> None:
+        """在真实 MPS cache 增长 Failure Case 下释放未占用 allocation，不改变模型权重。"""
+
+        model = self._model
+        if model is None or getattr(getattr(model, "device", None), "type", None) != "mps":
+            return
+        try:
+            torch_module = importlib.import_module("torch")
+            torch_module.mps.empty_cache()
+        except Exception as exc:
+            raise SemanticEmbeddingError(
+                f"failed to release MPS embedding cache: {type(exc).__name__}"
+            ) from exc
 
     def _load_model(self) -> Any:
         """延迟导入可选重量依赖，确保应用创建不下载或初始化模型。"""

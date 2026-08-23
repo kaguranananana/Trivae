@@ -3,6 +3,8 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
@@ -146,6 +148,37 @@ class SemanticRetrievalTests(unittest.TestCase):
         self.assertTrue(calls[1][1]["normalize_embeddings"])
         normalized = provider.embed_query("question")
         self.assertAlmostEqual(sum(value * value for value in normalized) ** 0.5, 1.0, places=6)
+
+    def test_sentence_transformer_provider_bounds_real_mps_cache_growth(self) -> None:
+        """连续 document batches 按固定间隔释放空闲 MPS cache，CPU provider 不走该路径。"""
+
+        releases: list[str] = []
+
+        class Model:
+            device = SimpleNamespace(type="mps")
+
+            def encode(self, texts: list[str], **kwargs: object) -> list[list[float]]:
+                return [[1.0, 0.0, 0.0] for _ in texts]
+
+        provider = SentenceTransformerEmbeddingProvider(
+            model="fixture/model",
+            dimension=3,
+            mps_cache_release_interval=2,
+            model_loader=lambda _: Model(),
+        )
+        fake_torch = SimpleNamespace(
+            mps=SimpleNamespace(empty_cache=lambda: releases.append("released"))
+        )
+        with patch(
+            "trivae.retrieval.semantic.embedding.importlib.import_module",
+            return_value=fake_torch,
+        ):
+            provider.embed_documents(("first batch",))
+            self.assertEqual(releases, [])
+            provider.embed_documents(("second batch",))
+            self.assertEqual(releases, ["released"])
+            provider.embed_query("query")
+            self.assertEqual(releases, ["released", "released"])
 
     def test_index_identity_rejects_secret_fields_without_hashing(self) -> None:
         """identity 使用可读 JSON，secret 字段在构造时直接失败。"""
