@@ -1,0 +1,39 @@
+{
+  "variant_id": "semantic-only-retrieval-candidate-v1",
+  "role": "candidate",
+  "code_version": "semantic-retrieval-evaluation-v1",
+  "provider": "sentence-transformers",
+  "model": "Qwen/Qwen3-Embedding-0.6B",
+  "model_parameters": {
+    "dimension": 1024,
+    "pooling": "last_token",
+    "normalized": true,
+    "query_instruction": "Given a chat history search query, retrieve relevant conversation messages that answer the query"
+  },
+  "prompt_identity": "not-applicable-retrieval-module-evaluation",
+  "router_configuration": {},
+  "planner_configuration": {},
+  "runtime_configuration": {},
+  "available_tools": ["semantic_search"],
+  "retrieval_configuration": {
+    "strategy": "semantic",
+    "candidate_unit": "semantic-child-with-canonical-anchor",
+    "candidate_limit": 8,
+    "dense_top_k": 40,
+    "chunker_version": "trivae-semantic-chunker-v1",
+    "context_expansion": "query-set-controlled"
+  },
+  "index_identity": "semantic-index-v1:Qwen/Qwen3-Embedding-0.6B:1024:last_token:normalized:trivae-semantic-chunker-v1:bind-at-run",
+  "context_expansion_configuration": {
+    "implementation": "retrieval-owned",
+    "semantic_range_recovery": true
+  },
+  "evidence_citation_version": "not-applicable-retrieval-module-evaluation",
+  "budget": {"candidate_limit": 8, "dense_top_k": 40},
+  "execution_override": {"forced_route": null},
+  "extra_configuration": {
+    "comparison_role": "semantic-only-candidate",
+    "quality_claim": "llm-assisted-provisional-only",
+    "identity_policy": "secret-free-readable-fields"
+  }
+}

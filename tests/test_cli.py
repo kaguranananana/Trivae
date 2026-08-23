@@ -174,6 +174,45 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(smoke.limit, 3)
         self.assertTrue(smoke.rebuild)
 
+        packet = parser.parse_args(
+            [
+                "eval",
+                "retrieval-packet",
+                "--queries",
+                "queries.json",
+                "--lexical-variant",
+                "lexical.json",
+                "--semantic-variant",
+                "semantic.json",
+            ]
+        )
+        self.assertEqual(packet.evaluation_command, "retrieval-packet")
+        self.assertEqual(packet.output_dir, Path("data/evaluation/semantic-vs-lexical-provisional-v1"))
+
+        annotate = parser.parse_args(
+            [
+                "eval",
+                "retrieval-annotate",
+                "--packet",
+                "blind.json",
+                "--sealed",
+                "sealed.json",
+            ]
+        )
+        self.assertEqual(annotate.batch_size, 12)
+
+        metrics = parser.parse_args(
+            [
+                "eval",
+                "retrieval-metrics",
+                "--sealed",
+                "sealed.json",
+                "--annotations",
+                "labels.json",
+            ]
+        )
+        self.assertIsNone(metrics.output)
+
     def test_application_lists_sessions_through_the_read_facade(self) -> None:
         """session 列表来自 Application，且按稳定名称顺序返回真实 Canonical 数据。"""
 

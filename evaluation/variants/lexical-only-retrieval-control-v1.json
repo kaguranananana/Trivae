@@ -1,0 +1,29 @@
+{
+  "variant_id": "lexical-only-retrieval-control-v1",
+  "role": "minimal_control",
+  "code_version": "semantic-retrieval-evaluation-v1",
+  "provider": "sqlite-fts5",
+  "model": "fts5-bm25",
+  "model_parameters": {},
+  "prompt_identity": "not-applicable-retrieval-module-evaluation",
+  "router_configuration": {},
+  "planner_configuration": {},
+  "runtime_configuration": {},
+  "available_tools": ["lexical_search"],
+  "retrieval_configuration": {
+    "strategy": "lexical",
+    "candidate_unit": "canonical-message",
+    "query_input": "pinned-lexical-query",
+    "candidate_limit": 8,
+    "context_expansion": "query-set-controlled"
+  },
+  "index_identity": "canonical-lexical-fts5-v1:bind-at-run",
+  "context_expansion_configuration": {"implementation": "retrieval-owned"},
+  "evidence_citation_version": "not-applicable-retrieval-module-evaluation",
+  "budget": {"candidate_limit": 8},
+  "execution_override": {"forced_route": null},
+  "extra_configuration": {
+    "comparison_role": "lexical-only-control",
+    "quality_claim": "llm-assisted-provisional-only"
+  }
+}

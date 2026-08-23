@@ -37,3 +37,5 @@ tmp/
 
 data/raw/
 data/*.sqlite3
+# 真实 retrieval packet/标签/审计队列包含私有聊天正文，只允许本地保存。
+data/evaluation/

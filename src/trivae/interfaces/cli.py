@@ -13,14 +13,21 @@ from typing import Sequence, TextIO, cast
 
 from trivae.bootstrap.application import TrivaeApplication, create_application
 from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope, SemanticSearchInput
-from trivae.config.settings import SettingsError
+from trivae.config.settings import SettingsError, load_settings
 from trivae.conversation.contracts import ConversationError
 from trivae.data.model import ChatSession, IngestionError
 from trivae.evaluation import (
+    BlindAnnotationPacket,
     ControlledVariant,
     EvaluationCaseBundle,
     EvaluationContractError,
     EvaluationSuite,
+    LLMRetrievalAnnotator,
+    RelevanceAnnotationSet,
+    RetrievalQuerySet,
+    SealedRetrievalPacket,
+    build_retrieval_audit_queue,
+    build_retrieval_metrics,
 )
 from trivae.evaluation.review import M6_FAILURE_REGRESSION_MAP
 from trivae.evaluation.store import EvaluationStoreError
@@ -191,6 +198,56 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional JSON output path; stdout is used when omitted",
     )
+    retrieval_packet_parser = evaluation_subparsers.add_parser(
+        "retrieval-packet",
+        help="Generate local-only blind and sealed lexical/semantic annotation packets",
+    )
+    retrieval_packet_parser.add_argument("--queries", type=Path, required=True)
+    retrieval_packet_parser.add_argument("--lexical-variant", type=Path, required=True)
+    retrieval_packet_parser.add_argument("--semantic-variant", type=Path, required=True)
+    retrieval_packet_parser.add_argument(
+        "--database",
+        type=Path,
+        default=Path("data/trivae.sqlite3"),
+        help="SQLite Canonical Store path",
+    )
+    retrieval_packet_parser.add_argument(
+        "--semantic-index",
+        type=Path,
+        default=None,
+        help="Optional independent semantic SQLite path",
+    )
+    retrieval_packet_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("data/evaluation/semantic-vs-lexical-provisional-v1"),
+        help="Gitignored local artifact directory",
+    )
+    retrieval_annotate_parser = evaluation_subparsers.add_parser(
+        "retrieval-annotate",
+        help="Create LLM-assisted provisional blind labels and a human audit queue",
+    )
+    retrieval_annotate_parser.add_argument("--packet", type=Path, required=True)
+    retrieval_annotate_parser.add_argument("--sealed", type=Path, required=True)
+    retrieval_annotate_parser.add_argument("--batch-size", type=int, default=12)
+    retrieval_annotate_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("data/evaluation/semantic-vs-lexical-provisional-v1"),
+        help="Gitignored local artifact directory",
+    )
+    retrieval_metrics_parser = evaluation_subparsers.add_parser(
+        "retrieval-metrics",
+        help="Compute lexical/semantic metrics from sealed metadata and relevance labels",
+    )
+    retrieval_metrics_parser.add_argument("--sealed", type=Path, required=True)
+    retrieval_metrics_parser.add_argument("--annotations", type=Path, required=True)
+    retrieval_metrics_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional metrics JSON path; stdout is used when omitted",
+    )
     semantic_parser = subparsers.add_parser(
         "semantic",
         help="Inspect, rebuild, and smoke-test the local semantic derived index",
@@ -307,6 +364,66 @@ def _write_json_projection(payload: object, output_path: Path | None) -> None:
     print(output_path.resolve())
 
 
+def _run_retrieval_packet_command(args: argparse.Namespace) -> int:
+    """通过 Application facade 生成 local-only blind/sealed packet。"""
+
+    query_set = RetrievalQuerySet.from_json(args.queries)
+    lexical_variant = _load_variant(args.lexical_variant)
+    semantic_variant = _load_variant(args.semantic_variant)
+    with create_application(
+        args.database,
+        semantic_index_path=args.semantic_index,
+    ) as application:
+        blind, sealed = application.generate_retrieval_annotation_packet(
+            query_set,
+            lexical_variant,
+            semantic_variant,
+        )
+    output_dir: Path = args.output_dir
+    _write_json_projection(blind.to_dict(), output_dir / "blind-packet.json")
+    _write_json_projection(sealed.to_dict(), output_dir / "sealed-metadata.json")
+    _write_json_projection(
+        {
+            "schema_version": "retrieval-annotation-v1",
+            "packet_id": blind.packet_id,
+            "snapshot_id": blind.snapshot_id,
+            "query_count": len(query_set.queries),
+            "candidate_count": len(blind.candidates),
+            "blind_packet": "blind-packet.json",
+            "sealed_metadata": "sealed-metadata.json",
+            "privacy": "local_only_gitignored_contains_private_chat_content",
+        },
+        output_dir / "packet-summary.json",
+    )
+    return 0
+
+
+def _run_retrieval_annotation_command(args: argparse.Namespace) -> int:
+    """执行 blind LLM 初筛；输出始终是 provisional，并同时生成 audit queue。"""
+
+    packet = BlindAnnotationPacket.from_json(args.packet)
+    sealed = SealedRetrievalPacket.from_json(args.sealed)
+    if packet.packet_id != sealed.packet_id:
+        raise EvaluationContractError("blind packet does not match sealed metadata")
+    annotator = LLMRetrievalAnnotator(load_settings())
+    annotations = asyncio.run(annotator.annotate(packet, batch_size=args.batch_size))
+    audit_queue = build_retrieval_audit_queue(sealed, annotations)
+    output_dir: Path = args.output_dir
+    _write_json_projection(annotations.to_dict(), output_dir / "annotations.json")
+    _write_json_projection(audit_queue, output_dir / "audit-queue.json")
+    return 0
+
+
+def _run_retrieval_metrics_command(args: argparse.Namespace) -> int:
+    """读取 sealed provenance 与标签，生成不含聊天正文的 paired metrics。"""
+
+    sealed = SealedRetrievalPacket.from_json(args.sealed)
+    annotations = RelevanceAnnotationSet.from_json(args.annotations)
+    report = build_retrieval_metrics(sealed, annotations)
+    _write_json_projection(report, args.output)
+    return 0
+
+
 def _run_evaluation_command(args: argparse.Namespace) -> int:
     """Evaluation CLI 只调用 Application facade，不直接触碰 Runtime/Tool。"""
 
@@ -328,6 +445,15 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 snapshot = application.materialize_evaluation_snapshot()
             _write_json_projection(snapshot.to_dict(), args.output)
             return 0
+
+        if args.evaluation_command == "retrieval-packet":
+            return _run_retrieval_packet_command(args)
+
+        if args.evaluation_command == "retrieval-annotate":
+            return _run_retrieval_annotation_command(args)
+
+        if args.evaluation_command == "retrieval-metrics":
+            return _run_retrieval_metrics_command(args)
 
         if args.evaluation_command == "run":
             suite = EvaluationSuite.from_json(args.suite)
@@ -374,7 +500,7 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 )
             print(json.dumps(comparison.to_dict(), ensure_ascii=False, indent=2))
             return 0
-    except (EvaluationContractError, EvaluationStoreError) as exc:
+    except (EvaluationContractError, EvaluationStoreError, SettingsError) as exc:
         print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False, indent=2))
         return 1
     raise EvaluationContractError("unsupported eval command")

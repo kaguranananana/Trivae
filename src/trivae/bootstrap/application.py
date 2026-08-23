@@ -21,6 +21,7 @@ from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalIndex
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
 from trivae.evaluation import (
+    BlindAnnotationPacket,
     ControlledVariant,
     DatasetSnapshot,
     EvaluationCaseBundle,
@@ -29,6 +30,9 @@ from trivae.evaluation import (
     EvaluationStore,
     EvaluationSuite,
     PairedComparison,
+    RetrievalAnnotationWorkflow,
+    RetrievalQuerySet,
+    SealedRetrievalPacket,
     SQLiteEvaluationStore,
     create_paired_comparison,
 )
@@ -231,6 +235,23 @@ class TrivaeApplication:
         self._ensure_open()
         # Snapshot contract 自己使用 read-only connection；Application 不复制其 SQL 语义。
         return DatasetSnapshot.from_database(self.store.database_path)
+
+    def generate_retrieval_annotation_packet(
+        self,
+        query_set: RetrievalQuerySet,
+        lexical_variant: ControlledVariant,
+        semantic_variant: ControlledVariant,
+    ) -> tuple[BlindAnnotationPacket, SealedRetrievalPacket]:
+        """通过 Tool facade 运行 paired retrieval，并生成分离的 blind/sealed packet。"""
+
+        self._ensure_open()
+        workflow = RetrievalAnnotationWorkflow(
+            snapshot_resolver=self.materialize_evaluation_snapshot,
+            tool_invoker=self.invoke_tool,
+            context_reader=self.read_repository.read_message_context,
+            range_reader=self.read_repository.read_message_range,
+        )
+        return workflow.generate(query_set, lexical_variant, semantic_variant)
 
     def invoke_tool(
         self,

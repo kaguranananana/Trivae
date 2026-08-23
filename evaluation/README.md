@@ -33,3 +33,40 @@ python -m trivae semantic smoke \
 ```
 
 `semantic smoke` 默认只输出 candidate locator、score、coverage、latency 和 index identity，不输出消息正文；`--rebuild` 可显式把 rebuild 与一次 query 放在同一 smoke 中。索引缺失、stale、模型加载失败和 retrieval partial 都保持可见，不改写成 lexical success。
+
+## Retrieval relevance annotation
+
+真实 lexical/semantic module comparison 使用固定 query set 与两个 retrieval-only Controlled Variant：
+
+```bash
+trivae eval retrieval-packet \
+  --database data/trivae.sqlite3 \
+  --queries evaluation/retrieval/semantic-vs-lexical-provisional-v1.json \
+  --lexical-variant evaluation/variants/lexical-only-retrieval-control-v1.json \
+  --semantic-variant evaluation/variants/semantic-only-retrieval-candidate-v1.json \
+  --output-dir data/evaluation/semantic-vs-lexical-provisional-v1
+```
+
+输出目录已由 `.gitignore` 排除。`blind-packet.json` 含真实候选正文和 bounded context，但隐藏 retrieval source、rank、score 与 variant；`sealed-metadata.json` 保存 canonical identity、两种方法的 rank/score、expanded IDs 和运行诊断。两者都不得 commit 或 push。
+
+配置好现有 OpenAI-compatible 模型环境后，可进行 LLM-assisted 初筛：
+
+```bash
+trivae eval retrieval-annotate \
+  --packet data/evaluation/semantic-vs-lexical-provisional-v1/blind-packet.json \
+  --sealed data/evaluation/semantic-vs-lexical-provisional-v1/sealed-metadata.json \
+  --output-dir data/evaluation/semantic-vs-lexical-provisional-v1
+```
+
+`annotations.json` 中的每条自动标签固定为 `llm_assisted_provisional`，并带 confidence/notes；它不是 human ground truth。`audit-queue.json` 优先列出 uncertain、低 confidence、partial relevance、单方法前排、排名冲突和影响质量指标的 positive label。人工复核时同时查看 blind packet 和 audit queue，修改标签/notes，并仅把真实检查过的条目标记为 `human_verified`；全部条目复核完成后再把 annotation set 的 `annotator_type` 改为 `human`。
+
+指标入口为：
+
+```bash
+trivae eval retrieval-metrics \
+  --sealed data/evaluation/semantic-vs-lexical-provisional-v1/sealed-metadata.json \
+  --annotations data/evaluation/semantic-vs-lexical-provisional-v1/annotations.json \
+  --output data/evaluation/semantic-vs-lexical-provisional-v1/metrics.json
+```
+
+报告支持 Precision@k、merged-candidate-pool Recall@k、MRR、Top-k hit/success、relevant message coverage 与独立 partial relevant coverage。missing/uncertain label 会令依赖它的指标 `unavailable`，不会被当作 negative；没有 corpus-exhaustive reference 时 corpus Recall 始终 unavailable。由自动标签产生的所有数字都明确标记为 `llm_assisted_provisional`，不能作为 production gate。
