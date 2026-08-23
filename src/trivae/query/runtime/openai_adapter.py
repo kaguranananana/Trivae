@@ -1,4 +1,4 @@
-"""OpenAI Agents SDK 的 DeepSeek Chat Completions 流式运行时适配器。"""
+"""OpenAI Agents SDK 的 OpenAI-compatible Chat Completions 流式运行时适配器。"""
 
 from __future__ import annotations
 
@@ -8,17 +8,17 @@ import inspect
 import json
 import uuid
 from collections.abc import AsyncIterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import perf_counter
 from typing import Any, Literal, cast
 
 from agents import Agent, MaxTurnsExceeded, RunConfig, RunHooks, Runner, set_tracing_disabled
-from agents.model_settings import ModelSettings
+from agents.model_settings import ModelSettings as SDKModelSettings
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
 
 from trivae.capabilities.registry import CapabilityRegistry
-from trivae.config.settings import DeepSeekSettings, load_settings
+from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
 from trivae.query.runtime.contracts import (
     AgentRunRequest,
@@ -49,11 +49,62 @@ RuntimeEventType = Literal[
     "aborted",
 ]
 
-# DeepSeek 的 Chat Completions JSON mode 只约束最终文本形状，不改变 Trivae 的
+# Provider 的 Chat Completions JSON mode 只约束最终文本形状，不改变 Trivae 的
 # AnswerArtifact、Citation 或 current-run provenance contract。
 _FINAL_SYNTHESIS_RESPONSE_FORMAT = {"type": "json_object"}
 _DEFAULT_MAX_OUTPUT_TOKENS = 16384
 _DEFAULT_COMPLETION_MAX_TOKENS = 2048
+# 真实 smoke 证明 OpenCode Go 的 Chat Completions 不兼容 tools + JSON mode 组合。
+_PROVIDERS_WITHOUT_TOOL_JSON_MODE = frozenset({"opencode-go"})
+
+
+class _OpenCodeGoChatCompletionsModel(OpenAIChatCompletionsModel):
+    """只在 OpenCode Go 的 tool turn 中移除不兼容的 response_format。"""
+
+    async def get_response(self, *args: Any, **kwargs: Any) -> Any:
+        """保留 SDK response path，只调整 provider 已验证不兼容的请求组合。"""
+
+        adjusted_args, adjusted_kwargs = self._adjust_model_call(args, kwargs)
+        return await super().get_response(*adjusted_args, **adjusted_kwargs)
+
+    def stream_response(self, *args: Any, **kwargs: Any) -> Any:
+        """保持 SDK streaming generator，只投影同一份动态 settings。"""
+
+        adjusted_args, adjusted_kwargs = self._adjust_model_call(args, kwargs)
+        return super().stream_response(*adjusted_args, **adjusted_kwargs)
+
+    @staticmethod
+    def _adjust_model_call(
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        """有工具时移除 JSON mode；无工具时保留 Finalizer 所需的 structured-output 约束。"""
+
+        adjusted_args = list(args)
+        adjusted_kwargs = dict(kwargs)
+        settings = adjusted_kwargs.get("model_settings")
+        tools = adjusted_kwargs.get("tools")
+        settings_index = 2
+        tools_index = 3
+        if settings is None and len(adjusted_args) > settings_index:
+            settings = adjusted_args[settings_index]
+        if tools is None and len(adjusted_args) > tools_index:
+            tools = adjusted_args[tools_index]
+        if not isinstance(settings, SDKModelSettings) or not tools:
+            return tuple(adjusted_args), adjusted_kwargs
+        if not settings.extra_args or "response_format" not in settings.extra_args:
+            return tuple(adjusted_args), adjusted_kwargs
+
+        # 只删除冲突字段，保留 max_tokens 和其他已配置的 provider 参数。
+        extra_args = {
+            key: value for key, value in settings.extra_args.items() if key != "response_format"
+        }
+        adjusted_settings = replace(settings, extra_args=extra_args)
+        if "model_settings" in adjusted_kwargs:
+            adjusted_kwargs["model_settings"] = adjusted_settings
+        elif len(adjusted_args) > settings_index:
+            adjusted_args[settings_index] = adjusted_settings
+        return tuple(adjusted_args), adjusted_kwargs
 
 
 @dataclass
@@ -335,13 +386,7 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         """将 hook 中可得的 usage 变成普通数字，不传播 SDK Usage 对象。"""
 
         usage = getattr(response, "usage", None)
-        if usage is None:
-            return None
-        projected: dict[str, int | float] = {}
-        for field_name in ("requests", "input_tokens", "output_tokens", "total_tokens"):
-            value = getattr(usage, field_name, None)
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
-                projected[field_name] = value
+        projected = _project_usage_mapping(usage)
         return projected or None
 
     async def on_tool_start(self, context: Any, agent: Any, tool: Any) -> None:
@@ -445,7 +490,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         capability_registry: CapabilityRegistry | None = None,
         *,
         model: Any | None = None,
-        settings: DeepSeekSettings | None = None,
+        settings: ModelSettings | None = None,
         provider_name: str | None = None,
         model_name: str | None = None,
         max_turns: int | None = None,
@@ -459,7 +504,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         if model is None:
             # 只有显式创建真实 runtime 时才读取密钥并创建外部 client。
             resolved_settings = settings or load_settings()
-            self._model, self._provider_client = self._build_deepseek_model(resolved_settings)
+            self._model, self._provider_client = self._build_openai_compatible_model(resolved_settings)
             self._provider_name = resolved_settings.provider
             self._model_name = resolved_settings.model_name
             self._secret = resolved_settings.api_key
@@ -511,13 +556,19 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         ):
             raise ValueError("completion_max_tokens must be a positive integer")
 
-    def _build_deepseek_model(self, settings: DeepSeekSettings) -> tuple[Any, AsyncOpenAI]:
-        """构造并保留 DeepSeek client，供 runtime 和 aclose 共用。"""
+    def _build_openai_compatible_model(self, settings: ModelSettings) -> tuple[Any, AsyncOpenAI]:
+        """构造并保留兼容 Chat Completions 的 client，供 runtime 和 aclose 共用。"""
 
         # M4 没有 Trivae Trace backend；显式关闭 hosted tracing，避免产生额外外部依赖。
         set_tracing_disabled(True)
         client = AsyncOpenAI(api_key=settings.api_key, base_url=settings.base_url)
-        model = OpenAIChatCompletionsModel(
+        # OpenCode Go 只在有工具的请求上需要动态移除 JSON mode，其他 Provider 保持原模型。
+        model_type = (
+            _OpenCodeGoChatCompletionsModel
+            if settings.provider in _PROVIDERS_WITHOUT_TOOL_JSON_MODE
+            else OpenAIChatCompletionsModel
+        )
+        model = model_type(
             model=settings.model_name,
             openai_client=client,
         )
@@ -779,12 +830,11 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             name="Trivae Agent",
             instructions=instructions,
             model=self._model,
-            # 让 OpenAI-compatible adapter 把 JSON mode 透传给 DeepSeek，避免只依赖
-            # prompt 约束；最终文本仍由 M5 finalizer 解析和验证。
-            model_settings=ModelSettings(
-                # DeepSeek JSON Output 需要显式预算；否则 provider 默认边界可能在 JSON 中间结束。
+            # 让兼容 Provider 透传已验证的 JSON mode；最终文本仍由 M5 finalizer 解析和验证。
+            model_settings=SDKModelSettings(
+                # JSON Output 需要显式预算；否则 provider 默认边界可能在 JSON 中间结束。
                 max_tokens=self.max_output_tokens,
-                extra_args={"response_format": _FINAL_SYNTHESIS_RESPONSE_FORMAT}
+                extra_args={"response_format": _FINAL_SYNTHESIS_RESPONSE_FORMAT},
             ),
             tools=tools,
         )
@@ -809,7 +859,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             "response.reasoning_summary_text.delta",
             "response.reasoning_text.delta",
         }:
-            # DeepSeek reasoning_content 已由 SDK 转成 public Responses event；这里不读取 provider 字段。
+            # Provider reasoning 已由 SDK 转成 public Responses event；这里不读取 provider 字段。
             delta_type = "thinking"
         else:
             return None
@@ -820,7 +870,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
 
     @staticmethod
     def _is_thinking_done(event: Any) -> bool:
-        """识别 SDK public reasoning done，不依赖 DeepSeek-specific response 字段。"""
+        """识别 SDK public reasoning done，不依赖 provider-specific response 字段。"""
 
         data = getattr(event, "data", None)
         return getattr(data, "type", None) in {
@@ -1058,12 +1108,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         totals: dict[str, int | float] = {}
         for response in result.raw_responses:
             usage = getattr(response, "usage", None)
-            if usage is None:
-                continue
-            for field_name in ("requests", "input_tokens", "output_tokens", "total_tokens"):
-                value = getattr(usage, field_name, None)
-                if isinstance(value, (int, float)) and not isinstance(value, bool):
-                    totals[field_name] = totals.get(field_name, 0) + value
+            for field_name, value in _project_usage_mapping(usage).items():
+                totals[field_name] = totals.get(field_name, 0) + value
         return totals or None
 
     @staticmethod
@@ -1071,18 +1117,71 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         """把 Chat Completion usage 转成普通数字，保留 output token 诊断。"""
 
         usage = getattr(response, "usage", None)
-        if usage is None:
-            return None
-        projected: dict[str, int | float] = {}
-        # 不同 OpenAI-compatible provider 可能使用 prompt/completion 或 input/output 命名。
-        for source_name, target_name in (
-            ("prompt_tokens", "input_tokens"),
-            ("input_tokens", "input_tokens"),
-            ("completion_tokens", "output_tokens"),
-            ("output_tokens", "output_tokens"),
-            ("total_tokens", "total_tokens"),
-        ):
-            value = getattr(usage, source_name, None)
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
-                projected[target_name] = value
+        projected = _project_usage_mapping(usage)
         return projected or None
+
+
+def _project_usage_mapping(usage: Any) -> dict[str, int | float]:
+    """在 adapter 边界归一化常见 usage 字段，不为未知字段伪造数值。"""
+
+    if usage is None:
+        return {}
+
+    projected: dict[str, int | float] = {}
+    # Agents SDK 和 Chat Completions 对输入/输出字段使用过两组命名，统一成 Trivae key。
+    for target_name, source_names in (
+        ("requests", ("requests",)),
+        ("input_tokens", ("input_tokens", "prompt_tokens")),
+        ("output_tokens", ("output_tokens", "completion_tokens")),
+        ("total_tokens", ("total_tokens",)),
+    ):
+        value = _first_numeric(usage, source_names)
+        if value is not None:
+            projected[target_name] = value
+
+    # cached input/cache read 只在 Provider 真实返回时写入，缺失时保持 unknown。
+    cached_input_tokens = _cached_input_tokens(usage)
+    if cached_input_tokens is not None:
+        projected["cached_input_tokens"] = cached_input_tokens
+    return projected
+
+
+def _cached_input_tokens(usage: Any) -> int | float | None:
+    """读取 flat 或 token-details 形式的 cache-read usage 字段。"""
+
+    # 先检查已经归一化或部分 Provider 直接返回的 flat 字段。
+    direct = _first_numeric(
+        usage,
+        ("cached_input_tokens", "cache_read_input_tokens", "cache_read_tokens", "cached_tokens"),
+    )
+    if direct is not None:
+        return direct
+
+    # OpenAI-compatible Chat Completions 常把 cached_tokens 放在 prompt/input details 中。
+    for details_name in ("prompt_tokens_details", "input_tokens_details"):
+        details = _public_value(usage, details_name)
+        cached = _first_numeric(
+            details,
+            ("cached_tokens", "cache_read_input_tokens", "cache_read_tokens"),
+        )
+        if cached is not None:
+            return cached
+    return None
+
+
+def _first_numeric(container: Any, names: tuple[str, ...]) -> int | float | None:
+    """从 mapping 或 SDK 普通对象读取第一个真实数字字段。"""
+
+    for name in names:
+        value = _public_value(container, name)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return value
+    return None
+
+
+def _public_value(container: Any, name: str) -> object | None:
+    """只读取公开 mapping/属性，不把 SDK 对象 repr 或异常正文带入 projection。"""
+
+    if isinstance(container, Mapping):
+        return container.get(name)
+    return getattr(container, name, None)

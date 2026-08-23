@@ -3,6 +3,7 @@
 from trivae.config.settings import (
     DEFAULT_DEEPSEEK_BASE_URL,
     DeepSeekSettings,
+    ModelSettings,
     SettingsError,
     load_settings,
 )
@@ -10,6 +11,7 @@ from trivae.config.settings import (
 __all__ = [
     "DEFAULT_DEEPSEEK_BASE_URL",
     "DeepSeekSettings",
+    "ModelSettings",
     "SettingsError",
     "load_settings",
 ]
