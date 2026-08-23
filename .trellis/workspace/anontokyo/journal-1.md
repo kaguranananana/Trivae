@@ -430,3 +430,25 @@ Implemented Trivae-owned normalized Query Trace with normal/debug bounded captur
 ### Status
 
 [OK] **Completed**
+
+
+## Session 19: Stabilize real DeepSeek tool calling and provenance
+
+**Date**: 2026-08-23
+**Task**: Stabilize real DeepSeek tool calling and provenance
+**Branch**: `codex/m6-trace-observability`
+
+### Summary
+
+通过真实 DeepSeek Trace 定位 INVALID_ARGUMENT 与 UNRESOLVED_MESSAGE_SOURCE 根因；收紧工具 schema/prompt、补齐自包含 provenance、保留透明错误与 M5 citation contract，并完成 deterministic 与真实 smoke 验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `639eac5` | (see git log) |
+| `3a19ea1` | (see git log) |
+
+### Status
+
+[OK] **Completed**
