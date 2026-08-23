@@ -515,3 +515,24 @@ Ran the real DeepSeek last-stable-m6 baseline through the production Application
 ### Status
 
 [OK] **Completed**
+
+
+## Session 23: Interactive chat CLI
+
+**Date**: 2026-08-23
+**Task**: Interactive chat CLI
+**Branch**: `codex/interactive-chat-cli-main`
+
+### Summary
+
+Implemented trivae chat on main with Application-backed session selection, fixed ExecutionScope, Conversation reuse, final_answer/Trace projection, deterministic CLI tests, and quality validation. Real provider smoke was blocked by missing DeepSeek configuration.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3e18342` | (see git log) |
+
+### Status
+
+[OK] **Completed**
