@@ -94,6 +94,28 @@ Deliberate deviations:
 `("search_messages",)`。在带标签的配对 Evaluation 证明稳定收益前，不把 lexical 与
 semantic 两条检索工具同时设为生产默认。
 
+## Real-run calibration and provisional annotation extension
+
+```text
+Pinned real Snapshot
+  -> full Qwen rebuild + integrity report
+  -> bounded lexical and semantic runs
+  -> merged/deduplicated canonical candidates
+  -> blind packet (query + candidate/context, no method/rank/score)
+  -> LLM-assisted provisional label + confidence
+  -> sealed retrieval metadata merge
+  -> paired provisional metrics + audit queue
+  -> later human review -> verified labels
+```
+
+Evaluation 继续复用现有 Snapshot/Variant 边界，新增的 retrieval annotation contract 不复制 Query execution core。候选的比较单位是 canonical message ID；同一消息被两种方法召回时只盲标一次。盲标文件与包含 source/rank/score 的 sealed metadata 分开生成，避免 labeler 从方法身份和排名获得暗示。标签完成后才在本地合并 provenance。
+
+标签状态分为 `llm_assisted_provisional` 与 `human_verified`。本轮所有自动标签固定使用前者；confidence 是 labeler 对单条判断的 0–1 自评，不等于人工一致率。`uncertain` 和 missing label 都不转成 negative。audit queue 至少收集低 confidence、`uncertain`、`partially_relevant`、仅单一方法召回且进入前排，以及两种方法排名明显冲突的候选，供人工按优先级复核。
+
+普通 Precision@k、MRR 和 Top-k hit 仅在对应 top-k 候选都有 resolved label 时可用；否则返回 unavailable reason。`partially_relevant` 不计作 full relevant，而由独立 partial relevant coverage 报告。当前候选集合只覆盖两种方法在固定最大深度下的并集，因此 Recall@k 的 denominator 是已完整标注的 merged candidate pool，结果必须命名并展示为 pooled-candidate Recall@k；没有 corpus-exhaustive reference 时，corpus Recall 保持 unavailable。所有由 LLM 标签产生的数值都携带 `llm_assisted_provisional`，不能成为 production gate。
+
+真实聊天正文只存在 gitignored local artifact；version-controlled report 仅保存 Snapshot/variant/index identity、query ID、聚合计数、运行条件、指标与 limitation，不保存 query 命中正文、上下文或标签 notes。
+
 ## Verification and rollback shape
 
 Focused fake-provider tests prove deterministic contracts without model download. An index build can be discarded by deleting/rebuilding the derived semantic database; canonical data is never modified. Runtime/evidence tests use the existing fake model/tool patterns. Real-data smoke runs against a temporary copy or a separate derived path and records measured counts/latency only when actually observed.

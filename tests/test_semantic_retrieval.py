@@ -35,6 +35,9 @@ class _DeterministicProvider:
     )
     document_batch_size = 8
 
+    def preload(self) -> None:
+        """确定性 fixture 没有模型资源，但遵守显式加载计时 contract。"""
+
     def embed_documents(self, texts: tuple[str, ...]) -> tuple[tuple[float, ...], ...]:
         """让包含 budget 的 child 与 query 对齐，其余 child 使用正交向量。"""
 
@@ -162,10 +165,12 @@ class SemanticRetrievalTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             raw = _write_semantic_fixture(root)
-            with create_application(root / "app.sqlite3", semantic_provider=_DeterministicProvider()) as application:
+            database_path = root / "app.sqlite3"
+            with create_application(database_path, semantic_provider=_DeterministicProvider()) as application:
                 application.import_directory(raw)
                 stats = application.rebuild_semantic_index()
                 repeated_stats = application.rebuild_semantic_index()
+                integrity = application.validate_semantic_index()
                 envelope = application.invoke_tool(
                     "semantic_search",
                     SemanticSearchInput(
@@ -180,7 +185,21 @@ class SemanticRetrievalTests(unittest.TestCase):
 
                 self.assertEqual(stats.status, "completed")
                 self.assertEqual(repeated_stats.status, "completed")
+                self.assertEqual(stats.eligible_message_count, 2)
+                self.assertEqual(stats.semantic_void_message_count, 0)
+                self.assertEqual(stats.parent_count, 2)
                 self.assertEqual(stats.chunk_count, 2)
+                self.assertEqual(stats.embedding_count, 2)
+                self.assertEqual(stats.embedding_batch_size, 8)
+                self.assertEqual(stats.embedding_batch_count, 2)
+                self.assertGreater(stats.index_size_bytes, 0)
+                self.assertEqual(integrity.status, "valid")
+                self.assertEqual(integrity.metadata_chunk_count, 2)
+                self.assertEqual(integrity.vector_count, 2)
+                self.assertEqual(integrity.missing_vector_count, 0)
+                self.assertEqual(integrity.orphan_vector_count, 0)
+                self.assertEqual(integrity.sampled_range_count, 2)
+                self.assertEqual(integrity.recovered_range_count, 2)
                 self.assertEqual(envelope.status, "ok")
                 self.assertIsInstance(envelope.data, SemanticRetrievalResult)
                 assert isinstance(envelope.data, SemanticRetrievalResult)
@@ -198,6 +217,11 @@ class SemanticRetrievalTests(unittest.TestCase):
                 )
                 self.assertEqual([item.message.internal_message_id for item in record.message_items], ["qq:100:m1"])
                 self.assertNotIn("chunk_id", record.to_model_provenance())
+
+            # 重开进程边界后继续验证同一 derived index，而不是依赖内存状态。
+            with create_application(database_path, semantic_provider=_DeterministicProvider()) as reopened:
+                self.assertEqual(reopened.semantic_index_status().status, "completed")
+                self.assertEqual(reopened.validate_semantic_index().status, "valid")
 
     def test_application_status_distinguishes_missing_completed_and_stale_index(self) -> None:
         """运维 facade 必须把未建、可用和 canonical 漂移分别投影出来。"""

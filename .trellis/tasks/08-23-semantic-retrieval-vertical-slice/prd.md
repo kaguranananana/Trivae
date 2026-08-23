@@ -4,6 +4,8 @@
 
 在现有 Trivae Query 主链路中落地一条可重建、可评估、可观测的 Semantic Retrieval vertical slice：Canonical Messages → Time-aware Parent/Small Child → Embedding → 独立 sqlite-vec Derived Index → Semantic Retrieval → bounded canonical context recovery → Agent-facing Tool → Runtime → Evidence/Citation → Trace。
 
+经用户追加授权，本任务继续完成当前真实 Canonical Snapshot 的全量 Qwen rebuild，并建立 lexical-only 与 semantic candidate 的盲标配对 Evaluation。Codex/LLM 可以完成全部 relevance annotation，但标签与由其计算的指标必须始终标记为 `llm_assisted_provisional`，不得冒充 human ground truth；同时产出 confidence 与 audit queue，供后续人工抽查并升级为 verified labels。
+
 ## Requirements
 
 - Semantic v1 的 primary indexing unit 必须是 Time-aware Parent + Small Semantic Child，不实现默认逐 Message embedding。
@@ -18,6 +20,12 @@
 - Semantic Tool 必须通过现有 Runtime SDK adapter、Evidence/Citation provenance、Trace normalized event 与 Application Composition Root 进入生产链路；最终 citation 只能指向 canonical Message source，不指向 chunk/vector row。
 - 复用现有 EvaluationCaseBundle/ControlledVariant/EvaluationRunner/Store/Trace；补充 lexical-only baseline 与 semantic-enabled candidate 的最小 comparison fixtures，不扩建独立评测基础设施。
 - 创建真实数据只读 semantic index build + retrieval smoke 记录；不得把未经验证的质量或性能结论写成事实。
+- 对当前完整 Canonical Snapshot 执行一次真实 `Qwen/Qwen3-Embedding-0.6B` rebuild；不得抽样替代、换模型或降低 1024 dimensions。
+- annotation packet 必须合并并按 canonical message ID 去重 lexical/semantic 候选；盲标输入隐藏 retrieval source、rank、score 与 variant identity，标签完成后再合并 sealed metadata。
+- 每个 LLM 标签必须保存 `relevant / partially_relevant / not_relevant / uncertain`、confidence、provisional provenance 与 notes；低置信度、uncertain、partial、方法分歧和关键排名冲突进入 audit queue。
+- Retrieval metrics 必须支持 Recall@k、Precision@k、MRR、Top-k hit/success、relevant coverage 与 partial relevant coverage；missing/uncertain label 不能当作 negative。候选池不具备 corpus-exhaustive ground truth 时，Recall 必须明确写成 pooled-candidate recall。
+- 含真实聊天正文的 blind packet、sealed metadata、标签与 audit queue 只保存在 gitignored local artifact 目录；Git 只保存 schema、generator、无正文 query metadata 和安全统计报告。
+- production 默认 Agent exposure 继续使用兼容 `search_messages`；`semantic_search` 仅由显式 request/variant 启用，直到 verified labeled Evaluation 支持变更。
 
 ## Acceptance Criteria
 
@@ -28,6 +36,11 @@
 - [ ] baseline/candidate evaluation variant 显式记录 available tools、retrieval configuration 与 semantic index identity。
 - [ ] 运行 `pytest -q`、`ruff check src tests`、`mypy src`、`git diff --check`；失败先修实现根因并记录。
 - [ ] validation.md 明确记录真实 smoke 是否完成、测试事实、已知限制与 Pending Evaluation，不把未完成项写成完成。
+- [ ] 全量真实 Qwen rebuild 完成并验证 index identity、1024 dimensions、状态、row consistency、canonical recovery、reopen persistence 与 stale detection；或记录不可规避的外部 blocker。
+- [ ] 生成 local-only blind annotation、sealed retrieval metadata、完整 LLM-assisted provisional labels、逐条 confidence 与 audit queue。
+- [ ] 在同一 Snapshot 上完成 lexical/semantic paired metrics；所有质量指标显式标记 `llm_assisted_provisional`，并区分 pooled-candidate Recall 与 corpus Recall。
+- [ ] 单元测试覆盖 perfect/partial/miss/duplicate/rank/no-relevant/unknown/partial annotation/invalid snapshot/paired comparison。
+- [ ] 最终测试、lint、type check、compileall、Trellis validation 通过；任务归档、分支 push、working tree clean。
 
 ## Notes
 

@@ -386,9 +386,19 @@ class SemanticBuildStats:
     status: SemanticIndexStatus
     canonical_message_count: int
     indexed_message_count: int
+    eligible_message_count: int
+    semantic_void_message_count: int
+    parent_count: int
     chunk_count: int
     skipped_void_chunks: int
+    embedding_count: int
+    embedding_batch_size: int
+    embedding_batch_count: int
+    model_load_elapsed_ms: float
+    embedding_elapsed_ms: float
+    index_write_elapsed_ms: float
     elapsed_ms: float
+    index_size_bytes: int
     identity: SemanticIndexIdentity
 
     def to_dict(self) -> dict[str, object]:
@@ -398,11 +408,76 @@ class SemanticBuildStats:
             "status": self.status,
             "canonical_message_count": self.canonical_message_count,
             "indexed_message_count": self.indexed_message_count,
+            "eligible_message_count": self.eligible_message_count,
+            "semantic_void_message_count": self.semantic_void_message_count,
+            "parent_count": self.parent_count,
             "chunk_count": self.chunk_count,
             "skipped_void_chunks": self.skipped_void_chunks,
+            "embedding_count": self.embedding_count,
+            "embedding_batch_size": self.embedding_batch_size,
+            "embedding_batch_count": self.embedding_batch_count,
+            "model_load_elapsed_ms": self.model_load_elapsed_ms,
+            "embedding_elapsed_ms": self.embedding_elapsed_ms,
+            "index_write_elapsed_ms": self.index_write_elapsed_ms,
             "elapsed_ms": self.elapsed_ms,
+            "messages_per_second": (
+                0.0 if self.elapsed_ms <= 0 else self.indexed_message_count / (self.elapsed_ms / 1000)
+            ),
+            "chunks_per_second": (
+                0.0 if self.elapsed_ms <= 0 else self.embedding_count / (self.elapsed_ms / 1000)
+            ),
+            "index_size_bytes": self.index_size_bytes,
             "identity": self.identity.to_dict(),
         }
+
+
+@dataclass(frozen=True)
+class SemanticIndexIntegrityReport:
+    """Derived index 内部一致性和 bounded canonical recovery 检查结果。"""
+
+    status: Literal["valid", "invalid"]
+    identity: SemanticIndexIdentity
+    dimension: int
+    parent_count: int
+    metadata_chunk_count: int
+    vector_count: int
+    missing_vector_count: int
+    orphan_vector_count: int
+    sampled_vector_count: int
+    max_sample_norm_deviation: float
+    sampled_range_count: int = 0
+    recovered_range_count: int = 0
+    invalid_range_count: int = 0
+
+    def to_dict(self) -> dict[str, object]:
+        """输出不含聊天正文和原始向量的完整性事实。"""
+
+        return {
+            "status": self.status,
+            "identity": self.identity.to_dict(),
+            "dimension": self.dimension,
+            "parent_count": self.parent_count,
+            "metadata_chunk_count": self.metadata_chunk_count,
+            "vector_count": self.vector_count,
+            "missing_vector_count": self.missing_vector_count,
+            "orphan_vector_count": self.orphan_vector_count,
+            "sampled_vector_count": self.sampled_vector_count,
+            "max_sample_norm_deviation": self.max_sample_norm_deviation,
+            "sampled_range_count": self.sampled_range_count,
+            "recovered_range_count": self.recovered_range_count,
+            "invalid_range_count": self.invalid_range_count,
+        }
+
+
+@dataclass(frozen=True)
+class SemanticChunkRange:
+    """完整性检查使用的无正文 canonical range locator。"""
+
+    chunk_id: str
+    session_id: str
+    start_message_id: str
+    end_message_id: str
+    message_count: int
 
 
 @dataclass(frozen=True)
@@ -509,6 +584,9 @@ class EmbeddingProvider(Protocol):
     def document_batch_size(self) -> int:
         """返回 build 时单批 document 数量上限。"""
 
+    def preload(self) -> None:
+        """显式完成模型加载，便于把加载耗时和 embedding 耗时分开记录。"""
+
     def embed_documents(self, texts: Sequence[str]) -> tuple[tuple[float, ...], ...]:
         """按 document 语义生成向量，不添加 query instruction。"""
 
@@ -533,6 +611,9 @@ class SemanticIndexStore(Protocol):
 
     def state(self) -> SemanticIndexState | None:
         """读取当前 derived index 状态；缺失状态必须保持可区分。"""
+
+    def size_bytes(self) -> int:
+        """返回当前 derived database 主文件大小。"""
 
     def dense_search(
         self,

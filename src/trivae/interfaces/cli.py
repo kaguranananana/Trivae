@@ -463,24 +463,31 @@ def _run_semantic_command(args: argparse.Namespace) -> int:
             semantic_index_path=args.semantic_index,
         ) as application:
             rebuild: dict[str, object] | None = None
+            integrity: dict[str, object] | None = None
             if args.semantic_command == "rebuild":
                 rebuild = application.rebuild_semantic_index().to_dict()
+                integrity = application.validate_semantic_index().to_dict()
             elif args.semantic_command == "smoke" and args.rebuild:
                 rebuild = application.rebuild_semantic_index().to_dict()
+                integrity = application.validate_semantic_index().to_dict()
 
             status = application.semantic_index_status()
             if args.semantic_command == "status":
                 _write_json_projection(status.to_dict(), None)
                 return 0
             if args.semantic_command == "rebuild":
-                _write_json_projection({"rebuild": rebuild, "status": status.to_dict()}, None)
-                return 0
+                _write_json_projection(
+                    {"rebuild": rebuild, "integrity": integrity, "status": status.to_dict()},
+                    None,
+                )
+                return 0 if integrity is not None and integrity["status"] == "valid" else 1
             if args.semantic_command == "smoke":
                 smoke = _semantic_smoke_projection(application, args)
                 _write_json_projection(
                     {
                         "status": smoke["tool_status"],
                         "index": status.to_dict(),
+                        "integrity": integrity,
                         "rebuild": rebuild,
                         "smoke": smoke,
                     },

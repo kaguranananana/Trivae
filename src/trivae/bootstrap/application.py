@@ -7,6 +7,7 @@ import logging
 import uuid
 from dataclasses import replace
 from pathlib import Path
+from typing import Literal
 
 from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, SemanticSearchInput, ToolEnvelope
 from trivae.capabilities.registry import CapabilityRegistry
@@ -55,6 +56,7 @@ from trivae.retrieval.semantic.builder import SemanticIndexBuilder
 from trivae.retrieval.semantic.contracts import (
     EmbeddingProvider,
     SemanticBuildStats,
+    SemanticIndexIntegrityReport,
     SemanticIndexStatusReport,
 )
 from trivae.retrieval.semantic.embedding import SentenceTransformerEmbeddingProvider
@@ -180,6 +182,47 @@ class TrivaeApplication:
             self._semantic_builder.identity,
             self._semantic_index.state(),
             canonical_count,
+        )
+
+    def validate_semantic_index(self, *, sample_size: int = 16) -> SemanticIndexIntegrityReport:
+        """验证 derived rows，并从 Canonical Store 抽样恢复真实 message range。"""
+
+        self._ensure_open()
+        if self._semantic_builder is None or self._semantic_index is None:
+            raise RuntimeError("semantic index validation is not configured")
+        identity = self._semantic_builder.identity
+        report = self._semantic_index.integrity_report(identity, sample_size=sample_size)
+        ranges = self._semantic_index.sample_ranges(identity, sample_size=sample_size)
+        recovered = 0
+        invalid = 0
+        for item in ranges:
+            messages = self.read_repository.read_message_range(
+                item.session_id,
+                item.start_message_id,
+                item.end_message_id,
+                item.message_count,
+            )
+            # 长度、session 与首尾 locator 必须同时匹配，避免“能读到一些消息”被误报为成功。
+            matches = (
+                len(messages) == item.message_count
+                and bool(messages)
+                and all(message.session_id == item.session_id for message in messages)
+                and messages[0].internal_message_id == item.start_message_id
+                and messages[-1].internal_message_id == item.end_message_id
+            )
+            if matches:
+                recovered += 1
+            else:
+                invalid += 1
+        status: Literal["valid", "invalid"] = (
+            "valid" if report.status == "valid" and invalid == 0 else "invalid"
+        )
+        return replace(
+            report,
+            status=status,
+            sampled_range_count=len(ranges),
+            recovered_range_count=recovered,
+            invalid_range_count=invalid,
         )
 
     def materialize_evaluation_snapshot(self) -> DatasetSnapshot:

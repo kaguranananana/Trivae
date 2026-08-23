@@ -13,8 +13,10 @@ from pathlib import Path
 
 from trivae.retrieval.semantic.contracts import (
     SemanticChunk,
+    SemanticChunkRange,
     SemanticIndexCandidate,
     SemanticIndexIdentity,
+    SemanticIndexIntegrityReport,
     SemanticIndexStale,
     SemanticIndexState,
     SemanticIndexStatus,
@@ -254,6 +256,146 @@ class SQLiteSemanticIndex:
                 raise
             raise SemanticIndexStorageError("semantic index state metadata is invalid") from exc
 
+    def size_bytes(self) -> int:
+        """返回 derived database 主文件大小，供 rebuild report 记录。"""
+
+        try:
+            return self.database_path.stat().st_size
+        except OSError as exc:
+            raise SemanticIndexStorageError("semantic index file size cannot be read") from exc
+
+    def integrity_report(
+        self,
+        identity: SemanticIndexIdentity,
+        *,
+        sample_size: int = 16,
+    ) -> SemanticIndexIntegrityReport:
+        """验证 metadata/vector 对应关系，并抽样检查持久化向量范数。"""
+
+        if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size <= 0:
+            raise ValueError("semantic integrity sample_size must be positive")
+        state = self._queryable_state(identity)
+        dimension = identity.embedding.dimension
+        table = self._vector_table(dimension)
+        try:
+            metadata_count = int(
+                self._connection.execute("SELECT COUNT(*) FROM semantic_chunks").fetchone()[0]
+            )
+            parent_count = int(
+                self._connection.execute(
+                    "SELECT COUNT(DISTINCT parent_id) FROM semantic_chunks"
+                ).fetchone()[0]
+            )
+            vector_count = int(self._connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+            missing_vector_count = int(
+                self._connection.execute(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM semantic_chunks AS c
+                    LEFT JOIN {table} AS v ON v.vector_id = c.vector_id
+                    WHERE v.vector_id IS NULL
+                    """
+                ).fetchone()[0]
+            )
+            orphan_vector_count = int(
+                self._connection.execute(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM {table} AS v
+                    LEFT JOIN semantic_chunks AS c ON c.vector_id = v.vector_id
+                    WHERE c.vector_id IS NULL
+                    """
+                ).fetchone()[0]
+            )
+            vector_rows = self._connection.execute(
+                f"SELECT embedding FROM {table} ORDER BY vector_id ASC LIMIT ?",
+                (sample_size,),
+            ).fetchall()
+        except sqlite3.Error as exc:
+            raise SemanticIndexStorageError(
+                f"semantic index integrity query failed: {type(exc).__name__}"
+            ) from exc
+
+        # sqlite-vec 返回 float32 blob；只抽样计算，不把原始向量放进 report。
+        max_norm_deviation = 0.0
+        for row in vector_rows:
+            vector = self._unpack_vector(row["embedding"], dimension)
+            norm = math.sqrt(sum(value * value for value in vector))
+            max_norm_deviation = max(max_norm_deviation, abs(norm - 1.0))
+        normalized_invalid = identity.embedding.normalized and max_norm_deviation > 1e-4
+        invalid = any(
+            (
+                state.chunk_count != metadata_count,
+                metadata_count != vector_count,
+                missing_vector_count != 0,
+                orphan_vector_count != 0,
+                normalized_invalid,
+            )
+        )
+        return SemanticIndexIntegrityReport(
+            status="invalid" if invalid else "valid",
+            identity=identity,
+            dimension=dimension,
+            parent_count=parent_count,
+            metadata_chunk_count=metadata_count,
+            vector_count=vector_count,
+            missing_vector_count=missing_vector_count,
+            orphan_vector_count=orphan_vector_count,
+            sampled_vector_count=len(vector_rows),
+            max_sample_norm_deviation=max_norm_deviation,
+        )
+
+    def sample_ranges(
+        self,
+        identity: SemanticIndexIdentity,
+        *,
+        sample_size: int = 16,
+    ) -> tuple[SemanticChunkRange, ...]:
+        """从索引首尾抽取 bounded range，用于跨库 canonical recovery 校验。"""
+
+        if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size <= 0:
+            raise ValueError("semantic range sample_size must be positive")
+        self._queryable_state(identity)
+        first_count = (sample_size + 1) // 2
+        last_count = sample_size // 2
+        columns = "chunk_id, session_id, start_message_id, end_message_id, message_count"
+        try:
+            rows = list(
+                self._connection.execute(
+                    f"SELECT {columns} FROM semantic_chunks ORDER BY vector_id ASC LIMIT ?",
+                    (first_count,),
+                ).fetchall()
+            )
+            if last_count:
+                rows.extend(
+                    self._connection.execute(
+                        f"SELECT {columns} FROM semantic_chunks ORDER BY vector_id DESC LIMIT ?",
+                        (last_count,),
+                    ).fetchall()
+                )
+        except sqlite3.Error as exc:
+            raise SemanticIndexStorageError(
+                f"semantic range sample failed: {type(exc).__name__}"
+            ) from exc
+
+        ranges: list[SemanticChunkRange] = []
+        seen: set[str] = set()
+        for row in rows:
+            chunk_id = str(row["chunk_id"])
+            if chunk_id in seen:
+                continue
+            seen.add(chunk_id)
+            ranges.append(
+                SemanticChunkRange(
+                    chunk_id=chunk_id,
+                    session_id=str(row["session_id"]),
+                    start_message_id=str(row["start_message_id"]),
+                    end_message_id=str(row["end_message_id"]),
+                    message_count=int(row["message_count"]),
+                )
+            )
+        return tuple(ranges)
+
     def dense_search(
         self,
         identity: SemanticIndexIdentity,
@@ -406,6 +548,20 @@ class SQLiteSemanticIndex:
         """使用 sqlite-vec 要求的 little-endian float32 二进制表示，不生成 hash。"""
 
         return struct.pack(f"<{len(vector)}f", *vector)
+
+    @staticmethod
+    def _unpack_vector(value: object, dimension: int) -> tuple[float, ...]:
+        """把 sqlite-vec 的 float32 blob 恢复为仅供完整性检查的数值。"""
+
+        if not isinstance(value, (bytes, bytearray, memoryview)):
+            raise SemanticIndexStorageError("semantic vector sample is not a float32 blob")
+        payload = bytes(value)
+        expected_bytes = dimension * 4
+        if len(payload) != expected_bytes:
+            raise SemanticIndexStorageError(
+                f"semantic vector sample size mismatch: expected {expected_bytes}, got {len(payload)}"
+            )
+        return tuple(struct.unpack(f"<{dimension}f", payload))
 
 
 def _now_ms() -> int:
