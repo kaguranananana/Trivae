@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 15
+- **Total Sessions**: 16
 - **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~369 | Active |
+| `journal-1.md` | ~390 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 16 | 2026-08-23 | M5a Real DeepSeek Smoke Stabilization | `cc045f0` | `codex/m5-evidence-citation-finalization` |
 | 15 | 2026-08-23 | M5 Evidence Citation Finalization | `275bc4a` | `codex/m5-evidence-citation-finalization` |
 | 14 | 2026-08-23 | Implement M4 Query Execution Core | `6acd9e9` | `main` |
 | 13 | 2026-08-22 | Implement M4a Agent Runtime Baseline | `e562aec` | `main` |

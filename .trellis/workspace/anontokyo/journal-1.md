@@ -367,3 +367,24 @@ Implemented the M5a Evidence/Citation vertical slice: structured AnswerArtifact,
 ### Status
 
 [OK] **Completed**
+
+
+## Session 16: M5a Real DeepSeek Smoke Stabilization
+
+**Date**: 2026-08-23
+**Task**: M5a Real DeepSeek Smoke Stabilization
+**Branch**: `codex/m5-evidence-citation-finalization`
+
+### Summary
+
+Enabled provider JSON mode for DeepSeek final synthesis with an explicit no-fence prompt and deterministic adapter regression coverage. Rebuilt derived FTS on a real imported-data snapshot, then ran M5A-S1 through S4 sequentially: all four DeepSeek runs completed successfully with valid Answer Artifacts, current-run citations, and trusted MessageSource hydration where evidence existed. S3 produced a structured evidence-insufficient result; no aggregate Agent case or real contradicts binding was available. Quality gates passed: pytest 114, ruff, mypy, CLI help, Trellis validation, and diff check.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc045f0` | (see git log) |
+
+### Status
+
+[OK] **Completed**
