@@ -75,6 +75,13 @@ class SemanticRetrieval:
             raise SemanticIndexUnavailable("semantic index is unavailable; build it first")
         if state.identity.serialized != identity.serialized:
             raise SemanticIndexStale("semantic index identity is stale; rebuild it")
+        # 在 query embedding 前拒绝不可查询终态，避免 building/failed 状态仍加载模型。
+        if state.status == "building":
+            raise SemanticIndexUnavailable("semantic index is building")
+        if state.status == "failed":
+            raise SemanticIndexUnavailable(state.last_error or "semantic index build failed")
+        if state.chunk_count <= 0:
+            raise SemanticIndexUnavailable("semantic index has no vector chunks")
 
         canonical_count = self.repository.count_messages(MessageQuery(limit=1))
         if canonical_count != state.canonical_message_count:

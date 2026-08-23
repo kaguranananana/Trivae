@@ -37,6 +37,7 @@ class _DeterministicProvider:
 
     def __init__(self) -> None:
         self.document_batches: list[tuple[str, ...]] = []
+        self.query_texts: list[str] = []
 
     def preload(self) -> None:
         """确定性 fixture 没有模型资源，但遵守显式加载计时 contract。"""
@@ -50,6 +51,7 @@ class _DeterministicProvider:
     def embed_query(self, text: str) -> tuple[float, ...]:
         """固定 query 向量，只用于验证 score/range/citation 主链路。"""
 
+        self.query_texts.append(text)
         return (1.0, 0.0, 0.0)
 
 
@@ -362,12 +364,23 @@ class SemanticRetrievalTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             raw = _write_semantic_fixture(root)
-            with create_application(root / "app.sqlite3", semantic_provider=_DeterministicProvider()) as application:
+            provider = _DeterministicProvider()
+            with create_application(root / "app.sqlite3", semantic_provider=provider) as application:
                 application.import_directory(raw)
                 request = SemanticSearchInput(query="budget", session_ids=("qq:100",), limit=1)
                 scope = ExecutionScope(allowed_session_ids=("qq:100",), max_results=1)
                 not_ready = application.invoke_tool("semantic_search", request, scope)
                 self.assertEqual(not_ready.error.code, "SEMANTIC_INDEX_NOT_READY")
+
+                assert application._semantic_index is not None
+                assert application._semantic_builder is not None
+                application._semantic_index.start_rebuild(
+                    application._semantic_builder.identity,
+                    canonical_message_count=2,
+                )
+                building = application.invoke_tool("semantic_search", request, scope)
+                self.assertEqual(building.error.code, "SEMANTIC_INDEX_NOT_READY")
+                self.assertEqual(provider.query_texts, [])
 
                 application.rebuild_semantic_index()
                 write_export(
