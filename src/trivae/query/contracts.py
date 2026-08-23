@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Mapping
 
 from trivae.capabilities.contracts import ExecutionScope
+from trivae.observability.contracts import TraceProfile
 from trivae.query.evidence import AnswerArtifact, FinalizationErrorInfo
 from trivae.query.runtime.contracts import AgentRunRequest, ModelContextMessage, RuntimeResult
 
@@ -63,6 +64,7 @@ class QueryRequest:
     data_snapshot: Mapping[str, object] = field(default_factory=dict)
     available_capabilities: tuple[str, ...] = ("search_messages",)
     conversation_id: str | None = None
+    trace_profile: TraceProfile = "normal"
 
     def __post_init__(self) -> None:
         """在应用入口校验并规范化查询字段，减少下游分支。"""
@@ -79,6 +81,8 @@ class QueryRequest:
             if not isinstance(self.conversation_id, str) or not self.conversation_id.strip():
                 raise QueryContractError("conversation_id must be a non-empty string when provided")
             object.__setattr__(self, "conversation_id", self.conversation_id.strip())
+        if self.trace_profile not in ("normal", "debug"):
+            raise QueryContractError("trace_profile must be normal or debug")
         object.__setattr__(self, "query", self.query.strip())
         QueryContext(
             query=self.query,
@@ -99,7 +103,12 @@ class QueryRequest:
             available_capabilities=self.available_capabilities,
         )
 
-    def to_runtime_request(self, plan_guidance: str | None = None) -> AgentRunRequest:
+    def to_runtime_request(
+        self,
+        plan_guidance: str | None = None,
+        *,
+        trace_context: object | None = None,
+    ) -> AgentRunRequest:
         """将应用请求编译为同一 Runtime 的输入，不改变 trusted scope identity。"""
 
         return AgentRunRequest(
@@ -109,6 +118,7 @@ class QueryRequest:
             model_context=self.prior_context,
             plan_guidance=plan_guidance,
             request_id=self.request_id,
+            trace_context=trace_context,
         )
 
 
@@ -134,6 +144,7 @@ class QueryResult:
     answer_artifact: AnswerArtifact | None = None
     finalization_error: FinalizationErrorInfo | None = None
     conversation_id: str | None = None
+    trace_id: str | None = None
 
     @property
     def final_answer(self) -> str | None:

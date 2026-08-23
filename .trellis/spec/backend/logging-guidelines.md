@@ -1,7 +1,7 @@
 # Logging Guidelines
 
 > 日志与可观测性长期原则（源自工程原则第 4 节）。
-> Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverage、privacy / retention 与 Trace storage 的架构语义；Stage 1.10 已确认 Evaluation 对 Trace 的引用、诊断与不可改写边界；Stage 1.11 已确认 CLI / API / Evaluation 共享 Application、request / trace correlation 与 Event / Error projection；具体 Python / JSON Schema、Evaluation artifact 与 backend 仍待实现。
+> Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverage、privacy / retention 与 Trace storage 的架构语义；M6 已落地 Python normalized event、独立 SQLite Trace Store、normal/debug capture、Projection 与 Application facade；Stage 1.10 Evaluation artifact、部署 retention 与 API mapping 仍待实现。
 
 ---
 
@@ -35,12 +35,12 @@
 - Model
 - Prompt Version
 
-## Pending architecture specification
+## Remaining architecture specification
 
-- Normalized Event / Failure / Coverage Descriptor 的具体 Python / JSON Schema 与事件名
+- Coverage Descriptor 的更完整跨 capability Schema 与事件名扩展
 - 日志格式 / 级别体系
-- Trace Collector / Store backend、指标采集与存储实现
-- Trace Profile 的配置来源 / 启用边界、Normal / Debug capture policy、redaction / secret stripping、具体 retention 时长与访问角色
+- Trace backend 的 batch/retention/部署策略
+- Trace Profile 的部署级配置来源、具体 retention 时长与访问角色
 
 ## 已确认边界（Stage 1.9）
 

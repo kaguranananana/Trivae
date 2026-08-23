@@ -58,6 +58,7 @@ class _PendingEvent:
     tool_call_id: str | None = None
     tool_round: int | None = None
     usage: dict[str, int | float] | None = None
+    model_visible_context: tuple[dict[str, object], ...] | None = None
 
 
 @dataclass
@@ -66,6 +67,8 @@ class _RunState:
 
     provider: str
     model: str
+    # run_id 是每次 Runtime execution 新建的本地 identity，与 request_id 明确分离。
+    run_id: str = field(default_factory=lambda: f"run-{uuid.uuid4().hex}")
     pending: list[_PendingEvent] = field(default_factory=list)
     sequence: int = 0
     turn: int = 0
@@ -101,8 +104,31 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         if self._state.finalizing:
             agent.tools.clear()
         self._state.pending.append(
-            _PendingEvent("turn_started", tool_round=self._state.tool_rounds + 1)
+            _PendingEvent(
+                "turn_started",
+                tool_round=self._state.tool_rounds + 1,
+                model_visible_context=self._project_model_visible_context(system_prompt, input_items),
+            )
         )
+
+    @staticmethod
+    def _project_model_visible_context(
+        system_prompt: str | None,
+        input_items: list[Any],
+    ) -> tuple[dict[str, object], ...] | None:
+        """只保留普通 role/content，Debug capture 不包含 SDK item 或 hidden reasoning。"""
+
+        projected: list[dict[str, object]] = []
+        if isinstance(system_prompt, str) and system_prompt:
+            projected.append({"role": "system", "content": system_prompt})
+        for item in input_items:
+            if not isinstance(item, dict):
+                continue
+            role = item.get("role")
+            content = item.get("content")
+            if isinstance(role, str) and isinstance(content, str):
+                projected.append({"role": role, "content": content})
+        return tuple(projected) if projected else None
 
     async def on_llm_end(self, context: Any, agent: Any, response: Any) -> None:
         """从模型输出只读取 function-call 数量，决定何时结束本轮事件。"""
@@ -326,12 +352,12 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         yield self._event(state, "run_started")
         if self._abort_is_set(abort_event):
             state.aborted = True
-            result = self._aborted_result((), 0, None, ())
+            result = self._aborted_result((), 0, state.run_id, ())
             yield self._event(state, "aborted", result=result)
             return
 
         try:
-            context = self._build_context(request, abort_event)
+            context = self._build_context(request, abort_event, state.run_id)
             agent = self._build_agent(request, context, state)
             # RunConfig 与全局 tracing 设置同时显式关闭，保证本地运行不依赖 tracing key。
             set_tracing_disabled(True)
@@ -357,6 +383,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                         tool_call_id=pending.tool_call_id,
                         tool_round=pending.tool_round,
                         usage=pending.usage,
+                        model_visible_context=pending.model_visible_context,
                     )
                 if state.aborted:
                     continue
@@ -377,6 +404,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                     tool_call_id=pending.tool_call_id,
                     tool_round=pending.tool_round,
                     usage=pending.usage,
+                    model_visible_context=pending.model_visible_context,
                 )
 
             if state.aborted:
@@ -464,7 +492,12 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 abort_task.cancel()
                 await asyncio.gather(abort_task, return_exceptions=True)
 
-    def _build_context(self, request: AgentRunRequest, abort_event: object | None = None) -> RuntimeContext:
+    def _build_context(
+        self,
+        request: AgentRunRequest,
+        abort_event: object | None = None,
+        run_id: str | None = None,
+    ) -> RuntimeContext:
         """把 trusted registry/scope 放入 SDK local context，而不是 prompt/tool 参数。"""
 
         if self.capability_registry is None:
@@ -474,11 +507,13 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         if unknown:
             raise ValueError(f"requested capability is not registered: {sorted(unknown)!r}")
         return RuntimeContext(
-            run_id=request.request_id or f"run-{uuid.uuid4().hex}",
+            run_id=run_id or f"run-{uuid.uuid4().hex}",
+            tool_identity_prefix=request.request_id,
             scope=request.scope,
             capability_registry=self.capability_registry,
             available_capabilities=request.available_capabilities,
             abort_event=abort_event,
+            trace_context=request.trace_context,
         )
 
     def _build_agent(self, request: AgentRunRequest, context: RuntimeContext, state: _RunState) -> Any:
@@ -550,6 +585,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         result: RuntimeResult | None = None,
         tool_round: int | None = None,
         usage: dict[str, int | float] | None = None,
+        model_visible_context: tuple[dict[str, object], ...] | None = None,
     ) -> RuntimeEvent:
         """为每个事件分配进程内 sequence，不暴露 provider 原始 sequence。"""
 
@@ -566,6 +602,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             result=result,
             tool_round=tool_round,
             usage=usage,
+            run_id=state.run_id,
+            model_visible_context=model_visible_context,
         )
 
     def _failed_result(

@@ -1,7 +1,7 @@
 # Error Handling
 
 > 错误处理长期原则（源自工程原则第 1、3 节）。
-> Stage 1.9 已确认跨层 Error Code ownership 与 Failure Attribution 原则；具体异常类型和完整 Error Code 枚举仍待实现。
+> Stage 1.9 已确认跨层 Error Code ownership 与 Failure Attribution 原则；M6 已落地 Trace failure attribution 与 safe `TRACE.*` diagnostics，完整 user-facing Exception/API mapping 仍待实现。
 
 ---
 
@@ -41,4 +41,4 @@
 
 - 具体异常类型体系、完整 Error Code 枚举与 Exception mapping
 - user-facing error message 与 API mapping
-- 实现层 logging / Trace payload Schema
+- 更完整的 user-facing logging/API mapping 与部署级 Trace payload retention policy

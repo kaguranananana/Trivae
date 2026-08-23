@@ -41,6 +41,8 @@ class AgentRunRequest:
     model_context: tuple[ModelContextMessage, ...] = ()
     plan_guidance: str | None = None
     request_id: str | None = None
+    # Query 只通过本地对象传递 Trace operation，不把 collector 序列化到 provider input。
+    trace_context: object | None = None
 
     def __post_init__(self) -> None:
         """在 Runtime 边界一次性校验用户 query 与 capability 名称。"""
@@ -103,8 +105,13 @@ class RuntimeContext:
     current_tool_round: int = 1
     # run_id 是当前执行的本地关联键，不把 provider call ID 当成公共身份。
     run_id: str = "run-unknown"
+    # M5 的 tool locator 曾以 request_id 为前缀；保留该已验证的 locator 形状，
+    # 但 run_id 本身仍由 Runtime 独立生成，二者不再混用为同一个 identity。
+    tool_identity_prefix: str | None = None
     tool_results: list[ToolResultRecord] = field(default_factory=list)
     current_tool_call_id: str | None = None
+    # observability operation context 只存在进程内，Tool adapter 可选地消费它。
+    trace_context: object | None = None
     # provider call ID 只存在 adapter local context，用于把 SDK hook 对回 Trivae-owned identity。
     _provider_tool_call_ids: dict[str, str] = field(default_factory=dict, repr=False)
     _next_tool_call_number: int = field(default=0, repr=False)
@@ -120,7 +127,8 @@ class RuntimeContext:
                 self.current_tool_call_id = existing
                 return existing
         self._next_tool_call_number += 1
-        local_id = f"{self.run_id}/tool-call/{self._next_tool_call_number}"
+        identity_prefix = self.tool_identity_prefix or self.run_id
+        local_id = f"{identity_prefix}/tool-call/{self._next_tool_call_number}"
         if provider_tool_call_id is not None:
             self._provider_tool_call_ids[provider_tool_call_id] = local_id
         self.current_tool_call_id = local_id
@@ -132,7 +140,8 @@ class RuntimeContext:
         if provider_tool_call_id is not None:
             return self.resolve_tool_call_id(provider_tool_call_id)
         self._next_tool_call_number += 1
-        local_id = f"{self.run_id}/tool-call/{self._next_tool_call_number}"
+        identity_prefix = self.tool_identity_prefix or self.run_id
+        local_id = f"{identity_prefix}/tool-call/{self._next_tool_call_number}"
         self.current_tool_call_id = local_id
         return local_id
 
@@ -216,6 +225,9 @@ class RuntimeEvent:
     result: RuntimeResult | None = None
     tool_round: int | None = None
     usage: Mapping[str, int | float] | None = None
+    # 下面两个字段是 additive，供 Trace mapper 关联 run identity 和 model-visible facts。
+    run_id: str | None = None
+    model_visible_context: tuple[Mapping[str, object], ...] | None = None
 
 
 RuntimeStream = AsyncIterator[RuntimeEvent]

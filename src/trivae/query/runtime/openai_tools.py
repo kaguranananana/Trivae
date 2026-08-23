@@ -13,6 +13,7 @@ from trivae.capabilities.contracts import (
     ToolError,
 )
 from trivae.capabilities.registry import CapabilityRegistry
+from trivae.observability.contracts import FailureInfo
 from trivae.query.evidence import build_tool_result_record
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
 
@@ -68,6 +69,12 @@ class SearchMessagesSDKToolAdapter:
                 provider_tool_call_id = None
             # SDK ID 只用于 local mapping；正式 contract 使用由 Runtime 分配的 Trivae ID。
             tool_call_id = runtime_context.resolve_tool_call_id(provider_tool_call_id)
+            trace_context = runtime_context.trace_context
+            if trace_context is not None:
+                child = getattr(trace_context, "child", None)
+                if not callable(child):
+                    raise TypeError("runtime trace_context must provide child()")
+                trace_context = child(f"tool:{tool_call_id}")
             if "search_messages" not in runtime_context.available_capabilities:
                 # 工具不可见时仍被调用属于 Runtime invariant，不能伪装成普通结果。
                 raise RuntimeError("search_messages was invoked outside the allowed capability set")
@@ -87,6 +94,24 @@ class SearchMessagesSDKToolAdapter:
                 )
             except CapabilityContractError as exc:
                 envelope = _contract_error_envelope(exc)
+                if trace_context is not None:
+                    trace_context.emit(
+                        stage="tool",
+                        operation="tool.call.failed",
+                        phase="failed",
+                        operation_id=f"tool:{tool_call_id}",
+                        parent_operation_id=getattr(trace_context, "parent_operation_id", None),
+                        outcome="error",
+                        payload={"tool_name": "search_messages", "error_code": exc.error_code},
+                        failure=FailureInfo(
+                            error_code=exc.error_code,
+                            origin_stage="tool",
+                            observed_stage="tool",
+                            category="contract",
+                            handling="returned_to_agent",
+                            cause_operation_id=f"tool:{tool_call_id}",
+                        ),
+                    )
             else:
                 try:
                     # trusted scope 由 RuntimeContext 持有，registry 是 composition root 注入的实例。
@@ -96,6 +121,7 @@ class SearchMessagesSDKToolAdapter:
                         "search_messages",
                         request,
                         runtime_context.scope,
+                        trace_context=trace_context,
                     )
                 except Exception:
                     # 未分类异常必须继续冒泡；这里只记录失败状态供 terminal result 诊断。

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import inspect
+import logging
+import uuid
 from dataclasses import replace
 from pathlib import Path
 
@@ -16,6 +18,16 @@ from trivae.data.model import ImportRunSummary
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalIndex
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
+from trivae.observability.collector import TraceCollector
+from trivae.observability.contracts import (
+    FailureInfo,
+    ImportDiagnosticsProjection,
+    TraceProjection,
+    TraceStage,
+    TraceStore,
+)
+from trivae.observability.projection import project_trace
+from trivae.observability.sqlite import SQLiteImportDiagnosticsReader, SQLiteTraceStore
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
 from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import Planner, SoftPlanner
@@ -47,6 +59,8 @@ class TrivaeApplication:
         router: Router | None = None,
         planner: Planner | None = None,
         conversation_store: ConversationStore | None = None,
+        trace_store: TraceStore | None = None,
+        import_diagnostics_reader: SQLiteImportDiagnosticsReader | None = None,
     ) -> None:
         self.store = store
         self.importer = importer
@@ -57,6 +71,10 @@ class TrivaeApplication:
         if conversation_store is None:
             raise ValueError("conversation_store is required")
         self.conversation_store = conversation_store
+        self._trace_store = SQLiteTraceStore(store.database_path) if trace_store is None else trace_store
+        self._import_diagnostics_reader = import_diagnostics_reader or SQLiteImportDiagnosticsReader(
+            store.database_path
+        )
         self._lexical_index = lexical_index
         # Runtime 是可注入且惰性创建的，检索-only caller 不需要 provider 配置。
         self._agent_runtime = agent_runtime
@@ -109,6 +127,23 @@ class TrivaeApplication:
         self._ensure_open()
         return self.conversation_store.get_conversation(conversation_id)
 
+    def read_trace(self, trace_id: str) -> TraceProjection:
+        """从 Application facade 读取 deterministic Trace projection，不暴露 raw SQL。"""
+
+        self._ensure_open()
+        return project_trace(self._trace_store.read_trace(trace_id))
+
+    def read_import_diagnostics(
+        self,
+        *,
+        source_file: str | None = None,
+        batch_id: str | None = None,
+    ) -> ImportDiagnosticsProjection:
+        """读取既有 ImportBatch/ImportError 事实的诊断 projection。"""
+
+        self._ensure_open()
+        return self._import_diagnostics_reader.read(source_file=source_file, batch_id=batch_id)
+
     async def run_agent(self, request: AgentRunRequest) -> RuntimeResult:
         """通过同一 Application composition path 执行 Agent Runtime。"""
 
@@ -119,36 +154,196 @@ class TrivaeApplication:
         """Query 的正式 Application 入口，standard/planned 共享同一 runtime。"""
 
         self._ensure_open()
-        conversation = self._conversation_for_request(request)
-        effective_request = request
-        if request.conversation_id is not None:
-            # 有持久化 conversation 时，Store 是 history source of truth，拒绝混入手工历史。
-            if request.prior_context:
-                raise QueryContractError(
-                    "prior_context cannot be combined with a persisted conversation_id"
-                )
-            effective_request = replace(request, prior_context=conversation.to_model_context())
-        runtime = self._get_agent_runtime()
-        if self._query_orchestrator is None:
-            completion = getattr(runtime, "complete_text", None)
-            if not callable(completion):
-                completion = None
-            self._router = self._router or RuleRouter(completion=completion)
-            self._planner = self._planner or SoftPlanner(completion=completion)
-            self._query_orchestrator = QueryOrchestrator(
-                runtime,
-                self._router,
-                self._planner,
-                capability_names=self.capability_registry.names(),
+        request_id = request.request_id or f"request-{uuid.uuid4().hex}"
+        trace_id = f"trace-{uuid.uuid4().hex}"
+        traced_request = replace(request, request_id=request_id)
+        trace = TraceCollector(
+            self._trace_store,
+            trace_id=trace_id,
+            request_id=request_id,
+            profile=request.trace_profile,
+        )
+        trace.emit(
+            stage="query",
+            operation="query.received",
+            phase="started",
+            operation_id="query",
+            payload={
+                "query": request.query,
+                "conversation_id": request.conversation_id,
+                "trace_profile": request.trace_profile,
+            },
+        )
+        terminal_emitted = False
+        try:
+            conversation = self._conversation_for_request(traced_request)
+            effective_request = traced_request
+            if traced_request.conversation_id is not None:
+                # 有持久化 conversation 时，Store 是 history source of truth，拒绝混入手工历史。
+                if traced_request.prior_context:
+                    raise QueryContractError(
+                        "prior_context cannot be combined with a persisted conversation_id"
+                    )
+                effective_request = replace(traced_request, prior_context=conversation.to_model_context())
+            trace.emit(
+                stage="context",
+                operation="context.prepared",
+                phase="completed",
+                operation_id="context",
+                parent_operation_id="query",
+                outcome="ok",
+                payload={
+                    "conversation_id": conversation.conversation_id,
+                    "prior_context_count": len(effective_request.prior_context),
+                },
             )
-        result = await self._query_orchestrator.run(effective_request)
-        artifact = result.answer_artifact
-        if result.is_successful:
-            if artifact is None:
-                # QueryResult contract 若出现不一致必须显式暴露，不能伪造持久化成功。
-                raise RuntimeError("successful query is missing its validated answer artifact")
-            self.conversation_store.commit_turn(conversation.conversation_id, request.query, artifact)
-        return replace(result, conversation_id=conversation.conversation_id)
+            runtime = self._get_agent_runtime()
+            if self._query_orchestrator is None:
+                completion = getattr(runtime, "complete_text", None)
+                if not callable(completion):
+                    completion = None
+                self._router = self._router or RuleRouter(completion=completion)
+                self._planner = self._planner or SoftPlanner(completion=completion)
+                self._query_orchestrator = QueryOrchestrator(
+                    runtime,
+                    self._router,
+                    self._planner,
+                    capability_names=self.capability_registry.names(),
+                )
+            result = await self._query_orchestrator.run(effective_request, trace=trace)
+            artifact = result.answer_artifact
+            if result.is_successful:
+                if artifact is None:
+                    # QueryResult contract 若出现不一致必须显式暴露，不能伪造持久化成功。
+                    raise RuntimeError("successful query is missing its validated answer artifact")
+                trace.emit(
+                    stage="conversation",
+                    operation="answer.commit.started",
+                    phase="started",
+                    operation_id="conversation.commit",
+                    parent_operation_id="query",
+                    payload={"conversation_id": conversation.conversation_id},
+                )
+                try:
+                    self.conversation_store.commit_turn(conversation.conversation_id, request.query, artifact)
+                except Exception as exc:
+                    trace.emit(
+                        stage="conversation",
+                        operation="answer.commit.failed",
+                        phase="failed",
+                        operation_id="conversation.commit",
+                        parent_operation_id="query",
+                        outcome="error",
+                        payload={"exception_type": type(exc).__name__},
+                        failure=FailureInfo(
+                            error_code="CONVERSATION_COMMIT_FAILED",
+                            origin_stage="conversation",
+                            observed_stage="conversation",
+                            category="persistence",
+                            handling="propagated",
+                            cause_operation_id="conversation.commit",
+                            diagnostic_reference=type(exc).__name__,
+                        ),
+                    )
+                    trace.emit(
+                        stage="query",
+                        operation="query.failed",
+                        phase="failed",
+                        operation_id="query",
+                        outcome="error",
+                        payload={"error_code": "CONVERSATION_COMMIT_FAILED"},
+                        failure=FailureInfo(
+                            error_code="CONVERSATION_COMMIT_FAILED",
+                            origin_stage="conversation",
+                            observed_stage="query",
+                            category="persistence",
+                            handling="propagated",
+                            cause_operation_id="conversation.commit",
+                        ),
+                    )
+                    terminal_emitted = True
+                    logging.getLogger(__name__).error(
+                        "QUERY_COMMIT_FAILED trace_id=%s request_id=%s exception_type=%s",
+                        trace.trace_id,
+                        trace.request_id,
+                        type(exc).__name__,
+                    )
+                    setattr(exc, "trace_id", trace.trace_id)
+                    raise
+                trace.emit(
+                    stage="conversation",
+                    operation="answer.commit.completed",
+                    phase="completed",
+                    operation_id="conversation.commit",
+                    parent_operation_id="query",
+                    outcome="ok",
+                    payload={"conversation_id": conversation.conversation_id},
+                )
+                trace.emit(
+                    stage="query",
+                    operation="query.completed",
+                    phase="completed",
+                    operation_id="query",
+                    outcome="ok",
+                    payload={"conversation_id": conversation.conversation_id},
+                )
+                terminal_emitted = True
+            else:
+                is_aborted = result.termination == "aborted"
+                error_code = (
+                    result.finalization_error.code
+                    if result.finalization_error is not None
+                    else result.runtime_result.error.code
+                    if result.runtime_result.error is not None
+                    else "QUERY_NOT_COMPLETED"
+                )
+                origin_stage: TraceStage = (
+                    "citation"
+                    if result.finalization_error is not None
+                    else "runtime"
+                )
+                trace.emit(
+                    stage="query",
+                    operation="query.aborted" if is_aborted else "query.failed",
+                    phase="aborted" if is_aborted else "failed",
+                    operation_id="query",
+                    outcome="aborted" if is_aborted else "error",
+                    payload={
+                        "termination": result.termination,
+                        "error_code": error_code,
+                    },
+                    failure=FailureInfo(
+                        error_code=error_code,
+                        origin_stage=origin_stage,
+                        observed_stage="query",
+                        category="cancellation" if is_aborted else "query_terminal",
+                        handling="returned_to_caller",
+                        cause_operation_id="runtime.run" if origin_stage == "runtime" else "answer.finalization",
+                    ),
+                )
+                terminal_emitted = True
+            return replace(result, conversation_id=conversation.conversation_id, trace_id=trace.trace_id)
+        except Exception as exc:
+            if not terminal_emitted:
+                trace.emit(
+                    stage="query",
+                    operation="query.failed",
+                    phase="failed",
+                    operation_id="query",
+                    outcome="error",
+                    payload={"exception_type": type(exc).__name__},
+                    failure=FailureInfo(
+                        error_code="QUERY_EXCEPTION",
+                        origin_stage="query",
+                        observed_stage="query",
+                        category="exception",
+                        handling="propagated",
+                        cause_operation_id="query",
+                        diagnostic_reference=type(exc).__name__,
+                    ),
+                )
+            setattr(exc, "trace_id", trace.trace_id)
+            raise
 
     def _conversation_for_request(self, request: QueryRequest) -> Conversation:
         """解析 Query 的 conversation identity；无 id 时创建空 conversation。"""
@@ -202,7 +397,15 @@ class TrivaeApplication:
                         try:
                             self.read_repository.close()
                         finally:
-                            self.store.close()
+                            try:
+                                self._import_diagnostics_reader.close()
+                            finally:
+                                try:
+                                    close_trace_store = getattr(self._trace_store, "close", None)
+                                    if callable(close_trace_store):
+                                        close_trace_store()
+                                finally:
+                                    self.store.close()
             finally:
                 self._agent_runtime = None
                 self._query_orchestrator = None
@@ -241,6 +444,8 @@ def create_application(
     *,
     router: Router | None = None,
     planner: Planner | None = None,
+    trace_store: TraceStore | None = None,
+    conversation_store: ConversationStore | None = None,
 ) -> TrivaeApplication:
     """Composition Root 统一装配 write/read/derived/retrieval/capability 组件。"""
 
@@ -252,7 +457,9 @@ def create_application(
     search_capability = SearchMessagesCapability(lexical_retrieval)
     capability_registry = CapabilityRegistry()
     capability_registry.register(SearchMessagesTool(search_capability))
-    conversation_store = SQLiteConversationStore(database_path)
+    owned_conversation_store = (
+        SQLiteConversationStore(database_path) if conversation_store is None else conversation_store
+    )
     return TrivaeApplication(
         store=store,
         importer=importer,
@@ -260,8 +467,9 @@ def create_application(
         structured_retrieval=structured_retrieval,
         lexical_retrieval=lexical_retrieval,
         capability_registry=capability_registry,
-        conversation_store=conversation_store,
+        conversation_store=owned_conversation_store,
         agent_runtime=agent_runtime,
         router=router,
         planner=planner,
+        trace_store=trace_store,
     )

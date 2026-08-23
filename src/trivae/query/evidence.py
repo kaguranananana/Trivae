@@ -724,18 +724,38 @@ def parse_answer_output(output: str) -> AnswerArtifact:
     return _parse_candidate(decoded)
 
 
-def _record_index(records: tuple[ToolResultRecord, ...], run_id: str) -> dict[tuple[str, str], ToolResultRecord]:
-    """只索引同一 run 的 Tool Result，旧 run 的 record 不会成为当前证据。"""
+def _record_index(
+    records: tuple[ToolResultRecord, ...],
+    run_id: str,
+    accepted_run_ids: tuple[str, ...] = (),
+) -> dict[tuple[str, str], ToolResultRecord]:
+    """只索引当前 run；accepted alias 仅兼容 M5 已持久化的旧 locator 前缀。"""
 
     indexed: dict[tuple[str, str], ToolResultRecord] = {}
+    aliases = tuple(alias for alias in accepted_run_ids if alias and alias != run_id)
     for record in records:
         if record.run_id != run_id:
             continue
-        key = (record.tool_call_id, record.tool_result_id)
-        if key in indexed:
-            raise _model_error("INVALID_PROVENANCE", "duplicate current-run tool result identity")
-        indexed[key] = record
+        keys = [(record.tool_call_id, record.tool_result_id)]
+        for alias in aliases:
+            alias_key = (
+                _replace_identity_prefix(record.tool_call_id, run_id, alias),
+                _replace_identity_prefix(record.tool_result_id, run_id, alias),
+            )
+            if alias_key not in keys:
+                keys.append(alias_key)
+        for key in keys:
+            if key in indexed:
+                raise _model_error("INVALID_PROVENANCE", "duplicate current-run tool result identity")
+            indexed[key] = record
     return indexed
+
+
+def _replace_identity_prefix(identity: str, actual: str, alias: str) -> str:
+    """只替换 Trivae-owned identity 的完整前缀，避免模糊字符串替换。"""
+
+    prefix = actual + "/"
+    return alias + identity[len(actual) :] if identity.startswith(prefix) else identity
 
 
 def _scope_allows_message(message: MessageProjection, scope: ExecutionScope) -> bool:
@@ -776,13 +796,15 @@ def _finalize_source(
     source: EvidenceSource,
     *,
     run_id: str,
+    accepted_run_ids: tuple[str, ...],
     records: dict[tuple[str, str], ToolResultRecord],
     scope: ExecutionScope,
 ) -> EvidenceSource:
     """验证一个 source 的 provenance/locator/scope，并从可信 record hydrate metadata。"""
 
     reference = source.reference
-    if reference.run_id != run_id:
+    source_run_id = reference.run_id
+    if source_run_id != run_id and source_run_id not in accepted_run_ids:
         raise _model_error("INVALID_PROVENANCE", "source does not belong to the current run")
     record = records.get((reference.tool_call_id, reference.tool_result_id))
     if record is None:
@@ -833,6 +855,7 @@ def validate_answer_artifact(
     run_id: str | None,
     tool_results: tuple[ToolResultRecord, ...],
     scope: ExecutionScope,
+    accepted_run_ids: tuple[str, ...] = (),
 ) -> AnswerArtifact:
     """执行确定性 validation/hydration；不判断自然语言 claim 的语义蕴含。"""
 
@@ -841,11 +864,18 @@ def validate_answer_artifact(
         return artifact
     if run_id is None or not run_id:
         raise _model_error("INVALID_PROVENANCE", "current run identity is unavailable")
-    records = _record_index(tool_results, run_id)
+    records = _record_index(tool_results, run_id, accepted_run_ids)
     finalized_items: list[EvidenceItem] = []
     for item in artifact.evidence_items:
         finalized_sources = tuple(
-            _finalize_source(source, run_id=run_id, records=records, scope=scope) for source in item.sources
+            _finalize_source(
+                source,
+                run_id=run_id,
+                accepted_run_ids=accepted_run_ids,
+                records=records,
+                scope=scope,
+            )
+            for source in item.sources
         )
         finalized_items.append(replace(item, sources=finalized_sources))
     try:
@@ -860,6 +890,7 @@ def finalize_answer(
     run_id: str | None,
     tool_results: tuple[ToolResultRecord, ...],
     scope: ExecutionScope,
+    accepted_run_ids: tuple[str, ...] = (),
 ) -> AnswerArtifact:
     """完成“解析 → 结构校验 → provenance 校验 → trusted hydrate”的提交前流程。"""
 
@@ -870,4 +901,10 @@ def finalize_answer(
             "INVALID_ANSWER_ARTIFACT",
             "final answer after tool execution must be a JSON object",
         )
-    return validate_answer_artifact(candidate, run_id=run_id, tool_results=tool_results, scope=scope)
+    return validate_answer_artifact(
+        candidate,
+        run_id=run_id,
+        tool_results=tool_results,
+        scope=scope,
+        accepted_run_ids=accepted_run_ids,
+    )

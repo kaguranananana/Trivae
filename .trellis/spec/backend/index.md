@@ -1,7 +1,7 @@
 # Backend Development Guidelines
 
-> Python 后端工程规范（M1 ingestion、M2/M3 retrieval/capability、M4a runtime baseline、M4 Query Execution Core、M5 Evidence/Citation 与 M5b Conversation persistence 已落地；Trace、Stage 1.10 Implementation / Real-run Calibration 与 HTTP Product Interaction 仍待推进）。
-> M1 的 SQLite、导入和目录可执行契约见各专题规范；M4 Query/Runtime、M5 Evidence 与 M5b Conversation 的具体代码模式见对应指南，其余 Trace/Evaluation/Product Plane 仍按后续任务补充。
+> Python 后端工程规范（M1 ingestion、M2/M3 retrieval/capability、M4a runtime baseline、M4 Query Execution Core、M5 Evidence/Citation、M5b Conversation persistence 与 M6 Trace/Observability 已落地；Stage 1.10 Implementation / Real-run Calibration 与 HTTP Product Interaction 仍待推进）。
+> M1 的 SQLite、导入和目录可执行契约见各专题规范；M4 Query/Runtime、M5 Evidence、M5b Conversation 与 M6 Trace 的具体代码模式见对应指南/Stage 1.9 record，其余 Evaluation/Product Plane 仍按后续任务补充。
 
 ---
 

@@ -462,11 +462,11 @@ Stage 1.9 不定义：
 
 ## 16. Deferred
 
-### Implementation Pending
+### Implementation Follow-ups
 
-- Normalized Event、Failure、Coverage Descriptor 的具体 Python / JSON Schema；
-- event name 字符串、nullable / enum 类型、schema migration 与 compatibility policy；
-- Trace Collector / Store / projector 的 package layout、API 与 transaction implementation；
+M6 已在 `src/trivae/observability/` 落地 Normalized Event、Failure、Trace Collector、SQLite Store 和 projector；具体可执行契约见本节末的 M6 implementation record。仍待后续任务决定：
+
+- event schema migration 的多版本升级工具和部署迁移窗口；
 - Trace backend、query index、partition、batch / flush、buffering 与 deployment topology；
 - Error Code 完整枚举、Exception mapping 与 user-facing error message；
 - Trace Profile 的配置来源 / 启用边界、Normal / Debug capture policy、redaction / secret stripping、角色权限、retention 具体时长与删除传播机制；
@@ -514,7 +514,7 @@ Stage 1.10 已确认 Evaluation 只引用 Stage 1.9 canonical Trace，不改写 
 
 ## 18. Validation / Regression Contract
 
-当前仓库无业务代码，本阶段不伪造实现测试。实现阶段至少验证：
+M6 的实测命令、回归矩阵和已知风险记录在 `.trellis/tasks/08-23-m6-trace-observability/validation.md`；后续实现必须保持以下 contract：
 
 ```text
 同一次 Query 的跨 Router / Planner / Runtime / Tool / Retrieval / Evidence / Citation 事件共享 trace_id
@@ -566,3 +566,82 @@ Stage 1.9 将 Stage 1.3–1.8 分散的观察需求统一为 Trivae-owned Query 
 - Stage 1.10 证明某类在线 quality attribution 可以确定性、低误报地完成，并确实改善 Failure Attribution。
 
 “常见 observability 平台都有”“以后可能需要”“多存一些方便调试”或“先定义 Evaluation threshold 比较完整”不构成 Reopen Reason。
+
+## 20. M6 Implementation Record
+
+### 1. Scope / Trigger
+
+- Trigger：M0–M5b 已有 Query、Runtime、Tool、Retrieval、Evidence/Citation 和 Conversation commit boundary，需要一条 Trivae-owned、local-first、可回放的诊断事实链。
+- Ownership：`src/trivae/observability/` 拥有 normalized event、capture、SQLite Trace Store 和 projection；既有层只在真实 boundary 发出事实。
+- Non-goal：不引入外部 tracing SaaS、HTTP/UI/SSE、vector/hybrid retrieval、Evaluation quality judgment、CoT 或逐 token 永久存储。
+
+### 2. Signatures
+
+- `TraceCollector(store, trace_id, request_id, profile="normal")`：创建 metadata，`emit(...) -> NormalizedQueryEvent | None`；Store/capture failure 生成 `TRACE.*` diagnostic 并让业务继续。
+- `SQLiteTraceStore.create_trace(...)`、`append_event(NormalizedQueryEvent)`、`mark_terminal(...)`、`read_trace(...) -> StoredTrace`；使用独立 SQLite connection。
+- `TrivaeApplication.read_trace(trace_id) -> TraceProjection`。
+- `TrivaeApplication.read_import_diagnostics(source_file=None, batch_id=None) -> ImportDiagnosticsProjection`。
+- `QueryRequest.trace_profile: Literal["normal", "debug"]`；`QueryResult.trace_id: str | None`。
+- `AgentRunRequest.trace_context`、`RuntimeContext.trace_context` 和 `RuntimeEvent.run_id/model_visible_context` 都是进程内 additive 字段。
+
+Trace tables are `traces` and append-only `trace_events`; `trace_events` enforces `UNIQUE(trace_id, sequence)`, stores `schema_version`, serialized bounded payload/limitations/failure, and orders replay by `sequence`.
+
+### 3. Contracts
+
+- Normalized event 必须包含 schema_version、event/request/trace identity、sequence、occurred/observed timestamps、stage、operation、phase、operation identity、outcome、duration、bounded payload、limitations 和 FailureInfo。
+- `FailureInfo` 保存 `error_code`、`origin_stage`、`observed_stage`、category、handling、cause event/operation、retry count 和 safe diagnostic reference。
+- Normal capture 上限为 512 字符/16 个集合项；Debug 为 4096 字符/64 个集合项；两者都递归 redacted，且 `chain_of_thought/cot/hidden_reasoning/reasoning_content` 不落明文。
+- `RuntimeEvent.content_delta` 只通过 stream，不持久化；Runtime 的 local run_id 每次 execution 新建，不等同 request_id；M5 旧 tool locator 的显式 request-id alias 仅用于 validated provenance compatibility。
+- `query.completed` 只在 `ConversationStore.commit_turn()` 返回后写入；finalization/runtime/commit failure 不产生 completed。
+- Import diagnostics 只读取既有 `import_batches` / `import_errors`，不新建第二套 ingestion facts，也不伪装为 RuntimeEvent。
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+| --- | --- |
+| Empty identity / invalid sequence / invalid event contract | `TraceContractError`，不写入 event |
+| Unsupported payload object / unsupported key | `TRACE.PAYLOAD_INVALID`，collector degraded，业务异常不被替换 |
+| Trace SQLite create/append/terminal failure | `TRACE.CREATE_FAILED` / `TRACE.APPEND_FAILED` / `TRACE.TERMINAL_UPDATE_FAILED` log，业务结果保持原语义 |
+| Router optional failure | Router decision retained，`ROUTER_*` origin=router，handling=`static_route_retained` |
+| Planner failure | `PLANNER_*` origin=planner，handling=`executed_without_plan`，Runtime continues |
+| Tool contract error | origin=tool，observed=tool/runtime，handling=`returned_to_agent` |
+| Retrieval exception/partial | origin=retrieval，wrapper observed=tool，Tool envelope status/coverage retained |
+| Citation failure | origin=citation，observed=answer/query，no artifact commit |
+| Missing query terminal event | projection `incomplete`，不猜测 terminal status |
+
+### 5. Good / Base / Bad Cases
+
+- Good：同一 trace 的 sequence 从 1 单调递增；`tool.call` 的 child `retrieval.search` 通过 parent operation 可回放；commit 完成后才有 query.completed。
+- Base：run-only injected runtime 没有 stream 时只补 runtime start/terminal；真实 SDK runtime 仍映射非 delta RuntimeEvent。
+- Bad：把 request_id 当 run_id、把 Retrieval failure 改写成 Tool generic failure、用 trace summary column 替代 event history、或把 Trace exception 静默吞掉，均违反本 contract。
+
+### 6. Tests Required
+
+- Contract/Privacy：event identity、sequence、unique constraint、normal/debug bound、credential/CoT redaction、visible limitations。
+- Persistence/Replay：temporary SQLite close/reopen、append-only、missing terminal/incomplete、projection metrics。
+- Vertical integration：Application QueryResult.trace_id、Router/Planner/Runtime/Tool/Retrieval/Evidence/Citation/commit timeline、Tool→Retrieval parent identity。
+- Failure attribution：Router degradation、Planner fallback、Tool contract、Retrieval error/partial、Citation failure、commit failure、abort/budget、Trace Store failure。
+- Import boundary：source/batch filter、counts、error code、record index/locator/detail；不创建 Query events。
+
+### 7. Wrong vs Correct
+
+Wrong：
+
+```python
+request_id = run_id
+trace_events.append("raw SDK event")
+conversation_store.commit_turn(...)
+write_query_completed()
+```
+
+Correct：
+
+```python
+request_id = request.request_id or new_request_id()
+run_id = new_runtime_run_id()
+collector.emit(stage="runtime", operation="runtime.run", phase="completed", ...)
+conversation_store.commit_turn(...)
+collector.emit(stage="query", operation="query.completed", phase="completed", ...)
+```
+
+The correct path keeps identity semantics separate, normalizes at the SDK boundary, and makes the Conversation commit the explicit completion boundary.
