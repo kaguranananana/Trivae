@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Canonical SQLite read-only boundary、derived index 与 stale/rebuild contract。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Embedding/index/tool failure 必须显式归因且禁止 silent fallback。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Python tests、typing、lint 与异常透明要求。"}
+{"file":".trellis/spec/project/architecture.md","reason":"Semantic Retrieval、Agent tool、Evidence/Citation 与 Evaluation 跨层边界。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-10-evaluation.md","reason":"Snapshot、Finding、Controlled Variant、paired comparison 与 annotation completeness。"}

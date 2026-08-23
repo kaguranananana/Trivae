@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"最终 pytest、ruff、mypy、compileall 与最小回归要求。"}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"验证 canonical 未修改、index row consistency、reopen 和 stale。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-10-evaluation.md","reason":"检查 provisional label provenance、availability 与 paired metric 语义。"}
+{"file":".trellis/spec/project/interview-defense.md","reason":"只沉淀 measured facts、Failure Case 与 deferred decisions。"}

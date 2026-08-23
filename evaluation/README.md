@@ -34,6 +34,8 @@ python -m trivae semantic smoke \
 
 `semantic smoke` 默认只输出 candidate locator、score、coverage、latency 和 index identity，不输出消息正文；`--rebuild` 可显式把 rebuild 与一次 query 放在同一 smoke 中。索引缺失、stale、模型加载失败和 retrieval partial 都保持可见，不改写成 lexical success。
 
+`semantic status`、`rebuild` 和 `smoke` 的 index projection 还包含 `operational_guidance`：missing/stale/failed/partial 指向显式 rebuild，building 指向 status polling，completed 指向 bounded smoke；CLI 不会自动执行建议命令。
+
 ## Retrieval relevance annotation
 
 真实 lexical/semantic module comparison 使用固定 query set 与两个 retrieval-only Controlled Variant：

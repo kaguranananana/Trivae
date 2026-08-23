@@ -63,3 +63,40 @@ pytest -q tests/test_semantic_retrieval.py tests/test_capabilities.py tests/test
 17. 计算带明确 provenance/availability 的 paired provisional metrics 和 diagnostics；corpus Recall 在没有 exhaustive reference 时保持 unavailable。
 18. 对真实运行暴露的问题执行 reproduce → regression test → minimal fix → validation；不引入 RRF、reranker、hybrid、降维、另一模型或 lexical fallback。
 19. 更新 validation/architecture/interview-defense，运行完整门禁，按逻辑提交、归档 Trellis task、记录 journal 并 push feature branch。
+
+## Implemented follow-up
+
+- `SemanticBuildStats` 记录 canonical/eligible/void/Parent/Child/vector、batch、模型加载、
+  embedding、SQLite write、总耗时、throughput 与文件大小；CLI rebuild 完成后自动运行
+  row/vector/norm/range integrity validation。
+- Builder 用 bounded pending queue 跨 Parent 填充 provider batch；zero-child Parent 仍推进
+  canonical watermark。可捕获的中断先写 failed terminal state，再原样传播。
+- Semantic retrieval 在 query embedding 前拒绝 building/failed/empty index，避免不可查询
+  状态仍加载模型；Tool error 继续由 retrieval stage 拥有，不进入 lexical fallback。
+- `retrieval_evaluation.py` 在现有 Evaluation package 内定义 Snapshot-bound query set、
+  blind/sealed packet、run/appearance、annotation、audit 与 paired metric contract；没有复制
+  Query Orchestrator 或另建评测 Store。
+- `retrieval_annotation.py` 只接收 blind packet，并严格要求每个 blind ID 恰好一个 JSON
+  label/confidence/notes；LLM 输出固定为 `llm_assisted_provisional`。
+- `llm_assisted`、`mixed`、`human` annotation provenance 分别表示全 provisional、部分人工
+  升级与全 verified；human set 不允许夹带 provisional 条目。
+- CLI 新增 `eval retrieval-packet`、`eval retrieval-annotate`、
+  `eval retrieval-metrics`，并给 semantic status/rebuild/smoke 增加只读 next-command
+  guidance。所有含聊天正文的输出路径位于 `data/evaluation/` 且被 Git 排除。
+
+## Real-run sequence
+
+```text
+preflight + Snapshot pin
+  -> batch calibration
+  -> full Qwen rebuild
+  -> internal/stratified integrity + reopen/stale smoke
+  -> same-Snapshot lexical/semantic packet
+  -> blind LLM-assisted provisional annotation
+  -> confidence audit queue
+  -> paired pooled-candidate metrics + diagnostics
+  -> safe aggregate report
+  -> final gates / Trellis archive / push
+```
+
+全量 rebuild 只需成功执行一次；后续 smoke 复用持久化 index，不为形式重复昂贵构建。

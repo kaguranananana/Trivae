@@ -54,6 +54,8 @@ For the normalized baseline, the provider performs deterministic Python-float po
 
 `SQLiteSemanticIndexStore` uses a separate database file and sqlite-vec `vec0` table per dimension. Metadata and vector insertion share a transaction. A state row records identity, canonical message count, processed message count, chunk count, status (`building`, `completed`, `partial`, `failed`) and last error type. Rebuild clears old derived rows first and leaves a typed failed/partial state if embedding or insertion fails. Retrieval never treats a missing or mismatched state as lexical success.
 
+Builder 允许相邻 Parent 的 Child 进入同一个 bounded provider batch；batching 只改变运行调度，不改变 chunk 内容、顺序稳定 identity 或 embedding contract。Canonical progress 仅在一个 Parent 的全部待写 chunks 已成功进入 metadata/vector transaction 后推进。可捕获的 Ctrl+C 记录 `failed / KeyboardInterrupt` 再重新抛出，避免已退出进程永久留下 `building`。
+
 Canonical message-count drift after a completed build is reported as stale and requires an explicit rebuild; the implementation never silently claims completeness for newly imported data. An interrupted build that reaches `status=partial` may return bounded old candidates with explicit known gaps only when vector rows exist; an unavailable/empty index returns a typed capability error.
 
 ### Semantic retrieval and context recovery
@@ -112,7 +114,7 @@ Evaluation 继续复用现有 Snapshot/Variant 边界，新增的 retrieval anno
 
 标签状态分为 `llm_assisted_provisional` 与 `human_verified`。本轮所有自动标签固定使用前者；confidence 是 labeler 对单条判断的 0–1 自评，不等于人工一致率。`uncertain` 和 missing label 都不转成 negative。audit queue 至少收集低 confidence、`uncertain`、`partially_relevant`、仅单一方法召回且进入前排，以及两种方法排名明显冲突的候选，供人工按优先级复核。
 
-普通 Precision@k、MRR 和 Top-k hit 仅在对应 top-k 候选都有 resolved label 时可用；否则返回 unavailable reason。`partially_relevant` 不计作 full relevant，而由独立 partial relevant coverage 报告。当前候选集合只覆盖两种方法在固定最大深度下的并集，因此 Recall@k 的 denominator 是已完整标注的 merged candidate pool，结果必须命名并展示为 pooled-candidate Recall@k；没有 corpus-exhaustive reference 时，corpus Recall 保持 unavailable。所有由 LLM 标签产生的数值都携带 `llm_assisted_provisional`，不能成为 production gate。
+Precision@k 要求对应 top-k 都有 resolved label；pooled Recall 与 coverage 要求合并候选池完整。Top-k hit 已出现已知 relevant 时可确定为 1，MRR 在首个已知 relevant 之前没有 unknown 时也可确定；这种正例事实不会因后排 unknown 被抹掉。任何需要把 missing/uncertain 解释为 miss 才能得到的零值仍返回 unavailable reason。`partially_relevant` 不计作 full relevant，而由独立 partial relevant coverage 报告。当前候选集合只覆盖两种方法在固定最大深度下的并集，因此 Recall@k 的 denominator 是已完整标注的 merged candidate pool，结果必须命名并展示为 pooled-candidate Recall@k；没有 corpus-exhaustive reference 时，corpus Recall 保持 unavailable。所有由 LLM 标签产生的数值都携带 `llm_assisted_provisional`，不能成为 production gate。
 
 真实聊天正文只存在 gitignored local artifact；version-controlled report 仅保存 Snapshot/variant/index identity、query ID、聚合计数、运行条件、指标与 limitation，不保存 query 命中正文、上下文或标签 notes。
 
