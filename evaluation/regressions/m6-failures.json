@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "suite_id": "failure-regression",
+  "version": 1,
+  "cases": [
+    {
+      "failure_id": "failure_a_deepseek_trusted_limit",
+      "layer": "contract_regression",
+      "owner": "tool_contract",
+      "historical_error": "INVALID_ARGUMENT",
+      "legal_boundary": "provider schema exposes trusted maximum; legal max_results succeeds",
+      "illegal_boundary": "Capability still rejects limit above trusted max_results"
+    },
+    {
+      "failure_id": "failure_b_mixed_provenance",
+      "layer": "contract_regression",
+      "owner": "citation",
+      "historical_error": "UNRESOLVED_MESSAGE_SOURCE",
+      "legal_boundary": "self-contained provenance entry finalizes",
+      "illegal_boundary": "mixed Tool Result locator remains UNRESOLVED_MESSAGE_SOURCE"
+    },
+    {
+      "failure_id": "failure_c_router_degraded",
+      "layer": "integration_regression",
+      "owner": "router",
+      "requirement": "degraded route remains visible in QueryResult and Trace"
+    },
+    {
+      "failure_id": "failure_c_planner_failed_continue",
+      "layer": "integration_regression",
+      "owner": "planner",
+      "requirement": "planner failure and executed_without_plan remain visible"
+    },
+    {
+      "failure_id": "failure_c_tool_contract_error",
+      "layer": "contract_regression",
+      "owner": "tool_contract",
+      "requirement": "invalid Tool input remains explicit INVALID_ARGUMENT"
+    },
+    {
+      "failure_id": "failure_c_retrieval_partial_unavailable",
+      "layer": "integration_regression",
+      "owner": "retrieval",
+      "requirement": "partial/truncated/unavailable facts remain in Result and Trace"
+    },
+    {
+      "failure_id": "failure_c_citation_failure",
+      "layer": "integration_regression",
+      "owner": "citation",
+      "requirement": "Finalizer failure is returned, not repaired"
+    },
+    {
+      "failure_id": "failure_c_conversation_commit_failure",
+      "layer": "integration_regression",
+      "owner": "conversation_commit",
+      "requirement": "commit failure remains Query failure with Trace"
+    },
+    {
+      "failure_id": "failure_c_missing_trace_terminal",
+      "layer": "contract_regression",
+      "owner": "evaluation_infrastructure",
+      "requirement": "Trace terminal mismatch is a check failure, not a quality rewrite"
+    },
+    {
+      "failure_id": "failure_c_trace_store_failure",
+      "layer": "integration_regression",
+      "owner": "evaluation_infrastructure",
+      "requirement": "Trace Store failure leaves diagnosability incomplete"
+    },
+    {
+      "failure_id": "failure_c_privacy_redaction",
+      "layer": "contract_regression",
+      "owner": "evaluation_infrastructure",
+      "requirement": "secret and hidden reasoning are absent from captured metadata/review packet"
+    }
+  ]
+}

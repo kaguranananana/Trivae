@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-insufficient-evidence",
+  "version": 1,
+  "suite_tags": ["design_seed", "insufficient_evidence"],
+  "dataset_snapshot": {"snapshot_id": "snapshot:bind-at-run", "canonical_database_identity": "sqlite-canonical:bind-at-run", "schema_version": "canonical-m1-v1", "source_identity": "source:bind-at-run", "message_count": 0, "relevant_time_range": [null, null], "deterministic_fingerprint": "manifest:bind-at-run", "created_at": "2026-08-23T00:00:00+00:00", "status": "unavailable", "manifest": {"binding": "explicit snapshot materialization required"}},
+  "data_access_scope": {"allowed_session_ids": null, "start_timestamp": null, "end_timestamp": null, "max_results": 5},
+  "query": "根据有限消息判断一个复杂观点，并明确证据是否足够。",
+  "locale": "zh-CN",
+  "reference_findings": [{"finding_id": "calibrated-uncertainty", "criterion": "证据不足时是否校准不确定性", "expected_semantics": "不能由有限 Evidence 推出确定结论，应说明缺口。", "reference_evidence": [], "annotation_completeness": "partial", "provenance": {"source": "design-seed", "created_at": "2026-08-23T00:00:00+00:00", "method": "representative evidence annotation", "snapshot_id": "snapshot:bind-at-run", "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":5,\"start_timestamp\":null}"}, "known_limitations": ["reference 只代表已知证据。"], "critical": true}],
+  "uncertainty_constraints": ["必须区分事实、推断和未知。"],
+  "negative_constraints": ["不得把 partial reference 当 exhaustive。"],
+  "critical_requirements": ["Review uncertainty calibration。"],
+  "diagnostic_expectations": {"preferred_owner": "evidence"},
+  "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
+  "provenance": {"source": "Trivae calibration seed", "method": "insufficient evidence scenario", "created_at": "2026-08-23T00:00:00+00:00"}
+}

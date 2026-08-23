@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING, Literal, Mapping
 
 from trivae.capabilities.contracts import ExecutionScope
 from trivae.observability.contracts import TraceProfile
@@ -17,6 +17,29 @@ if TYPE_CHECKING:
 
 class QueryContractError(ValueError):
     """Query 请求违反应用层公开契约。"""
+
+
+ForcedRoute = Literal["standard_execution", "planned_execution"]
+
+
+@dataclass(frozen=True)
+class ExecutionOverride:
+    """Evaluation 使用的显式执行实验条件；None 表示完全保持生产路由行为。"""
+
+    forced_route: ForcedRoute | None = None
+
+    def __post_init__(self) -> None:
+        """拒绝未知实验路径，避免 Evaluation 静默进入未定义的第三条链路。"""
+
+        if self.forced_route not in (None, "standard_execution", "planned_execution"):
+            raise QueryContractError(
+                "forced_route must be null, standard_execution, or planned_execution"
+            )
+
+    def to_dict(self) -> dict[str, object]:
+        """生成可进入 Trace/Run metadata 的普通值快照。"""
+
+        return {"forced_route": self.forced_route}
 
 
 @dataclass(frozen=True)
@@ -65,6 +88,7 @@ class QueryRequest:
     available_capabilities: tuple[str, ...] = ("search_messages",)
     conversation_id: str | None = None
     trace_profile: TraceProfile = "normal"
+    execution_override: ExecutionOverride = field(default_factory=ExecutionOverride)
 
     def __post_init__(self) -> None:
         """在应用入口校验并规范化查询字段，减少下游分支。"""
@@ -83,6 +107,8 @@ class QueryRequest:
             object.__setattr__(self, "conversation_id", self.conversation_id.strip())
         if self.trace_profile not in ("normal", "debug"):
             raise QueryContractError("trace_profile must be normal or debug")
+        if not isinstance(self.execution_override, ExecutionOverride):
+            raise QueryContractError("execution_override must be an ExecutionOverride")
         object.__setattr__(self, "query", self.query.strip())
         QueryContext(
             query=self.query,

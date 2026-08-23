@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-no-result",
+  "version": 1,
+  "suite_tags": ["design_seed", "no_result"],
+  "dataset_snapshot": {"snapshot_id": "snapshot:bind-at-run", "canonical_database_identity": "sqlite-canonical:bind-at-run", "schema_version": "canonical-m1-v1", "source_identity": "source:bind-at-run", "message_count": 0, "relevant_time_range": [null, null], "deterministic_fingerprint": "manifest:bind-at-run", "created_at": "2026-08-23T00:00:00+00:00", "status": "unavailable", "manifest": {"binding": "explicit snapshot materialization required"}},
+  "data_access_scope": {"allowed_session_ids": null, "start_timestamp": null, "end_timestamp": null, "max_results": 5},
+  "query": "搜索一个明确不存在的测试词，并说明没有找到证据。",
+  "locale": "zh-CN",
+  "reference_findings": [{"finding_id": "no-supported-finding", "criterion": "无结果时不得捏造 finding", "expected_semantics": "回答应清楚区分无结果和未查询。", "reference_evidence": [], "annotation_completeness": "exhaustive", "provenance": {"source": "design-seed", "created_at": "2026-08-23T00:00:00+00:00", "method": "synthetic negative criterion", "snapshot_id": "snapshot:bind-at-run", "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":5,\"start_timestamp\":null}"}, "known_limitations": [], "critical": true}],
+  "uncertainty_constraints": ["无结果不等于全局不存在。"],
+  "negative_constraints": ["不得编造 Evidence 或 Citation。"],
+  "critical_requirements": ["保留 no-result 的 retrieval fact。"],
+  "diagnostic_expectations": {"preferred_owner": "retrieval"},
+  "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
+  "provenance": {"source": "Trivae negative-result seed", "method": "deterministic negative scenario", "created_at": "2026-08-23T00:00:00+00:00"}
+}

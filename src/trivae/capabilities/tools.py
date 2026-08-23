@@ -13,7 +13,6 @@ from trivae.capabilities.contracts import (
     ToolError,
 )
 from trivae.capabilities.search_messages import SearchMessagesCapability
-from trivae.observability.collector import TraceOperationContext
 from trivae.observability.contracts import FailureInfo
 from trivae.retrieval.structured import (
     InvalidRetrievalQuery,
@@ -108,6 +107,9 @@ class SearchMessagesTool:
         trace_context: object,
     ) -> ToolEnvelope:
         """记录 Tool→Retrieval 因果，但不改变既有 envelope 和 exception 语义。"""
+
+        # 延迟读取 collector 类型，避免 observability collector 与 capabilities package 初始化互相回环。
+        from trivae.observability.collector import TraceOperationContext
 
         if not isinstance(trace_context, TraceOperationContext):
             raise TypeError("SearchMessagesTool requires TraceOperationContext")

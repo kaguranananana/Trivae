@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "failure_id": "m7_deepseek_structured_output_budget",
+  "layer": "provider",
+  "owner": "provider",
+  "status": "fixed",
+  "historical_error": "INVALID_ANSWER_ARTIFACT",
+  "boundary": {
+    "final_synthesis": "JSON mode was present but output budget was provider-default",
+    "router_planner_completion": "max_tokens=512 without explicit JSON mode",
+    "strict_contract": "Finalizer rejects malformed or incomplete Answer Artifact"
+  },
+  "minimal_fix": {
+    "final_max_output_tokens": 16384,
+    "completion_max_tokens": 2048,
+    "provider_json_mode": true,
+    "compact_artifact_instruction": true
+  },
+  "regression": [
+    "tests/test_agent_runtime.py",
+    "tests/test_evidence.py::RuntimeEvidenceIntegrationTests::test_orchestrator_keeps_malformed_json_as_finalization_failure"
+  ],
+  "real_validation": {
+    "snapshot": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14",
+    "candidate_variant": "deepseek-json-budget-m7-v2",
+    "latest_suite_cases": 8,
+    "successful": 8,
+    "trace_complete": 8,
+    "finalization_errors": 0,
+    "old_failure_shape_repeated_run": "successful at 4 tool calls / 2 tool rounds"
+  },
+  "remaining_diagnostics": [
+    "PLANNER_INVALID_OUTPUT",
+    "PLANNER_TIMEOUT"
+  ]
+}

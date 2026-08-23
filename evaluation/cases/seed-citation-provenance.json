@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-citation-provenance",
+  "version": 1,
+  "suite_tags": ["design_seed", "citation_provenance"],
+  "dataset_snapshot": {"snapshot_id": "snapshot:bind-at-run", "canonical_database_identity": "sqlite-canonical:bind-at-run", "schema_version": "canonical-m1-v1", "source_identity": "source:bind-at-run", "message_count": 0, "relevant_time_range": [null, null], "deterministic_fingerprint": "manifest:bind-at-run", "created_at": "2026-08-23T00:00:00+00:00", "status": "unavailable", "manifest": {"binding": "explicit snapshot materialization required"}},
+  "data_access_scope": {"allowed_session_ids": null, "start_timestamp": null, "end_timestamp": null, "max_results": 5},
+  "query": "回答一个有多个来源的事实，并验证每个 citation 都来自当前查询。",
+  "locale": "zh-CN",
+  "reference_findings": [{"finding_id": "self-contained-source", "criterion": "每条 Reference Evidence 能否说明关系", "expected_semantics": "Source locator 自包含，mixed locator 被拒绝。", "reference_evidence": [], "annotation_completeness": "unknown", "provenance": {"source": "design-seed", "created_at": "2026-08-23T00:00:00+00:00", "method": "provenance failure regression seed", "snapshot_id": "snapshot:bind-at-run", "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":5,\"start_timestamp\":null}"}, "known_limitations": ["真实 source 需在 Calibration 建立。"], "critical": true}],
+  "uncertainty_constraints": ["Citation failure 必须原样暴露。"],
+  "negative_constraints": ["不得猜测不存在的 Source。"],
+  "critical_requirements": ["保持 Finalizer hard gate。"],
+  "diagnostic_expectations": {"preferred_owner": "citation"},
+  "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
+  "provenance": {"source": "M6 failure regression adaptation", "method": "self-contained provenance scenario", "created_at": "2026-08-23T00:00:00+00:00"}
+}

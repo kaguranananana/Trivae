@@ -452,3 +452,66 @@ Implemented Trivae-owned normalized Query Trace with normal/debug bounded captur
 ### Status
 
 [OK] **Completed**
+
+
+## Session 20: M7 Evaluation / Regression
+
+**Date**: 2026-08-23
+**Task**: M7 Evaluation / Regression
+**Branch**: `codex/m7-evaluation-regression`
+
+### Summary
+
+Implemented versioned Evaluation Cases/Suites/Snapshots/Variants, production QueryOrchestrator forced routes, local SQLite Evaluation Store, Runner, deterministic checks, review/comparison/diagnosis, CLI, seed/regression metadata, and temporary real-data calibration. 151 tests, ruff, mypy, diff-check, and Trellis validation passed; real DeepSeek provider remained blocked by missing credential.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3ae9711` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 21: M7 real DeepSeek baseline
+
+**Date**: 2026-08-23
+**Task**: M7 real DeepSeek baseline
+**Branch**: `codex/m7-evaluation-regression`
+
+### Summary
+
+Ran the real DeepSeek last-stable-m6 baseline through the production Application/QueryOrchestrator on a temporary 473236-message Snapshot. Eight Runs completed; seven passed deterministic Finalizer checks, one INVALID_ANSWER_ARTIFACT was retained and diagnosed from Trace. Recorded operational usage/latency, FailureDiagnosis, limitations, and validation docs without committing private data or secrets.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ed522f5` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 22: Establish minimal GitHub Actions CI
+
+**Date**: 2026-08-23
+**Task**: Establish minimal GitHub Actions CI
+**Branch**: `codex/m7-evaluation-regression`
+
+### Summary
+
+复用现有 CI 工作流，将测试门禁统一为 pytest -q；在隔离环境验证 pytest、Ruff、mypy；推送 codex/m7-evaluation-regression 并创建 PR #1，push 与 pull_request CI 均通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ad36b06` | (see git log) |
+
+### Status
+
+[OK] **Completed**

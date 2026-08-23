@@ -596,6 +596,36 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
         self.assertEqual(result.runtime_answer, "plain answer after a tool call")
         self.assertEqual(result.finalization_error.code, "INVALID_ANSWER_ARTIFACT")
 
+    def test_orchestrator_keeps_malformed_json_as_finalization_failure(self) -> None:
+        """Provider 非法 JSON 不能被 Evaluation 或 Finalizer 修补成成功。"""
+
+        record = _record()
+
+        class MalformedJsonRuntime:
+            async def run(self, request: object) -> RuntimeResult:
+                return RuntimeResult(
+                    final_answer='{"content_blocks":[',
+                    provider="deepseek",
+                    model="deepseek-v4-flash",
+                    termination="completed",
+                    tool_calls=(),
+                    run_id=record.run_id,
+                    tool_results=(record,),
+                )
+
+        result = asyncio.run(
+            QueryOrchestrator(
+                MalformedJsonRuntime(),  # type: ignore[arg-type]
+                RuleRouter(),
+                SoftPlanner(),
+                capability_names=("search_messages",),
+            ).run(QueryRequest("investigate", ExecutionScope(), request_id=record.run_id))
+        )
+
+        self.assertFalse(result.is_successful)
+        self.assertIsNone(result.answer_artifact)
+        self.assertEqual(result.finalization_error.code, "INVALID_ANSWER_ARTIFACT")
+
 
 if __name__ == "__main__":
     unittest.main()

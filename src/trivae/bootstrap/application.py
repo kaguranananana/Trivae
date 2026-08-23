@@ -18,6 +18,17 @@ from trivae.data.model import ImportRunSummary
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalIndex
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
+from trivae.evaluation import (
+    ControlledVariant,
+    EvaluationCaseBundle,
+    EvaluationRun,
+    EvaluationRunner,
+    EvaluationStore,
+    EvaluationSuite,
+    PairedComparison,
+    SQLiteEvaluationStore,
+    create_paired_comparison,
+)
 from trivae.observability.collector import TraceCollector
 from trivae.observability.contracts import (
     FailureInfo,
@@ -29,6 +40,7 @@ from trivae.observability.contracts import (
 from trivae.observability.projection import project_trace
 from trivae.observability.sqlite import SQLiteImportDiagnosticsReader, SQLiteTraceStore
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
+from trivae.query.evidence import scope_snapshot
 from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import Planner, SoftPlanner
 from trivae.query.router import Router, RuleRouter
@@ -61,6 +73,8 @@ class TrivaeApplication:
         conversation_store: ConversationStore | None = None,
         trace_store: TraceStore | None = None,
         import_diagnostics_reader: SQLiteImportDiagnosticsReader | None = None,
+        evaluation_store: EvaluationStore | None = None,
+        evaluation_runner: EvaluationRunner | None = None,
     ) -> None:
         self.store = store
         self.importer = importer
@@ -75,12 +89,21 @@ class TrivaeApplication:
         self._import_diagnostics_reader = import_diagnostics_reader or SQLiteImportDiagnosticsReader(
             store.database_path
         )
+        self.evaluation_store = evaluation_store or SQLiteEvaluationStore(
+            store.database_path.with_name(f"{store.database_path.stem}.evaluation.sqlite3")
+        )
         self._lexical_index = lexical_index
         # Runtime 是可注入且惰性创建的，检索-only caller 不需要 provider 配置。
         self._agent_runtime = agent_runtime
         self._router = router
         self._planner = planner
         self._query_orchestrator: QueryOrchestrator | None = None
+        self._evaluation_runner = evaluation_runner or EvaluationRunner(
+            query_executor=self.query,
+            trace_reader=self.read_trace,
+            store=self.evaluation_store,
+            database_path=store.database_path,
+        )
         self._closed = False
 
     def import_directory(self, raw_directory: Path) -> ImportRunSummary:
@@ -133,6 +156,69 @@ class TrivaeApplication:
         self._ensure_open()
         return project_trace(self._trace_store.read_trace(trace_id))
 
+    async def evaluate_case(
+        self,
+        case: EvaluationCaseBundle,
+        variant: ControlledVariant,
+        *,
+        repetitions: int = 1,
+    ) -> tuple[EvaluationRun, ...]:
+        """Evaluation 只通过 Application facade 调用生产 QueryOrchestrator。"""
+
+        self._ensure_open()
+        return await self._evaluation_runner.run_case(case, variant, repetitions=repetitions)
+
+    async def evaluate_suite(
+        self,
+        suite: EvaluationSuite,
+        cases: dict[str, EvaluationCaseBundle],
+        variant: ControlledVariant,
+        *,
+        repetitions: int = 1,
+    ) -> tuple[EvaluationRun, ...]:
+        """Suite orchestration 复用同一个 Runner，不复制业务执行链。"""
+
+        self._ensure_open()
+        return await self._evaluation_runner.run_suite(suite, cases, variant, repetitions=repetitions)
+
+    def read_evaluation_run(self, run_id: str) -> EvaluationRun:
+        """读取 Evaluation Store 中的单次 Run，不重新执行 Query。"""
+
+        self._ensure_open()
+        get_run = getattr(self.evaluation_store, "get_run", None)
+        if not callable(get_run):
+            raise RuntimeError("configured evaluation store cannot read runs")
+        return get_run(run_id)
+
+    def compare_evaluation_runs(
+        self,
+        case: EvaluationCaseBundle,
+        baseline_variant: ControlledVariant,
+        candidate_variant: ControlledVariant,
+        baseline_run_ids: tuple[str, ...],
+        candidate_run_ids: tuple[str, ...],
+        *,
+        randomization_seed: str | None = None,
+    ) -> PairedComparison:
+        """在 Application 边界验证 Run 后持久化 blind PairedComparison。"""
+
+        self._ensure_open()
+        get_run = getattr(self.evaluation_store, "get_run", None)
+        if not callable(get_run):
+            raise RuntimeError("configured evaluation store cannot read runs")
+        baseline_runs = tuple(get_run(run_id) for run_id in baseline_run_ids)
+        candidate_runs = tuple(get_run(run_id) for run_id in candidate_run_ids)
+        comparison = create_paired_comparison(
+            case=case,
+            baseline_variant=baseline_variant,
+            candidate_variant=candidate_variant,
+            baseline_runs=baseline_runs,
+            candidate_runs=candidate_runs,
+            randomization_seed=randomization_seed,
+        )
+        self.evaluation_store.save_comparison(comparison)
+        return comparison
+
     def read_import_diagnostics(
         self,
         *,
@@ -172,6 +258,9 @@ class TrivaeApplication:
                 "query": request.query,
                 "conversation_id": request.conversation_id,
                 "trace_profile": request.trace_profile,
+                # Scope/override 是 Evaluation identity；这里仅记录 trusted contract 快照。
+                "scope": scope_snapshot(traced_request.scope),
+                "execution_override": traced_request.execution_override.to_dict(),
             },
         )
         terminal_emitted = False
@@ -405,7 +494,12 @@ class TrivaeApplication:
                                     if callable(close_trace_store):
                                         close_trace_store()
                                 finally:
-                                    self.store.close()
+                                    try:
+                                        close_evaluation_store = getattr(self.evaluation_store, "close", None)
+                                        if callable(close_evaluation_store):
+                                            close_evaluation_store()
+                                    finally:
+                                        self.store.close()
             finally:
                 self._agent_runtime = None
                 self._query_orchestrator = None
@@ -446,6 +540,8 @@ def create_application(
     planner: Planner | None = None,
     trace_store: TraceStore | None = None,
     conversation_store: ConversationStore | None = None,
+    evaluation_database_path: Path | None = None,
+    evaluation_store: EvaluationStore | None = None,
 ) -> TrivaeApplication:
     """Composition Root 统一装配 write/read/derived/retrieval/capability 组件。"""
 
@@ -460,6 +556,10 @@ def create_application(
     owned_conversation_store = (
         SQLiteConversationStore(database_path) if conversation_store is None else conversation_store
     )
+    owned_evaluation_store = evaluation_store or SQLiteEvaluationStore(
+        evaluation_database_path
+        or database_path.with_name(f"{database_path.stem}.evaluation.sqlite3")
+    )
     return TrivaeApplication(
         store=store,
         importer=importer,
@@ -472,4 +572,5 @@ def create_application(
         router=router,
         planner=planner,
         trace_store=trace_store,
+        evaluation_store=owned_evaluation_store,
     )

@@ -45,4 +45,7 @@ For a structured source, use locator_kind, locator, and the exact returned value
 instead of message fields. Do not invent author, session display, timestamp, or excerpt;
 the application will hydrate those fields from the canonical store.
 Use an empty evidence_items/citation_bindings array when the answer does not depend on chat data.
+Keep the JSON artifact compact: use one content block per distinct claim, one evidence item per
+claim, and only the smallest number of direct sources needed to support it. Do not repeat the same
+source or copy message text into the artifact. Keep finding, criterion, and limitation text concise.
 """
