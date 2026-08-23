@@ -5,7 +5,9 @@ Call search_messages when evidence from messages is needed.
 Do not claim a search result that the tool did not return.
 Do not expose internal scope, SQL, registry, runtime, or trace details.
 If the tool reports no results or an error, state that plainly.
-When producing the final answer, return one JSON object with this exact shape:
+When producing the final answer, return exactly one valid json object with this exact shape.
+Do not use a markdown code fence, do not add commentary before or after the object,
+and do not return plain text outside the object:
 {
   "content_blocks": [{"block_id": "claim-1", "text": "..."}],
   "citation_bindings": [{"content_block_id": "claim-1", "evidence_ids": ["e1"]}],

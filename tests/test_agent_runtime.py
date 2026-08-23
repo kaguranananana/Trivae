@@ -94,6 +94,19 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(runtime._model_name, "deepseek-chat-test")
         self.assertEqual(runtime.max_turns, 3)
 
+    def test_agent_requests_provider_json_mode_for_final_synthesis(self) -> None:
+        """验证 final synthesis 使用 provider JSON mode，而不是依赖裸 prompt。"""
+
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=ScriptedModel([]))
+        request = AgentRunRequest("What supports alpha?", self.scope)
+        context = runtime._build_context(request)
+        agent = runtime._build_agent(request, context, object())
+
+        self.assertEqual(
+            agent.model_settings.extra_args["response_format"],
+            {"type": "json_object"},
+        )
+
     def test_scripted_model_runs_tool_then_final_answer(self) -> None:
         model = ScriptedModel(
             [

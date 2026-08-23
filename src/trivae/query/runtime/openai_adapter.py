@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 from agents import Agent, MaxTurnsExceeded, RunConfig, RunHooks, Runner, set_tracing_disabled
+from agents.model_settings import ModelSettings
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
 
@@ -40,6 +41,10 @@ RuntimeEventType = Literal[
     "failed",
     "aborted",
 ]
+
+# DeepSeek 的 Chat Completions JSON mode 只约束最终文本形状，不改变 Trivae 的
+# AnswerArtifact、Citation 或 current-run provenance contract。
+_FINAL_SYNTHESIS_RESPONSE_FORMAT = {"type": "json_object"}
 
 
 @dataclass
@@ -499,6 +504,11 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             name="Trivae Agent",
             instructions=instructions,
             model=self._model,
+            # 让 OpenAI-compatible adapter 把 JSON mode 透传给 DeepSeek，避免只依赖
+            # prompt 约束；最终文本仍由 M5 finalizer 解析和验证。
+            model_settings=ModelSettings(
+                extra_args={"response_format": _FINAL_SYNTHESIS_RESPONSE_FORMAT}
+            ),
             tools=tools,
         )
 
