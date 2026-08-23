@@ -54,7 +54,7 @@ For the normalized baseline, the provider performs deterministic Python-float po
 
 `SQLiteSemanticIndexStore` uses a separate database file and sqlite-vec `vec0` table per dimension. Metadata and vector insertion share a transaction. A state row records identity, canonical message count, processed message count, chunk count, status (`building`, `completed`, `partial`, `failed`) and last error type. Rebuild clears old derived rows first and leaves a typed failed/partial state if embedding or insertion fails. Retrieval never treats a missing or mismatched state as lexical success.
 
-Builder 允许相邻 Parent 的 Child 进入同一个 bounded provider batch；batching 只改变运行调度，不改变 chunk 内容、顺序稳定 identity 或 embedding contract。Canonical progress 仅在一个 Parent 的全部待写 chunks 已成功进入 metadata/vector transaction 后推进。可捕获的 Ctrl+C 记录 `failed / KeyboardInterrupt` 再重新抛出，避免已退出进程永久留下 `building`。
+Builder 允许相邻 Parent 的 Child 进入同一个 bounded provider batch；batching 只改变运行调度，不改变 chunk 内容、顺序稳定 identity 或 embedding contract。真实 MPS run 证明变量 shape 的空闲 cache 会持续增长，因此 provider 每 16 个 document batches 清理一次未占用 MPS allocation；超过 2,048 chars 的极少数长输入单独 batch，避免 padding 放大整个 batch 的 activation。Canonical progress 仅在一个 Parent 的全部待写 chunks 已成功进入 metadata/vector transaction 后推进。可捕获的 Ctrl+C 记录 `failed / KeyboardInterrupt` 再重新抛出，避免已退出进程永久留下 `building`。
 
 Canonical message-count drift after a completed build is reported as stale and requires an explicit rebuild; the implementation never silently claims completeness for newly imported data. An interrupted build that reaches `status=partial` may return bounded old candidates with explicit known gaps only when vector rows exist; an unavailable/empty index returns a typed capability error.
 

@@ -125,8 +125,13 @@ Provider 现每 16 个 document batches 调用一次 `torch.mps.empty_cache()`�
 完成后也释放空闲 cache；只在模型实际位于 MPS 时执行，不改变 model weights、input、
 dimension 或 output。真实 128-chunk 校准中，driver allocation 从第 15 批约 3,219 MiB
 降到第 16 批后的 1,163 MiB，embedding time 34.309 seconds（3.73 chunks/s），process
-peak footprint 约 3.77 GiB。最终 full run 启动后再次测得 footprint 3.7 GiB / peak
-3.8 GiB，证明修复进入真实主链。
+peak footprint 约 3.77 GiB。
+
+cache release 后的第一份 full candidate run 仍暴露另一个独立峰值：一个超过 4,096 chars
+的 input 与七个短 input 同批时，padding 令早期 peak footprint 达到 12.8 GiB。全量 sizing
+显示只有 71/54,267 inputs 超过 2,048 chars，因此 builder 现保持原顺序并只将这些长输入
+单独 batch，其他输入仍使用 batch=8；向量内容和 identity 不变。最终 run 越过同一区间的
+455 chunks 后，实测 current footprint 2.7 GiB、peak 4.7 GiB，证明隔离进入真实主链。
 
 ### Unavailable index performed query embedding too early
 
