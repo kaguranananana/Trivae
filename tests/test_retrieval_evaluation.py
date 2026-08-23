@@ -208,6 +208,11 @@ class RetrievalMetricTests(unittest.TestCase):
 
         self.assertEqual(report["metric_status"], "llm_assisted_provisional")
         self.assertFalse(report["ground_truth_claim"])
+        provenance = report["annotation_provenance"]
+        self.assertEqual(provenance["annotator_identity"], "fixture-model")  # type: ignore[index]
+        self.assertEqual(provenance["label_counts"]["relevant"], 2)  # type: ignore[index]
+        self.assertEqual(provenance["verification_counts"]["human_verified"], 0)  # type: ignore[index]
+        self.assertEqual(provenance["confidence"]["mean"], 0.9)  # type: ignore[index]
         self.assertEqual(_metric(report, "lexical", "recall_at_k", 2)["value"], 1.0)
         self.assertEqual(_metric(report, "lexical", "mrr")["value"], 1.0)
         self.assertEqual(_metric(report, "semantic", "mrr")["value"], 1.0)
@@ -297,6 +302,8 @@ class RetrievalMetricTests(unittest.TestCase):
 
         self.assertGreater(queue["queue_count"], 0)
         self.assertGreater(queue["priority_counts"]["high"], 0)  # type: ignore[index]
+        self.assertEqual(queue["annotator_identity"], "fixture-model")
+        self.assertEqual(queue["rubric_version"], "retrieval-relevance-v1")
 
 
 class RetrievalPacketWorkflowTests(unittest.TestCase):

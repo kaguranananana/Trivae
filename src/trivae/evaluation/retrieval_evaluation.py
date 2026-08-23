@@ -1737,6 +1737,19 @@ def build_retrieval_metrics(
             | {"strategies": strategy_payload}
         )
 
+    # 安全报告只聚合标签与 confidence，不带 notes、正文或 canonical message IDs。
+    label_counts = {
+        label: sum(1 for item in annotations.annotations if item.label == label)
+        for label in ("relevant", "partially_relevant", "not_relevant", "uncertain")
+    }
+    verification_counts = {
+        status: sum(
+            1 for item in annotations.annotations if item.verification_status == status
+        )
+        for status in ("llm_assisted_provisional", "human_verified")
+    }
+    confidences = [item.confidence for item in annotations.annotations]
+
     return {
         "schema_version": RETRIEVAL_PACKET_SCHEMA_VERSION,
         "report_id": f"retrieval-metrics:{sealed.query_set.query_set_id}:v{sealed.query_set.version}",
@@ -1747,6 +1760,21 @@ def build_retrieval_metrics(
         "reference_status": annotations.reference_status,
         "metric_status": annotations.reference_status,
         "ground_truth_claim": False,
+        "annotation_provenance": {
+            "annotator_type": annotations.annotator_type,
+            "annotator_identity": annotations.annotator_identity,
+            "rubric_version": annotations.rubric_version,
+            "annotation_count": len(annotations.annotations),
+            "label_counts": label_counts,
+            "verification_counts": verification_counts,
+            "confidence": {
+                "minimum": min(confidences) if confidences else None,
+                "mean": (
+                    sum(confidences) / len(confidences) if confidences else None
+                ),
+                "maximum": max(confidences) if confidences else None,
+            },
+        },
         "warning": (
             "These are LLM-assisted provisional metrics, not human ground truth."
             if annotations.reference_status != "human_verified"
@@ -1848,6 +1876,8 @@ def build_retrieval_audit_queue(
         "packet_id": sealed.packet_id,
         "snapshot_id": sealed.snapshot.snapshot_id,
         "reference_status": annotations.reference_status,
+        "annotator_identity": annotations.annotator_identity,
+        "rubric_version": annotations.rubric_version,
         "created_at": utc_now(),
         "confidence_threshold": threshold,
         "queue_count": len(items),
