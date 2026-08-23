@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 19
+- **Total Sessions**: 20
 - **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~454 | Active |
+| `journal-1.md` | ~475 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 20 | 2026-08-23 | M7 Evaluation / Regression | `3ae9711` | `codex/m7-evaluation-regression` |
 | 19 | 2026-08-23 | Stabilize real DeepSeek tool calling and provenance | `639eac5`, `3a19ea1` | `codex/m6-trace-observability` |
 | 18 | 2026-08-23 | M6 Trace Observability | `79ccce2` | `codex/m6-trace-observability` |
 | 17 | 2026-08-23 | M5 durable conversation persistence finalization | `46ee225` | `codex/m5-evidence-citation-finalization` |

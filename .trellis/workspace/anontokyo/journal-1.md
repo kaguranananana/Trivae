@@ -452,3 +452,24 @@ Implemented Trivae-owned normalized Query Trace with normal/debug bounded captur
 ### Status
 
 [OK] **Completed**
+
+
+## Session 20: M7 Evaluation / Regression
+
+**Date**: 2026-08-23
+**Task**: M7 Evaluation / Regression
+**Branch**: `codex/m7-evaluation-regression`
+
+### Summary
+
+Implemented versioned Evaluation Cases/Suites/Snapshots/Variants, production QueryOrchestrator forced routes, local SQLite Evaluation Store, Runner, deterministic checks, review/comparison/diagnosis, CLI, seed/regression metadata, and temporary real-data calibration. 151 tests, ruff, mypy, diff-check, and Trellis validation passed; real DeepSeek provider remained blocked by missing credential.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3ae9711` | (see git log) |
+
+### Status
+
+[OK] **Completed**
