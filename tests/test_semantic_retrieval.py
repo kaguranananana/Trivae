@@ -286,6 +286,43 @@ class SemanticRetrievalTests(unittest.TestCase):
             self.assertEqual(status.status, "failed")
             self.assertEqual(status.last_error, "KeyboardInterrupt")
 
+    def test_void_only_parents_advance_progress_without_embedding(self) -> None:
+        """零 child Parent 不调用模型，但仍计入完整 canonical watermark。"""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            raw = root / "raw"
+            raw.mkdir()
+            base = 1_768_435_200_000
+            contents = ("好", *(f"valid marker {index} " + "detail " * 30 for index in range(8)), "[图片:x.png]")
+            write_export(
+                raw,
+                "semantic-void-progress(100).json",
+                [
+                    make_message(
+                        f"void-progress-{index}",
+                        index,
+                        base + index * 2 * 60 * 60 * 1000,
+                        content,
+                    )
+                    for index, content in enumerate(contents)
+                ],
+                chat_name="Semantic Void Progress Fixture",
+                peer_uid=None,
+                version="5.5.64",
+            )
+            provider = _DeterministicProvider()
+            with create_application(root / "app.sqlite3", semantic_provider=provider) as application:
+                application.import_directory(raw)
+                stats = application.rebuild_semantic_index()
+
+            self.assertEqual(stats.status, "completed")
+            self.assertEqual(stats.indexed_message_count, 10)
+            self.assertEqual(stats.semantic_void_message_count, 2)
+            self.assertEqual(stats.chunk_count, 8)
+            self.assertEqual(stats.embedding_batch_count, 1)
+            self.assertEqual([len(batch) for batch in provider.document_batches], [8])
+
     def test_application_status_distinguishes_missing_completed_and_stale_index(self) -> None:
         """运维 facade 必须把未建、可用和 canonical 漂移分别投影出来。"""
 
