@@ -409,3 +409,24 @@ Implemented Conversation domain, explicit AnswerArtifact JSON codec, real SQLite
 ### Status
 
 [OK] **Completed**
+
+
+## Session 18: M6 Trace Observability
+
+**Date**: 2026-08-23
+**Task**: M6 Trace Observability
+**Branch**: `codex/m6-trace-observability`
+
+### Summary
+
+Implemented Trivae-owned normalized Query Trace with normal/debug bounded capture, independent SQLite append-only Store, RuntimeEvent mapper, Router/Planner/Tool/Retrieval/Evidence/Conversation attribution, Application trace/import diagnostics facades, thin CLI projections, regression tests, real-data temporary smoke, and pushed codex/m6-trace-observability.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `79ccce2` | (see git log) |
+
+### Status
+
+[OK] **Completed**

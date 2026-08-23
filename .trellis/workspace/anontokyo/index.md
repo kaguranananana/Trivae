@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
+- **Total Sessions**: 18
 - **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~411 | Active |
+| `journal-1.md` | ~432 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 18 | 2026-08-23 | M6 Trace Observability | `79ccce2` | `codex/m6-trace-observability` |
 | 17 | 2026-08-23 | M5 durable conversation persistence finalization | `46ee225` | `codex/m5-evidence-citation-finalization` |
 | 16 | 2026-08-23 | M5a Real DeepSeek Smoke Stabilization | `cc045f0` | `codex/m5-evidence-citation-finalization` |
 | 15 | 2026-08-23 | M5 Evidence Citation Finalization | `275bc4a` | `codex/m5-evidence-citation-finalization` |
