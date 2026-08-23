@@ -578,3 +578,24 @@ Added derived UTF-8 Trace text logs, Application export facade, trace export CLI
 ### Status
 
 [OK] **Completed**
+
+
+## Session 26: Compact human-readable Trace projection
+
+**Date**: 2026-08-23
+**Task**: Compact human-readable Trace projection
+**Branch**: `codex/human-readable-execution-transcript`
+
+### Summary
+
+默认 Trace 文本导出改为 Trace Summary + 增量 Execution Transcript，Raw Events 改为显式 --view raw，完整 model-visible context 支持 --context full；补充测试、Stage 1.9/质量规范 amendment，并用真实 DeepSeek Trace 验证从约 898 KB 降至 79 KB。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `baa852e` | (see git log) |
+
+### Status
+
+[OK] **Completed**
