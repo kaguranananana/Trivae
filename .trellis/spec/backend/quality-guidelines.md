@@ -24,6 +24,58 @@
 实现 → 暴露问题 → 保存 Failure Case → 复现 → 定位 → Root Cause → 候选方案
 → 最小合理修改 → Test / Evaluation → 验证改善 → Regression Test → 文档沉淀
 
+## CLI / Application Read Contract：Interactive Chat
+
+### 1. Scope / Trigger
+
+新增交互式 Query 入口或 Application read facade 时，必须复用生产 Query path；触发条件包括新增 CLI command、跨越接口/Application/Canonical Read 三层，或新增 session metadata 读取。
+
+### 2. Signatures
+
+- `trivae chat [--database PATH]`：默认数据库为 `data/trivae.sqlite3`。
+- `TrivaeApplication.list_sessions() -> tuple[ChatSession, ...]`：由 Application 暴露 session metadata read facade。
+- `SQLiteCanonicalReadRepository.list_sessions() -> tuple[ChatSession, ...]`：只读 `chat_sessions` canonical 表，并按 `name COLLATE NOCASE ASC, session_id ASC` 稳定排序。
+- 普通输入必须构造 `QueryRequest(query=..., scope=..., conversation_id=...)` 并调用 `await application.query(request)`。
+
+### 3. Contracts
+
+- 选择具体 session 后，CLI 生命周期内固定 `ExecutionScope(allowed_session_ids=(selected_session_id,))`。
+- 选择 `0. All chats` 时使用 `ExecutionScope(allowed_session_ids=None)`；不得创建 `ALL`、`*` 等伪 session ID。
+- `conversation_id` 是独立于 scope 的 CLI 状态：首轮为 `None`，后续使用上一次 `QueryResult.conversation_id`，`/new` 只清空它。
+- 成功 Query 只展示 `QueryResult.final_answer` 和 `trace_id`；`runtime_answer` 不是用户答案 fallback。
+- Provider 继续使用 `load_settings()` 的 `DEEPSEEK_API_KEY`、`TRIVAE_MODEL_PROVIDER`、`TRIVAE_MODEL_NAME` 和 `DEEPSEEK_BASE_URL` contract，不在 CLI 创建 client。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| session 列表为空 | 展示可读信息并返回非零状态 |
+| 选择序号非法或越界 | 展示 `Invalid selection.`，保留 picker，不改变 scope |
+| `SettingsError` / Query / Scope 等已分类错误 | 展示 `Error: ...`，必要时带 Trace ID，返回非零状态 |
+| EOF / Ctrl+C | 展示短退出提示并返回零状态 |
+| 未知编程异常 | 不用 catch-all 静默吞掉，保留可诊断 traceback |
+
+### 5. Good / Base / Bad Cases
+
+- Good：选择 `1` 后每轮 Request 的 scope 都是该 session；第二轮只有 conversation ID 变化。
+- Base：选择 `0` 后每轮 Request 的 `allowed_session_ids` 都是 `None`。
+- Bad：CLI 直接调用 Runtime、Capability、Retrieval、SQLite，或把模型 prompt 中的文字当作 scope enforcement。
+
+### 6. Tests Required
+
+- Parser 默认值与显式数据库参数；原有 import/trace/eval parser 回归。
+- Application read facade 返回真实 session 且顺序稳定。
+- 单 session scope、unrestricted scope、Query 调用、首轮/后续 conversation ID、`/new` 不改变 scope。
+- `final_answer` / Trace projection、无 final answer 时不展示 runtime 原文。
+- `/exit`、`/quit`、EOF、Ctrl+C 和已分类 Settings 错误。
+- changed source 的 lint/type check 与完整测试集。
+
+### 7. Wrong vs Correct
+
+Wrong：`cli.py` 直接 `sqlite3.connect(...)` 或 `application.run_agent(...)`，再用 “只能查询某群” 的 prompt 约束模型。
+
+Correct：`application.list_sessions()` 读取 metadata；CLI 构造可信 `ExecutionScope`，普通文本只构造 `QueryRequest` 并进入 `application.query()`，Capability 层继续执行 scope enforcement。
+
 ## 代码评审
 
 - 检查是否遵守本层各指南与工程原则。

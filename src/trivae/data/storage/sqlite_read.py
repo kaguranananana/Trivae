@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from trivae.data.model import ChatSession
 from trivae.retrieval.structured import (
     AggregateBucket,
     AggregateData,
@@ -135,6 +136,30 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
         """释放独立 read connection；Application 负责调用此生命周期方法。"""
 
         self._connection.close()
+
+    def list_sessions(self) -> tuple[ChatSession, ...]:
+        """读取 Canonical Store 中实际存在的 session metadata。"""
+
+        # 只读取群聊选择所需的 canonical 字段，不把 sqlite row 暴露给上层。
+        rows = self._connection.execute(
+            """
+            SELECT session_id, platform, external_chat_id, name, chat_type, self_uid, self_uin
+            FROM chat_sessions
+            ORDER BY name COLLATE NOCASE ASC, session_id ASC
+            """
+        ).fetchall()
+        # 复用 Canonical ChatSession 模型，保证展示用名称和 Query scope 使用同一 session identity。
+        return tuple(
+            ChatSession(
+                platform=str(row["platform"]),
+                external_chat_id=str(row["external_chat_id"]),
+                name=str(row["name"]),
+                chat_type=str(row["chat_type"]),
+                self_uid=row["self_uid"],
+                self_uin=row["self_uin"],
+            )
+            for row in rows
+        )
 
     def count_messages(self, query: MessageQuery) -> int:
         """统计同一 scope 的所有 canonical message。"""

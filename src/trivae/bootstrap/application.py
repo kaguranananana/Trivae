@@ -14,7 +14,7 @@ from trivae.capabilities.search_messages import SearchMessagesCapability
 from trivae.capabilities.tools import SearchMessagesTool
 from trivae.conversation import Conversation, ConversationStore, SQLiteConversationStore
 from trivae.data.ingestion.importer import SharedImporter
-from trivae.data.model import ImportRunSummary
+from trivae.data.model import ChatSession, ImportRunSummary
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalIndex
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
@@ -110,6 +110,14 @@ class TrivaeApplication:
         """让 CLI 通过 Application 进入 data ingestion，而不是直接读 Store。"""
 
         return self.importer.import_directory(raw_directory)
+
+    def list_sessions(self) -> tuple[ChatSession, ...]:
+        """通过 Application facade 读取可供接口层选择的 Canonical sessions。"""
+
+        # 接口层不直接接触 read repository；Application 负责生命周期和边界检查。
+        self._ensure_open()
+        # 读取由既有只读 adapter 完成，Application 不复制 SQL 或 session projection 逻辑。
+        return self.read_repository.list_sessions()
 
     def retrieve_messages(self, query: MessageQuery) -> StructuredMessageResult:
         """Application facade 的 Structured message 入口。"""
