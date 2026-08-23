@@ -388,3 +388,24 @@ Enabled provider JSON mode for DeepSeek final synthesis with an explicit no-fenc
 ### Status
 
 [OK] **Completed**
+
+
+## Session 17: M5 durable conversation persistence finalization
+
+**Date**: 2026-08-23
+**Task**: M5 durable conversation persistence finalization
+**Branch**: `codex/m5-evidence-citation-finalization`
+
+### Summary
+
+Implemented Conversation domain, explicit AnswerArtifact JSON codec, real SQLite Store with atomic User+Assistant commits, Application history/replay wiring, fresh-evidence enforcement, deterministic rollback/failure tests, and secret-safe DeepSeek+SQLite smoke. Synchronized specs and validation; all gates pass: 121 pytest, ruff, mypy, CLI help, Trellis validation, diff check. Archived the task.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `46ee225` | (see git log) |
+
+### Status
+
+[OK] **Completed**
