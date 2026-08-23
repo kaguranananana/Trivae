@@ -445,6 +445,10 @@ class ToolResultRecord:
             "message_sources": [
                 {
                     "type": "message",
+                    # 每个 entry 都携带完整父级 identity，避免模型从多个 Tool Result 拼接 locator。
+                    "run_id": self.run_id,
+                    "tool_call_id": self.tool_call_id,
+                    "tool_result_id": self.tool_result_id,
                     "result_item_id": item.result_item_id,
                     "session_id": item.message.session_id,
                     "internal_message_id": item.message.internal_message_id,
@@ -454,6 +458,10 @@ class ToolResultRecord:
             "structured_sources": [
                 {
                     "type": "structured",
+                    # structured source 同样使用自包含 locator，保持两类 provenance 的投影规则一致。
+                    "run_id": self.run_id,
+                    "tool_call_id": self.tool_call_id,
+                    "tool_result_id": self.tool_result_id,
                     "locator_kind": item.locator_kind,
                     "locator": item.locator,
                     "value_snapshot": item.value_snapshot,

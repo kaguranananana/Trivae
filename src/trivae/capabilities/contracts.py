@@ -26,17 +26,26 @@ class CapabilityScopeError(CapabilityContractError):
     error_code = "SCOPE_VIOLATION"
 
 
-def _normalize_scope_sessions(values: Sequence[str] | None) -> tuple[str, ...] | None:
-    """把 trusted session scope 归一化，避免后续集合比较依赖输入容器类型。"""
+def _normalize_non_empty_strings(
+    name: str,
+    values: Sequence[str] | None,
+) -> tuple[str, ...] | None:
+    """统一校验非空字符串序列，避免错误字段延迟到 Retrieval 才暴露。"""
 
     if values is None:
         return None
     if isinstance(values, str):
-        raise CapabilityContractError("session scope must be a sequence")
+        raise CapabilityContractError(f"{name} must be a sequence of non-empty strings")
     normalized = tuple(values)
     if not normalized or any(not isinstance(value, str) or not value for value in normalized):
-        raise CapabilityContractError("session scope must contain non-empty session IDs")
+        raise CapabilityContractError(f"{name} must contain non-empty strings")
     return normalized
+
+
+def _normalize_scope_sessions(values: Sequence[str] | None) -> tuple[str, ...] | None:
+    """把 trusted session scope 归一化，避免后续集合比较依赖输入容器类型。"""
+
+    return _normalize_non_empty_strings("session scope", values)
 
 
 def _validate_optional_timestamp(name: str, value: int | None) -> None:
@@ -84,6 +93,9 @@ class SearchMessagesInput:
         if not isinstance(self.keyword, str):
             raise CapabilityContractError("keyword must be a string")
         object.__setattr__(self, "session_ids", _normalize_scope_sessions(self.session_ids))
+        # sender/message filters 与 session filter 共享同一严格的非空字符串语义。
+        object.__setattr__(self, "sender_user_ids", _normalize_non_empty_strings("sender_user_ids", self.sender_user_ids))
+        object.__setattr__(self, "message_types", _normalize_non_empty_strings("message_types", self.message_types))
         _validate_optional_timestamp("start_timestamp", self.start_timestamp)
         _validate_optional_timestamp("end_timestamp", self.end_timestamp)
         if self.start_timestamp is not None and self.end_timestamp is not None:

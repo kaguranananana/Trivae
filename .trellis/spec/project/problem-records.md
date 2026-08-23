@@ -49,4 +49,4 @@
 
 ## 当前记录
 
-当前没有需要单独升级为长期 Problem 文件的 `real failure`；M5a 的结构性 regression cases、设计取舍和 live smoke 说明集中记录在 [M5a validation.md](../../tasks/archive/2026-08/08-23-m5-evidence-citation-finalization/validation.md)。后续若真实运行复现 provider/model 组合、scope、persistence 或 citation composition failure，再按本索引建立独立 Problem Record。
+- [DeepSeek Tool/Provenance contract failure](./problems/deepseek-tool-provenance.md)：真实 Provider 曾产生越过 trusted `max_results` 的 `limit`，并把两个 Tool Result 的 locator 字段拼接为一个消息来源；已通过 provider-facing schema、self-contained provenance projection、Prompt 约束和 regression test 修复。

@@ -521,7 +521,12 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
 
         tools: list[Any] = []
         if "search_messages" in context.available_capabilities:
-            tools.append(SearchMessagesSDKToolAdapter(context.capability_registry).as_sdk_tool())
+            # 只把当前结果数量上限投影到 provider schema；完整 scope 仍保留在 RuntimeContext 内执行。
+            tools.append(
+                SearchMessagesSDKToolAdapter(context.capability_registry).as_sdk_tool(
+                    trusted_max_results=context.scope.max_results
+                )
+            )
 
         def instructions(_wrapper: Any, _agent: Any) -> str:
             # 计划只作为模型提示；finalizing 时明确要求停止调用工具并综合已有结果。

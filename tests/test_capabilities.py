@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from tests.test_lexical_retrieval import LexicalRetrievalTests
 from trivae.capabilities import (
+    CapabilityContractError,
     CapabilityRegistry,
     ExecutionScope,
     SearchMessagesCapability,
@@ -88,6 +89,26 @@ class CapabilityContractTests(LexicalRetrievalTests):
         self.assertEqual(empty.error.code, "INVALID_ARGUMENT")
         self.assertEqual(over_bound.status, "error")
         self.assertEqual(over_bound.error.code, "INVALID_ARGUMENT")
+
+    def test_provider_shape_violations_are_not_normalized(self) -> None:
+        """DeepSeek 风格的非法字段继续显式失败，不自动修正或扩大 scope。"""
+
+        invalid_cases = (
+            ("keyword_type", {"keyword": ["alpha"]}),
+            ("empty_session_ids", {"keyword": "alpha", "session_ids": ()}),
+            ("timestamp_type", {"keyword": "alpha", "start_timestamp": True}),
+            ("reversed_time_range", {"keyword": "alpha", "start_timestamp": 2, "end_timestamp": 1}),
+            ("invalid_limit", {"keyword": "alpha", "limit": 0}),
+            ("negative_context", {"keyword": "alpha", "context_before": -1}),
+            ("wrong_list_item_type", {"keyword": "alpha", "sender_user_ids": (1,)}),
+        )
+        for name, arguments in invalid_cases:
+            with self.subTest(name=name):
+                with self.assertRaises(CapabilityContractError):
+                    SearchMessagesInput(**arguments)  # type: ignore[arg-type]
+
+        with self.assertRaises(TypeError):
+            SearchMessagesInput(keyword="alpha", unknown_field=True)  # type: ignore[call-arg]
 
     def test_truncation_is_separate_from_partial_status(self) -> None:
         scope = ExecutionScope(allowed_session_ids=("qq:100",), max_results=5)

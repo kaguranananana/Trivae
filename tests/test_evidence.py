@@ -4,6 +4,7 @@ import asyncio
 import json
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
@@ -40,9 +41,12 @@ from trivae.query.runtime.contracts import RuntimeResult
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
 from trivae.retrieval.structured import (
     Coverage,
+    LexicalQuery,
+    MessageHit,
     MessageProjection,
     MessageQuery,
     RetrievalMetadata,
+    RetrievalResult,
     StructuredMessageResult,
 )
 
@@ -135,6 +139,96 @@ def _artifact(source: MessageSource | StructuredSource, *, sufficiency: str = "s
 
 class EvidenceContractTests(unittest.TestCase):
     """验证 Evidence/Citation domain contract 的 good/base/bad cases。"""
+
+    def test_model_provenance_entries_are_self_contained(self) -> None:
+        """模型每次选择一个 source entry 即可获得完整 current-run locator。"""
+
+        record = _record()
+        provenance = record.to_model_provenance()
+
+        message_source = provenance["message_sources"][0]
+        self.assertEqual(
+            {
+                "run_id": message_source["run_id"],
+                "tool_call_id": message_source["tool_call_id"],
+                "tool_result_id": message_source["tool_result_id"],
+            },
+            {
+                "run_id": record.run_id,
+                "tool_call_id": record.tool_call_id,
+                "tool_result_id": record.tool_result_id,
+            },
+        )
+        self.assertEqual(message_source["result_item_id"], "message/qq:100:m1")
+        self.assertEqual(message_source["session_id"], "qq:100")
+        self.assertEqual(message_source["internal_message_id"], "qq:100:m1")
+
+        structured_source = provenance["structured_sources"][0]
+        self.assertEqual(structured_source["run_id"], record.run_id)
+        self.assertEqual(structured_source["tool_call_id"], record.tool_call_id)
+        self.assertEqual(structured_source["tool_result_id"], record.tool_result_id)
+
+    def test_expanded_messages_receive_current_run_provenance(self) -> None:
+        """命中消息和 bounded context 都必须成为可验证的 source entry。"""
+
+        hit = _message(internal_message_id="qq:100:hit", content="alpha hit")
+        expanded = _message(internal_message_id="qq:100:context", content="nearby context")
+        retrieval = RetrievalResult(
+            query=LexicalQuery(keyword="alpha", limit=2),
+            filters={},
+            strategy="lexical",
+            hits=(MessageHit(hit, ("alpha",), 1.0, "test"),),
+            expanded_messages=(expanded,),
+            total_hits=1,
+            returned_messages=2,
+            coverage=Coverage("complete", "canonical_plus_lexical_index"),
+            partial=False,
+            truncated=False,
+            metadata=RetrievalMetadata(filters={}, ordering="test", latency_ms=0.0),
+        )
+        record = build_tool_result_record(
+            run_id="run-expanded",
+            tool_call_id="run-expanded/tool-call/1",
+            tool_result_id="run-expanded/tool-call/1/result",
+            tool_name="search_messages",
+            envelope=ToolEnvelope("ok", retrieval, {}, None),
+            scope=ExecutionScope(),
+        )
+
+        source_ids = {
+            source["result_item_id"] for source in record.to_model_provenance()["message_sources"]
+        }
+        self.assertEqual(source_ids, {"message/qq:100:hit", "message/qq:100:context"})
+
+    def test_mixed_tool_result_locator_remains_unresolved(self) -> None:
+        """不同 Tool Result 的父级 identity 与 message item 不得被拼成合法引用。"""
+
+        base_record = _record(run_id="run-mixed")
+        empty_record = replace(
+            base_record,
+            tool_call_id="run-mixed/tool-call/1",
+            tool_result_id="run-mixed/tool-call/1/result",
+            message_items=(),
+        )
+        message_record = replace(
+            base_record,
+            tool_call_id="run-mixed/tool-call/2",
+            tool_result_id="run-mixed/tool-call/2/result",
+        )
+        mixed_source = replace_source(
+            _message_source(message_record),
+            tool_call_id=empty_record.tool_call_id,
+            tool_result_id=empty_record.tool_result_id,
+        )
+
+        with self.assertRaises(AnswerFinalizationError) as raised:
+            validate_answer_artifact(
+                _artifact(mixed_source),
+                run_id="run-mixed",
+                tool_results=(empty_record, message_record),
+                scope=ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100),
+            )
+        self.assertEqual(raised.exception.code, "UNRESOLVED_MESSAGE_SOURCE")
 
     def test_valid_artifact_has_claim_binding_and_three_state_semantics(self) -> None:
         record = _record()

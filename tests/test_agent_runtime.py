@@ -107,6 +107,24 @@ class RuntimeAdapterTests(unittest.TestCase):
             {"type": "json_object"},
         )
 
+    def test_search_tool_schema_exposes_trusted_result_bound(self) -> None:
+        """验证 provider schema 暴露本次 trusted result bound，但仍保留 Capability 校验。"""
+
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=ScriptedModel([]))
+        request = AgentRunRequest("find alpha", self.scope)
+        context = runtime._build_context(request)
+        agent = runtime._build_agent(request, context, object())
+
+        tool = agent.tools[0]
+        limit_schema = tool.params_json_schema["properties"]["limit"]
+        self.assertFalse(tool.strict_json_schema)
+        self.assertEqual(limit_schema["minimum"], 1)
+        self.assertEqual(limit_schema["maximum"], 5)
+        self.assertEqual(limit_schema["default"], 5)
+        self.assertIn("keyword must be exactly one non-empty string", tool.description)
+        self.assertIn("empty arrays", tool.description)
+        self.assertIn("trusted result limit", tool.description)
+
     def test_scripted_model_runs_tool_then_final_answer(self) -> None:
         model = ScriptedModel(
             [

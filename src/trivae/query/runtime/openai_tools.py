@@ -35,15 +35,32 @@ class SearchMessagesSDKToolAdapter:
     def __init__(self, registry: CapabilityRegistry) -> None:
         self.registry = registry
 
-    def as_sdk_tool(self) -> Any:
+    def as_sdk_tool(self, *, trusted_max_results: int | None = None) -> Any:
         """创建 SDK Function Tool；scope 和 registry 只通过 local context 注入。"""
+
+        if trusted_max_results is not None:
+            # 这里仅把本次执行的结果数量上限表达给模型，真正的 scope enforcement 仍在 Capability 内完成。
+            if isinstance(trusted_max_results, bool) or not isinstance(trusted_max_results, int):
+                raise TypeError("trusted_max_results must be an integer when provided")
+            if trusted_max_results <= 0:
+                raise ValueError("trusted_max_results must be positive when provided")
+
+        description = (
+            "Search Trivae messages with a bounded local context window. "
+            "Use this when the answer needs evidence from chat messages. "
+            "keyword must be exactly one non-empty string. "
+            "Omit optional filters, or use null; do not send empty arrays. "
+            "limit must be a positive integer within the current trusted result limit. "
+            "context_before and context_after must be non-negative integers. "
+            "Use one complete provenance message source entry for each citation."
+        )
+        if trusted_max_results is not None:
+            # 让 schema 与描述同时携带动态 bound，减少模型先生成越界 limit 再恢复的无效回合。
+            description += f" The current trusted result limit is {trusted_max_results}."
 
         @function_tool(
             name_override="search_messages",
-            description_override=(
-                "Search Trivae messages with a bounded local context window. "
-                "Use this when the answer needs evidence from chat messages."
-            ),
+            description_override=description,
             # 已知 contract 错误已经投影为 envelope；未知异常必须让 Runner 终止并暴露根因。
             failure_error_function=None,
             strict_mode=False,
@@ -60,7 +77,19 @@ class SearchMessagesSDKToolAdapter:
             context_before: int = 2,
             context_after: int = 2,
         ) -> dict[str, object]:
-            """只接受 typed 字段；scope、registry 和 call identity 都来自 local context。"""
+            """只接受 typed 字段；scope、registry 和 call identity 都来自 local context。
+
+            Args:
+                keyword: Exactly one non-empty search string, not an array.
+                session_ids: Optional non-empty session ID array; use null when unused.
+                start_timestamp: Optional integer inclusive lower bound in milliseconds.
+                end_timestamp: Optional integer exclusive upper bound in milliseconds.
+                sender_user_ids: Optional non-empty sender ID array; use null when unused.
+                message_types: Optional non-empty message type array; use null when unused.
+                limit: Positive result count not greater than the trusted result limit.
+                context_before: Non-negative number of messages before each hit.
+                context_after: Non-negative number of messages after each hit.
+            """
 
             runtime_context = context.context
             # SDK 版本可能把 call id 放在 wrapper 或 typed local context 上，二者都只投影为安全字符串。
@@ -162,5 +191,21 @@ class SearchMessagesSDKToolAdapter:
             result_payload = envelope.to_dict()
             result_payload["provenance"] = record.to_model_provenance()
             return result_payload
+
+        if trusted_max_results is not None:
+            # SDK 0.22 使用该 JSON Schema 给 provider 描述参数边界；业务层仍会再次校验实际输入。
+            schema = getattr(search_messages, "params_json_schema", None)
+            if not isinstance(schema, dict):
+                raise TypeError("SDK Function Tool did not expose params_json_schema")
+            properties = schema.get("properties")
+            if not isinstance(properties, dict):
+                raise TypeError("SDK Function Tool schema did not expose properties")
+            limit_schema = properties.get("limit")
+            if not isinstance(limit_schema, dict):
+                raise TypeError("search_messages schema did not expose limit")
+            # 只增强 provider-facing schema，不把 schema 约束当成 trusted enforcement 的替代品。
+            limit_schema["minimum"] = 1
+            limit_schema["maximum"] = trusted_max_results
+            limit_schema["default"] = min(20, trusted_max_results)
 
         return search_messages
