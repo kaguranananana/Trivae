@@ -494,3 +494,24 @@ Ran the real DeepSeek last-stable-m6 baseline through the production Application
 ### Status
 
 [OK] **Completed**
+
+
+## Session 22: Establish minimal GitHub Actions CI
+
+**Date**: 2026-08-23
+**Task**: Establish minimal GitHub Actions CI
+**Branch**: `codex/m7-evaluation-regression`
+
+### Summary
+
+复用现有 CI 工作流，将测试门禁统一为 pytest -q；在隔离环境验证 pytest、Ruff、mypy；推送 codex/m7-evaluation-regression 并创建 PR #1，push 与 pull_request CI 均通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ad36b06` | (see git log) |
+
+### Status
+
+[OK] **Completed**
