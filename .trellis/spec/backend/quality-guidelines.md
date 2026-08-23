@@ -76,6 +76,56 @@ Wrong：`cli.py` 直接 `sqlite3.connect(...)` 或 `application.run_agent(...)`�
 
 Correct：`application.list_sessions()` 读取 metadata；CLI 构造可信 `ExecutionScope`，普通文本只构造 `QueryRequest` 并进入 `application.query()`，Capability 层继续执行 scope enforcement。
 
+## Trace Text Log Export Contract
+
+### 1. Scope / Trigger
+
+Trace 需要被人工直接打开查看，或需要为既有 SQLite Trace 生成本地诊断文件时，新增文本日志必须是 canonical Trace 的 derived projection，不得创建第二套观测事件链路。
+
+### 2. Signatures
+
+- `TrivaeApplication.export_trace_log(trace_id: str, *, output_path: Path | None = None) -> Path`：读取 `StoredTrace` 并返回已写入日志的绝对路径。
+- `trivae trace export <trace_id> [--database PATH] [--output PATH]`：导出既有 Trace。
+- 默认输出：`<database_path.parent>/traces/<trace_id>.log`。
+- `TraceTextLogWriter`：负责 UTF-8 文本格式、增量 sidecar 和完整重导出。
+
+### 3. Contracts
+
+- SQLite `traces` / `trace_events` 仍是 Trace source of truth；文本文件可删除、重建和覆盖，不参与 Query 事实读取。
+- 文本内容只能来自已经经过 `CapturePolicy` 的 `NormalizedQueryEvent` / `StoredTrace`，保留 metadata、sequence、stage、operation、phase、outcome、duration、payload、limitations 和 failure。
+- `trivae chat` 先展示 Query 正式答案和 Trace ID，再展示日志路径；日志导出失败必须显式输出 `[trace log unavailable: ...]`，不能伪装成成功。
+- 默认日志文件名拒绝路径分隔符；自定义 `--output` 仅表示用户明确指定的输出路径。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 新 Trace 的 SQLite event 写入成功 | 追加同一 event 的文本 projection |
+| 既有 Trace 执行 `trace export` | 从 `StoredTrace` 完整重写文本文件 |
+| Trace 不存在或 SQLite 读取失败 | 返回 `TraceStoreError`，CLI 输出 JSON error 并返回非零 |
+| 文本目录、文件或 payload 写入失败 | Trace Store 记录 degradation；Application/CLI 显式展示导出失败 |
+| Trace ID 含路径分隔符 | 拒绝默认文件名，不把 identity 当成目录 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：`trace export` 导出的事件顺序与 `trace show` 的 timeline 一致，且包含 terminal outcome。
+- Base：sidecar 丢失时再次执行 `trace export` 可以重建，不需要重新 Query、Retrieval 或调用 Provider。
+- Bad：CLI 直接读 SQLite、从 runtime answer 重新拼日志，或把文本日志当作新的 Trace source of truth。
+
+### 6. Tests Required
+
+- `SQLiteTraceStore` 增量日志包含 event operation 和 terminal outcome。
+- `TrivaeApplication.export_trace_log()` 支持完整导出和自定义输出路径。
+- `trace export` parser 接受 trace ID、database 和 output 参数；现有 `trace show` 保持可用。
+- Chat 输出 `[trace: ...]` 与 `[log: ...]`，导出失败时保留答案并显示诊断。
+- 完整 `pytest`、`ruff check src tests` 和 `mypy src`。
+
+### 7. Wrong vs Correct
+
+Wrong：在 `cli.py` 里重新连接 SQLite、拼装 Trace 事件或直接读取 provider/runtime 原始结果生成日志。
+
+Correct：`TrivaeApplication.export_trace_log()` 读取 `StoredTrace`，交给 `TraceTextLogWriter` 投影文本；CLI 只显示返回路径。
+
 ## 代码评审
 
 - 检查是否遵守本层各指南与工程原则。

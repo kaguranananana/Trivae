@@ -219,6 +219,10 @@ class ObservabilityTests(unittest.TestCase):
             self.assertEqual(projection.terminal_status, "completed")
             self.assertEqual([item.sequence for item in projection.timeline], [1, 2])
             self.assertEqual(projection.metrics.providers, ("test-provider",))
+            log_path = path.parent / "traces" / "trace-fixed.log"
+            log_text = log_path.read_text(encoding="utf-8")
+            self.assertIn("operation: query.completed", log_text)
+            self.assertIn("terminal_outcome: completed", log_text)
             with self.assertRaises(TraceStoreError):
                 reopened.append_event(_event(2, "query.duplicate"))
             reopened.close()
@@ -271,6 +275,12 @@ class ObservabilityTests(unittest.TestCase):
             self.assertLess(operations.index("answer.commit.completed"), operations.index("query.completed"))
             self.assertEqual(projection.request_id, "request-visible")
             self.assertEqual(projection.terminal_status, "completed")
+            exported_path = application.export_trace_log(
+                result.trace_id,
+                output_path=path.parent / "manual-export.log",
+            )
+            self.assertEqual(exported_path, (path.parent / "manual-export.log").resolve())
+            self.assertIn("event_count:", exported_path.read_text(encoding="utf-8"))
             application.close()
 
             reopened = create_application(path, agent_runtime=_CompletedRuntime())

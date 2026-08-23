@@ -15,6 +15,7 @@ from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
 from trivae.data.model import ChatSession
 from trivae.interfaces import cli
+from trivae.observability.sqlite import TraceStoreError
 from trivae.query.contracts import QueryRequest
 
 
@@ -35,10 +36,18 @@ class _FakeResult:
 class _FakeApplication:
     """提供正式 Application facade 形状，记录 CLI 传入的 QueryRequest。"""
 
-    def __init__(self, sessions: tuple[ChatSession, ...], results: list[_FakeResult]) -> None:
+    def __init__(
+        self,
+        sessions: tuple[ChatSession, ...],
+        results: list[_FakeResult],
+        *,
+        export_error: Exception | None = None,
+    ) -> None:
         self.sessions = sessions
         self.results = results
+        self.export_error = export_error
         self.requests: list[QueryRequest] = []
+        self.exported_trace_ids: list[str] = []
         self.list_sessions_calls = 0
 
     def list_sessions(self) -> tuple[ChatSession, ...]:
@@ -54,6 +63,14 @@ class _FakeApplication:
         if not self.results:
             raise AssertionError("the scripted query result list is exhausted")
         return self.results.pop(0)
+
+    def export_trace_log(self, trace_id: str, *, output_path: Path | None = None) -> Path:
+        """模拟 Application 的 Trace 文本导出 facade。"""
+
+        self.exported_trace_ids.append(trace_id)
+        if self.export_error is not None:
+            raise self.export_error
+        return (output_path or Path("data/traces") / f"{trace_id}.log").resolve()
 
 
 def _session(session_id: str, name: str) -> ChatSession:
@@ -168,6 +185,8 @@ class ChatCliTests(unittest.TestCase):
         self.assertIn("answer-2", output)
         self.assertIn("[trace: trace-1]", output)
         self.assertIn("[trace: trace-2]", output)
+        self.assertTrue(any(line.startswith("[log: ") for line in output))
+        self.assertEqual(application.exported_trace_ids, ["trace-1", "trace-2"])
 
     def test_all_chats_uses_unrestricted_scope(self) -> None:
         """选择 0 使用 None 表示 unrestricted，不伪造 ALL 或星号 session。"""
@@ -244,7 +263,38 @@ class ChatCliTests(unittest.TestCase):
 
         self.assertIn("Error: citation finalization failed", output)
         self.assertIn("[trace: trace]", output)
+        self.assertTrue(any(line.startswith("[log: ") for line in output))
         self.assertNotIn("raw runtime answer", output)
+
+    def test_trace_export_parser_accepts_database_and_output(self) -> None:
+        """trace export 应识别 Trace identity、数据库和可选输出路径。"""
+
+        args = cli.build_parser().parse_args(
+            ["trace", "export", "trace-1", "--database", "custom.sqlite3", "--output", "trace.log"]
+        )
+
+        self.assertEqual(args.command, "trace")
+        self.assertEqual(args.trace_command, "export")
+        self.assertEqual(args.trace_id, "trace-1")
+        self.assertEqual(args.database, Path("custom.sqlite3"))
+        self.assertEqual(args.output, Path("trace.log"))
+
+    def test_chat_keeps_answer_visible_when_text_log_export_fails(self) -> None:
+        """日志 projection 失败时保留正式答案，并明确暴露导出错误。"""
+
+        application = _FakeApplication(
+            (_session("qq:100", "AI 群"),),
+            [_FakeResult("formal answer", "runtime answer", "conversation", "trace", True)],
+            export_error=TraceStoreError("trace text log export failed"),
+        )
+        _, input_fn = _scripted_input(["1", "问题", "/exit"])
+        output: list[str] = []
+
+        asyncio.run(cli._run_interactive_chat(application, input_fn=input_fn, output_fn=output.append))
+
+        self.assertIn("formal answer", output)
+        self.assertIn("[trace: trace]", output)
+        self.assertIn("[trace log unavailable: trace text log export failed]", output)
 
     def test_exit_and_quit_do_not_call_query(self) -> None:
         """/exit 和 /quit 都是正常退出命令。"""

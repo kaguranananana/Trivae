@@ -29,6 +29,7 @@ from trivae.observability.sqlite import (
     SQLiteTraceStore,
     TraceStoreError,
 )
+from trivae.observability.text import TraceTextLogError, TraceTextLogWriter, format_trace_text
 
 __all__ = [
     "CapturePolicy",
@@ -51,8 +52,11 @@ __all__ = [
     "TraceProjection",
     "TraceStoreError",
     "TraceStore",
+    "TraceTextLogError",
+    "TraceTextLogWriter",
     "TraceTimelineItem",
     "TraceableAgentRuntime",
     "project_import_diagnostics",
     "project_trace",
+    "format_trace_text",
 ]

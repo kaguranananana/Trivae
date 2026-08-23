@@ -38,7 +38,8 @@ from trivae.observability.contracts import (
     TraceStore,
 )
 from trivae.observability.projection import project_trace
-from trivae.observability.sqlite import SQLiteImportDiagnosticsReader, SQLiteTraceStore
+from trivae.observability.sqlite import SQLiteImportDiagnosticsReader, SQLiteTraceStore, TraceStoreError
+from trivae.observability.text import TraceTextLogError, TraceTextLogWriter
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
 from trivae.query.evidence import scope_snapshot
 from trivae.query.orchestrator import QueryOrchestrator
@@ -86,6 +87,8 @@ class TrivaeApplication:
             raise ValueError("conversation_store is required")
         self.conversation_store = conversation_store
         self._trace_store = SQLiteTraceStore(store.database_path) if trace_store is None else trace_store
+        # 导出 facade 与 Trace Store 使用同一数据库相邻目录，保证 CLI 不直接操作文件系统语义。
+        self._trace_log_writer = TraceTextLogWriter(store.database_path.parent / "traces")
         self._import_diagnostics_reader = import_diagnostics_reader or SQLiteImportDiagnosticsReader(
             store.database_path
         )
@@ -163,6 +166,18 @@ class TrivaeApplication:
 
         self._ensure_open()
         return project_trace(self._trace_store.read_trace(trace_id))
+
+    def export_trace_log(self, trace_id: str, *, output_path: Path | None = None) -> Path:
+        """从既有 Trace 事实生成可直接打开的纯文本日志。"""
+
+        self._ensure_open()
+        # 先读取 canonical StoredTrace，再交给 observability writer 做纯 projection。
+        stored_trace = self._trace_store.read_trace(trace_id)
+        try:
+            return self._trace_log_writer.export(stored_trace, output_path=output_path)
+        except TraceTextLogError as exc:
+            # Application 向 CLI 暴露稳定 TraceStoreError，而不是泄漏 writer 实现类型。
+            raise TraceStoreError("trace text log export failed") from exc
 
     async def evaluate_case(
         self,

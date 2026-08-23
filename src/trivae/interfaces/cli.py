@@ -76,6 +76,23 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("data/trivae.sqlite3"),
         help="SQLite database path",
     )
+    trace_export_parser = trace_subparsers.add_parser(
+        "export",
+        help="Export one Trace as a human-readable text log",
+    )
+    trace_export_parser.add_argument("trace_id", help="Trace identity returned by QueryResult")
+    trace_export_parser.add_argument(
+        "--database",
+        type=Path,
+        default=Path("data/trivae.sqlite3"),
+        help="SQLite database path",
+    )
+    trace_export_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional text log output path",
+    )
     evaluation_parser = subparsers.add_parser("eval", help="Run local Evaluation against the production Query path")
     evaluation_subparsers = evaluation_parser.add_subparsers(dest="evaluation_command", required=True)
     eval_cases_parser = evaluation_subparsers.add_parser("cases", help="Validate versioned Evaluation Cases")
@@ -300,8 +317,14 @@ def _query_failure_message(result: QueryResult) -> str:
     return f"query did not complete: {result.termination}"
 
 
-def _print_query_result(result: QueryResult, *, output_fn: Callable[[str], None]) -> None:
-    """只投影 final_answer、可读失败信息和 Trace ID。"""
+def _print_query_result(
+    result: QueryResult,
+    *,
+    output_fn: Callable[[str], None],
+    log_path: Path | None = None,
+    log_error: str | None = None,
+) -> None:
+    """只投影 final_answer、可读失败信息、Trace ID 和文本日志路径。"""
 
     # `is_successful` 与 `final_answer` 同时成立，才允许展示正式回答。
     if result.is_successful and result.final_answer is not None:
@@ -315,6 +338,12 @@ def _print_query_result(result: QueryResult, *, output_fn: Callable[[str], None]
     # 每一轮 Query 都沿用 Application 产生的 Trace identity，详细查看交给 trace CLI。
     if result.trace_id is not None:
         output_fn(f"[trace: {result.trace_id}]")
+    if log_path is not None:
+        # Application 返回绝对路径，终端通常可以直接点击定位本地文件。
+        output_fn(f"[log: {log_path}]")
+    elif log_error is not None:
+        # 导出失败必须可见，但不能把已经得到的正式答案改写成失败。
+        output_fn(f"[trace log unavailable: {log_error}]")
 
 
 async def _run_interactive_chat(
@@ -382,7 +411,16 @@ async def _run_interactive_chat(
         result = await application.query(request)
         # QueryResult 是 Conversation identity 的正式返回边界，后续轮次复用它。
         conversation_id = result.conversation_id
-        _print_query_result(result, output_fn=write_output)
+        log_path: Path | None = None
+        log_error: str | None = None
+        if result.trace_id is not None:
+            try:
+                # 使用 Application facade 从 canonical Trace 生成完整日志，不在 CLI 读取 SQLite。
+                log_path = application.export_trace_log(result.trace_id)
+            except TraceStoreError as exc:
+                # 文本日志是诊断 projection；失败时继续显示答案并保留明确原因。
+                log_error = str(exc)
+        _print_query_result(result, output_fn=write_output, log_path=log_path, log_error=log_error)
 
 
 def _run_chat_command(args: argparse.Namespace) -> int:
@@ -424,11 +462,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "trace":
         try:
             with create_application(args.database) as application:
-                trace_projection = application.read_trace(args.trace_id)
+                if args.trace_command == "show":
+                    trace_projection = application.read_trace(args.trace_id)
+                elif args.trace_command == "export":
+                    log_path = application.export_trace_log(args.trace_id, output_path=args.output)
+                else:
+                    raise TraceStoreError(f"unsupported trace command: {args.trace_command}")
         except TraceStoreError as exc:
             print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False, indent=2))
             return 1
-        print(json.dumps(asdict(trace_projection), ensure_ascii=False, indent=2))
+        if args.trace_command == "show":
+            print(json.dumps(asdict(trace_projection), ensure_ascii=False, indent=2))
+        else:
+            print(log_path)
         return 0
 
     if args.command == "import" and getattr(args, "import_command", None) == "diagnostics":

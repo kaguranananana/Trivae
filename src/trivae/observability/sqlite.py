@@ -22,6 +22,7 @@ from trivae.observability.contracts import (
     TraceStage,
     TraceStore,
 )
+from trivae.observability.text import TraceTextLogError, TraceTextLogWriter
 
 
 class TraceStoreError(RuntimeError):
@@ -136,6 +137,8 @@ class SQLiteTraceStore(TraceStore):
         self.connection.execute("PRAGMA foreign_keys = ON")
         self.connection.executescript(TRACE_SCHEMA_SQL)
         self.connection.commit()
+        # 文本日志是 SQLite Trace 的可重建 projection，统一放在数据库同级 traces 目录。
+        self._text_log_writer = TraceTextLogWriter(database_path.parent / "traces")
         self._closed = False
 
     def create_trace(
@@ -160,6 +163,11 @@ class SQLiteTraceStore(TraceStore):
         except sqlite3.Error as exc:
             self.connection.rollback()
             raise TraceStoreError("trace metadata creation failed") from exc
+        try:
+            # 先提交 canonical metadata，再创建 sidecar，避免文本文件成为事实来源。
+            self._text_log_writer.create_trace(trace_id, request_id, profile, started_at)
+        except TraceTextLogError as exc:
+            raise TraceStoreError("trace text log creation failed") from exc
 
     def append_event(self, event: NormalizedQueryEvent) -> None:
         """只 INSERT event row，不更新或覆盖已有事实。"""
@@ -198,6 +206,11 @@ class SQLiteTraceStore(TraceStore):
         except sqlite3.Error as exc:
             self.connection.rollback()
             raise TraceStoreError("trace event append failed") from exc
+        try:
+            # event 已经安全投影并写入 SQLite，文本 writer 只复制同一事实。
+            self._text_log_writer.append_event(event)
+        except TraceTextLogError as exc:
+            raise TraceStoreError("trace text log event append failed") from exc
 
     def mark_terminal(self, trace_id: str, terminal_outcome: str, terminal_at: str) -> None:
         """更新 trace summary convenience columns，不修改任何 event row。"""
@@ -221,6 +234,11 @@ class SQLiteTraceStore(TraceStore):
         except sqlite3.Error as exc:
             self.connection.rollback()
             raise TraceStoreError("trace terminal projection update failed") from exc
+        try:
+            # terminal metadata 写入后追加可读结尾；完整导出仍可修复不完整的 sidecar。
+            self._text_log_writer.append_terminal(trace_id, terminal_outcome, terminal_at)
+        except TraceTextLogError as exc:
+            raise TraceStoreError("trace text log terminal append failed") from exc
 
     def read_trace(self, trace_id: str) -> StoredTrace:
         """按 sequence 读取 metadata 与 canonical event history。"""
