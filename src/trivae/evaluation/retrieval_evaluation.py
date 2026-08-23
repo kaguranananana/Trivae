@@ -1394,23 +1394,9 @@ def _strategy_query_metrics(
                 scope="merged_candidate_pool",
                 reference_status=reference_status,
             )
-            hit = _unavailable_metric(
-                "top_k_hit_success",
-                "merged_candidate_pool_has_missing_or_uncertain_label",
-                k=k,
-                scope="merged_candidate_pool",
-                reference_status=reference_status,
-            )
         elif relevant_total == 0:
             recall = _unavailable_metric(
                 "recall_at_k",
-                "no_relevant_candidate_in_annotated_pool",
-                k=k,
-                scope="merged_candidate_pool",
-                reference_status=reference_status,
-            )
-            hit = _unavailable_metric(
-                "top_k_hit_success",
                 "no_relevant_candidate_in_annotated_pool",
                 k=k,
                 scope="merged_candidate_pool",
@@ -1429,21 +1415,67 @@ def _strategy_query_metrics(
                 scope="merged_candidate_pool",
                 reference_status=reference_status,
             )
+
+        # 已知正例已经命中时，后排 unknown 不会改变 hit=1；零值则必须有完整 top-k
+        # 且至少存在一个已知 relevant，避免把 unresolved query 当作 miss。
+        known_relevant_hit = any(
+            _has_label(label_by_message, item, "relevant") for item in top
+        )
+        if known_relevant_hit:
             hit = _available_metric(
                 "top_k_hit_success",
-                1.0 if relevant_hits else 0.0,
+                1.0,
+                k=k,
+                scope="merged_candidate_pool",
+                reference_status=reference_status,
+            )
+        elif top_resolved and relevant_total > 0:
+            hit = _available_metric(
+                "top_k_hit_success",
+                0.0,
+                k=k,
+                scope="merged_candidate_pool",
+                reference_status=reference_status,
+            )
+        else:
+            hit = _unavailable_metric(
+                "top_k_hit_success",
+                (
+                    "top_k_contains_missing_or_uncertain_label"
+                    if not top_resolved
+                    else "no_relevant_candidate_in_annotated_pool"
+                ),
                 k=k,
                 scope="merged_candidate_pool",
                 reference_status=reference_status,
             )
         metrics.extend((recall, hit))
 
-    ranked_resolved = all(_resolved_annotation(label_by_message, item) for item in ranked)
-    if not pool_complete:
+    reciprocal_rank: float | None = None
+    unresolved_before_relevant = False
+    for rank, message_id in enumerate(ranked, start=1):
+        annotation = label_by_message.get(message_id)
+        if annotation is None or annotation.label == "uncertain":
+            unresolved_before_relevant = True
+            break
+        if annotation.label == "relevant":
+            reciprocal_rank = 1.0 / rank
+            break
+    if reciprocal_rank is not None:
+        metrics.append(
+            _available_metric(
+                "mrr",
+                reciprocal_rank,
+                k=None,
+                scope="retrieved_ranking",
+                reference_status=reference_status,
+            )
+        )
+    elif unresolved_before_relevant:
         metrics.append(
             _unavailable_metric(
                 "mrr",
-                "merged_candidate_pool_has_missing_or_uncertain_label",
+                "unresolved_label_precedes_first_known_relevant",
                 k=None,
                 scope="retrieved_ranking",
                 reference_status=reference_status,
@@ -1453,33 +1485,21 @@ def _strategy_query_metrics(
         metrics.append(
             _unavailable_metric(
                 "mrr",
-                "no_relevant_candidate_in_annotated_pool",
-                k=None,
-                scope="retrieved_ranking",
-                reference_status=reference_status,
-            )
-        )
-    elif not ranked_resolved:
-        metrics.append(
-            _unavailable_metric(
-                "mrr",
-                "retrieved_ranking_contains_missing_or_uncertain_label",
+                (
+                    "no_relevant_candidate_in_annotated_pool"
+                    if pool_complete
+                    else "merged_candidate_pool_has_missing_or_uncertain_label"
+                ),
                 k=None,
                 scope="retrieved_ranking",
                 reference_status=reference_status,
             )
         )
     else:
-        reciprocal_rank = 0.0
-        for rank, message_id in enumerate(ranked, start=1):
-            annotation = label_by_message[message_id]
-            if annotation is not None and annotation.label == "relevant":
-                reciprocal_rank = 1.0 / rank
-                break
         metrics.append(
             _available_metric(
                 "mrr",
-                reciprocal_rank,
+                0.0,
                 k=None,
                 scope="retrieved_ranking",
                 reference_status=reference_status,

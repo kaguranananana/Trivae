@@ -287,6 +287,20 @@ class RetrievalMetricTests(unittest.TestCase):
         self.assertEqual(_metric(unknown, "semantic", "recall_at_k", 1)["availability"], "unavailable")
         self.assertEqual(_metric(partial, "lexical", "recall_at_k", 1)["availability"], "unavailable")
 
+    def test_known_top_relevant_keeps_hit_and_mrr_available_with_later_unknown(self) -> None:
+        """后排 unknown 不得抹掉已经确定的 top-1 positive；pool Recall 仍不可用。"""
+
+        report = build_retrieval_metrics(
+            _sealed(lexical_ids=("m1", "m2", "m3")),
+            _annotations(("relevant", "uncertain", "not_relevant")),
+            ks=(1, 3),
+        )
+
+        self.assertEqual(_metric(report, "lexical", "top_k_hit_success", 1)["value"], 1.0)
+        self.assertEqual(_metric(report, "lexical", "top_k_hit_success", 3)["value"], 1.0)
+        self.assertEqual(_metric(report, "lexical", "mrr")["value"], 1.0)
+        self.assertEqual(_metric(report, "lexical", "recall_at_k", 1)["availability"], "unavailable")
+
     def test_invalid_snapshot_is_rejected(self) -> None:
         with self.assertRaises(EvaluationContractError):
             build_retrieval_metrics(
