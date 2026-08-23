@@ -73,12 +73,21 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 
 | Key | Required | Contract |
 | --- | --- | --- |
-| `DEEPSEEK_API_KEY` | real provider run | Non-empty secret；不得进入 prompt、事件、结果或普通日志 |
-| `DEEPSEEK_BASE_URL` | no | Defaults to `https://api.deepseek.com`；空值显式失败 |
-| `TRIVAE_MODEL_PROVIDER` | no | Defaults to `deepseek`；不支持的 provider 显式失败 |
+| `TRIVAE_MODEL_PROVIDER` | no | Defaults to `deepseek`；只支持 `deepseek` / `opencode-go` |
+| `TRIVAE_MODEL_API_KEY` | real provider run | Non-empty secret；不得进入 prompt、事件、结果或普通日志 |
+| `TRIVAE_MODEL_BASE_URL` | generic config | Non-empty OpenAI-compatible endpoint；空值显式失败 |
 | `TRIVAE_MODEL_NAME` | real provider run | Non-empty model name；不在代码中假造默认模型 |
+| `DEEPSEEK_API_KEY` | legacy DeepSeek only | 仅当 provider 为 `deepseek` 且 generic key 不存在时读取 |
+| `DEEPSEEK_BASE_URL` | legacy DeepSeek only | 仅当 provider 为 `deepseek` 且 generic URL 不存在时读取 |
 | `TRIVAE_MAX_TURNS` | no | Positive integer；默认 8；SDK absolute backstop |
 | `TRIVAE_MAX_TOOL_ROUNDS` | no | Positive integer；默认 3；Trivae investigation budget |
+| `TRIVAE_MAX_OUTPUT_TOKENS` | no | Positive integer；默认 16384；final synthesis bound |
+| `TRIVAE_COMPLETION_MAX_TOKENS` | no | Positive integer；默认 2048；Router/Planner completion bound |
+
+新 `TRIVAE_MODEL_*` 字段优先于 legacy 字段；变量显式存在但为空时必须报错，不能静默
+回退。legacy-only DeepSeek 继续保留 `https://api.deepseek.com` 默认 URL，以兼容已有
+smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`.env` 由启动命令
+显式 export，Settings 的 mapping 注入接口不得隐式读取工作区 credential。
 
 ### Query boundary
 
@@ -186,3 +195,109 @@ result = await same_runtime.run(runtime_request)
 ```
 
 Orchestrator 只编译 context 与 guidance；SDK loop、tool choice、typed arguments 和 Capability execution 继续由各自 ownership 负责。
+
+## 8. OpenAI-compatible Model Provider configuration
+
+### 1. Scope / Trigger
+
+- Trigger：需要在不改变 Query 业务代码的情况下切换 DeepSeek 官方 API 与 OpenCode Go。
+- Scope：`config/settings.py`、`OpenAIAgentsRuntimeAdapter`、provider-facing usage
+  normalization 和其 deterministic/live validation。
+- Boundary：Router、Planner、Tool、Retrieval、Evidence/Citation、Trace projection 和
+  Evaluation 只消费 provider-neutral Runtime contract。
+
+### 2. Signatures
+
+```python
+@dataclass(frozen=True)
+class ModelSettings:
+    api_key: str
+    base_url: str
+    provider: str
+    model_name: str
+    max_turns: int
+    max_tool_rounds: int
+    max_output_tokens: int
+    completion_max_tokens: int
+
+def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings: ...
+```
+
+Runtime 继续通过同一条构造路径创建 `AsyncOpenAI(api_key, base_url)` 和
+`OpenAIChatCompletionsModel(model, openai_client)`；OpenCode Go 的 provider-facing
+model value 是 `deepseek-v4-flash`，不是 `opencode-go/deepseek-v4-flash`。
+
+### 3. Contracts
+
+- Supported providers：`deepseek`、`opencode-go`。
+- Generic env：`TRIVAE_MODEL_PROVIDER`、`TRIVAE_MODEL_API_KEY`、
+  `TRIVAE_MODEL_BASE_URL`、`TRIVAE_MODEL_NAME`。
+- Legacy env：只对 `deepseek` 按字段 fallback 到 `DEEPSEEK_API_KEY`、
+  `DEEPSEEK_BASE_URL`。
+- Safe settings projection：只暴露 `api_key_configured: bool`，不暴露 key；Trace
+  记录 provider/model/normalized usage，不记录 API key 或当前 base URL。
+- Usage canonical fields：`requests`、`input_tokens`、`output_tokens`、
+  `total_tokens`，以及 Provider 明确返回 cache-read 时的 `cached_input_tokens`。
+  缺失字段保持 absent/unknown，不写 `0`。
+- OpenCode Go compatibility：当 Agent 请求包含 tools 时，Runtime adapter 移除与其
+  不兼容的 `response_format=json_object`；无 tools 时保留 structured-output 请求。
+  这只属于 provider normalization，不改变 Answer Finalizer contract。
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| unsupported provider | `SettingsError`，不构造 client |
+| missing generic API key | `SettingsError`；只有 `provider=deepseek` 且 generic key 不存在时才读取 `DEEPSEEK_API_KEY`；`opencode-go` 永不读取 |
+| missing generic base URL | `SettingsError`；legacy-only DeepSeek 才可使用旧默认 URL |
+| missing model name | `SettingsError`，不发网络请求 |
+| new and legacy values both set | new value wins；new empty value 显式失败 |
+| provider `opencode-go` with only `DEEPSEEK_*` | `SettingsError`，不误用 legacy credential/URL |
+| Provider has no cache usage field | omit `cached_input_tokens`，不能补零 |
+| OpenCode Go tools + JSON mode | adapter removes `response_format` for that tool turn；不 retry/repair |
+| Provider/adapter exception | secret-safe Runtime failure；不把原始 exception body 投影到业务层 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：`.env` 选择 `opencode-go`、`deepseek-v4-flash` 和 OpenCode Go URL，CLI/Evaluation
+  通过同一个 Application/Runtime path 执行。
+- Good：DeepSeek legacy-only 配置仍使用旧 key/base URL；新 generic 配置覆盖同名旧值。
+- Base：没有 cache details 时 usage 仍有 input/output/total，但没有
+  `cached_input_tokens`。
+- Bad：把 `opencode-go/deepseek-v4-flash` 传给 API，或在 Router/Planner 中复制一套
+  OpenCode Go adapter。
+- Bad：为 OpenCode Go tool calling 失败添加业务层 retry、citation repair 或静默降级。
+
+### 6. Tests Required
+
+- Settings：两个 provider load、new-first precedence、legacy fallback、empty-new
+  rejection、unsupported provider、missing key/base/model、safe repr/dict。
+- Adapter：same Chat Completions construction、OpenCode Go exact model/base URL、
+  tool-turn JSON mode projection、DeepSeek JSON mode regression。
+- Usage：flat/nested cache-read projection、缺失 cache field 不补零。
+- Runtime integration：tool result、final answer、stream events、citation/finalization、
+  Trace provider/model/usage 和 secret absence。
+- Quality gates：`pytest -q`、`ruff check src tests`、`mypy src`、CLI help、`git diff --check`。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+# 把 Provider 名称扩散到 Query/Planner，并为 OpenCode Go 复制一套 loop。
+if settings.provider == "opencode-go":
+    return run_opencode_specific_agent_loop(request)
+```
+
+#### Correct
+
+```python
+# 配置选择 endpoint/model；兼容差异只在同一个 Runtime adapter 归一化。
+settings = load_settings()
+client = AsyncOpenAI(api_key=settings.api_key, base_url=settings.base_url)
+model = OpenAIChatCompletionsModel(model=settings.model_name, openai_client=client)
+```
+
+这条 contract 固化的架构原则是：Trivae Agent Runtime 依赖模型协议能力，而不依赖
+具体模型厂商；支持 OpenAI-compatible Chat Completions 的 Provider 通过配置和
+Runtime Adapter 接入，差异不得泄漏到业务层。

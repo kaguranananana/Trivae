@@ -1,4 +1,4 @@
-"""从环境变量读取模型配置，并保持密钥不进入可观测结果。"""
+"""从环境变量读取 OpenAI-compatible 模型配置，并保持密钥不进入可观测结果。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from typing import Mapping
 
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-_SUPPORTED_PROVIDER = "deepseek"
+_DEFAULT_PROVIDER = "deepseek"
+_SUPPORTED_PROVIDERS = frozenset({"deepseek", "opencode-go"})
 _DEFAULT_MAX_TURNS = 8
 _DEFAULT_MAX_TOOL_ROUNDS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 16384
@@ -19,8 +20,8 @@ class SettingsError(ValueError):
 
 
 @dataclass(frozen=True)
-class DeepSeekSettings:
-    """DeepSeek OpenAI-compatible Chat Completions 的非敏感配置投影。"""
+class ModelSettings:
+    """OpenAI-compatible Chat Completions 的配置和运行预算。"""
 
     api_key: str
     base_url: str
@@ -35,7 +36,7 @@ class DeepSeekSettings:
         """调试时只显示密钥存在性，绝不显示密钥正文。"""
 
         return (
-            "DeepSeekSettings("
+            "ModelSettings("
             "api_key='[REDACTED]', "
             f"base_url={self.base_url!r}, provider={self.provider!r}, "
             f"model_name={self.model_name!r}, max_turns={self.max_turns!r}, "
@@ -59,25 +60,42 @@ class DeepSeekSettings:
         }
 
 
-def load_settings(environ: Mapping[str, str] | None = None) -> DeepSeekSettings:
+DeepSeekSettings = ModelSettings
+
+
+def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
     """在调用时读取并校验配置，不在模块导入时创建客户端。"""
 
     values = os.environ if environ is None else environ
-    api_key = values.get("DEEPSEEK_API_KEY", "").strip()
-    if not api_key:
-        raise SettingsError("DEEPSEEK_API_KEY is required when the DeepSeek provider is invoked")
 
-    provider = values.get("TRIVAE_MODEL_PROVIDER", _SUPPORTED_PROVIDER).strip().lower()
-    if provider != _SUPPORTED_PROVIDER:
+    # 没有显式 provider 时保留旧版 DeepSeek 默认，避免旧 smoke/evaluation 无法启动。
+    provider = values.get("TRIVAE_MODEL_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
+    if provider not in _SUPPORTED_PROVIDERS:
         raise SettingsError(f"unsupported model provider: {provider or '<empty>'}")
+
+    # 新 key 是唯一通用入口；只有 DeepSeek 才允许按字段读取 legacy key。
+    api_key = _provider_value(
+        values,
+        provider,
+        "TRIVAE_MODEL_API_KEY",
+        "DEEPSEEK_API_KEY",
+        label="API key",
+    )
 
     model_name = values.get("TRIVAE_MODEL_NAME", "").strip()
     if not model_name:
         raise SettingsError("TRIVAE_MODEL_NAME is required when the model is invoked")
 
-    base_url = values.get("DEEPSEEK_BASE_URL", DEFAULT_DEEPSEEK_BASE_URL).strip()
-    if not base_url:
-        raise SettingsError("DEEPSEEK_BASE_URL must not be empty")
+    # 新 generic 配置必须明确 URL；仅 legacy-only DeepSeek 保留历史默认 URL。
+    legacy_only_deepseek = provider == "deepseek" and "TRIVAE_MODEL_API_KEY" not in values
+    base_url = _provider_value(
+        values,
+        provider,
+        "TRIVAE_MODEL_BASE_URL",
+        "DEEPSEEK_BASE_URL",
+        label="base URL",
+        default=DEFAULT_DEEPSEEK_BASE_URL if legacy_only_deepseek else None,
+    )
 
     max_turns = _positive_integer(values, "TRIVAE_MAX_TURNS", _DEFAULT_MAX_TURNS)
     max_tool_rounds = _positive_integer(values, "TRIVAE_MAX_TOOL_ROUNDS", _DEFAULT_MAX_TOOL_ROUNDS)
@@ -92,7 +110,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> DeepSeekSettings:
         _DEFAULT_COMPLETION_MAX_TOKENS,
     )
 
-    return DeepSeekSettings(
+    return ModelSettings(
         api_key=api_key,
         base_url=base_url,
         provider=provider,
@@ -102,6 +120,37 @@ def load_settings(environ: Mapping[str, str] | None = None) -> DeepSeekSettings:
         max_output_tokens=max_output_tokens,
         completion_max_tokens=completion_max_tokens,
     )
+
+
+def _provider_value(
+    values: Mapping[str, str],
+    provider: str,
+    new_name: str,
+    legacy_name: str,
+    *,
+    label: str,
+    default: str | None = None,
+) -> str:
+    """按 new-first 规则读取一个 Provider 字段，并显式拒绝空值。"""
+
+    # 变量存在但为空时也必须走新变量的校验，不能悄悄借用旧变量掩盖配置冲突。
+    if new_name in values:
+        value = values[new_name].strip()
+        if not value:
+            raise SettingsError(f"{new_name} must not be empty")
+        return value
+
+    # legacy 变量只对 DeepSeek 生效，OpenCode Go 不会误用旧凭据或旧端点。
+    if provider == "deepseek" and legacy_name in values:
+        value = values[legacy_name].strip()
+        if not value:
+            raise SettingsError(f"{legacy_name} must not be empty")
+        return value
+
+    # 只有明确保留的旧 DeepSeek 默认值可以在这里生效。
+    if default is not None:
+        return default
+    raise SettingsError(f"{new_name} is required when the {label} is used")
 
 
 def _positive_integer(values: Mapping[str, str], name: str, default: int) -> int:

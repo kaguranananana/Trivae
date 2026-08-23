@@ -12,9 +12,18 @@ from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import ToolEnvelope, ToolError
-from trivae.config.settings import DEFAULT_DEEPSEEK_BASE_URL, SettingsError, load_settings
+from trivae.config.settings import (
+    DEFAULT_DEEPSEEK_BASE_URL,
+    ModelSettings,
+    SettingsError,
+    load_settings,
+)
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContractError, RuntimeEvent
-from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter, _RuntimeHooks
+from trivae.query.runtime.openai_adapter import (
+    OpenAIAgentsRuntimeAdapter,
+    _OpenCodeGoChatCompletionsModel,
+    _RuntimeHooks,
+)
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
 
 
@@ -43,6 +52,85 @@ async def _collect_runtime_events(
 class SettingsTests(unittest.TestCase):
     """配置读取必须有默认值、明确校验和 secret-safe 投影。"""
 
+    def test_load_settings_supports_opencode_go_model_id(self) -> None:
+        settings = load_settings(
+            {
+                "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                "TRIVAE_MODEL_API_KEY": "fake-opencode-go-key",
+                "TRIVAE_MODEL_BASE_URL": "https://opencode.ai/zen/go/v1",
+                "TRIVAE_MODEL_NAME": "deepseek-v4-flash",
+            }
+        )
+
+        self.assertIsInstance(settings, ModelSettings)
+        self.assertEqual(settings.provider, "opencode-go")
+        self.assertEqual(settings.base_url, "https://opencode.ai/zen/go/v1")
+        self.assertEqual(settings.model_name, "deepseek-v4-flash")
+
+    def test_load_settings_supports_generic_deepseek_configuration(self) -> None:
+        settings = load_settings(
+            {
+                "TRIVAE_MODEL_PROVIDER": "deepseek",
+                "TRIVAE_MODEL_API_KEY": "fake-deepseek-key",
+                "TRIVAE_MODEL_BASE_URL": "https://api.deepseek.com",
+                "TRIVAE_MODEL_NAME": "deepseek-chat",
+            }
+        )
+
+        self.assertEqual(settings.provider, "deepseek")
+        self.assertEqual(settings.base_url, "https://api.deepseek.com")
+        self.assertEqual(settings.model_name, "deepseek-chat")
+
+    def test_new_provider_variables_take_priority_over_legacy_deepseek_values(self) -> None:
+        settings = load_settings(
+            {
+                "TRIVAE_MODEL_PROVIDER": "deepseek",
+                "TRIVAE_MODEL_API_KEY": "new-fake-key",
+                "TRIVAE_MODEL_BASE_URL": "https://new.example.test/v1",
+                "TRIVAE_MODEL_NAME": "new-model",
+                "DEEPSEEK_API_KEY": "legacy-fake-key",
+                "DEEPSEEK_BASE_URL": "https://legacy.example.test/v1",
+            }
+        )
+
+        self.assertEqual(settings.api_key, "new-fake-key")
+        self.assertEqual(settings.base_url, "https://new.example.test/v1")
+
+    def test_deepseek_legacy_variables_still_load(self) -> None:
+        settings = load_settings(
+            {
+                "DEEPSEEK_API_KEY": "legacy-fake-key",
+                "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
+                "TRIVAE_MODEL_NAME": "deepseek-chat",
+            }
+        )
+
+        self.assertEqual(settings.api_key, "legacy-fake-key")
+        self.assertEqual(settings.base_url, "https://api.deepseek.com")
+
+    def test_opencode_go_does_not_read_legacy_deepseek_variables(self) -> None:
+        with self.assertRaises(SettingsError):
+            load_settings(
+                {
+                    "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                    "DEEPSEEK_API_KEY": "legacy-fake-key",
+                    "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
+                    "TRIVAE_MODEL_NAME": "deepseek-v4-flash",
+                }
+            )
+
+    def test_empty_new_variables_do_not_fallback_to_legacy_values(self) -> None:
+        base = {
+            "TRIVAE_MODEL_PROVIDER": "deepseek",
+            "TRIVAE_MODEL_NAME": "deepseek-chat",
+            "DEEPSEEK_API_KEY": "legacy-fake-key",
+            "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
+        }
+        for name in ("TRIVAE_MODEL_API_KEY", "TRIVAE_MODEL_BASE_URL"):
+            with self.subTest(name=name):
+                with self.assertRaises(SettingsError):
+                    load_settings({**base, name: ""})
+
     def test_load_settings_defaults_and_redacts_key(self) -> None:
         settings = load_settings(
             {
@@ -64,11 +152,42 @@ class SettingsTests(unittest.TestCase):
         with self.assertRaises(SettingsError):
             load_settings({"TRIVAE_MODEL_NAME": "deepseek-chat-test"})
         with self.assertRaises(SettingsError):
-            load_settings({"DEEPSEEK_API_KEY": "secret"})
+            load_settings(
+                {
+                    "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                    "TRIVAE_MODEL_BASE_URL": "https://opencode.ai/zen/go/v1",
+                    "TRIVAE_MODEL_NAME": "deepseek-v4-flash",
+                }
+            )
         with self.assertRaises(SettingsError):
             load_settings(
                 {
-                    "DEEPSEEK_API_KEY": "secret",
+                    "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                    "TRIVAE_MODEL_API_KEY": "fake-opencode-go-key",
+                    "TRIVAE_MODEL_NAME": "deepseek-v4-flash",
+                }
+            )
+        with self.assertRaises(SettingsError):
+            load_settings(
+                {
+                    "TRIVAE_MODEL_PROVIDER": "deepseek",
+                    "TRIVAE_MODEL_API_KEY": "fake-deepseek-key",
+                    "TRIVAE_MODEL_NAME": "deepseek-chat",
+                }
+            )
+        with self.assertRaises(SettingsError):
+            load_settings(
+                {
+                    "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                    "TRIVAE_MODEL_API_KEY": "fake-opencode-go-key",
+                    "TRIVAE_MODEL_BASE_URL": "https://opencode.ai/zen/go/v1",
+                }
+            )
+        with self.assertRaises(SettingsError):
+            load_settings(
+                {
+                    "TRIVAE_MODEL_API_KEY": "fake-key",
+                    "TRIVAE_MODEL_BASE_URL": "https://example.test/v1",
                     "TRIVAE_MODEL_NAME": "model",
                     "TRIVAE_MODEL_PROVIDER": "other",
                 }
@@ -118,6 +237,25 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(runtime._model_name, "deepseek-chat-test")
         self.assertEqual(runtime.max_turns, 3)
 
+    def test_opencode_go_model_uses_exact_model_id_and_base_url(self) -> None:
+        settings = load_settings(
+            {
+                "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                "TRIVAE_MODEL_API_KEY": "fake-opencode-go-key",
+                "TRIVAE_MODEL_BASE_URL": "https://opencode.ai/zen/go/v1",
+                "TRIVAE_MODEL_NAME": "deepseek-v4-flash",
+            }
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, settings=settings, max_turns=3)
+
+        self.assertIsInstance(runtime._model, OpenAIChatCompletionsModel)
+        self.assertEqual(runtime._provider_name, "opencode-go")
+        self.assertEqual(runtime._model_name, "deepseek-v4-flash")
+        assert runtime._provider_client is not None
+        self.assertEqual(str(runtime._provider_client.base_url).rstrip("/"), settings.base_url)
+        self.assertNotIn("opencode-go/", runtime._model_name)
+        asyncio.run(runtime.aclose())
+
     def test_agent_requests_provider_json_mode_for_final_synthesis(self) -> None:
         """验证 final synthesis 使用 provider JSON mode，而不是依赖裸 prompt。"""
 
@@ -131,6 +269,47 @@ class RuntimeAdapterTests(unittest.TestCase):
             {"type": "json_object"},
         )
         self.assertEqual(agent.model_settings.max_tokens, 16384)
+
+    def test_opencode_go_agent_does_not_combine_tools_with_json_mode(self) -> None:
+        """OpenCode Go 的已验证兼容边界只在 Runtime adapter 内处理。"""
+
+        settings = load_settings(
+            {
+                "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                "TRIVAE_MODEL_API_KEY": "fake-opencode-go-key",
+                "TRIVAE_MODEL_BASE_URL": "https://opencode.ai/zen/go/v1",
+                "TRIVAE_MODEL_NAME": "deepseek-v4-flash",
+            }
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(
+            self.registry,
+            settings=settings,
+        )
+        request = AgentRunRequest("Find evidence", self.scope)
+        context = runtime._build_context(request)
+        agent = runtime._build_agent(request, context, object())
+
+        self.assertIsInstance(runtime._model, _OpenCodeGoChatCompletionsModel)
+        self.assertEqual(
+            agent.model_settings.extra_args,
+            {"response_format": {"type": "json_object"}},
+        )
+        _, adjusted_kwargs = _OpenCodeGoChatCompletionsModel._adjust_model_call(
+            (),
+            {"model_settings": agent.model_settings, "tools": agent.tools},
+        )
+        adjusted_settings = adjusted_kwargs["model_settings"]
+        self.assertEqual(adjusted_settings.extra_args, {})
+        _, no_tool_kwargs = _OpenCodeGoChatCompletionsModel._adjust_model_call(
+            (),
+            {"model_settings": agent.model_settings, "tools": []},
+        )
+        self.assertEqual(
+            no_tool_kwargs["model_settings"].extra_args,
+            {"response_format": {"type": "json_object"}},
+        )
+        self.assertEqual(agent.model_settings.max_tokens, 16384)
+        asyncio.run(runtime.aclose())
 
     def test_final_synthesis_prompt_requests_compact_artifact(self) -> None:
         self.assertIn("Keep the JSON artifact compact", SYSTEM_PROMPT)
@@ -195,9 +374,32 @@ class RuntimeAdapterTests(unittest.TestCase):
         assert result.observation is not None
         self.assertEqual(result.observation.finish_reason, "length")
         self.assertEqual(result.observation.usage["output_tokens"], 2048)
+        self.assertNotIn("cached_input_tokens", result.observation.usage)
         self.assertEqual(result.observation.request["max_tokens"], 2048)
         self.assertTrue(result.observation.request["json_mode"])
         self.assertNotIn("api_key", result.observation.request)
+
+    def test_provider_usage_projects_cached_input_tokens_only_when_present(self) -> None:
+        response = SimpleNamespace(
+            usage=SimpleNamespace(
+                prompt_tokens=100,
+                completion_tokens=12,
+                total_tokens=112,
+                prompt_tokens_details=SimpleNamespace(cached_tokens=40),
+            )
+        )
+
+        projected = _RuntimeHooks._project_model_usage(response)
+
+        self.assertEqual(
+            projected,
+            {
+                "input_tokens": 100,
+                "output_tokens": 12,
+                "total_tokens": 112,
+                "cached_input_tokens": 40,
+            },
+        )
 
     def test_search_tool_schema_exposes_trusted_result_bound(self) -> None:
         """验证 provider schema 暴露本次 trusted result bound，但仍保留 Capability 校验。"""
