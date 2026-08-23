@@ -6,7 +6,7 @@
 - 修复前 `last-stable-m6` 真实 baseline 为 8 个 Case：8 个 Query terminal 为 `completed`，Trace 8/8 `complete`，Finalizer 7/8 通过，`real-context-expansion-v1` 失败为 `INVALID_ANSWER_ARTIFACT`。Provider usage 为 input 88474 / output 31657 / total 120131 tokens，19 requests，17 tool calls，11 tool rounds，总 latency 229609 ms；该结果没有被 Evaluation 包装为成功。
 - Provider capture 确认修复前最终 synthesis 已带 JSON mode，但没有显式 `max_tokens`；多轮真实失败的请求形态为 4 tool calls / 2 tool rounds，最终 Finalizer 仍返回 `INVALID_ANSWER_ARTIFACT`。同一 capture 还确认 Router/Planner 旧请求使用 `max_tokens=512` 且没有 JSON mode，出现 `finish_reason=length`、空 content 的 `PLANNER_GENERATION_ERROR`。
 - 修复后的 `deepseek-json-budget-m7-v2` 在同一 Snapshot 的 8 个 latest Case Run 均为 successful，Finalizer error 0，Trace 8/8 `complete`；routes 为 planned 4、standard 4；15 tool calls、11 tool rounds、19 provider requests、109395 total tokens，latency 6812–54785 ms。Planner degraded 仍作为事实保留：`PLANNER_INVALID_OUTPUT` 3 次、`PLANNER_TIMEOUT` 1 次。
-- 重复回归直接覆盖旧失败形态：`deepseek-json-budget-m7-v2-forced-standard` 的 `real-planner-utility-v1` 真实 Run 在 4 tool calls / 2 tool rounds / 3 requests 下 successful，Finalizer error 为空，Trace `complete`。
+- 重复回归直接覆盖旧失败形态：`deepseek-json-budget-m7-v2-repeat` 的 `real-planner-utility-v1` 真实 Run 在 4 tool calls / 2 tool rounds / 3 requests 下 successful，Finalizer error 为空，Trace `complete`。
 
 ## Deterministic Validation
 
@@ -18,7 +18,7 @@
 ## Real-data Calibration
 
 - 使用同一临时 Snapshot 完成 8-Case DeepSeek candidate suite、重复 Run smoke，以及 forced standard / forced planned paired experiment；不提交聊天正文、secret 或完整 Trace。
-- Paired comparison `comparison:real-planner-utility-v1:v1:28eaf359e9834dceb0478137f5efe33e` 两边均为真实 successful Run：forced standard 为 4 tool calls / 2 rounds / 39096 ms / 16235 tokens，forced planned 为 2 tool calls / 1 round / 50670 ms / 16996 tokens，并且 planned Run 的 Planner 诊断为 `PLANNER_TIMEOUT`。质量 Review 状态为 `pending_review`，因此没有宣称质量提升或生成总分。
+- Paired comparison `comparison:real-planner-utility-v1:v1:28eaf359e9834dceb0478137f5efe33e` 两边均为真实 successful Run：forced standard 为 2 tool calls / 1 round / 39096 ms / 16235 tokens，forced planned 为 2 tool calls / 1 round / 50670 ms / 16996 tokens，并且 planned Run 的 Planner 诊断为 `PLANNER_TIMEOUT`。质量 Review 状态为 `pending_review`，因此没有宣称质量提升或生成总分。
 - 另有 `real-context-expansion-v1` 的 forced standard / forced planned pair，状态同样为 `pending_review`；两组比较均保留 baseline/candidate variant、blind order、randomization seed、Run、Answer、Trace reference 和 operational facts。
 
 ## Known Limitations
