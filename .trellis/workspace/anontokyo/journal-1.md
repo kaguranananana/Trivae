@@ -620,3 +620,24 @@ Implemented provider reasoning normalization, shared Runtime/Trace live projecti
 ### Status
 
 [OK] **Completed**
+
+
+## Session 28: Generalize Model Provider Configuration
+
+**Date**: 2026-08-23
+**Task**: Generalize Model Provider Configuration
+**Branch**: `codex/model-provider-config`
+
+### Summary
+
+Generalized DeepSeek-specific settings into OpenAI-compatible ModelSettings with OpenCode Go support, legacy DeepSeek fallback, secret-safe usage projection, and adapter-only OpenCode Go tool/JSON-mode normalization. Verified 214 tests, ruff, mypy, CLI help, and real OpenCode Go basic/tool/streaming/citation/Trace smoke without recording credentials; documented the provider protocol difference and unknown DeepSeek live validation.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `45bd747` | (see git log) |
+
+### Status
+
+[OK] **Completed**
