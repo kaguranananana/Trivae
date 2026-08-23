@@ -557,3 +557,24 @@ Added derived UTF-8 Trace text logs, Application export facade, trace export CLI
 ### Status
 
 [OK] **Completed**
+
+
+## Session 25: Model-visible execution transcript
+
+**Date**: 2026-08-23
+**Task**: Model-visible execution transcript
+**Branch**: `codex/human-readable-execution-transcript`
+
+### Summary
+
+在既有 SQLite StoredTrace/NormalizedQueryEvent 上新增 Human-readable Execution Transcript；修复 OpenAI Agents SDK 0.22.0 的 function_call/function_call_output model-visible capture gap，保留同源 Tool Result projection、planner failure、retrieval truncation、final answer snapshot 与 Raw Events。完成 normal/debug policy、隐私/hidden reasoning 回归、Stage 1.9 与 backend quality amendment；pytest 173 passed、ruff、mypy 通过，并完成真实 DeepSeek smoke trace-12f2784e0bc3405789212fe2d4ad54bd。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c594aa2` | (see git log) |
+
+### Status
+
+[OK] **Completed**

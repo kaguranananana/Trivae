@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 24
+- **Total Sessions**: 25
 - **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~559 | Active |
+| `journal-1.md` | ~580 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 25 | 2026-08-23 | Model-visible execution transcript | `c594aa2` | `codex/human-readable-execution-transcript` |
 | 24 | 2026-08-23 | Add human-readable Trace logs | `5683530` | `codex/interactive-chat-cli-main` |
 | 23 | 2026-08-23 | Interactive chat CLI | `3e18342` | `codex/interactive-chat-cli-main` |
 | 22 | 2026-08-23 | Establish minimal GitHub Actions CI | `ad36b06` | `codex/m7-evaluation-regression` |
