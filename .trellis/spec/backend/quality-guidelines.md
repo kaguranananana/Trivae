@@ -84,8 +84,8 @@ Trace 需要被人工直接打开查看，或需要为既有 SQLite Trace 生成
 
 ### 2. Signatures
 
-- `TrivaeApplication.export_trace_log(trace_id: str, *, output_path: Path | None = None) -> Path`：读取 `StoredTrace` 并返回已写入日志的绝对路径。
-- `trivae trace export <trace_id> [--database PATH] [--output PATH]`：导出既有 Trace。
+- `TrivaeApplication.export_trace_log(trace_id: str, *, output_path: Path | None = None, view: Literal["transcript", "raw"] = "transcript", context_mode: Literal["delta", "full"] = "delta") -> Path`：读取 `StoredTrace` 并返回已写入日志的绝对路径。
+- `trivae trace export <trace_id> [--database PATH] [--output PATH] [--view transcript|raw] [--context delta|full]`：导出既有 Trace；`--context` 只影响 transcript view。
 - 默认输出：`<database_path.parent>/traces/<trace_id>.log`。
 - `TraceTextLogWriter`：负责 UTF-8 文本格式、增量 sidecar 和完整重导出。
 
@@ -93,7 +93,10 @@ Trace 需要被人工直接打开查看，或需要为既有 SQLite Trace 生成
 
 - SQLite `traces` / `trace_events` 仍是 Trace source of truth；文本文件可删除、重建和覆盖，不参与 Query 事实读取。
 - 文本内容只能来自已经经过 `CapturePolicy` 的 `NormalizedQueryEvent` / `StoredTrace`，保留 metadata、sequence、stage、operation、phase、outcome、duration、payload、limitations 和 failure。
-- 完整导出的 `.log` 必须按 `Trace Metadata -> EXECUTION TRANSCRIPT -> RAW TRACE EVENTS` 排列；Transcript 是 `StoredTrace` 的纯 projection，不能查询 Conversation Store、Retrieval 或 Runtime 重新补内容。
+- 默认完整导出的 `.log` 必须按 `Trace Metadata -> Trace Summary -> EXECUTION TRANSCRIPT` 排列，并在 `[FINAL ANSWER]` 后结束；Raw Events 不默认复制到 human-readable log。
+- `trivae trace export --view raw` 才导出 `RAW TRACE EVENTS`；SQLite Trace 与 `trace show` 仍是 canonical raw event 的主要读取路径。
+- Transcript 默认使用 `context_mode="delta"`：第一轮显示完整已捕获 model-visible input，后续只显示相对上一轮稳定前缀新增的 items；`--context full` 显示每轮完整已捕获 context，供需要核对 Provider request 的 Debug 排查使用。
+- Summary、Transcript 和 Raw view 都必须是同一 `StoredTrace` 的纯 projection，不能查询 Conversation Store、Retrieval 或 Runtime 重新补内容。
 - Debug Transcript 必须尽可能显示本轮实际 model input、assistant visible output、Tool Call arguments 和下一轮 input 中的 `function_call_output.output`；Tool Result 正文以模型实际看到的 output 为准，检索完整性 metadata 单独显示。
 - `function_call` / `function_call_output` 以及 message content blocks 必须在 SDK adapter 内转换为 Trivae-owned plain data；禁止 `repr(item)`、无界 SDK dump、hidden reasoning、provider internal reasoning 或 SDK scratchpad 进入 Trace。
 - 当前 CapturePolicy 上限为 Normal `512` 字符/`16` 个集合项/深度 `6`、Debug `20,000` 字符/`128` 个集合项/深度 `10`；截断必须保留 limitation，Debug 不是 Data Access Scope 或 secret policy 的旁路。
@@ -107,6 +110,8 @@ Debug Trace 的人工阅读目标是回答“这一轮模型实际看到了什�
 当 SDK 将结构化 Tool Result 转成超长字符串且 bounded capture 在字典中间截断时，adapter 可以在同一 model input 字符串上生成 `output_projection`。该字段只是 Trivae-owned 的同源结构化投影，不能来自数据库重查或 Tool Result 重建；Transcript 仍以 `output` 原文为事实，并在可用时用该 projection 阅读正文，同时保留 truncation limitation。
 
 完整 model-visible execution facts 不等于 hidden Chain-of-Thought。允许展示 Router reason、Planner output/failure、Tool selection/arguments、Retrieval diagnostics、Evidence/Citation diagnostics 和 finalization reason；禁止展示 provider hidden reasoning、SDK reasoning item、scratchpad 或未向应用层暴露的内部推理 token。
+
+默认 human-readable log 是面向人工排障的紧凑主线，不通过删除 canonical facts 来实现体积控制：Raw Events 由 SQLite / `trace show` 保留，完整 model-visible context 由 `--context full` 显式查看。Delta presentation 只消除已确认的稳定前缀重复；无法确认前缀时必须显示完整已捕获 input 和 context note，不能猜测增量。
 
 Normal 仍以 bounded/redacted execution facts 为主，不承诺完整 Transcript；Debug 才承担 Failure Case 的近完整 model input、Tool Result、assistant visible output 和 Final Answer snapshot。两者都必须复用同一个 CapturePolicy，Formatter 不重新实现 secret filter。
 
@@ -122,15 +127,16 @@ Normal 仍以 bounded/redacted execution facts 为主，不承诺完整 Transcri
 
 ### 5. Good / Base / Bad Cases
 
-- Good：`trace export` 导出的事件顺序与 `trace show` 的 timeline 一致，且包含 terminal outcome。
+- Good：默认 `trace export` 打开后从 Summary 顺着 Transcript 读到完整 Final Answer，且不出现 Raw Events；需要事件细节时 `--view raw` 与 `trace show` 仍能定位同一 sequence。
 - Base：sidecar 丢失时再次执行 `trace export` 可以重建，不需要重新 Query、Retrieval 或调用 Provider。
 - Bad：CLI 直接读 SQLite、从 runtime answer 重新拼日志，或把文本日志当作新的 Trace source of truth。
 
 ### 6. Tests Required
 
 - `SQLiteTraceStore` 增量日志包含 event operation 和 terminal outcome。
-- `TrivaeApplication.export_trace_log()` 支持完整导出和自定义输出路径。
-- `trace export` parser 接受 trace ID、database 和 output 参数；现有 `trace show` 保持可用。
+- `TrivaeApplication.export_trace_log()` 支持 transcript/raw、delta/full 和自定义输出路径。
+- `trace export` parser 接受 trace ID、database、output、view 和 context 参数；现有 `trace show` 保持可用。
+- 默认 transcript 不含 `RAW TRACE EVENTS` 且在 Final Answer 后结束；raw view 保留完整 event projection；delta/full 都只读取 StoredTrace。
 - Chat 输出 `[trace: ...]` 与 `[log: ...]`，导出失败时保留答案并显示诊断。
 - 完整 `pytest`、`ruff check src tests` 和 `mypy src`。
 

@@ -6,7 +6,7 @@ import unittest
 
 from trivae.observability.contracts import FailureInfo, NormalizedQueryEvent, StoredTrace
 from trivae.observability.text import format_trace_text
-from trivae.observability.transcript import format_execution_transcript
+from trivae.observability.transcript import format_execution_transcript, format_trace_summary
 
 
 def _event(
@@ -312,14 +312,49 @@ class TranscriptTests(unittest.TestCase):
         self.assertIn("整理完成：共找到 20 条资料。", transcript)
         self.assertNotIn("internal-tool-call-must-stay-raw-only", transcript)
 
-    def test_trace_text_contains_transcript_before_raw_events(self) -> None:
+    def test_summary_surfaces_failure_and_truncation_without_new_attribution(self) -> None:
+        summary = format_trace_summary(_build_trace())
+
+        self.assertIn("terminal_outcome: completed", summary)
+        self.assertIn("model_turns: 2", summary)
+        self.assertIn("tool_calls: 1", summary)
+        self.assertIn("planner_failures: 1", summary)
+        self.assertIn("retrieval_truncated_events: 1", summary)
+        self.assertIn("final_answer: available", summary)
+
+    def test_delta_context_avoids_repeating_stable_history(self) -> None:
+        transcript = format_execution_transcript(_build_trace())
+
+        self.assertIn("New input since previous turn", transcript)
+        self.assertEqual(transcript.splitlines().count("[SYSTEM]"), 1)
+        self.assertEqual(transcript.splitlines().count("[USER]"), 2)
+        self.assertIn("[full model-visible context available with context=full]", transcript)
+
+    def test_full_context_keeps_every_captured_model_input(self) -> None:
+        transcript = format_execution_transcript(_build_trace(), context_mode="full")
+
+        self.assertEqual(transcript.splitlines().count("[SYSTEM]"), 2)
+        self.assertEqual(transcript.splitlines().count("[USER]"), 3)
+        self.assertNotIn("New input since previous turn", transcript)
+
+    def test_default_trace_text_ends_after_transcript(self) -> None:
         text = format_trace_text(_build_trace())
 
+        self.assertIn("Trace Summary", text)
         self.assertIn("EXECUTION TRANSCRIPT", text)
+        self.assertNotIn("RAW TRACE EVENTS", text)
+        self.assertTrue(text.rstrip().endswith("整理完成：共找到 20 条资料。"))
+
+    def test_raw_trace_text_is_an_explicit_view(self) -> None:
+        text = format_trace_text(_build_trace(), view="raw")
+
         self.assertIn("RAW TRACE EVENTS", text)
-        self.assertLess(text.index("EXECUTION TRANSCRIPT"), text.index("RAW TRACE EVENTS"))
         self.assertIn("operation: planner.failed", text)
         self.assertIn("payload:", text)
+
+    def test_raw_view_rejects_context_detail_parameter(self) -> None:
+        with self.assertRaises(ValueError):
+            format_trace_text(_build_trace(), view="raw", context_mode="full")
 
 
 if __name__ == "__main__":

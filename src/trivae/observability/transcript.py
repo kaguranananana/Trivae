@@ -6,13 +6,76 @@ import ast
 import json
 from collections.abc import Mapping
 from datetime import datetime, timezone
+from typing import Literal
 
 from trivae.observability.contracts import NormalizedQueryEvent, StoredTrace
 
+TranscriptContextMode = Literal["delta", "full"]
 
-def format_execution_transcript(trace: StoredTrace) -> str:
-    """按 Trace sequence 渲染 model-visible execution facts，不访问其他数据源。"""
 
+def format_trace_summary(trace: StoredTrace) -> str:
+    """从 canonical events 生成顶部摘要，不对执行质量做未经证实的归因。"""
+
+    model_turns = sum(
+        1 for event in trace.events if event.operation == "model.turn" and event.phase == "started"
+    )
+    tool_calls = sum(
+        _model_action_count(event.payload.get("observable_output"))
+        for event in trace.events
+        if event.operation == "model.output"
+    )
+    planner_failures = sum(1 for event in trace.events if event.operation == "planner.failed")
+    retrieval_events = tuple(
+        event
+        for event in trace.events
+        if event.operation.startswith("retrieval.search.")
+        and event.phase in {"completed", "failed", "skipped"}
+    )
+    partial_retrievals = sum(
+        1
+        for event in retrieval_events
+        if event.outcome == "partial" or event.payload.get("partial") is True
+    )
+    truncated_retrievals = sum(
+        1 for event in retrieval_events if event.payload.get("truncated") is True
+    )
+    final_answer_available = any(
+        event.operation == "answer.finalization.completed"
+        and isinstance(event.payload.get("answer_text"), str)
+        for event in trace.events
+    ) or any(
+        event.operation == "runtime.run"
+        and event.phase in {"completed", "failed", "aborted"}
+        and _answer_from_runtime_payload(event.payload) is not None
+        for event in trace.events
+    )
+    return "\n".join(
+        (
+            "Trace Summary",
+            "-------------",
+            f"terminal_outcome: {trace.terminal_outcome or '-'}",
+            f"duration_ms: {_trace_duration_ms(trace)}",
+            f"event_count: {len(trace.events)}",
+            f"model_turns: {model_turns}",
+            f"tool_calls: {tool_calls}",
+            f"planner_failures: {planner_failures}",
+            f"retrieval_partial_events: {partial_retrievals}",
+            f"retrieval_truncated_events: {truncated_retrievals}",
+            f"final_answer: {'available' if final_answer_available else 'not available'}",
+            "",
+        )
+    )
+
+
+def format_execution_transcript(
+    trace: StoredTrace,
+    *,
+    context_mode: TranscriptContextMode = "delta",
+) -> str:
+    """按 Trace sequence 渲染 execution facts，不访问其他数据源。"""
+
+    if context_mode not in {"delta", "full"}:
+        raise ValueError(f"unsupported transcript context mode: {context_mode!r}")
     events = trace.events
     model_groups = _model_event_groups(events)
     call_names = _tool_call_names(events)
@@ -26,6 +89,7 @@ def format_execution_transcript(trace: StoredTrace) -> str:
     final_answer: str | None = None
     final_answer_limitations: tuple[str, ...] = ()
     turn_number = 0
+    previous_model_context: tuple[Mapping[str, object], ...] | None = None
 
     for event in events:
         if event.operation == "query.received":
@@ -41,7 +105,16 @@ def format_execution_transcript(trace: StoredTrace) -> str:
         elif event.operation == "model.turn" and event.phase == "started":
             if event.operation_id not in rendered_turns:
                 turn_number += 1
-                _render_model_turn(lines, turn_number, event, model_groups.get(event.operation_id, ()), call_names)
+                current_model_context = _render_model_turn_with_context(
+                    lines,
+                    turn_number,
+                    event,
+                    model_groups.get(event.operation_id, ()),
+                    call_names,
+                    context_mode=context_mode,
+                    previous_context=previous_model_context,
+                )
+                previous_model_context = current_model_context
                 rendered_turns.add(event.operation_id)
         elif event.operation == "runtime.tool.completed":
             _render_tool_execution(lines, event)
@@ -219,22 +292,46 @@ def _render_planner(lines: list[str], event: NormalizedQueryEvent) -> None:
     )
 
 
-def _render_model_turn(
+def _render_model_turn_with_context(
     lines: list[str],
     turn_number: int,
     started: NormalizedQueryEvent,
     related: tuple[NormalizedQueryEvent, ...],
     call_names: Mapping[str, str],
-) -> None:
-    """先展示真实 input，再展示同一回合的 observable output/action/usage。"""
+    *,
+    context_mode: TranscriptContextMode,
+    previous_context: tuple[Mapping[str, object], ...] | None,
+) -> tuple[Mapping[str, object], ...]:
+    """按 delta/full 模式渲染 input，并返回本轮完整 context 供下一轮比较。"""
 
-    lines.extend((f"[MODEL TURN {turn_number}]", "", "Input", "-----"))
-    context_items = _items(started.payload.get("model_visible_context"))
-    if not context_items:
-        lines.append("[model-visible input not captured]")
+    lines.append(f"[MODEL TURN {turn_number}]")
+    lines.append("")
+    context_items = tuple(_items(started.payload.get("model_visible_context")))
+    if context_mode == "full":
+        lines.extend(("Full model-visible context", "----------------------------"))
+        items_to_render = context_items
+        context_note: str | None = None
+    elif previous_context is None:
+        lines.extend(("Input", "-----"))
+        items_to_render = context_items
+        context_note = None
     else:
-        for item in context_items:
+        lines.extend(("New input since previous turn", "----------------------------"))
+        items_to_render, context_note = _context_delta(context_items, previous_context)
+
+    if context_note is not None:
+        lines.append(f"[context note] {context_note}")
+    if not items_to_render:
+        if context_items:
+            lines.append("[no new model-visible input]")
+        else:
+            lines.append("[model-visible input not captured]")
+    else:
+        for item in items_to_render:
             _render_model_item(lines, item, call_names)
+    if context_mode == "delta" and previous_context is not None and context_items:
+        lines.append("[full model-visible context available with context=full]")
+
     lines.extend(("", "Output / Actions", "----------------"))
     output_events = [event for event in related if event.operation == "model.output"]
     output_items: list[Mapping[str, object]] = []
@@ -256,6 +353,55 @@ def _render_model_turn(
         lines.append(f"usage: {_pretty_value(usage)}")
     lines.append(f"tool_round: {_pretty_value(started.payload.get('tool_round'))}")
     lines.append("")
+    return context_items
+
+
+def _context_delta(
+    current: tuple[Mapping[str, object], ...],
+    previous: tuple[Mapping[str, object], ...],
+) -> tuple[tuple[Mapping[str, object], ...], str | None]:
+    """只去掉确认属于上一轮前缀的 item，避免把变化误当成重复历史。"""
+
+    common = 0
+    while common < len(current) and common < len(previous):
+        current_key = _model_item_key(current[common])
+        previous_key = _model_item_key(previous[common])
+        if current_key is None or previous_key is None or current_key != previous_key:
+            return current, "previous context is not a stable prefix; showing full captured input"
+        common += 1
+    return current[common:], None
+
+
+def _model_item_key(item: Mapping[str, object]) -> str | None:
+    """用 plain item 的稳定 JSON 比较 context，不把 identity 重新写入日志。"""
+
+    try:
+        return json.dumps(dict(item), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _model_action_count(value: object) -> int:
+    """统计已经由 adapter 投影的 observable tool action 数量。"""
+
+    return sum(
+        1
+        for item in _items(value)
+        if item.get("type") in {"function_call", "custom_tool_call"}
+    )
+
+
+def _trace_duration_ms(trace: StoredTrace) -> str:
+    """从 Trace metadata 的时间边界计算摘要时长，未知时保持显式短标记。"""
+
+    if trace.terminal_at is None:
+        return "-"
+    try:
+        started = datetime.fromisoformat(trace.started_at)
+        terminal = datetime.fromisoformat(trace.terminal_at)
+    except ValueError:
+        return "-"
+    return f"{(terminal - started).total_seconds() * 1000:.3f}"
 
 
 def _render_model_item(lines: list[str], item: Mapping[str, object], call_names: Mapping[str, str]) -> None:

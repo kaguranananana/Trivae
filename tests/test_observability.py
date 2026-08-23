@@ -300,8 +300,19 @@ class ObservabilityTests(unittest.TestCase):
             self.assertEqual(exported_path, (path.parent / "manual-export.log").resolve())
             exported_text = exported_path.read_text(encoding="utf-8")
             self.assertIn("event_count:", exported_text)
+            self.assertIn("Trace Summary", exported_text)
             self.assertIn("EXECUTION TRANSCRIPT", exported_text)
             self.assertIn("[FINAL ANSWER]", exported_text)
+            self.assertNotIn("RAW TRACE EVENTS", exported_text)
+            self.assertTrue(exported_text.rstrip().endswith("Trace smoke answer"))
+            raw_path = application.export_trace_log(
+                result.trace_id,
+                output_path=path.parent / "manual-export.raw.log",
+                view="raw",
+            )
+            raw_text = raw_path.read_text(encoding="utf-8")
+            self.assertIn("RAW TRACE EVENTS", raw_text)
+            self.assertIn("operation: answer.finalization.completed", raw_text)
             answer_event = next(
                 item for item in projection.timeline if item.operation == "answer.finalization.completed"
             )

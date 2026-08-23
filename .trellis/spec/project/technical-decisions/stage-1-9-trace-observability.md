@@ -34,6 +34,7 @@ Stage 1.9 不重新设计上述模块，也不把 Trace Collector 变成新的�
 - Transcript 中的 Tool Result 正文必须来自后续 model turn 的 `function_call_output.output`，不能从 Conversation Store、Retrieval 或 `ToolResultRecord` 重新查询/拼装出更完整的内容。Retrieval 的 returned/total、partial、truncated、coverage 作为独立诊断事实保留。
 - 如果 SDK 已将结构化 Tool Result 序列化成超长字符串，adapter 可以从同一 `function_call_output.output` 生成 bounded `output_projection`，帮助 formatter 在原文截断时展示正文；它不是第二份运行事实，也不能脱离该 model input 或通过数据库查询生成。
 - `.log` 的 `EXECUTION TRANSCRIPT` 与 `RAW TRACE EVENTS` 都是同一份 `StoredTrace` 的 derived projection；Transcript 不建立第二套 runtime logging pipeline，也不改变 canonical event boundary。
+- 人工可读 `.log` 的默认 projection 只输出 `Trace Summary -> EXECUTION TRANSCRIPT` 并在 `[FINAL ANSWER]` 后结束；`RAW TRACE EVENTS` 保留为 SQLite / `trace show` 的 canonical detail，并可通过 `trace export --view raw` 显式投影。Transcript 默认按已捕获 model-visible context 的稳定前缀显示 delta，需要逐轮核对完整 request 时使用 `--context full`。这只是 presentation projection，不改变 StoredTrace、CapturePolicy 或事件事实。
 - Debug capture 继续允许 scope 内完整或近完整的 model-visible/system-visible execution facts，并将 `AnswerArtifact.answer_text` 在 finalization 成功后作为 Debug execution snapshot 进入 Trace；Conversation Store / Answer Artifact 仍是业务事实源。
 - 当前 CapturePolicy 上限为 Normal `512` 字符/`16` 个集合项/深度 `6`，Debug `20,000` 字符/`128` 个集合项/深度 `10`，均保留 secret redaction 和可见 limitation。
 

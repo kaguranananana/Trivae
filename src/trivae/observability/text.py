@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
 
 from trivae.observability.contracts import NormalizedQueryEvent, StoredTrace
-from trivae.observability.transcript import format_execution_transcript
+from trivae.observability.transcript import format_execution_transcript, format_trace_summary
+
+TraceTextView = Literal["transcript", "raw"]
 
 
 class TraceTextLogError(RuntimeError):
@@ -92,20 +95,43 @@ class TraceTextLogWriter:
         except OSError as exc:
             raise TraceTextLogError(f"trace text log terminal append failed: {path}") from exc
 
-    def export(self, trace: StoredTrace, *, output_path: Path | None = None) -> Path:
+    def export(
+        self,
+        trace: StoredTrace,
+        *,
+        output_path: Path | None = None,
+        view: TraceTextView = "transcript",
+        context_mode: Literal["delta", "full"] = "delta",
+    ) -> Path:
         """从完整 StoredTrace 重建文本文件，并返回可直接定位的绝对路径。"""
 
         target = self.log_path(trace.trace_id) if output_path is None else output_path
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(format_trace_text(trace), encoding="utf-8")
+            target.write_text(
+                format_trace_text(trace, view=view, context_mode=context_mode),
+                encoding="utf-8",
+            )
         except (OSError, TypeError, ValueError) as exc:
             raise TraceTextLogError(f"trace text log export failed: {target}") from exc
         return target.resolve()
 
 
-def format_trace_text(trace: StoredTrace) -> str:
-    """组合 metadata、derived Transcript 和完整 Raw Events。"""
+def format_trace_text(
+    trace: StoredTrace,
+    *,
+    view: TraceTextView = "transcript",
+    context_mode: Literal["delta", "full"] = "delta",
+) -> str:
+    """从同一 StoredTrace 生成 transcript 或显式 raw 文本视图。"""
+
+    if view not in {"transcript", "raw"}:
+        raise ValueError(f"unsupported trace text view: {view!r}")
+    if context_mode not in {"delta", "full"}:
+        raise ValueError(f"unsupported transcript context mode: {context_mode!r}")
+    if view == "raw" and context_mode != "delta":
+        # Raw projection 没有 model turn context；显式拒绝无效组合，避免用户误以为参数生效。
+        raise ValueError("--context applies only to the transcript view")
 
     lines = [
         "Trivae Trace Log",
@@ -119,14 +145,21 @@ def format_trace_text(trace: StoredTrace) -> str:
         f"terminal_outcome: {trace.terminal_outcome or '-'}",
         f"event_count: {len(trace.events)}",
         "",
-        format_execution_transcript(trace).rstrip(),
-        "",
-        "=================",
-        "RAW TRACE EVENTS",
-        "=================",
     ]
-    for event in trace.events:
-        lines.extend(_format_event_lines(event))
+    if view == "transcript":
+        # 默认日志只保留人工排障主线；canonical raw events 仍在 SQLite 中。
+        lines.extend(
+            (
+                format_trace_summary(trace).rstrip(),
+                "",
+                format_execution_transcript(trace, context_mode=context_mode).rstrip(),
+            )
+        )
+    else:
+        # raw 是显式的工程诊断视图，不与默认 Transcript 混合，避免重复复制大 payload。
+        lines.extend(("=================", "RAW TRACE EVENTS", "================="))
+        for event in trace.events:
+            lines.extend(("", *_format_event_lines(event)))
     return "\n".join(lines) + "\n"
 
 

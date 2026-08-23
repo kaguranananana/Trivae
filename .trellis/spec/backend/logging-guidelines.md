@@ -25,6 +25,8 @@
 - Context
 - Final Answer
 
+对人工排障的完整 Trace 文本导出，默认使用紧凑的 `Trace Summary -> Execution Transcript` 主线，并在 Final Answer 后结束；不要把 Raw normalized events 默认重复复制到 `.log`。需要底层事件时使用 SQLite / `trivae trace show <trace_id>`，或显式执行 `trivae trace export <trace_id> --view raw`。需要逐轮核对已捕获 Provider input 时使用 `--context full`；默认 delta 只折叠确认过的稳定历史前缀。
+
 ## 运行指标（按实际架构取舍）
 
 - Latency

@@ -270,7 +270,19 @@ class ChatCliTests(unittest.TestCase):
         """trace export 应识别 Trace identity、数据库和可选输出路径。"""
 
         args = cli.build_parser().parse_args(
-            ["trace", "export", "trace-1", "--database", "custom.sqlite3", "--output", "trace.log"]
+            [
+                "trace",
+                "export",
+                "trace-1",
+                "--database",
+                "custom.sqlite3",
+                "--output",
+                "trace.log",
+                "--view",
+                "raw",
+                "--context",
+                "full",
+            ]
         )
 
         self.assertEqual(args.command, "trace")
@@ -278,6 +290,11 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(args.trace_id, "trace-1")
         self.assertEqual(args.database, Path("custom.sqlite3"))
         self.assertEqual(args.output, Path("trace.log"))
+        self.assertEqual(args.view, "raw")
+        self.assertEqual(args.context, "full")
+        defaults = cli.build_parser().parse_args(["trace", "export", "trace-1"])
+        self.assertEqual(defaults.view, "transcript")
+        self.assertEqual(defaults.context, "delta")
 
     def test_chat_keeps_answer_visible_when_text_log_export_fails(self) -> None:
         """日志 projection 失败时保留正式答案，并明确暴露导出错误。"""

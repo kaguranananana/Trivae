@@ -93,6 +93,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional text log output path",
     )
+    trace_export_parser.add_argument(
+        "--view",
+        choices=("transcript", "raw"),
+        default="transcript",
+        help="Text projection view; raw keeps normalized events instead of the human transcript",
+    )
+    trace_export_parser.add_argument(
+        "--context",
+        choices=("delta", "full"),
+        default="delta",
+        help="Model context detail for transcript view; full keeps every captured input per turn",
+    )
     evaluation_parser = subparsers.add_parser("eval", help="Run local Evaluation against the production Query path")
     evaluation_subparsers = evaluation_parser.add_subparsers(dest="evaluation_command", required=True)
     eval_cases_parser = evaluation_subparsers.add_parser("cases", help="Validate versioned Evaluation Cases")
@@ -465,7 +477,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if args.trace_command == "show":
                     trace_projection = application.read_trace(args.trace_id)
                 elif args.trace_command == "export":
-                    log_path = application.export_trace_log(args.trace_id, output_path=args.output)
+                    log_path = application.export_trace_log(
+                        args.trace_id,
+                        output_path=args.output,
+                        view=args.view,
+                        context_mode=args.context,
+                    )
                 else:
                     raise TraceStoreError(f"unsupported trace command: {args.trace_command}")
         except TraceStoreError as exc:
