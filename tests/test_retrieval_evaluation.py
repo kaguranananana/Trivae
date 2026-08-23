@@ -308,6 +308,39 @@ class RetrievalMetricTests(unittest.TestCase):
                 _annotations(("relevant", "not_relevant", "not_relevant"), snapshot_id="other"),
             )
 
+    def test_partial_human_review_uses_explicit_mixed_provenance(self) -> None:
+        """逐条人工升级不能冒充整包 human verified，也不能继续声明纯 LLM。"""
+
+        provisional = _annotations(("relevant", "not_relevant", "not_relevant"))
+        reviewed = RelevanceAnnotation(
+            blind_id="b1",
+            label="relevant",
+            confidence=0.95,
+            notes="human reviewed fixture",
+            verification_status="human_verified",
+        )
+        mixed = RelevanceAnnotationSet(
+            packet_id=provisional.packet_id,
+            snapshot_id=provisional.snapshot_id,
+            rubric_version=provisional.rubric_version,
+            annotator_type="mixed",
+            annotator_identity="fixture-model+reviewer",
+            created_at=provisional.created_at,
+            annotations=(reviewed, *provisional.annotations[1:]),
+        )
+
+        self.assertEqual(mixed.reference_status, "mixed")
+        with self.assertRaises(EvaluationContractError):
+            RelevanceAnnotationSet(
+                packet_id=mixed.packet_id,
+                snapshot_id=mixed.snapshot_id,
+                rubric_version=mixed.rubric_version,
+                annotator_type="human",
+                annotator_identity="reviewer",
+                created_at=mixed.created_at,
+                annotations=mixed.annotations,
+            )
+
     def test_audit_queue_prioritizes_uncertain_and_high_impact_labels(self) -> None:
         queue = build_retrieval_audit_queue(
             _sealed(),

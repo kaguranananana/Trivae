@@ -680,7 +680,7 @@ class RelevanceAnnotationSet:
     packet_id: str
     snapshot_id: str
     rubric_version: str
-    annotator_type: Literal["llm_assisted", "human"]
+    annotator_type: Literal["llm_assisted", "human", "mixed"]
     annotator_identity: str
     created_at: str
     annotations: tuple[RelevanceAnnotation, ...]
@@ -694,7 +694,7 @@ class RelevanceAnnotationSet:
             "created_at",
         ):
             object.__setattr__(self, name, _text(getattr(self, name), name))
-        if self.annotator_type not in ("llm_assisted", "human"):
+        if self.annotator_type not in ("llm_assisted", "human", "mixed"):
             raise EvaluationContractError("annotator_type is invalid")
         if not isinstance(self.annotations, tuple):
             raise EvaluationContractError("annotations must be a tuple")
@@ -705,6 +705,16 @@ class RelevanceAnnotationSet:
             item.verification_status != "llm_assisted_provisional" for item in self.annotations
         ):
             raise EvaluationContractError("LLM annotations cannot claim human_verified status")
+        if self.annotator_type == "human" and any(
+            item.verification_status != "human_verified" for item in self.annotations
+        ):
+            raise EvaluationContractError("human annotation set must be fully human_verified")
+        statuses = {item.verification_status for item in self.annotations}
+        if self.annotator_type == "mixed" and statuses != {
+            "llm_assisted_provisional",
+            "human_verified",
+        }:
+            raise EvaluationContractError("mixed annotation set must contain both verification statuses")
 
     @property
     def reference_status(self) -> Literal[
