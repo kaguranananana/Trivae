@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import shlex
 import sys
 from collections.abc import Callable
 from dataclasses import asdict
@@ -34,7 +35,11 @@ from trivae.evaluation.store import EvaluationStoreError
 from trivae.interfaces.cli_renderer import CliEventRenderer
 from trivae.observability.sqlite import ImportDiagnosticsError, TraceStoreError
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
-from trivae.retrieval.semantic.contracts import SemanticError, SemanticRetrievalResult
+from trivae.retrieval.semantic.contracts import (
+    SemanticError,
+    SemanticIndexStatusReport,
+    SemanticRetrievalResult,
+)
 from trivae.retrieval.structured import RetrievalError
 
 
@@ -580,6 +585,34 @@ def _semantic_smoke_projection(
     return projection
 
 
+def _semantic_status_projection(
+    status: SemanticIndexStatusReport,
+    args: argparse.Namespace,
+) -> dict[str, object]:
+    """给 status 增加可复制的下一步命令，同时保留原始可运维字段。"""
+
+    projection = status.to_dict()
+    state = projection.get("status")
+    common = ["--database", str(args.database)]
+    if args.semantic_index is not None:
+        common.extend(("--semantic-index", str(args.semantic_index)))
+    if state == "completed":
+        next_action = "run a bounded semantic smoke or an explicit semantic-enabled query"
+        command = shlex.join(["trivae", "semantic", "smoke", *common, "--query", "<query>"])
+    elif state == "building":
+        next_action = "wait for the active rebuild and poll status"
+        command = shlex.join(["trivae", "semantic", "status", *common])
+    else:
+        # missing/stale/failed/partial 都需要用户显式重建；CLI 不会自动切换到 lexical。
+        next_action = "explicitly rebuild the semantic derived index"
+        command = shlex.join(["trivae", "semantic", "rebuild", *common])
+    projection["operational_guidance"] = {
+        "next_action": next_action,
+        "next_command": command,
+    }
+    return projection
+
+
 def _run_semantic_command(args: argparse.Namespace) -> int:
     """semantic CLI 只通过 Application facade 操作独立 derived index。"""
 
@@ -598,12 +631,13 @@ def _run_semantic_command(args: argparse.Namespace) -> int:
                 integrity = application.validate_semantic_index().to_dict()
 
             status = application.semantic_index_status()
+            status_projection = _semantic_status_projection(status, args)
             if args.semantic_command == "status":
-                _write_json_projection(status.to_dict(), None)
+                _write_json_projection(status_projection, None)
                 return 0
             if args.semantic_command == "rebuild":
                 _write_json_projection(
-                    {"rebuild": rebuild, "integrity": integrity, "status": status.to_dict()},
+                    {"rebuild": rebuild, "integrity": integrity, "status": status_projection},
                     None,
                 )
                 return 0 if integrity is not None and integrity["status"] == "valid" else 1
@@ -612,7 +646,7 @@ def _run_semantic_command(args: argparse.Namespace) -> int:
                 _write_json_projection(
                     {
                         "status": smoke["tool_status"],
-                        "index": status.to_dict(),
+                        "index": status_projection,
                         "integrity": integrity,
                         "rebuild": rebuild,
                         "smoke": smoke,

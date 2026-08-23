@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 import tempfile
 import unittest
 from collections.abc import Callable
@@ -212,6 +213,28 @@ class ChatCliTests(unittest.TestCase):
             ]
         )
         self.assertIsNone(metrics.output)
+
+    def test_semantic_status_explains_the_next_explicit_command(self) -> None:
+        """缺失 index 的普通 CLI 输出必须同时说明状态和下一条可复制命令。"""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            database = Path(temporary) / "app.sqlite3"
+            output = StringIO()
+            with redirect_stdout(output):
+                exit_code = cli.main(
+                    ["semantic", "status", "--database", str(database)]
+                )
+
+        payload = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(payload["status"], "missing")
+        guidance = payload["operational_guidance"]
+        self.assertEqual(
+            guidance["next_action"],
+            "explicitly rebuild the semantic derived index",
+        )
+        self.assertIn("semantic rebuild", guidance["next_command"])
+        self.assertIn(str(database), guidance["next_command"])
 
     def test_application_lists_sessions_through_the_read_facade(self) -> None:
         """session 列表来自 Application，且按稳定名称顺序返回真实 Canonical 数据。"""
