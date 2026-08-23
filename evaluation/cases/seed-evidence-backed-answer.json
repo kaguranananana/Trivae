@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-evidence-backed-answer",
+  "version": 1,
+  "suite_tags": ["design_seed", "evidence_backed_answer"],
+  "dataset_snapshot": {"snapshot_id": "snapshot:bind-at-run", "canonical_database_identity": "sqlite-canonical:bind-at-run", "schema_version": "canonical-m1-v1", "source_identity": "source:bind-at-run", "message_count": 0, "relevant_time_range": [null, null], "deterministic_fingerprint": "manifest:bind-at-run", "created_at": "2026-08-23T00:00:00+00:00", "status": "unavailable", "manifest": {"binding": "explicit snapshot materialization required"}},
+  "data_access_scope": {"allowed_session_ids": null, "start_timestamp": null, "end_timestamp": null, "max_results": 5},
+  "query": "总结一个有明确消息证据的事实，并引用支持它的来源。",
+  "locale": "zh-CN",
+  "reference_findings": [{"finding_id": "grounded-claim", "criterion": "claim 是否被 selected Evidence 支持", "expected_semantics": "每个关键 claim 都能回到真实当前 Run Source。", "reference_evidence": [], "annotation_completeness": "partial", "provenance": {"source": "design-seed", "created_at": "2026-08-23T00:00:00+00:00", "method": "manual claim/evidence mapping pending data", "snapshot_id": "snapshot:bind-at-run", "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":5,\"start_timestamp\":null}"}, "known_limitations": ["复杂语义只做定性 Review。"], "critical": true}],
+  "uncertainty_constraints": ["没有支持证据的 claim 必须降级为 unknown。"],
+  "negative_constraints": ["不得引用其他 Run 的 Source。"],
+  "critical_requirements": ["Finalizer must validate citation/provenance。"],
+  "diagnostic_expectations": {"preferred_owner": "citation"},
+  "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
+  "provenance": {"source": "Trivae evidence/citation seed", "method": "claim to evidence review seed", "created_at": "2026-08-23T00:00:00+00:00"}
+}

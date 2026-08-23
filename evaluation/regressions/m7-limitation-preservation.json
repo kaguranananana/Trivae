@@ -1,0 +1,13 @@
+{
+  "failure_id": "m7-limitation-preservation-payload-mapping",
+  "layer": "evaluation_infrastructure",
+  "owner": "evaluation_infrastructure",
+  "status": "fixed",
+  "discovered_in": "temporary-real-data-calibration",
+  "symptom": "Runtime ToolResult 保留 retrieval_partial/retrieval_truncated/tool_result_partial，但 Deterministic Check 仅读取 TraceTimelineItem.limitations，误报 limitation_preservation failed。",
+  "trace_fact": "同一 retrieval.search.completed canonical event 的 payload 已保留 partial=true 和 truncated=true；Trace 没有被修改。",
+  "root_cause": "后验 Evaluation mapping 漏读 canonical payload fact，不是生产 Retrieval 或 Trace capture 丢失。",
+  "minimal_fix": "Check 分析层把 payload partial/truncated 映射到已知 Runtime limitation identity；不改变 Trace。",
+  "regression": "tests/test_evaluation.py::EvaluationRunnerTests::test_limitation_check_maps_trace_payload_facts_without_mutating_trace",
+  "real_validation": "post-fix temporary real-data rerun: 8 baseline, 2 repeated, 8 paired runs had no failed deterministic checks"
+}

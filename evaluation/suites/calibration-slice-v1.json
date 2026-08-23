@@ -1,0 +1,13 @@
+{
+  "suite_id": "calibration-slice",
+  "version": 1,
+  "kind": "calibration_slice",
+  "description": "真实数据校准候选；必须替换为同一 Snapshot 下经过人工确认的 Case。",
+  "created_at": "2026-08-23T00:00:00+00:00",
+  "cases": [
+    {"case_id": "seed-simple-keyword-retrieval", "version": 1},
+    {"case_id": "seed-trusted-session-filter", "version": 1},
+    {"case_id": "seed-no-result", "version": 1},
+    {"case_id": "seed-evidence-backed-answer", "version": 1}
+  ]
+}

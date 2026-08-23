@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-context-expansion",
+  "version": 1,
+  "suite_tags": ["design_seed", "context_expansion"],
+  "dataset_snapshot": {"snapshot_id": "snapshot:bind-at-run", "canonical_database_identity": "sqlite-canonical:bind-at-run", "schema_version": "canonical-m1-v1", "source_identity": "source:bind-at-run", "message_count": 0, "relevant_time_range": [null, null], "deterministic_fingerprint": "manifest:bind-at-run", "created_at": "2026-08-23T00:00:00+00:00", "status": "unavailable", "manifest": {"binding": "explicit snapshot materialization required"}},
+  "data_access_scope": {"allowed_session_ids": null, "start_timestamp": null, "end_timestamp": null, "max_results": 5},
+  "query": "找出这段讨论的上下文，并说明前后消息如何关联。",
+  "locale": "zh-CN",
+  "reference_findings": [{"finding_id": "context-chain", "criterion": "命中消息的必要上下文是否恢复", "expected_semantics": "上下文扩展应保持消息 locator 和时间关系，不得猜测不存在的来源。", "reference_evidence": [], "annotation_completeness": "unknown", "provenance": {"source": "design-seed", "created_at": "2026-08-23T00:00:00+00:00", "method": "pending snapshot review", "snapshot_id": "snapshot:bind-at-run", "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":5,\"start_timestamp\":null}"}, "known_limitations": ["复杂上下文的完整性需人工 Review。"], "critical": true}],
+  "uncertainty_constraints": ["上下文不完整时必须明确标注。"],
+  "negative_constraints": ["不得把邻近消息自动当成同一 finding 的证据。"],
+  "critical_requirements": ["每个 Source 必须 self-contained。"],
+  "diagnostic_expectations": {"preferred_owner": "context_expansion"},
+  "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
+  "provenance": {"source": "Trivae context expansion seed", "method": "scenario seed adapted to existing retrieval context", "created_at": "2026-08-23T00:00:00+00:00"}
+}

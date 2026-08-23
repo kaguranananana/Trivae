@@ -1,0 +1,19 @@
+{
+  "suite_id": "design-seed",
+  "version": 1,
+  "kind": "design_seed",
+  "description": "第一版 Trivae scenario seed：只覆盖已有 lexical、scope、context、evidence 和两条 execution path。",
+  "created_at": "2026-08-23T00:00:00+00:00",
+  "cases": [
+    {"case_id": "seed-simple-keyword-retrieval", "version": 1},
+    {"case_id": "seed-trusted-session-filter", "version": 1},
+    {"case_id": "seed-context-expansion", "version": 1},
+    {"case_id": "seed-no-result", "version": 1},
+    {"case_id": "seed-insufficient-evidence", "version": 1},
+    {"case_id": "seed-partial-truncated-retrieval", "version": 1},
+    {"case_id": "seed-evidence-backed-answer", "version": 1},
+    {"case_id": "seed-standard-execution", "version": 1},
+    {"case_id": "seed-planned-execution", "version": 1},
+    {"case_id": "seed-citation-provenance", "version": 1}
+  ]
+}

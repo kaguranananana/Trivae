@@ -9,7 +9,7 @@ from trivae.observability.contracts import FailureInfo
 from trivae.query.contracts import QueryDiagnostic, QueryRequest, QueryResult
 from trivae.query.evidence import AnswerFinalizationError, FinalizationErrorInfo, finalize_answer
 from trivae.query.planner import Planner, PlannerResult, render_plan_guidance
-from trivae.query.router import Router
+from trivae.query.router import RouteDecision, Router
 from trivae.query.runtime.contracts import AgentRuntime
 
 if TYPE_CHECKING:
@@ -44,40 +44,63 @@ class QueryOrchestrator:
         context = request.to_context()
         query_operation_id = "query"
         router_operation_id = "router"
-        router_started = perf_counter()
-        if trace is not None:
-            trace.emit(
-                stage="router",
-                operation="router.started",
-                phase="started",
-                operation_id=router_operation_id,
-                parent_operation_id=query_operation_id,
-                payload={"available_capabilities": request.available_capabilities},
+        forced_route = request.execution_override.forced_route
+        if forced_route is not None:
+            # Forced path 只绕过 Router 的选择，不复制或替换后续 Planner/Runtime。
+            decision = RouteDecision(
+                route=forced_route,
+                confidence=1.0,
+                source="evaluation_override",
+                reason=f"explicit evaluation override: {forced_route}",
             )
-        try:
-            decision = await self.router.route(context)
-        except Exception as exc:
             if trace is not None:
                 trace.emit(
                     stage="router",
-                    operation="router.failed",
-                    phase="failed",
+                    operation="router.bypassed",
+                    phase="skipped",
                     operation_id=router_operation_id,
                     parent_operation_id=query_operation_id,
-                    outcome="error",
-                    duration_ms=(perf_counter() - router_started) * 1000,
-                    payload={"exception_type": type(exc).__name__},
-                    failure=FailureInfo(
-                        error_code="ROUTER_EXCEPTION",
-                        origin_stage="router",
-                        observed_stage="router",
-                        category="exception",
-                        handling="propagated",
-                        cause_operation_id=router_operation_id,
-                        diagnostic_reference=type(exc).__name__,
-                    ),
+                    outcome="ok",
+                    payload={
+                        "execution_override": request.execution_override.to_dict(),
+                        "route": forced_route,
+                    },
                 )
-            raise
+        else:
+            router_started = perf_counter()
+            if trace is not None:
+                trace.emit(
+                    stage="router",
+                    operation="router.started",
+                    phase="started",
+                    operation_id=router_operation_id,
+                    parent_operation_id=query_operation_id,
+                    payload={"available_capabilities": request.available_capabilities},
+                )
+            try:
+                decision = await self.router.route(context)
+            except Exception as exc:
+                if trace is not None:
+                    trace.emit(
+                        stage="router",
+                        operation="router.failed",
+                        phase="failed",
+                        operation_id=router_operation_id,
+                        parent_operation_id=query_operation_id,
+                        outcome="error",
+                        duration_ms=(perf_counter() - router_started) * 1000,
+                        payload={"exception_type": type(exc).__name__},
+                        failure=FailureInfo(
+                            error_code="ROUTER_EXCEPTION",
+                            origin_stage="router",
+                            observed_stage="router",
+                            category="exception",
+                            handling="propagated",
+                            cause_operation_id=router_operation_id,
+                            diagnostic_reference=type(exc).__name__,
+                        ),
+                    )
+                raise
         if trace is not None:
             decision_payload = {
                 "route": decision.route,
@@ -87,6 +110,7 @@ class QueryOrchestrator:
                 "degraded": decision.degraded,
                 "degradation_code": decision.degradation_code,
                 "usage": None if decision.usage is None else dict(decision.usage),
+                "execution_override": request.execution_override.to_dict(),
             }
             trace.emit(
                 stage="router",
@@ -95,7 +119,7 @@ class QueryOrchestrator:
                 operation_id=router_operation_id,
                 parent_operation_id=query_operation_id,
                 outcome="partial" if decision.degraded else "ok",
-                duration_ms=(perf_counter() - router_started) * 1000,
+                duration_ms=None if forced_route is not None else (perf_counter() - router_started) * 1000,
                 payload=decision_payload,
             )
         diagnostics: list[QueryDiagnostic] = []

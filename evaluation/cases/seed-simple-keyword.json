@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-simple-keyword-retrieval",
+  "version": 1,
+  "suite_tags": ["design_seed", "simple_keyword_retrieval"],
+  "dataset_snapshot": {
+    "snapshot_id": "snapshot:bind-at-run",
+    "canonical_database_identity": "sqlite-canonical:bind-at-run",
+    "schema_version": "canonical-m1-v1",
+    "source_identity": "source:bind-at-run",
+    "message_count": 0,
+    "relevant_time_range": [null, null],
+    "deterministic_fingerprint": "manifest:bind-at-run",
+    "created_at": "2026-08-23T00:00:00+00:00",
+    "status": "unavailable",
+    "manifest": {"binding": "explicit snapshot materialization required"}
+  },
+  "data_access_scope": {"allowed_session_ids": null, "start_timestamp": null, "end_timestamp": null, "max_results": 5},
+  "query": "有没有人提过 LangGraph？请给出消息证据。",
+  "locale": "zh-CN",
+  "reference_findings": [{
+    "finding_id": "keyword-occurrence",
+    "criterion": "目标关键词是否在 Scope 内出现",
+    "expected_semantics": "回答出现与否，并说明检索范围和真实来源。",
+    "reference_evidence": [],
+    "annotation_completeness": "unknown",
+    "provenance": {"source": "design-seed", "created_at": "2026-08-23T00:00:00+00:00", "method": "pending snapshot review", "snapshot_id": "snapshot:bind-at-run", "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":5,\"start_timestamp\":null}"},
+    "known_limitations": ["未绑定真实 Snapshot，不能据此计算 Recall。"],
+    "critical": true
+  }],
+  "uncertainty_constraints": ["没有证据时不得声称关键词出现。"],
+  "negative_constraints": ["不得引用 Scope 外消息。"],
+  "critical_requirements": ["保留 evidence/citation provenance。"],
+  "diagnostic_expectations": {"preferred_owner": "retrieval"},
+  "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
+  "provenance": {"source": "ChatLab-inspired Trivae design seed", "method": "scenario seed adapted to existing lexical capability", "created_at": "2026-08-23T00:00:00+00:00"}
+}

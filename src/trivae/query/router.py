@@ -12,7 +12,7 @@ from trivae.query.completion import CompletionCallback, complete_text
 from trivae.query.contracts import QueryContext
 
 RouteName = Literal["standard_execution", "planned_execution"]
-RouteSource = Literal["rule", "llm"]
+RouteSource = Literal["rule", "llm", "evaluation_override"]
 RouterInput = QueryContext
 
 
@@ -33,8 +33,8 @@ class RouteDecision:
 
         if self.route not in ("standard_execution", "planned_execution"):
             raise ValueError("route must be standard_execution or planned_execution")
-        if self.source not in ("rule", "llm"):
-            raise ValueError("route source must be rule or llm")
+        if self.source not in ("rule", "llm", "evaluation_override"):
+            raise ValueError("route source must be rule, llm, or evaluation_override")
         if isinstance(self.confidence, bool) or not isinstance(self.confidence, (int, float)):
             raise ValueError("route confidence must be numeric")
         if not 0 <= self.confidence <= 1:
