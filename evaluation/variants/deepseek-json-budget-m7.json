@@ -1,0 +1,20 @@
+{
+  "variant_id": "deepseek-json-budget-m7-v2",
+  "role": "candidate",
+  "code_version": "m7-json-budget-v2",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "model_parameters": {"temperature": 0, "top_p": 1},
+  "prompt_identity": "m6-runtime-answer-artifact-v1",
+  "router_configuration": {"implementation": "RuleRouter", "llm_degraded_path": true},
+  "planner_configuration": {"implementation": "SoftPlanner", "bounded_steps": 5, "provider_json_mode": true},
+  "runtime_configuration": {"max_turns": 8, "max_tool_rounds": 3, "max_output_tokens": 16384, "completion_max_tokens": 2048, "trace_profile": "normal"},
+  "available_tools": ["search_messages"],
+  "retrieval_configuration": {"strategy": "lexical", "context_expansion": "production-default"},
+  "index_identity": "canonical-lexical-index-v1",
+  "context_expansion_configuration": {"implementation": "retrieval-owned"},
+  "evidence_citation_version": "m6-evidence-citation-v1",
+  "budget": {"max_turns": 8, "max_tool_rounds": 3, "max_output_tokens": 16384, "completion_max_tokens": 2048},
+  "execution_override": {"forced_route": null},
+  "extra_configuration": {"experiment": "explicit-provider-json-budget", "baseline_variant": "last-stable-m6"}
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
@@ -14,6 +15,7 @@ from trivae.capabilities.contracts import ToolEnvelope, ToolError
 from trivae.config.settings import DEFAULT_DEEPSEEK_BASE_URL, SettingsError, load_settings
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContractError
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+from trivae.query.runtime.prompt import SYSTEM_PROMPT
 
 
 class _RecordingSearchTool:
@@ -43,6 +45,8 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.base_url, DEFAULT_DEEPSEEK_BASE_URL)
         self.assertEqual(settings.provider, "deepseek")
         self.assertEqual(settings.max_turns, 8)
+        self.assertEqual(settings.max_output_tokens, 16384)
+        self.assertEqual(settings.completion_max_tokens, 2048)
         self.assertNotIn("test-secret-value", repr(settings))
         self.assertNotIn("test-secret-value", str(settings.to_safe_dict()))
         self.assertTrue(settings.to_safe_dict()["api_key_configured"])
@@ -60,6 +64,17 @@ class SettingsTests(unittest.TestCase):
                     "TRIVAE_MODEL_PROVIDER": "other",
                 }
             )
+
+    def test_load_settings_rejects_invalid_provider_budgets(self) -> None:
+        base = {
+            "DEEPSEEK_API_KEY": "secret",
+            "TRIVAE_MODEL_NAME": "model",
+        }
+        for name in ("TRIVAE_MAX_OUTPUT_TOKENS", "TRIVAE_COMPLETION_MAX_TOKENS"):
+            with self.subTest(name=name):
+                values = {**base, name: "0"}
+                with self.assertRaises(SettingsError):
+                    load_settings(values)
 
 
 class RuntimeAdapterTests(unittest.TestCase):
@@ -106,6 +121,37 @@ class RuntimeAdapterTests(unittest.TestCase):
             agent.model_settings.extra_args["response_format"],
             {"type": "json_object"},
         )
+        self.assertEqual(agent.model_settings.max_tokens, 16384)
+
+    def test_final_synthesis_prompt_requests_compact_artifact(self) -> None:
+        self.assertIn("Keep the JSON artifact compact", SYSTEM_PROMPT)
+        self.assertIn("Do not repeat the same", SYSTEM_PROMPT)
+
+    def test_provider_completion_uses_json_mode_and_explicit_budget(self) -> None:
+        """Router/Planner completion 必须走 provider JSON contract 和有界预算。"""
+
+        class RecordingCompletions:
+            def __init__(self) -> None:
+                self.kwargs: dict[str, object] | None = None
+
+            async def create(self, **kwargs: object) -> object:
+                self.kwargs = kwargs
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(content='{"ok":true}'))]
+                )
+
+        completions = RecordingCompletions()
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=ScriptedModel([]))
+        runtime._provider_client = SimpleNamespace(
+            chat=SimpleNamespace(completions=completions)
+        )
+
+        result = asyncio.run(runtime.complete_text("return a JSON object"))
+
+        self.assertEqual(result, '{"ok":true}')
+        assert completions.kwargs is not None
+        self.assertEqual(completions.kwargs["response_format"], {"type": "json_object"})
+        self.assertEqual(completions.kwargs["max_tokens"], 2048)
 
     def test_search_tool_schema_exposes_trusted_result_bound(self) -> None:
         """验证 provider schema 暴露本次 trusted result bound，但仍保留 Capability 校验。"""

@@ -45,6 +45,8 @@ RuntimeEventType = Literal[
 # DeepSeek 的 Chat Completions JSON mode 只约束最终文本形状，不改变 Trivae 的
 # AnswerArtifact、Citation 或 current-run provenance contract。
 _FINAL_SYNTHESIS_RESPONSE_FORMAT = {"type": "json_object"}
+_DEFAULT_MAX_OUTPUT_TOKENS = 16384
+_DEFAULT_COMPLETION_MAX_TOKENS = 2048
 
 
 @dataclass
@@ -281,6 +283,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             self._secret = resolved_settings.api_key
             configured_max_turns = resolved_settings.max_turns
             configured_max_tool_rounds = resolved_settings.max_tool_rounds
+            configured_max_output_tokens = resolved_settings.max_output_tokens
+            configured_completion_max_tokens = resolved_settings.completion_max_tokens
         else:
             # ScriptedModel 等测试模型通过注入进入，不需要 provider key 或网络。
             self._model = model
@@ -289,11 +293,21 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             self._secret = settings.api_key if settings is not None else ""
             configured_max_turns = settings.max_turns if settings is not None else 8
             configured_max_tool_rounds = settings.max_tool_rounds if settings is not None else 3
+            configured_max_output_tokens = (
+                settings.max_output_tokens if settings is not None else _DEFAULT_MAX_OUTPUT_TOKENS
+            )
+            configured_completion_max_tokens = (
+                settings.completion_max_tokens
+                if settings is not None
+                else _DEFAULT_COMPLETION_MAX_TOKENS
+            )
 
         self.max_turns = configured_max_turns if max_turns is None else max_turns
         self.max_tool_rounds = (
             configured_max_tool_rounds if max_tool_rounds is None else max_tool_rounds
         )
+        self.max_output_tokens = configured_max_output_tokens
+        self.completion_max_tokens = configured_completion_max_tokens
         if isinstance(self.max_turns, bool) or not isinstance(self.max_turns, int) or self.max_turns <= 0:
             raise ValueError("max_turns must be a positive integer")
         if (
@@ -302,6 +316,18 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             or self.max_tool_rounds <= 0
         ):
             raise ValueError("max_tool_rounds must be a positive integer")
+        if (
+            isinstance(self.max_output_tokens, bool)
+            or not isinstance(self.max_output_tokens, int)
+            or self.max_output_tokens <= 0
+        ):
+            raise ValueError("max_output_tokens must be a positive integer")
+        if (
+            isinstance(self.completion_max_tokens, bool)
+            or not isinstance(self.completion_max_tokens, int)
+            or self.completion_max_tokens <= 0
+        ):
+            raise ValueError("completion_max_tokens must be a positive integer")
 
     def _build_deepseek_model(self, settings: DeepSeekSettings) -> tuple[Any, AsyncOpenAI]:
         """构造并保留 DeepSeek client，供 runtime 和 aclose 共用。"""
@@ -547,6 +573,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             # 让 OpenAI-compatible adapter 把 JSON mode 透传给 DeepSeek，避免只依赖
             # prompt 约束；最终文本仍由 M5 finalizer 解析和验证。
             model_settings=ModelSettings(
+                # DeepSeek JSON Output 需要显式预算；否则 provider 默认边界可能在 JSON 中间结束。
+                max_tokens=self.max_output_tokens,
                 extra_args={"response_format": _FINAL_SYNTHESIS_RESPONSE_FORMAT}
             ),
             tools=tools,
@@ -717,7 +745,9 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 {"role": "user", "content": prompt},
             ],
             temperature=0,
-            max_tokens=512,
+            # Router/Planner 都要求 JSON；显式 JSON mode 让 provider 不依赖裸 prompt 约束。
+            response_format=cast(Any, _FINAL_SYNTHESIS_RESPONSE_FORMAT),
+            max_tokens=self.completion_max_tokens,
         )
         content = response.choices[0].message.content
         if not isinstance(content, str) or not content.strip():

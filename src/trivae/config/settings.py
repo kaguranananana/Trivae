@@ -10,6 +10,8 @@ DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 _SUPPORTED_PROVIDER = "deepseek"
 _DEFAULT_MAX_TURNS = 8
 _DEFAULT_MAX_TOOL_ROUNDS = 3
+_DEFAULT_MAX_OUTPUT_TOKENS = 16384
+_DEFAULT_COMPLETION_MAX_TOKENS = 2048
 
 
 class SettingsError(ValueError):
@@ -26,6 +28,8 @@ class DeepSeekSettings:
     model_name: str
     max_turns: int
     max_tool_rounds: int = _DEFAULT_MAX_TOOL_ROUNDS
+    max_output_tokens: int = _DEFAULT_MAX_OUTPUT_TOKENS
+    completion_max_tokens: int = _DEFAULT_COMPLETION_MAX_TOKENS
 
     def __repr__(self) -> str:
         """调试时只显示密钥存在性，绝不显示密钥正文。"""
@@ -35,7 +39,9 @@ class DeepSeekSettings:
             "api_key='[REDACTED]', "
             f"base_url={self.base_url!r}, provider={self.provider!r}, "
             f"model_name={self.model_name!r}, max_turns={self.max_turns!r}, "
-            f"max_tool_rounds={self.max_tool_rounds!r})"
+            f"max_tool_rounds={self.max_tool_rounds!r}, "
+            f"max_output_tokens={self.max_output_tokens!r}, "
+            f"completion_max_tokens={self.completion_max_tokens!r})"
         )
 
     def to_safe_dict(self) -> dict[str, object]:
@@ -48,6 +54,8 @@ class DeepSeekSettings:
             "model_name": self.model_name,
             "max_turns": self.max_turns,
             "max_tool_rounds": self.max_tool_rounds,
+            "max_output_tokens": self.max_output_tokens,
+            "completion_max_tokens": self.completion_max_tokens,
         }
 
 
@@ -71,21 +79,18 @@ def load_settings(environ: Mapping[str, str] | None = None) -> DeepSeekSettings:
     if not base_url:
         raise SettingsError("DEEPSEEK_BASE_URL must not be empty")
 
-    max_turns_text = values.get("TRIVAE_MAX_TURNS", str(_DEFAULT_MAX_TURNS)).strip()
-    try:
-        max_turns = int(max_turns_text)
-    except ValueError as exc:
-        raise SettingsError("TRIVAE_MAX_TURNS must be a positive integer") from exc
-    if max_turns <= 0 or max_turns_text != str(max_turns):
-        raise SettingsError("TRIVAE_MAX_TURNS must be a positive integer")
-
-    max_tool_rounds_text = values.get("TRIVAE_MAX_TOOL_ROUNDS", str(_DEFAULT_MAX_TOOL_ROUNDS)).strip()
-    try:
-        max_tool_rounds = int(max_tool_rounds_text)
-    except ValueError as exc:
-        raise SettingsError("TRIVAE_MAX_TOOL_ROUNDS must be a positive integer") from exc
-    if max_tool_rounds <= 0 or max_tool_rounds_text != str(max_tool_rounds):
-        raise SettingsError("TRIVAE_MAX_TOOL_ROUNDS must be a positive integer")
+    max_turns = _positive_integer(values, "TRIVAE_MAX_TURNS", _DEFAULT_MAX_TURNS)
+    max_tool_rounds = _positive_integer(values, "TRIVAE_MAX_TOOL_ROUNDS", _DEFAULT_MAX_TOOL_ROUNDS)
+    max_output_tokens = _positive_integer(
+        values,
+        "TRIVAE_MAX_OUTPUT_TOKENS",
+        _DEFAULT_MAX_OUTPUT_TOKENS,
+    )
+    completion_max_tokens = _positive_integer(
+        values,
+        "TRIVAE_COMPLETION_MAX_TOKENS",
+        _DEFAULT_COMPLETION_MAX_TOKENS,
+    )
 
     return DeepSeekSettings(
         api_key=api_key,
@@ -94,4 +99,21 @@ def load_settings(environ: Mapping[str, str] | None = None) -> DeepSeekSettings:
         model_name=model_name,
         max_turns=max_turns,
         max_tool_rounds=max_tool_rounds,
+        max_output_tokens=max_output_tokens,
+        completion_max_tokens=completion_max_tokens,
     )
+
+
+def _positive_integer(values: Mapping[str, str], name: str, default: int) -> int:
+    """读取一个有界执行预算；格式错误必须在 provider 调用前暴露。"""
+
+    # 读取原始文本而不是静默转换，避免例如 `2.0` 被当成合法预算。
+    raw = values.get(name, str(default)).strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise SettingsError(f"{name} must be a positive integer") from exc
+    # 保留正数和规范十进制表示，避免不同文本产生相同但不可追踪的配置。
+    if value <= 0 or raw != str(value):
+        raise SettingsError(f"{name} must be a positive integer")
+    return value

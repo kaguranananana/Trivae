@@ -8,7 +8,7 @@
   "prompt_identity": "m6-runtime-answer-artifact-v1",
   "router_configuration": {"implementation": "RuleRouter", "llm_degraded_path": true},
   "planner_configuration": {"implementation": "SoftPlanner", "bounded_steps": 5},
-  "runtime_configuration": {"max_turns": 8, "max_tool_rounds": 3, "trace_profile": "normal"},
+  "runtime_configuration": {"max_turns": 8, "max_tool_rounds": 3, "max_output_tokens": "provider_default", "completion_max_tokens": 512, "trace_profile": "normal"},
   "available_tools": ["search_messages"],
   "retrieval_configuration": {"strategy": "lexical", "context_expansion": "production-default"},
   "index_identity": "canonical-lexical-index-v1",
