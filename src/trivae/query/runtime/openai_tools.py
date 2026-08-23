@@ -1,4 +1,4 @@
-"""把 search_messages 映射为唯一的 OpenAI Agents SDK Function Tool。"""
+"""把 lexical/semantic retrieval 映射为独立的 OpenAI Agents SDK Function Tool。"""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from agents import RunContextWrapper, function_tool
 from trivae.capabilities.contracts import (
     CapabilityContractError,
     SearchMessagesInput,
+    SemanticSearchInput,
     ToolEnvelope,
     ToolError,
 )
@@ -32,8 +33,9 @@ def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
 class SearchMessagesSDKToolAdapter:
     """只做 typed input 转换与安全 envelope 投影，不实现检索逻辑。"""
 
-    def __init__(self, registry: CapabilityRegistry) -> None:
+    def __init__(self, registry: CapabilityRegistry, *, tool_name: str = "search_messages") -> None:
         self.registry = registry
+        self.tool_name = tool_name
 
     def as_sdk_tool(self, *, trusted_max_results: int | None = None) -> Any:
         """创建 SDK Function Tool；scope 和 registry 只通过 local context 注入。"""
@@ -59,7 +61,7 @@ class SearchMessagesSDKToolAdapter:
             description += f" The current trusted result limit is {trusted_max_results}."
 
         @function_tool(
-            name_override="search_messages",
+            name_override=self.tool_name,
             description_override=description,
             # 已知 contract 错误已经投影为 envelope；未知异常必须让 Runner 终止并暴露根因。
             failure_error_function=None,
@@ -104,9 +106,9 @@ class SearchMessagesSDKToolAdapter:
                 if not callable(child):
                     raise TypeError("runtime trace_context must provide child()")
                 trace_context = child(f"tool:{tool_call_id}")
-            if "search_messages" not in runtime_context.available_capabilities:
+            if self.tool_name not in runtime_context.available_capabilities:
                 # 工具不可见时仍被调用属于 Runtime invariant，不能伪装成普通结果。
-                raise RuntimeError("search_messages was invoked outside the allowed capability set")
+                raise RuntimeError(f"{self.tool_name} was invoked outside the allowed capability set")
 
             try:
                 # 只把模型可控的搜索字段转换为既有业务 input；scope 不从模型参数读取。
@@ -131,7 +133,7 @@ class SearchMessagesSDKToolAdapter:
                         operation_id=f"tool:{tool_call_id}",
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
-                        payload={"tool_name": "search_messages", "error_code": exc.error_code},
+                        payload={"tool_name": self.tool_name, "error_code": exc.error_code},
                         failure=FailureInfo(
                             error_code=exc.error_code,
                             origin_stage="tool",
@@ -147,7 +149,7 @@ class SearchMessagesSDKToolAdapter:
                     if runtime_context.capability_registry is not self.registry:
                         raise RuntimeError("SDK local context registry does not match the registered tool adapter")
                     envelope = runtime_context.capability_registry.invoke(
-                        "search_messages",
+                        self.tool_name,
                         request,
                         runtime_context.scope,
                         trace_context=trace_context,
@@ -156,7 +158,7 @@ class SearchMessagesSDKToolAdapter:
                     # 未分类异常必须继续冒泡；这里只记录失败状态供 terminal result 诊断。
                     runtime_context.tool_calls.append(
                         RuntimeToolCall(
-                            "search_messages",
+                            self.tool_name,
                             "failed",
                             tool_call_id=tool_call_id,
                             round=runtime_context.current_tool_round,
@@ -171,7 +173,7 @@ class SearchMessagesSDKToolAdapter:
                 run_id=runtime_context.run_id,
                 tool_call_id=tool_call_id,
                 tool_result_id=tool_result_id,
-                tool_name="search_messages",
+                tool_name=self.tool_name,
                 envelope=envelope,
                 scope=runtime_context.scope,
             )
@@ -179,7 +181,7 @@ class SearchMessagesSDKToolAdapter:
             # 这里记录一次 tool call；同一模型回合的多个调用由 Runtime hook 统一计为一轮。
             runtime_context.tool_calls.append(
                 RuntimeToolCall(
-                    "search_messages",
+                    self.tool_name,
                     envelope.status,
                     error_code,
                     tool_call_id=tool_call_id,
@@ -202,10 +204,177 @@ class SearchMessagesSDKToolAdapter:
                 raise TypeError("SDK Function Tool schema did not expose properties")
             limit_schema = properties.get("limit")
             if not isinstance(limit_schema, dict):
-                raise TypeError("search_messages schema did not expose limit")
+                raise TypeError(f"{self.tool_name} schema did not expose limit")
             # 只增强 provider-facing schema，不把 schema 约束当成 trusted enforcement 的替代品。
             limit_schema["minimum"] = 1
             limit_schema["maximum"] = trusted_max_results
             limit_schema["default"] = min(20, trusted_max_results)
 
         return search_messages
+
+
+class LexicalSearchSDKToolAdapter(SearchMessagesSDKToolAdapter):
+    """canonical lexical_search SDK 名称，共用既有 keyword 输入与 evidence 主链路。"""
+
+    def __init__(self, registry: CapabilityRegistry) -> None:
+        super().__init__(registry, tool_name="lexical_search")
+
+
+class SemanticSearchSDKToolAdapter:
+    """把 semantic_search 的 typed input 接到同一 RuntimeContext/Trace/Evidence 主链路。"""
+
+    def __init__(self, registry: CapabilityRegistry) -> None:
+        self.registry = registry
+
+    def as_sdk_tool(self, *, trusted_max_results: int | None = None) -> Any:
+        """创建独立 semantic tool；模型不能通过参数切换为 lexical。"""
+
+        if trusted_max_results is not None:
+            if isinstance(trusted_max_results, bool) or not isinstance(trusted_max_results, int):
+                raise TypeError("trusted_max_results must be an integer when provided")
+            if trusted_max_results <= 0:
+                raise ValueError("trusted_max_results must be positive when provided")
+
+        description = (
+            "Search Trivae conversation meaning with the local semantic embedding index. "
+            "Use this when the user's wording differs from the wording in the chat. "
+            "Use lexical_search for exact names, codes, or phrases. "
+            "Omit optional filters, or use null; do not send empty arrays. "
+            "The semantic index must be explicitly built and may report partial coverage."
+        )
+        if trusted_max_results is not None:
+            description += f" The current trusted result limit is {trusted_max_results}."
+
+        @function_tool(
+            name_override="semantic_search",
+            description_override=description,
+            failure_error_function=None,
+            strict_mode=False,
+        )
+        async def semantic_search(
+            context: RunContextWrapper[RuntimeContext],
+            query: str,
+            session_ids: list[str] | None = None,
+            start_timestamp: int | None = None,
+            end_timestamp: int | None = None,
+            sender_user_ids: list[str] | None = None,
+            message_types: list[str] | None = None,
+            source_message_id: str | None = None,
+            reply_to_source_message_id: str | None = None,
+            limit: int = 10,
+            context_before: int = 2,
+            context_after: int = 2,
+            dense_top_k: int = 40,
+        ) -> dict[str, object]:
+            """将模型字段投影为 SemanticSearchInput，scope 仍由 RuntimeContext 注入。"""
+
+            runtime_context = context.context
+            provider_tool_call_id = getattr(context, "tool_call_id", None)
+            if not isinstance(provider_tool_call_id, str):
+                provider_tool_call_id = None
+            tool_call_id = runtime_context.resolve_tool_call_id(provider_tool_call_id)
+            trace_context = runtime_context.trace_context
+            if trace_context is not None:
+                child = getattr(trace_context, "child", None)
+                if not callable(child):
+                    raise TypeError("runtime trace_context must provide child()")
+                trace_context = child(f"tool:{tool_call_id}")
+            if "semantic_search" not in runtime_context.available_capabilities:
+                raise RuntimeError("semantic_search was invoked outside the allowed capability set")
+
+            try:
+                request = SemanticSearchInput(
+                    query=query,
+                    session_ids=None if session_ids is None else tuple(session_ids),
+                    start_timestamp=start_timestamp,
+                    end_timestamp=end_timestamp,
+                    sender_user_ids=None if sender_user_ids is None else tuple(sender_user_ids),
+                    message_types=None if message_types is None else tuple(message_types),
+                    source_message_id=source_message_id,
+                    reply_to_source_message_id=reply_to_source_message_id,
+                    limit=limit,
+                    context_before=context_before,
+                    context_after=context_after,
+                    dense_top_k=dense_top_k,
+                )
+            except CapabilityContractError as exc:
+                envelope = _contract_error_envelope(exc)
+                if trace_context is not None:
+                    trace_context.emit(
+                        stage="tool",
+                        operation="tool.call.failed",
+                        phase="failed",
+                        operation_id=f"tool:{tool_call_id}",
+                        parent_operation_id=getattr(trace_context, "parent_operation_id", None),
+                        outcome="error",
+                        payload={"tool_name": "semantic_search", "error_code": exc.error_code},
+                        failure=FailureInfo(
+                            error_code=exc.error_code,
+                            origin_stage="tool",
+                            observed_stage="tool",
+                            category="contract",
+                            handling="returned_to_agent",
+                            cause_operation_id=f"tool:{tool_call_id}",
+                        ),
+                    )
+            else:
+                if runtime_context.capability_registry is not self.registry:
+                    raise RuntimeError("SDK local context registry does not match the registered tool adapter")
+                try:
+                    envelope = runtime_context.capability_registry.invoke(
+                        "semantic_search",
+                        request,
+                        runtime_context.scope,
+                        trace_context=trace_context,
+                    )
+                except Exception:
+                    runtime_context.tool_calls.append(
+                        RuntimeToolCall(
+                            "semantic_search",
+                            "failed",
+                            tool_call_id=tool_call_id,
+                            round=runtime_context.current_tool_round,
+                        )
+                    )
+                    raise
+
+            error_code = envelope.error.code if envelope.error is not None else None
+            tool_result_id = f"{tool_call_id}/result"
+            record = build_tool_result_record(
+                run_id=runtime_context.run_id,
+                tool_call_id=tool_call_id,
+                tool_result_id=tool_result_id,
+                tool_name="semantic_search",
+                envelope=envelope,
+                scope=runtime_context.scope,
+            )
+            runtime_context.tool_results.append(record)
+            runtime_context.tool_calls.append(
+                RuntimeToolCall(
+                    "semantic_search",
+                    envelope.status,
+                    error_code,
+                    tool_call_id=tool_call_id,
+                    tool_result_id=tool_result_id,
+                    round=runtime_context.current_tool_round,
+                )
+            )
+            result_payload = envelope.to_dict()
+            result_payload["provenance"] = record.to_model_provenance()
+            return result_payload
+
+        if trusted_max_results is not None:
+            schema = getattr(semantic_search, "params_json_schema", None)
+            if not isinstance(schema, dict):
+                raise TypeError("SDK Function Tool did not expose params_json_schema")
+            properties = schema.get("properties")
+            if not isinstance(properties, dict):
+                raise TypeError("SDK Function Tool schema did not expose properties")
+            limit_schema = properties.get("limit")
+            if not isinstance(limit_schema, dict):
+                raise TypeError("semantic_search schema did not expose limit")
+            limit_schema["minimum"] = 1
+            limit_schema["maximum"] = trusted_max_results
+            limit_schema["default"] = min(10, trusted_max_results)
+
+        return semantic_search

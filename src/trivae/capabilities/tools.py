@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 from time import perf_counter
-from typing import Literal
+from typing import Any, Literal
 
 from trivae.capabilities.contracts import (
     CapabilityContractError,
     ExecutionScope,
     SearchMessagesInput,
+    SemanticSearchInput,
     ToolEnvelope,
     ToolError,
 )
-from trivae.capabilities.search_messages import SearchMessagesCapability
+from trivae.capabilities.semantic_search import SemanticSearchCapability
 from trivae.observability.contracts import FailureInfo
+from trivae.retrieval.semantic.contracts import SemanticError, SemanticQueryError, SemanticRetrievalResult
 from trivae.retrieval.structured import (
     InvalidRetrievalQuery,
     LexicalIndexError,
@@ -21,16 +23,19 @@ from trivae.retrieval.structured import (
     RetrievalResult,
 )
 
+RetrievalToolData = RetrievalResult | SemanticRetrievalResult
+
 
 class SearchMessagesTool:
     """只负责 Tool envelope；SQL/FTS/context/order 全部留在 Retrieval Core。"""
 
     name = "search_messages"
+    strategy = "lexical"
 
-    def __init__(self, capability: SearchMessagesCapability) -> None:
+    def __init__(self, capability: Any) -> None:
         self.capability = capability
 
-    def invoke(self, request: SearchMessagesInput, scope: ExecutionScope) -> ToolEnvelope:
+    def invoke(self, request: SearchMessagesInput | SemanticSearchInput, scope: ExecutionScope) -> ToolEnvelope:
         """把已分类的 contract/retrieval 错误投影为统一状态，未知异常继续暴露。"""
 
         envelope, _ = self._invoke_with_origin(request, scope)
@@ -38,11 +43,23 @@ class SearchMessagesTool:
 
     def _invoke_with_origin(
         self,
-        request: SearchMessagesInput,
+        request: SearchMessagesInput | SemanticSearchInput,
         scope: ExecutionScope,
     ) -> tuple[ToolEnvelope, Literal["tool", "retrieval"] | None]:
         """内部保留错误 owner，公开 invoke 仍只返回既有 ToolEnvelope。"""
 
+        expected_type = SemanticSearchInput if self.strategy == "semantic" else SearchMessagesInput
+        if not isinstance(request, expected_type):
+            # 不让错误输入落到 Capability 属性访问的 AttributeError，保持 Tool contract 错误可诊断。
+            return (
+                ToolEnvelope(
+                    status="error",
+                    data=None,
+                    meta={"truncated": False},
+                    error=ToolError(code="INVALID_ARGUMENT", message=f"{self.name} received an invalid request type"),
+                ),
+                "tool",
+            )
         try:
             result = self.capability.execute(request, scope)
         except CapabilityContractError as exc:
@@ -85,6 +102,26 @@ class SearchMessagesTool:
                 ),
                 "retrieval",
             )
+        except SemanticQueryError as exc:
+            return (
+                ToolEnvelope(
+                    status="error",
+                    data=None,
+                    meta={"truncated": False},
+                    error=ToolError(code="INVALID_ARGUMENT", message=str(exc)),
+                ),
+                "retrieval",
+            )
+        except SemanticError as exc:
+            return (
+                ToolEnvelope(
+                    status="error",
+                    data=None,
+                    meta={"truncated": False, "origin_error_code": exc.error_code},
+                    error=ToolError(code=exc.error_code, message=str(exc)),
+                ),
+                "retrieval",
+            )
 
         return (
             ToolEnvelope(
@@ -102,7 +139,7 @@ class SearchMessagesTool:
 
     def invoke_with_trace(
         self,
-        request: SearchMessagesInput,
+        request: SearchMessagesInput | SemanticSearchInput,
         scope: ExecutionScope,
         trace_context: object,
     ) -> ToolEnvelope:
@@ -131,7 +168,7 @@ class SearchMessagesTool:
             phase="started",
             operation_id=retrieval_operation,
             parent_operation_id=tool_operation,
-            payload={"strategy": "lexical", "query": self._request_payload(request)},
+            payload={"strategy": self.strategy, "query": self._request_payload(request)},
         )
         try:
             envelope, origin = self._invoke_with_origin(request, scope)
@@ -176,7 +213,7 @@ class SearchMessagesTool:
             raise
 
         error = envelope.error
-        if error is None and isinstance(envelope.data, RetrievalResult):
+        if error is None and isinstance(envelope.data, (RetrievalResult, SemanticRetrievalResult)):
             trace_context.emit(
                 stage="retrieval",
                 operation="retrieval.search.completed",
@@ -248,31 +285,45 @@ class SearchMessagesTool:
         return envelope
 
     @staticmethod
-    def _request_payload(request: SearchMessagesInput) -> dict[str, object]:
+    def _request_payload(request: SearchMessagesInput | SemanticSearchInput) -> dict[str, object]:
         """只投影 typed request 字段，不把 trusted scope 混入 Tool payload。"""
 
+        if isinstance(request, SearchMessagesInput):
+            return {
+                "keyword": request.keyword,
+                "session_ids": request.session_ids,
+                "start_timestamp": request.start_timestamp,
+                "end_timestamp": request.end_timestamp,
+                "sender_user_ids": request.sender_user_ids,
+                "message_types": request.message_types,
+                "limit": request.limit,
+                "context_before": request.context_before,
+                "context_after": request.context_after,
+            }
         return {
-            "keyword": request.keyword,
+            "query": request.query,
             "session_ids": request.session_ids,
             "start_timestamp": request.start_timestamp,
             "end_timestamp": request.end_timestamp,
             "sender_user_ids": request.sender_user_ids,
             "message_types": request.message_types,
+            "source_message_id": request.source_message_id,
+            "reply_to_source_message_id": request.reply_to_source_message_id,
             "limit": request.limit,
             "context_before": request.context_before,
             "context_after": request.context_after,
+            "dense_top_k": request.dense_top_k,
         }
 
     @staticmethod
-    def _retrieval_payload(result: RetrievalResult) -> dict[str, object]:
+    def _retrieval_payload(result: RetrievalToolData) -> dict[str, object]:
         """保留策略、候选 identity/rank、coverage 与 context expansion operational facts。"""
 
-        return {
+        payload: dict[str, object] = {
             "strategy": result.strategy,
             "query": result.query.to_dict(),
             "filters": dict(result.filters),
             "candidate_count": len(result.hits),
-            "candidate_ids": [hit.message.internal_message_id for hit in result.hits],
             "candidate_scores": [hit.score for hit in result.hits],
             "total_hits": result.total_hits,
             "returned_messages": result.returned_messages,
@@ -288,6 +339,14 @@ class SearchMessagesTool:
             },
             "latency_ms": result.metadata.latency_ms,
         }
+        if isinstance(result, RetrievalResult):
+            payload["candidate_ids"] = [hit.message.internal_message_id for hit in result.hits]
+        else:
+            payload["candidate_ids"] = [hit.chunk_id for hit in result.hits]
+            payload["candidate_parent_ids"] = [hit.parent_id for hit in result.hits]
+            payload["candidate_score_type"] = [hit.score_type for hit in result.hits]
+            payload["index_identity"] = [hit.index_identity for hit in result.hits]
+        return payload
 
     @staticmethod
     def _failure(
@@ -310,3 +369,19 @@ class SearchMessagesTool:
             diagnostic_reference=diagnostic_reference,
             cause_operation_id=cause_operation_id,
         )
+
+
+class LexicalSearchTool(SearchMessagesTool):
+    """canonical lexical_search 名称，共用既有 lexical Retrieval 链路。"""
+
+    name = "lexical_search"
+
+
+class SemanticSearchTool(SearchMessagesTool):
+    """semantic_search 的 Tool envelope/Trace wrapper，不复制 Retrieval 逻辑。"""
+
+    name = "semantic_search"
+    strategy = "semantic"
+
+    def __init__(self, capability: SemanticSearchCapability) -> None:
+        super().__init__(capability)

@@ -3,7 +3,7 @@
 > 状态：**Draft / In Progress**
 >
 > 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation、Stage 1.9 Trace / Observability、Stage 1.10 Evaluation 与 Stage 1.11 Application Boundary 架构确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1–1.11 completed；M1 Data Plane ingestion vertical slice 已实现并完成真实数据校准；Stage 1.10 Evaluation / Real-run Calibration 与 Stage 1.11 Product Interaction 仍 Pending。
+> 当前状态为：Stage 1.1–1.11 completed；M1–M7 deterministic vertical slices、Trace backend、Evaluation runner 与本 Semantic Retrieval slice 已实现；官方 Qwen provider synthetic smoke 与 semantic 运维/snapshot CLI 已验证；Qwen real-run quality calibration 与 Stage 1.11 Product Interaction 仍 Pending。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -12,9 +12,9 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1–1.11 completed；M1–M5b 当前 vertical slices 已实现；下一阶段为 Trace、Stage 1.10 Evaluation / Real-run Calibration 与 Stage 1.11 Product Interaction |
+| 当前阶段   | Stage 1.1–1.11 completed；M1–M7 与 Semantic Retrieval vertical slice 已实现；下一阶段为 Qwen real-run quality calibration 与 Stage 1.11 Product Interaction |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
-| 业务实现   | M1 ingestion、M4 Query Plane、M5a Evidence/Citation finalization 与 M5b Conversation persistence 已实现；Trace backend、Evaluation runner、HTTP/API 产品交互与长期质量校准按后续 Trellis task 实施 |
+| 业务实现   | M1 ingestion、M4 Query Plane、M5a Evidence/Citation、M5b Conversation、M6 Trace、M7 Evaluation 与 Semantic Retrieval 已实现；HTTP/API 产品交互与长期质量校准仍待后续 Trellis task |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
 
 ## Goals
@@ -81,7 +81,7 @@ Trivae
                                                    -> Citation-bound Answer
 ```
 
-Search index 的具体类型、数据模型和存储方式尚未确定；上图中的名称表示概念边界，不表示技术选型。
+当前已落地的 Search Index 包括 canonical SQLite 读取、Lexical FTS5 与独立 sqlite-vec Semantic Derived Index；上图中的名称仍表示概念边界，不代表所有未来索引类型都已确定。
 
 ### Data Plane
 
@@ -106,7 +106,7 @@ Raw QQ / Export Data
 
 #### Pending
 
-Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），Retrieval 架构已在 Stage 1.3 确认（见 [Stage 1.3: Retrieval Architecture](#stage-13-retrieval-architecture)，其中 Semantic 索引单位为 Conversation Chunk，且 Semantic / Lexical Index 均属 Derived Data）。Stage 1.4 已确认第一版 structured / canonical persistent store 采用 SQLite；M1 已按单独 backend database contract 落地 ingestion 所需 physical schema、transaction 和幂等 provenance。仍待后续阶段确定的是 Retrieval/Vector Storage、Chunk 参数、Embedding 模型与 Indexing Pipeline，以及跨环境 migration/deployment 策略。
+Canonical Data Model 与 Ingestion 概念管线已在 Stage 1.2 确认（见 [Stage 1.2: Data Model + Ingestion](#stage-12-data-model--ingestion)），Retrieval 架构已在 Stage 1.3 确认（见 [Stage 1.3: Retrieval Architecture](#stage-13-retrieval-architecture)，其中 Semantic 索引单位为 Conversation Chunk，且 Semantic / Lexical Index 均属 Derived Data）。Stage 1.4 已确认第一版 structured / canonical persistent store 采用 SQLite；M1 已按单独 backend database contract 落地 ingestion 所需 physical schema、transaction 和幂等 provenance。Semantic v1 已落地独立 sqlite-vec store、Time-aware Parent + Small Child、Qwen3 sentence-transformers provider contract、rebuild pipeline 与显式 status facade；官方 Qwen provider 已完成 synthetic smoke，仍待后续阶段确定的是跨环境 migration/deployment、真实 Qwen quality calibration 与长期参数阈值。
 
 ### Query Plane
 
@@ -546,6 +546,10 @@ Semantic Candidates
 
 （Stage 1.4 已确认第一版由 Agent 组合调用 `lexical_search` / `semantic_search`；具体策略指导机制与失败处理由 Stage 1.10 Case / Variant 契约在真实运行中校准。）
 
+#### Semantic Retrieval vertical slice implementation status
+
+当前 Python 实现已将上述 Semantic 方向接入生产 Composition Root：默认 provider identity 为 `sentence-transformers / Qwen/Qwen3-Embedding-0.6B / 1024 / last_token / normalized / query instruction`；`SemanticChunker` 使用可追踪的 Time-aware Parent + Small Child 配置；`SQLiteSemanticIndex` 将 vec0 与 bounded range metadata 放在独立 derived database；`SemanticRetrieval` 通过 canonical range 恢复 `MessageProjection`，`SemanticSearchTool`、Runtime adapter、Evidence record 与 normalized Trace 均已接入。缺失、building、failed、stale、partial 与 truncated 保持显式，不执行 lexical fallback。官方 Qwen 权重已在 synthetic fixture 完成 provider/index smoke；真实聊天质量、参数与长期阈值仍由 Stage 1.10 Evaluation 校准。
+
 ### Reranker 与 Fusion 权重（第一版不提前设计）
 
 遵循 Stage 0 原则：**先建立 baseline → 出现 Failure Case → 证明排序有问题 → 再评估 Reranker**。当前没有证据证明 Trivae 需要 `Embedding + BM25 + RRF + Cross-Encoder Reranker` 的完整流水线。
@@ -596,7 +600,7 @@ known gap = part of requested time range is not indexed
 
 ### Retrieval Trace（观察需求，非 Schema）
 
-Stage 1.3 先确定 Retrieval 需要观察哪些信息及其目的；Stage 1.9 已将这些观察项纳入全 Query normalized event boundary，并确认 query-scope coverage、Failure Attribution 与 storage 原则。具体 Python / JSON Schema 与采集实现仍 Pending。
+Stage 1.3 先确定 Retrieval 需要观察哪些信息及其目的；Stage 1.9 已将这些观察项纳入全 Query normalized event boundary，并确认 query-scope coverage、Failure Attribution 与 storage 原则。当前 Python Trace Collector、SQLite backend 与 semantic strategy/index/candidate/coverage payload 已实现；长期 schema、retention 与 operational calibration 仍 Pending。
 
 目的：答案错误时，能够回答"到底是没召回，还是召回了但 Agent 没用？"——这两个 Failure Case 的根因完全不同。
 
@@ -633,7 +637,7 @@ Stage 1.3 先确定 Retrieval 需要观察哪些信息及其目的；Stage 1.9 �
 | Retrieval Result provenance | 必须保留（Message Candidates 与 Structured Results 共有） |
 | Partial / Coverage | 必须显式暴露；Stage 1.9 已细化为 query-scope coverage |
 | Evidence 判断 | 不在 Retrieval 层硬编码；Stage 1.8 已确认使用 question-specific criterion |
-| Retrieval Trace | 观察需求与 Stage 1.9 normalized event / storage 语义已确认；具体 Schema / 实现 Pending |
+| Retrieval Trace | 观察需求与 Stage 1.9 normalized event / storage 语义已确认；当前 Collector/SQLite backend 已实现，长期 Schema / retention calibration Pending |
 
 #### Tunable / Pending Evaluation（由 Evaluation Set 决定）
 
@@ -650,12 +654,12 @@ Stage 1.3 先确定 Retrieval 需要观察哪些信息及其目的；Stage 1.9 �
 
 | 项目 | 状态 |
 | --- | --- |
-| Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式 | Pending architecture specification |
-| Semantic / Lexical Index 的具体存储与版本管理 | Pending architecture specification |
-| Retrieval Trace 的具体 Python / JSON Schema、事件名与采集实现 | Pending Implementation；conceptual boundary 已由 Stage 1.9 确认 |
+| Vector Store 实现、Embedding 模型、Indexing Pipeline 具体执行方式 | Semantic v1 已实现；Qwen real-run 与参数 calibration Pending |
+| Semantic / Lexical Index 的具体存储与版本管理 | Semantic v1 使用独立 sqlite-vec derived database 与 readable identity/status；后续 migration/deployment Pending |
+| Retrieval Trace 的具体 Python / JSON Schema、事件名与采集实现 | 当前 Trace Collector/SQLite backend 已实现；长期 schema/retention calibration Pending |
 | Tool / Capability Layer（Agent 看到哪些 Tool、如何命名） | Confirmed（Stage 1.4） |
-| Evidence / Citation | Confirmed（Stage 1.8）；具体 Python / JSON Schema 保持 Implementation Pending |
-| Candidate / Retrieval Result 具体数据结构 | Pending（与 Storage / Data Schema 联动） |
+| Evidence / Citation | Confirmed（Stage 1.8）；当前 Python finalization/provenance contract 已实现，长期 Schema 演进 Pending |
+| Candidate / Retrieval Result 具体数据结构 | 当前 lexical/semantic/structured result 已实现；后续扩展由 Evaluation 驱动 |
 
 ## Stage 1.4: Tool / Capability Layer
 
@@ -1517,6 +1521,8 @@ Stage 1.9 只确认可以从 sanitized Trace 派生 Query / stage latency、term
 
 Router / Planner / Retrieval / Evidence / Citation / Answer 的质量数据集、标签、accuracy / precision / recall、semantic entailment、Planner Utility、threshold、gate 与参数校准全部属于 Stage 1.10；本阶段不实现这些内容，治理语义已在 Stage 1.10 ADR 确认。
 
+当前实现注：Trace Collector、SQLite Trace Store、normal/debug capture policy 和 retrieval/tool normalized events 已落地；Semantic Retrieval event payload 会保留 strategy、readable index identity fields、candidate chunk/parent provenance、score type、coverage、partial/truncated、canonical context expansion 与 latency。以上是执行事实，不等同于 semantic quality 或 citation correctness 结论。
+
 ### Stage 1.9 Confirmed Architecture Summary
 
 1. 一个 Trivae-owned normalized event boundary 横跨完整 Query Execution；Stream 与 Trace 是不同投影。
@@ -1674,7 +1680,7 @@ Plan 的概念 Schema、失败类别与执行边界见 [Stage 1.6 Planner](#stag
 - Retrieval 是 Trivae 的业务核心之一。
 - Retrieval Result 与 Evidence 分离：召回候选不等同于最终引用证据。
 - Stage 1.3 已确认：Retrieval 由 Retrieval Composition、三个 Retrieval Primitives（Structured / Lexical / Semantic）与 Post-Retrieval Operator（Context Expansion）组成；Hybrid 是组合策略而非底层搜索引擎；Semantic 第一版 primary indexing unit 为 Conversation Chunk（Time-aware Parent + Small Child）；Retrieval Strategy 由任务决定，不默认所有查询执行固定 Hybrid Pipeline；Retrieval Result 的 provenance 与 Partial / Coverage 必须显式暴露。
-- Stage 1.9 已确认 Retrieval Trace family、query-scope coverage 与 Failure Attribution 语义；具体 Python / JSON Schema 与采集实现 Pending。仍未确定：Reranker、Fusion 权重、Chunk 具体参数、merge / dedup / candidate selection 的具体算法、Message-level 辅助语义索引（Pending Evaluation）；Vector Store、Embedding 模型、Indexing Pipeline 具体实现（Pending architecture specification）。
+- Stage 1.9 已确认 Retrieval Trace family、query-scope coverage 与 Failure Attribution 语义；当前 Python / SQLite 采集实现已落地。仍未确定：Reranker、Fusion 权重、长期 Chunk 参数、merge / dedup / candidate selection 的具体算法、Message-level 辅助语义索引（Pending Evaluation）；Qwen real-run quality、长期阈值与跨环境部署（Pending calibration/deployment）。
 
 概念边界保持为：
 
@@ -2037,10 +2043,10 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - M1 SQLite ingestion schema 已在 `.trellis/spec/backend/database-guidelines.md` 固化；后续 schema migration、部署/备份策略和 Retrieval derived store 仍 Pending
 - Data Access Scope 对 `execute_sql` 的具体 enforcement 机制（物理隔离、connection scope、SQL validation 或其他实现）
 - `execute_sql` 的具体 bounded execution mechanism（result fetching、cursor、adapter-level max rows 或其他实现）
-- Vector Store 实现、Chunk 具体切分参数、Embedding 模型、Indexing Pipeline 具体执行方式
+- Semantic v1 的 Vector Store、Chunk baseline、Embedding provider contract 与 Indexing Pipeline 已实现；Qwen real-run quality、参数 calibration 与跨环境部署仍 Pending
 - Reranker 是否引入、Fusion 权重、merge / dedup / candidate selection 的具体算法（Pending Evaluation，由 Evaluation Set 决定）
-- Semantic / Lexical Index 的具体存储、版本管理与重建执行方式（Derived Data 语义已确认，实现 Pending）
-- Retrieval Trace family、query-scope coverage 与 Failure Attribution 已由 Stage 1.9 确认；具体 Python / JSON Schema、事件名与采集实现 Pending
+- Semantic / Lexical Index 的 v1 存储、readable identity/status 与重建执行方式已实现；长期 migration/deployment/version retention 仍 Pending
+- Retrieval Trace family、query-scope coverage 与 Failure Attribution 已由 Stage 1.9 确认；当前 Python / SQLite 事件采集已实现，长期 Schema/retention calibration 仍 Pending
 - M1 ingestion 已确定并测试：结构化 fallback identity、文件级 transaction/record-level partial、source occurrence 幂等和 canonical first-wins + variant/conflict；后续规模化 Deduplicator、migration 与重处理策略仍 Pending
 - M1 已使用 `peerUid` / 文件明确群号作为 authoritative ChatSession identity；未来其他来源缺少 stable ID 时的 matching strategy 仍 Pending
 - M1 已将 raw payload、source locator、structured content 以 SQLite JSON/text 字段保存；跨来源 schema 演进仍 Pending

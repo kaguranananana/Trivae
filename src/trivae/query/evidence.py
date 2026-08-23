@@ -11,6 +11,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal, Mapping, TypeAlias
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
+from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
 from trivae.retrieval.structured import (
     Coverage,
     MessageProjection,
@@ -531,6 +532,10 @@ def build_tool_result_record(
         # hits 和 expanded context 都是当前 Tool Result 的可见候选；finalizer 仍会重新做 scope 校验。
         messages = tuple(hit.message for hit in data.hits) + data.expanded_messages
         message_items = _message_items(messages)
+        query_snapshot = data.query.to_dict()
+    elif isinstance(data, SemanticRetrievalResult):
+        # semantic chunk 只作为 candidate provenance；可引用内容必须是恢复后的 canonical messages。
+        message_items = _message_items(data.expanded_messages)
         query_snapshot = data.query.to_dict()
     elif isinstance(data, StructuredMessageResult):
         message_items = _message_items(data.messages)

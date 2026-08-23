@@ -6,9 +6,14 @@ requires-python = ">=3.12"
 dependencies = [
     # 当前 streamed/cancellation contract 已按本地验证的 SDK API 固定到 0.22.0。
     "openai-agents==0.22.0",
+    # semantic index 使用 sqlite-vec；sentence-transformers 放在可选 extra，避免检索-only 启动下载模型。
+    "sqlite-vec>=0.1.9,<0.2",
 ]
 
 [project.optional-dependencies]
+semantic = [
+    "sentence-transformers>=3,<6",
+]
 dev = [
     "mypy>=1.15,<2",
     "pytest>=8,<9",

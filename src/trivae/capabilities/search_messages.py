@@ -9,6 +9,7 @@ from trivae.capabilities.contracts import (
     ExecutionScope,
     SearchMessagesInput,
 )
+from trivae.capabilities.scope import effective_end, effective_sessions, effective_start
 from trivae.retrieval.lexical import LexicalRetrieval
 from trivae.retrieval.structured import LexicalQuery, RetrievalResult
 
@@ -39,17 +40,17 @@ class SearchMessagesCapability:
     def execute(self, request: SearchMessagesInput, scope: ExecutionScope) -> RetrievalResult:
         """继承 trusted scope；显式拒绝越权 filter，而不是静默取交集。"""
 
-        effective_sessions = self._effective_sessions(request, scope)
-        effective_start = self._effective_start(request, scope)
-        effective_end = self._effective_end(request, scope)
+        scoped_sessions = effective_sessions(request, scope)
+        scoped_start = effective_start(request, scope)
+        scoped_end = effective_end(request, scope)
         if request.limit > scope.max_results:
             raise CapabilityContractError("requested limit exceeds trusted max_results")
 
         query = LexicalQuery(
             keyword=request.keyword,
-            session_ids=effective_sessions,
-            start_timestamp=effective_start,
-            end_timestamp=effective_end,
+            session_ids=scoped_sessions,
+            start_timestamp=scoped_start,
+            end_timestamp=scoped_end,
             sender_user_ids=request.sender_user_ids,
             message_types=request.message_types,
             limit=request.limit,
@@ -88,3 +89,14 @@ class SearchMessagesCapability:
         if scope.end_timestamp is not None and (end is None or end > scope.end_timestamp):
             raise CapabilityScopeError("requested end timestamp is outside trusted scope")
         return end
+
+
+class LexicalSearchCapability(SearchMessagesCapability):
+    """canonical lexical_search metadata；实现仍唯一复用 SearchMessagesCapability。"""
+
+    metadata = CapabilityMetadata(
+        name="lexical_search",
+        description="Search canonical messages by exact words with bounded local context.",
+        bounded=True,
+        input_fields=SearchMessagesCapability.metadata.input_fields,
+    )

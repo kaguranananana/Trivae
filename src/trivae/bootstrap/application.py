@@ -8,10 +8,11 @@ import uuid
 from dataclasses import replace
 from pathlib import Path
 
-from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, ToolEnvelope
+from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, SemanticSearchInput, ToolEnvelope
 from trivae.capabilities.registry import CapabilityRegistry
-from trivae.capabilities.search_messages import SearchMessagesCapability
-from trivae.capabilities.tools import SearchMessagesTool
+from trivae.capabilities.search_messages import LexicalSearchCapability, SearchMessagesCapability
+from trivae.capabilities.semantic_search import SemanticSearchCapability
+from trivae.capabilities.tools import LexicalSearchTool, SearchMessagesTool, SemanticSearchTool
 from trivae.conversation import Conversation, ConversationStore, SQLiteConversationStore
 from trivae.data.ingestion.importer import SharedImporter
 from trivae.data.model import ChatSession, ImportRunSummary
@@ -20,6 +21,7 @@ from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalI
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
 from trivae.evaluation import (
     ControlledVariant,
+    DatasetSnapshot,
     EvaluationCaseBundle,
     EvaluationRun,
     EvaluationRunner,
@@ -49,6 +51,15 @@ from trivae.query.router import Router, RuleRouter
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeResult
 from trivae.query.streaming import QueryStreamAdapter, QueryStreamEventHandler
 from trivae.retrieval.lexical import LexicalRetrieval
+from trivae.retrieval.semantic.builder import SemanticIndexBuilder
+from trivae.retrieval.semantic.contracts import (
+    EmbeddingProvider,
+    SemanticBuildStats,
+    SemanticIndexStatusReport,
+)
+from trivae.retrieval.semantic.embedding import SentenceTransformerEmbeddingProvider
+from trivae.retrieval.semantic.index import SQLiteSemanticIndex
+from trivae.retrieval.semantic.retrieval import SemanticRetrieval
 from trivae.retrieval.structured import (
     AggregateQuery,
     MessageQuery,
@@ -70,6 +81,10 @@ class TrivaeApplication:
         lexical_retrieval: LexicalRetrieval,
         capability_registry: CapabilityRegistry,
         lexical_index: SQLiteLexicalIndex | None = None,
+        semantic_index: SQLiteSemanticIndex | None = None,
+        semantic_provider: EmbeddingProvider | None = None,
+        semantic_retrieval: SemanticRetrieval | None = None,
+        semantic_builder: SemanticIndexBuilder | None = None,
         agent_runtime: AgentRuntime | None = None,
         router: Router | None = None,
         planner: Planner | None = None,
@@ -85,6 +100,9 @@ class TrivaeApplication:
         self.structured_retrieval = structured_retrieval
         self.lexical_retrieval = lexical_retrieval
         self.capability_registry = capability_registry
+        self.semantic_provider = semantic_provider
+        self.semantic_retrieval = semantic_retrieval
+        self._semantic_builder = semantic_builder
         if conversation_store is None:
             raise ValueError("conversation_store is required")
         self.conversation_store = conversation_store
@@ -98,6 +116,7 @@ class TrivaeApplication:
             store.database_path.with_name(f"{store.database_path.stem}.evaluation.sqlite3")
         )
         self._lexical_index = lexical_index
+        self._semantic_index = semantic_index
         # Runtime 是可注入且惰性创建的，检索-only caller 不需要 provider 配置。
         self._agent_runtime = agent_runtime
         self._router = router
@@ -141,10 +160,39 @@ class TrivaeApplication:
             self._lexical_index = SQLiteLexicalIndex(self.store.database_path)
         return self._lexical_index.rebuild()
 
+    def rebuild_semantic_index(self) -> SemanticBuildStats:
+        """显式重建 Qwen3 semantic derived index；模型/向量错误不会被 lexical 结果掩盖。"""
+
+        self._ensure_open()
+        if self._semantic_builder is None:
+            raise RuntimeError("semantic index builder is not configured")
+        return self._semantic_builder.rebuild()
+
+    def semantic_index_status(self) -> SemanticIndexStatusReport:
+        """返回当前 provider/chunker 与 derived index 的可运维状态。"""
+
+        self._ensure_open()
+        if self._semantic_builder is None or self._semantic_index is None:
+            raise RuntimeError("semantic index status is not configured")
+        # 当前 canonical message count 是 stale 判断的 watermark，不把 chunk 数当作覆盖范围。
+        canonical_count = self.read_repository.count_messages(MessageQuery(limit=1))
+        return SemanticIndexStatusReport.from_state(
+            self._semantic_builder.identity,
+            self._semantic_index.state(),
+            canonical_count,
+        )
+
+    def materialize_evaluation_snapshot(self) -> DatasetSnapshot:
+        """通过 Application facade 生成不含聊天正文的当前 Canonical Snapshot。"""
+
+        self._ensure_open()
+        # Snapshot contract 自己使用 read-only connection；Application 不复制其 SQL 语义。
+        return DatasetSnapshot.from_database(self.store.database_path)
+
     def invoke_tool(
         self,
         name: str,
-        request: SearchMessagesInput,
+        request: SearchMessagesInput | SemanticSearchInput,
         scope: ExecutionScope,
     ) -> ToolEnvelope:
         """通过显式 registry 调用 agent-facing Tool。"""
@@ -560,25 +608,29 @@ class TrivaeApplication:
                         self._lexical_index.close()
                 finally:
                     try:
-                        self.conversation_store.close()
+                        if self._semantic_index is not None:
+                            self._semantic_index.close()
                     finally:
                         try:
-                            self.read_repository.close()
+                            self.conversation_store.close()
                         finally:
                             try:
-                                self._import_diagnostics_reader.close()
+                                self.read_repository.close()
                             finally:
                                 try:
-                                    close_trace_store = getattr(self._trace_store, "close", None)
-                                    if callable(close_trace_store):
-                                        close_trace_store()
+                                    self._import_diagnostics_reader.close()
                                 finally:
                                     try:
-                                        close_evaluation_store = getattr(self.evaluation_store, "close", None)
-                                        if callable(close_evaluation_store):
-                                            close_evaluation_store()
+                                        close_trace_store = getattr(self._trace_store, "close", None)
+                                        if callable(close_trace_store):
+                                            close_trace_store()
                                     finally:
-                                        self.store.close()
+                                        try:
+                                            close_evaluation_store = getattr(self.evaluation_store, "close", None)
+                                            if callable(close_evaluation_store):
+                                                close_evaluation_store()
+                                        finally:
+                                            self.store.close()
             finally:
                 self._agent_runtime = None
                 self._query_orchestrator = None
@@ -621,8 +673,20 @@ def create_application(
     conversation_store: ConversationStore | None = None,
     evaluation_database_path: Path | None = None,
     evaluation_store: EvaluationStore | None = None,
+    semantic_index_path: Path | None = None,
+    semantic_index: SQLiteSemanticIndex | None = None,
+    semantic_provider: EmbeddingProvider | None = None,
 ) -> TrivaeApplication:
     """Composition Root 统一装配 write/read/derived/retrieval/capability 组件。"""
+
+    resolved_database_path = database_path.resolve()
+    resolved_semantic_path = (
+        semantic_index_path or database_path.with_name(f"{database_path.stem}.semantic.sqlite3")
+    ).resolve()
+    if resolved_semantic_path == resolved_database_path:
+        raise ValueError("semantic index must use a separate database path")
+    if semantic_index is not None and semantic_index.database_path.resolve() == resolved_database_path:
+        raise ValueError("semantic index must use a separate database path")
 
     store = SQLiteCanonicalStore(database_path)
     importer = SharedImporter(store)
@@ -630,8 +694,29 @@ def create_application(
     structured_retrieval = StructuredRetrieval(read_repository)
     lexical_retrieval = LexicalRetrieval(read_repository)
     search_capability = SearchMessagesCapability(lexical_retrieval)
+    lexical_capability = LexicalSearchCapability(lexical_retrieval)
+    owned_semantic_provider = semantic_provider or SentenceTransformerEmbeddingProvider()
+    if semantic_index is None:
+        owned_semantic_index = SQLiteSemanticIndex(resolved_semantic_path)
+    else:
+        owned_semantic_index = semantic_index
+    database_identity = database_path.name
+    semantic_builder = SemanticIndexBuilder(
+        read_repository,
+        owned_semantic_index,
+        owned_semantic_provider,
+        database_identity=database_identity,
+    )
+    semantic_retrieval = SemanticRetrieval(
+        read_repository,
+        owned_semantic_index,
+        owned_semantic_provider,
+        database_identity=database_identity,
+    )
     capability_registry = CapabilityRegistry()
     capability_registry.register(SearchMessagesTool(search_capability))
+    capability_registry.register(LexicalSearchTool(lexical_capability))
+    capability_registry.register(SemanticSearchTool(SemanticSearchCapability(semantic_retrieval)))
     owned_conversation_store = (
         SQLiteConversationStore(database_path) if conversation_store is None else conversation_store
     )
@@ -646,6 +731,10 @@ def create_application(
         structured_retrieval=structured_retrieval,
         lexical_retrieval=lexical_retrieval,
         capability_registry=capability_registry,
+        semantic_index=owned_semantic_index,
+        semantic_provider=owned_semantic_provider,
+        semantic_retrieval=semantic_retrieval,
+        semantic_builder=semantic_builder,
         conversation_store=owned_conversation_store,
         agent_runtime=agent_runtime,
         router=router,

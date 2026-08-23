@@ -147,6 +147,33 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(parser.parse_args(["trace", "show", "trace-1"]).trace_command, "show")
         self.assertEqual(parser.parse_args(["eval", "regression"]).evaluation_command, "regression")
 
+    def test_semantic_and_snapshot_parsers_expose_explicit_operational_inputs(self) -> None:
+        """Semantic 运维和 Snapshot materialization 都必须有独立、可审计的参数。"""
+
+        parser = cli.build_parser()
+        snapshot = parser.parse_args(["eval", "snapshot", "--database", "canonical.sqlite3"])
+        self.assertEqual(snapshot.evaluation_command, "snapshot")
+        self.assertEqual(snapshot.database, Path("canonical.sqlite3"))
+        self.assertIsNone(snapshot.output)
+
+        smoke = parser.parse_args(
+            [
+                "semantic",
+                "smoke",
+                "--query",
+                "框架为什么难维护",
+                "--session-id",
+                "qq:100",
+                "--limit",
+                "3",
+                "--rebuild",
+            ]
+        )
+        self.assertEqual(smoke.semantic_command, "smoke")
+        self.assertEqual(smoke.session_id, ["qq:100"])
+        self.assertEqual(smoke.limit, 3)
+        self.assertTrue(smoke.rebuild)
+
     def test_application_lists_sessions_through_the_read_facade(self) -> None:
         """session 列表来自 Application，且按稳定名称顺序返回真实 Canonical 数据。"""
 
@@ -200,6 +227,10 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(
             [request.scope.allowed_session_ids for request in application.requests],
             [("qq:100",), ("qq:100",)],
+        )
+        self.assertEqual(
+            application.requests[0].available_capabilities,
+            ("search_messages",),
         )
         self.assertIn("Selected: AI 群", output)
         self.assertIn("answer-1", output)

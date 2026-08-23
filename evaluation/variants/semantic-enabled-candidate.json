@@ -1,0 +1,36 @@
+{
+  "variant_id": "semantic-enabled-candidate-v1",
+  "role": "candidate",
+  "code_version": "semantic-retrieval-v1",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "model_parameters": {"temperature": 0, "top_p": 1},
+  "prompt_identity": "m7-runtime-answer-artifact-v1",
+  "router_configuration": {"implementation": "RuleRouter", "llm_degraded_path": true},
+  "planner_configuration": {"implementation": "SoftPlanner", "bounded_steps": 5},
+  "runtime_configuration": {"max_turns": 8, "max_tool_rounds": 3, "trace_profile": "normal"},
+  "available_tools": ["lexical_search", "semantic_search"],
+  "retrieval_configuration": {
+    "strategy": "agent-selected-lexical-or-semantic",
+    "context_expansion": "production-default",
+    "semantic_enabled": true,
+    "embedding_provider": "sentence-transformers",
+    "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+    "embedding_dimension": 1024,
+    "embedding_pooling": "last_token",
+    "embedding_normalized": true,
+    "query_instruction_identity": "default-chat-retrieval-instruction",
+    "chunker_version": "trivae-semantic-chunker-v1",
+    "chunker_config_identity": "runtime-resolved-secret-free-config"
+  },
+  "index_identity": "semantic-index-v1:database=bind-at-run:embedding=Qwen-Qwen3-Embedding-0.6B:dim=1024:pooling=last_token:normalized=true:instruction=default:chunker=trivae-semantic-chunker-v1",
+  "context_expansion_configuration": {"implementation": "retrieval-owned", "semantic_range_recovery": true},
+  "evidence_citation_version": "m7-evidence-citation-v1",
+  "budget": {"max_turns": 8, "max_tool_rounds": 3},
+  "execution_override": {"forced_route": null},
+  "extra_configuration": {
+    "comparison_role": "semantic-enabled-candidate",
+    "quality_claim": "unmeasured",
+    "identity_policy": "secret-free-identity-only"
+  }
+}

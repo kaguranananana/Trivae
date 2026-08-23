@@ -160,7 +160,18 @@ M5a 的事实来源集中在归档的 [task PRD](../../tasks/archive/2026-08/08-
 - 为什么 Retrieval Candidate 不等于 Final Evidence：Retrieval 只提供 bounded candidate / structured result，Agent final synthesis 组织 question-specific finding，validator 只验证结构、locator、scope 和可信 hydration。
 - 为什么不引入 Evidence Agent / Judge：Stage 1.8 ownership 与当前实现都把 semantic entailment 留给 M7 Evaluation；M5 没有第二套 Agent Loop。
 - 为什么 invalid citation 不 silent fallback：finalizer 通过 `finalization_error` 阻止正式 `final_answer`，不会删 binding、换来源或 retry；对应 bad cases 在 `tests/test_evidence.py`。
-- 当前限制：M5b 已完成第一版 Conversation / Assistant Message durable persistence；Trace backend、semantic quality 和 bounds calibration 仍待 M6/M7 或 real-run evidence。
+- 当前限制：M5b 已完成第一版 Conversation / Assistant Message durable persistence；Trace backend 与 semantic vertical slice 已落地，但 Qwen semantic quality、chunk/ANN bounds calibration 仍待 real-run evidence。
+
+## Semantic Retrieval Vertical Slice 事实索引
+
+- 为什么 primary unit 不是 message：高噪声群聊里“对”“哈哈”“这个可以”等消息缺少独立语义；当前实现以 Time-aware Parent + Small Child 建立向量候选，再由 canonical range 恢复消息。
+- 为什么向量库必须独立：Embedding、chunker 或模型改变时只重建 derived sqlite-vec database；Canonical Store 仍是事实源，identity mismatch 直接报告 stale，不回退 lexical。
+- 为什么 query instruction 不能加到 document：`SentenceTransformerEmbeddingProvider` 分离 `embed_documents()` 与 `embed_query()`，只有 query 进入 `Instruct: ...\nQuery: ...`；dimension、normalized、pooling、instruction 与 chunker config 都进入 readable index identity。
+- 为什么 chunk 不能直接引用：semantic candidate 的 chunk/parent/range 只用于 acquisition provenance；`ToolResultRecord` 只保存恢复后的 canonical `MessageProjection`，Finalizer 的 `MessageSource` 指向 message identity。
+- 如何区分失败：未构建/构建中/failed 是 unavailable，identity 或 canonical count 漂移是 stale，partial/truncated 是结果完整性状态；Semantic Tool 不把这些状态改写成 lexical success。
+- 当前未宣称的事实：官方 `sentence-transformers` provider 已在本地加载 `Qwen/Qwen3-Embedding-0.6B`，并在 3-message synthetic fixture 上完成 1024-d normalized ANN smoke；这只能证明 provider/index 主链可运行，不能推出真实聊天数据上的 Recall、Precision、质量提升或生产 latency。全量 canonical Qwen rebuild 与人工 Finding annotation 仍待校准。
+
+- Real-run failure evidence：Qwen3 的 bfloat16 Normalize 输出在 Python float projection 中观察到约 `1.002`–`1.003` 的范数；provider 在官方 encode 后做确定性 float normalization，再以严格阈值校验并写入 vec0。放宽 normalized 校验不是可接受修复；对应 regression 在 `tests/test_semantic_retrieval.py`。
 
 ## M5b Conversation persistence 事实索引
 
@@ -190,7 +201,7 @@ M5a 的事实来源集中在归档的 [task PRD](../../tasks/archive/2026-08/08-
 
 ### Observability / Debugging
 
-- 当前可通过 `QueryResult.finalization_error`、runtime termination/error、Conversation Store typed error、SQLite constraint/codec error 与测试断言定位失败层；Trace backend 尚未实现，不能把本任务描述为已有完整 Trace。
+- 当前可通过 `QueryResult.finalization_error`、runtime termination/error、Conversation Store typed error、SQLite constraint/codec error、Trace normalized failure projection 与测试断言定位失败层；Trace backend 已实现，但 Trace 仍只记录执行事实，不自动诊断 semantic miss 或 answer correctness。
 - Store decode 失败会显式暴露损坏 JSON、未知 source type、缺失字段或 content mismatch；不会静默丢弃历史消息或重新搜索补全。
 
 ### Boundary / Ownership

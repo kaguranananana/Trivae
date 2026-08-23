@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, Sequence
 
 from trivae.retrieval.structured import MessageHit, MessageProjection, RetrievalError, message_sort_key
 
@@ -19,6 +19,25 @@ class ContextReadRepository(Protocol):
         after: int,
     ) -> tuple[MessageProjection, ...]:
         """读取 anchor 周围的 canonical projection。"""
+
+    def read_message_range(
+        self,
+        session_id: str,
+        start_message_id: str,
+        end_message_id: str,
+        limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """读取同 session 的 bounded canonical range。"""
+
+
+@dataclass(frozen=True)
+class ContextRange:
+    """语义 child 的 canonical range，永远不作为 citation source 本身暴露。"""
+
+    session_id: str
+    start_message_id: str
+    end_message_id: str
+    message_limit: int
 
 
 @dataclass(frozen=True)
@@ -99,6 +118,88 @@ class ContextExpander:
         return ContextExpansionResult(
             messages=selected,
             partial=False,
+            truncated=True,
+            candidate_count=len(ordered),
+        )
+
+    def expand_ranges(
+        self,
+        ranges: Sequence[ContextRange],
+        before: int,
+        after: int,
+        limit: int,
+    ) -> ContextExpansionResult:
+        """恢复 semantic child ranges，再复用同一 bounded context 合并规则。"""
+
+        if not ranges:
+            return ContextExpansionResult(messages=(), partial=False, truncated=False, candidate_count=0)
+        if before < 0 or after < 0 or limit <= 0:
+            raise ValueError("context range expansion bounds must be non-negative and limit must be positive")
+
+        messages_by_id: dict[str, MessageProjection] = {}
+        for item in ranges:
+            core = self.repository.read_message_range(
+                session_id=item.session_id,
+                start_message_id=item.start_message_id,
+                end_message_id=item.end_message_id,
+                limit=item.message_limit,
+            )
+            if not core:
+                raise RetrievalError(
+                    f"Semantic range returned no canonical messages: "
+                    f"{item.session_id}/{item.start_message_id}:{item.end_message_id}"
+                )
+            if any(message.session_id != item.session_id for message in core):
+                raise RetrievalError(f"Semantic range crossed session boundary: {item.session_id}")
+            for message in core:
+                messages_by_id[message.internal_message_id] = message
+
+            # 只扩展 child 两端，避免对 child 内每条消息重复读取 context window。
+            first = core[0]
+            last = core[-1]
+            if before:
+                for message in self.repository.read_message_context(
+                    item.session_id, first.internal_message_id, before, 0
+                ):
+                    if message.session_id != item.session_id:
+                        raise RetrievalError(f"Semantic context crossed session boundary: {item.session_id}")
+                    messages_by_id[message.internal_message_id] = message
+            if after:
+                for message in self.repository.read_message_context(
+                    item.session_id, last.internal_message_id, 0, after
+                ):
+                    if message.session_id != item.session_id:
+                        raise RetrievalError(f"Semantic context crossed session boundary: {item.session_id}")
+                    messages_by_id[message.internal_message_id] = message
+
+        ordered = tuple(sorted(messages_by_id.values(), key=message_sort_key))
+        if len(ordered) <= limit:
+            return ContextExpansionResult(
+                messages=ordered,
+                partial=False,
+                truncated=False,
+                candidate_count=len(ordered),
+            )
+
+        # 优先保留每个 range 的核心消息，context 超出预算时显式标记截断。
+        core_ids: set[str] = set()
+        for item in ranges:
+            core = self.repository.read_message_range(
+                item.session_id,
+                item.start_message_id,
+                item.end_message_id,
+                item.message_limit,
+            )
+            core_ids.update(message.internal_message_id for message in core)
+        core_messages = tuple(message for message in ordered if message.internal_message_id in core_ids)
+        if len(core_messages) >= limit:
+            selected = core_messages[:limit]
+        else:
+            context_messages = tuple(message for message in ordered if message.internal_message_id not in core_ids)
+            selected = tuple(sorted((*core_messages, *context_messages[: limit - len(core_messages)]), key=message_sort_key))
+        return ContextExpansionResult(
+            messages=selected,
+            partial=len(core_messages) > limit,
             truncated=True,
             candidate_count=len(ordered),
         )

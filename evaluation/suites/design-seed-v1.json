@@ -14,6 +14,7 @@
     {"case_id": "seed-evidence-backed-answer", "version": 1},
     {"case_id": "seed-standard-execution", "version": 1},
     {"case_id": "seed-planned-execution", "version": 1},
-    {"case_id": "seed-citation-provenance", "version": 1}
+    {"case_id": "seed-citation-provenance", "version": 1},
+    {"case_id": "seed-semantic-paraphrase-retrieval", "version": 1}
   ]
 }

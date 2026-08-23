@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Literal, Mapping, Protocol, Sequence
+from typing import Iterator, Literal, Mapping, Protocol, Sequence
 
 
 class RetrievalError(Exception):
@@ -26,7 +26,7 @@ class LexicalIndexError(RetrievalError):
 
 
 CoverageStatus = Literal["complete", "partial", "none", "unknown", "not_applicable"]
-Strategy = Literal["structured", "lexical"]
+Strategy = Literal["structured", "lexical", "semantic"]
 GroupBy = Literal["session", "sender", "month"]
 
 ORDERING_DESCRIPTION = (
@@ -323,6 +323,18 @@ class CanonicalReadRepository(Protocol):
         after: int,
     ) -> tuple[MessageProjection, ...]:
         """读取同 session 的 bounded surrounding context。"""
+
+    def iter_semantic_messages(self, batch_size: int) -> "Iterator[MessageProjection]":
+        """按 canonical ordering 流式读取 semantic builder 所需的最小 projection。"""
+
+    def read_message_range(
+        self,
+        session_id: str,
+        start_message_id: str,
+        end_message_id: str,
+        limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """按同一 session 的 canonical ordering 恢复一个 bounded message range。"""
 
 
 def message_sort_key(message: MessageProjection) -> tuple[int, int, int, str]:

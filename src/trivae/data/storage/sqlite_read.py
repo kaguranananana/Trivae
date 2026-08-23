@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 
 from trivae.data.model import ChatSession
@@ -190,6 +191,26 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
         ).fetchall()
         return tuple(_row_to_projection(row) for row in rows)
 
+    def iter_semantic_messages(self, batch_size: int) -> Iterator[MessageProjection]:
+        """以 cursor/fetchmany 流式读取全量 canonical projection，避免 build 一次性载入消息。"""
+
+        if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
+            raise ValueError("semantic batch_size must be positive")
+        cursor = self._connection.execute(
+            f"""
+            SELECT {PROJECTION_COLUMNS}
+            FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            ORDER BY m.session_id ASC, {ORDER_BY_SQL}
+            """
+        )
+        while True:
+            rows = cursor.fetchmany(batch_size)
+            if not rows:
+                return
+            for row in rows:
+                yield _row_to_projection(row)
+
     def aggregate_messages(self, query: AggregateQuery) -> AggregateData:
         """执行固定 group mapping；group 名不会作为 SQL 片段拼接。"""
 
@@ -369,6 +390,51 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
 
         return (*before_messages, anchor, *after_messages)
 
+    def read_message_range(
+        self,
+        session_id: str,
+        start_message_id: str,
+        end_message_id: str,
+        limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """按 canonical ordering 恢复 child/parent range，并严格限制返回数量。"""
+
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+            raise ValueError("message range limit must be positive")
+        start = self._read_message_order(session_id, start_message_id, "range start")
+        end = self._read_message_order(session_id, end_message_id, "range end")
+        if self._order_key(start) > self._order_key(end):
+            raise RetrievalError(f"Message range is reversed: {session_id}/{start_message_id}:{end_message_id}")
+
+        start_sql, start_parameters = self._order_boundary(
+            alias="m",
+            operator=">=",
+            timestamp=start[0],
+            missing_seq=start[1],
+            seq=start[2],
+            internal_message_id=start[3],
+        )
+        end_sql, end_parameters = self._order_boundary(
+            alias="m",
+            operator="<=",
+            timestamp=end[0],
+            missing_seq=end[1],
+            seq=end[2],
+            internal_message_id=end[3],
+        )
+        rows = self._connection.execute(
+            f"""
+            SELECT {PROJECTION_COLUMNS}
+            FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE m.session_id = ? AND {start_sql} AND {end_sql}
+            ORDER BY {ORDER_BY_SQL}
+            LIMIT ?
+            """,
+            [session_id, *start_parameters, *end_parameters, limit],
+        ).fetchall()
+        return tuple(_row_to_projection(row) for row in rows)
+
     def _read_message_by_id(self, session_id: str, internal_message_id: str) -> MessageProjection:
         """读取 context anchor 的限定 projection。"""
 
@@ -385,6 +451,35 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             raise RetrievalError(f"Context anchor disappeared: {session_id}/{internal_message_id}")
         return _row_to_projection(row)
 
+    def _read_message_order(
+        self,
+        session_id: str,
+        internal_message_id: str,
+        label: str,
+    ) -> tuple[int, int, int, str]:
+        """读取 range 边界所需的排序 tuple，不把 raw row 继续向上泄漏。"""
+
+        row = self._connection.execute(
+            """
+            SELECT timestamp, seq
+            FROM messages
+            WHERE session_id = ? AND internal_message_id = ?
+            """,
+            (session_id, internal_message_id),
+        ).fetchone()
+        if row is None:
+            raise RetrievalError(f"{label} not found: {session_id}/{internal_message_id}")
+        timestamp = int(row["timestamp"])
+        missing_seq = 1 if row["seq"] is None else 0
+        seq = 0 if row["seq"] is None else int(row["seq"])
+        return timestamp, missing_seq, seq, internal_message_id
+
+    @staticmethod
+    def _order_key(value: tuple[int, int, int, str]) -> tuple[int, int, int, str]:
+        """为 start/end 比较提供与 SQL ORDER BY 完全一致的 Python key。"""
+
+        return value
+
     @staticmethod
     def _order_boundary(
         alias: str,
@@ -396,7 +491,7 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
     ) -> tuple[str, list[object]]:
         """生成同一排序 tuple 的严格前后边界，避免 Python 全表扫描。"""
 
-        if operator not in ("<", ">"):
+        if operator not in ("<", ">", "<=", ">="):
             raise ValueError(f"Unsupported order boundary operator: {operator}")
         missing_expression = f"CASE WHEN {alias}.seq IS NULL THEN 1 ELSE 0 END"
         seq_expression = f"COALESCE({alias}.seq, 0)"

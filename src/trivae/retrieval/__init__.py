@@ -2,6 +2,22 @@
 
 from trivae.retrieval.context import ContextExpander, ContextExpansionResult
 from trivae.retrieval.lexical import LexicalRetrieval
+from trivae.retrieval.semantic import (
+    EmbeddingModelIdentity,
+    SemanticBuildStats,
+    SemanticChunk,
+    SemanticChunkConfig,
+    SemanticChunker,
+    SemanticIndexBuilder,
+    SemanticIndexIdentity,
+    SemanticIndexState,
+    SemanticIndexStatusReport,
+    SemanticQuery,
+    SemanticRetrieval,
+    SemanticRetrievalResult,
+    SentenceTransformerEmbeddingProvider,
+    SQLiteSemanticIndex,
+)
 from trivae.retrieval.structured import (
     AggregateBucket,
     AggregateData,
@@ -40,6 +56,20 @@ __all__ = [
     "RetrievalError",
     "RetrievalMetadata",
     "RetrievalResult",
+    "EmbeddingModelIdentity",
+    "SemanticBuildStats",
+    "SemanticChunk",
+    "SemanticChunkConfig",
+    "SemanticChunker",
+    "SemanticIndexBuilder",
+    "SemanticIndexIdentity",
+    "SemanticIndexState",
+    "SemanticIndexStatusReport",
+    "SemanticQuery",
+    "SemanticRetrieval",
+    "SemanticRetrievalResult",
+    "SentenceTransformerEmbeddingProvider",
+    "SQLiteSemanticIndex",
     "StructuredAggregateResult",
     "StructuredMessageResult",
     "StructuredRetrieval",

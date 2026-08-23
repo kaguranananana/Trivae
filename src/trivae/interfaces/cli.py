@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Sequence, TextIO, cast
 
 from trivae.bootstrap.application import TrivaeApplication, create_application
-from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope
+from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope, SemanticSearchInput
 from trivae.config.settings import SettingsError
 from trivae.conversation.contracts import ConversationError
 from trivae.data.model import ChatSession, IngestionError
@@ -27,6 +27,7 @@ from trivae.evaluation.store import EvaluationStoreError
 from trivae.interfaces.cli_renderer import CliEventRenderer
 from trivae.observability.sqlite import ImportDiagnosticsError, TraceStoreError
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
+from trivae.retrieval.semantic.contracts import SemanticError, SemanticRetrievalResult
 from trivae.retrieval.structured import RetrievalError
 
 
@@ -174,6 +175,74 @@ def build_parser() -> argparse.ArgumentParser:
         help="Independent SQLite Evaluation Store path",
     )
     evaluation_subparsers.add_parser("regression", help="Show M6 failure regression coverage")
+    eval_snapshot_parser = evaluation_subparsers.add_parser(
+        "snapshot",
+        help="Materialize a secret-free Canonical Dataset Snapshot manifest",
+    )
+    eval_snapshot_parser.add_argument(
+        "--database",
+        type=Path,
+        default=Path("data/trivae.sqlite3"),
+        help="SQLite Canonical Store path",
+    )
+    eval_snapshot_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional JSON output path; stdout is used when omitted",
+    )
+    semantic_parser = subparsers.add_parser(
+        "semantic",
+        help="Inspect, rebuild, and smoke-test the local semantic derived index",
+    )
+    semantic_subparsers = semantic_parser.add_subparsers(dest="semantic_command", required=True)
+    semantic_status_parser = semantic_subparsers.add_parser(
+        "status",
+        help="Show semantic provider/index identity and readiness",
+    )
+    semantic_rebuild_parser = semantic_subparsers.add_parser(
+        "rebuild",
+        help="Explicitly rebuild the semantic derived index",
+    )
+    semantic_smoke_parser = semantic_subparsers.add_parser(
+        "smoke",
+        help="Run one bounded semantic retrieval smoke against the local index",
+    )
+    for semantic_command_parser in (
+        semantic_status_parser,
+        semantic_rebuild_parser,
+        semantic_smoke_parser,
+    ):
+        semantic_command_parser.add_argument(
+            "--database",
+            type=Path,
+            default=Path("data/trivae.sqlite3"),
+            help="SQLite Canonical Store path",
+        )
+        semantic_command_parser.add_argument(
+            "--semantic-index",
+            type=Path,
+            default=None,
+            help="Optional independent semantic SQLite path",
+        )
+    semantic_smoke_parser.add_argument("--query", required=True, help="Semantic retrieval query")
+    semantic_smoke_parser.add_argument(
+        "--session-id",
+        action="append",
+        default=None,
+        help="Optional trusted session ID; repeat to restrict the smoke scope",
+    )
+    semantic_smoke_parser.add_argument("--start-timestamp", type=int, default=None)
+    semantic_smoke_parser.add_argument("--end-timestamp", type=int, default=None)
+    semantic_smoke_parser.add_argument("--limit", type=int, default=5)
+    semantic_smoke_parser.add_argument("--context-before", type=int, default=2)
+    semantic_smoke_parser.add_argument("--context-after", type=int, default=2)
+    semantic_smoke_parser.add_argument("--dense-top-k", type=int, default=40)
+    semantic_smoke_parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="Rebuild the derived index before the smoke; otherwise an existing ready index is required",
+    )
     diagnostics_parser = subparsers.add_parser(
         "import-diagnostics",
         help="Read existing ImportBatch and ImportError diagnostics",
@@ -223,6 +292,21 @@ def _load_cases(path: Path) -> dict[str, EvaluationCaseBundle]:
     return cases
 
 
+def _write_json_projection(payload: object, output_path: Path | None) -> None:
+    """把 bounded JSON projection 输出到 stdout 或用户明确指定的文件。"""
+
+    serialized = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+    if output_path is None:
+        print(serialized)
+        return
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(serialized + "\n", encoding="utf-8")
+    except OSError as exc:
+        raise EvaluationContractError(f"JSON output cannot be written: {output_path}") from exc
+    print(output_path.resolve())
+
+
 def _run_evaluation_command(args: argparse.Namespace) -> int:
     """Evaluation CLI 只调用 Application facade，不直接触碰 Runtime/Tool。"""
 
@@ -237,6 +321,12 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
 
         if args.evaluation_command == "regression":
             print(json.dumps(dict(M6_FAILURE_REGRESSION_MAP), ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+
+        if args.evaluation_command == "snapshot":
+            with create_application(args.database) as application:
+                snapshot = application.materialize_evaluation_snapshot()
+            _write_json_projection(snapshot.to_dict(), args.output)
             return 0
 
         if args.evaluation_command == "run":
@@ -288,6 +378,129 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
         print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False, indent=2))
         return 1
     raise EvaluationContractError("unsupported eval command")
+
+
+def _semantic_smoke_projection(
+    application: TrivaeApplication,
+    args: argparse.Namespace,
+) -> dict[str, object]:
+    """执行一个不输出聊天正文的 semantic retrieval smoke projection。"""
+
+    if isinstance(args.limit, bool) or not isinstance(args.limit, int) or args.limit <= 0:
+        raise CapabilityContractError("semantic smoke limit must be positive")
+    # Smoke 的 trusted scope 由显式 CLI 参数编译，不能由模型或检索结果反推。
+    session_ids = None if args.session_id is None else tuple(args.session_id)
+    scope = ExecutionScope(
+        allowed_session_ids=session_ids,
+        start_timestamp=args.start_timestamp,
+        end_timestamp=args.end_timestamp,
+        max_results=args.limit,
+    )
+    envelope = application.invoke_tool(
+        "semantic_search",
+        SemanticSearchInput(
+            query=args.query,
+            session_ids=session_ids,
+            start_timestamp=args.start_timestamp,
+            end_timestamp=args.end_timestamp,
+            limit=args.limit,
+            context_before=args.context_before,
+            context_after=args.context_after,
+            dense_top_k=args.dense_top_k,
+        ),
+        scope,
+    )
+    projection: dict[str, object] = {
+        "tool_status": envelope.status,
+        "error": None if envelope.error is None else {
+            "code": envelope.error.code,
+            "message": envelope.error.message,
+        },
+        "meta": dict(envelope.meta),
+    }
+    if isinstance(envelope.data, SemanticRetrievalResult):
+        result = envelope.data
+        projection["retrieval"] = {
+            "strategy": result.strategy,
+            "query": result.query.to_dict(),
+            "hit_count": len(result.hits),
+            "hits": [
+                {
+                    "chunk_id": hit.chunk_id,
+                    "parent_id": hit.parent_id,
+                    "session_id": hit.session_id,
+                    "start_message_id": hit.start_message_id,
+                    "end_message_id": hit.end_message_id,
+                    "score": hit.score,
+                    "score_type": hit.score_type,
+                    "dense_rank": hit.dense_rank,
+                }
+                for hit in result.hits
+            ],
+            "expanded_message_count": len(result.expanded_messages),
+            "total_hits": result.total_hits,
+            "returned_messages": result.returned_messages,
+            "coverage": {"status": result.coverage.status, "basis": result.coverage.basis},
+            "partial": result.partial,
+            "truncated": result.truncated,
+            "metadata": {
+                "ordering": result.metadata.ordering,
+                "latency_ms": result.metadata.latency_ms,
+                "details": dict(result.metadata.details),
+            },
+        }
+    elif envelope.data is not None:
+        raise RuntimeError("semantic smoke received an unexpected tool result type")
+    return projection
+
+
+def _run_semantic_command(args: argparse.Namespace) -> int:
+    """semantic CLI 只通过 Application facade 操作独立 derived index。"""
+
+    try:
+        with create_application(
+            args.database,
+            semantic_index_path=args.semantic_index,
+        ) as application:
+            rebuild: dict[str, object] | None = None
+            if args.semantic_command == "rebuild":
+                rebuild = application.rebuild_semantic_index().to_dict()
+            elif args.semantic_command == "smoke" and args.rebuild:
+                rebuild = application.rebuild_semantic_index().to_dict()
+
+            status = application.semantic_index_status()
+            if args.semantic_command == "status":
+                _write_json_projection(status.to_dict(), None)
+                return 0
+            if args.semantic_command == "rebuild":
+                _write_json_projection({"rebuild": rebuild, "status": status.to_dict()}, None)
+                return 0
+            if args.semantic_command == "smoke":
+                smoke = _semantic_smoke_projection(application, args)
+                _write_json_projection(
+                    {
+                        "status": smoke["tool_status"],
+                        "index": status.to_dict(),
+                        "rebuild": rebuild,
+                        "smoke": smoke,
+                    },
+                    None,
+                )
+                return 0 if smoke["tool_status"] in ("ok", "partial") else 1
+    except (CapabilityContractError, SemanticError, RetrievalError) as exc:
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "error_code": getattr(exc, "error_code", type(exc).__name__),
+                    "error": str(exc),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 1
+    raise RuntimeError(f"unsupported semantic command: {args.semantic_command}")
 
 
 def _select_chat(
@@ -529,6 +742,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_chat_command(args)
     if args.command == "eval":
         return _run_evaluation_command(args)
+    if args.command == "semantic":
+        return _run_semantic_command(args)
     if args.command == "trace":
         try:
             with create_application(args.database) as application:

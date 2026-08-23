@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal, Mapping, Sequence
 
+from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
 from trivae.retrieval.structured import (
     RetrievalResult,
     StructuredAggregateResult,
     StructuredMessageResult,
 )
 
-ToolData = RetrievalResult | StructuredMessageResult | StructuredAggregateResult
+ToolData = RetrievalResult | SemanticRetrievalResult | StructuredMessageResult | StructuredAggregateResult
 
 
 class CapabilityContractError(Exception):
@@ -53,6 +54,16 @@ def _validate_optional_timestamp(name: str, value: int | None) -> None:
 
     if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
         raise CapabilityContractError(f"{name} must be an integer timestamp or None")
+
+
+def _normalize_optional_identifier(name: str, value: str | None) -> str | None:
+    """校验 semantic source/reply locator，避免非字符串值延迟到 SQL 层。"""
+
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise CapabilityContractError(f"{name} must be a non-empty string or None")
+    return value.strip()
 
 
 @dataclass(frozen=True)
@@ -109,6 +120,58 @@ class SearchMessagesInput:
 
 
 @dataclass(frozen=True)
+class SemanticSearchInput:
+    """semantic_search 的独立输入；不复用 keyword，避免工具策略参数化。"""
+
+    query: str
+    session_ids: tuple[str, ...] | None = None
+    start_timestamp: int | None = None
+    end_timestamp: int | None = None
+    sender_user_ids: tuple[str, ...] | None = None
+    message_types: tuple[str, ...] | None = None
+    source_message_id: str | None = None
+    reply_to_source_message_id: str | None = None
+    limit: int = 10
+    context_before: int = 2
+    context_after: int = 2
+    dense_top_k: int = 40
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.query, str) or not self.query.strip():
+            raise CapabilityContractError("query must be a non-empty string")
+        object.__setattr__(self, "query", self.query.strip())
+        object.__setattr__(self, "session_ids", _normalize_scope_sessions(self.session_ids))
+        object.__setattr__(self, "sender_user_ids", _normalize_non_empty_strings("sender_user_ids", self.sender_user_ids))
+        object.__setattr__(self, "message_types", _normalize_non_empty_strings("message_types", self.message_types))
+        _validate_optional_timestamp("start_timestamp", self.start_timestamp)
+        _validate_optional_timestamp("end_timestamp", self.end_timestamp)
+        if self.start_timestamp is not None and self.end_timestamp is not None:
+            if self.start_timestamp > self.end_timestamp:
+                raise CapabilityContractError("query time scope is reversed")
+        object.__setattr__(
+            self,
+            "source_message_id",
+            _normalize_optional_identifier("source_message_id", self.source_message_id),
+        )
+        object.__setattr__(
+            self,
+            "reply_to_source_message_id",
+            _normalize_optional_identifier("reply_to_source_message_id", self.reply_to_source_message_id),
+        )
+        if isinstance(self.limit, bool) or not isinstance(self.limit, int) or self.limit <= 0:
+            raise CapabilityContractError("limit must be positive")
+        for name, value in (
+            ("context_before", self.context_before),
+            ("context_after", self.context_after),
+            ("dense_top_k", self.dense_top_k),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise CapabilityContractError(f"{name} must be non-negative")
+        if self.dense_top_k == 0:
+            raise CapabilityContractError("dense_top_k must be positive")
+
+
+@dataclass(frozen=True)
 class CapabilityMetadata:
     """Agent-facing capability metadata，不绑定 SDK 类型。"""
 
@@ -152,6 +215,40 @@ class ToolEnvelope:
                         "matched_terms": hit.matched_terms,
                         "score": hit.score,
                         "score_type": hit.score_type,
+                    }
+                    for hit in self.data.hits
+                ],
+                "expanded_messages": [asdict(message) for message in self.data.expanded_messages],
+                "total_hits": self.data.total_hits,
+                "returned_messages": self.data.returned_messages,
+                "coverage": asdict(self.data.coverage),
+                "partial": self.data.partial,
+                "truncated": self.data.truncated,
+                "metadata": {
+                    "filters": dict(self.data.metadata.filters),
+                    "ordering": self.data.metadata.ordering,
+                    "latency_ms": self.data.metadata.latency_ms,
+                    "details": dict(self.data.metadata.details),
+                },
+            }
+        elif isinstance(self.data, SemanticRetrievalResult):
+            data = {
+                "strategy": self.data.strategy,
+                "query": self.data.query.to_dict(),
+                "filters": dict(self.data.filters),
+                "hits": [
+                    {
+                        "chunk_id": hit.chunk_id,
+                        "parent_id": hit.parent_id,
+                        "session_id": hit.session_id,
+                        "parent_start_message_id": hit.parent_start_message_id,
+                        "parent_end_message_id": hit.parent_end_message_id,
+                        "start_message_id": hit.start_message_id,
+                        "end_message_id": hit.end_message_id,
+                        "score": hit.score,
+                        "score_type": hit.score_type,
+                        "dense_rank": hit.dense_rank,
+                        "index_identity": hit.index_identity,
                     }
                     for hit in self.data.hits
                 ],

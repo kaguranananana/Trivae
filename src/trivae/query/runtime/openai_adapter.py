@@ -29,7 +29,11 @@ from trivae.query.runtime.contracts import (
     RuntimeResult,
     RuntimeToolCall,
 )
-from trivae.query.runtime.openai_tools import SearchMessagesSDKToolAdapter
+from trivae.query.runtime.openai_tools import (
+    LexicalSearchSDKToolAdapter,
+    SearchMessagesSDKToolAdapter,
+    SemanticSearchSDKToolAdapter,
+)
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
 
 RuntimeEventType = Literal[
@@ -810,6 +814,18 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             # 只把当前结果数量上限投影到 provider schema；完整 scope 仍保留在 RuntimeContext 内执行。
             tools.append(
                 SearchMessagesSDKToolAdapter(context.capability_registry).as_sdk_tool(
+                    trusted_max_results=context.scope.max_results
+                )
+            )
+        if "lexical_search" in context.available_capabilities:
+            tools.append(
+                LexicalSearchSDKToolAdapter(context.capability_registry).as_sdk_tool(
+                    trusted_max_results=context.scope.max_results
+                )
+            )
+        if "semantic_search" in context.available_capabilities:
+            tools.append(
+                SemanticSearchSDKToolAdapter(context.capability_registry).as_sdk_tool(
                     trusted_max_results=context.scope.max_results
                 )
             )

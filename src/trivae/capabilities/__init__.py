@@ -6,12 +6,14 @@ from trivae.capabilities.contracts import (
     CapabilityScopeError,
     ExecutionScope,
     SearchMessagesInput,
+    SemanticSearchInput,
     ToolEnvelope,
     ToolError,
 )
 from trivae.capabilities.registry import CapabilityRegistry
-from trivae.capabilities.search_messages import SearchMessagesCapability
-from trivae.capabilities.tools import SearchMessagesTool
+from trivae.capabilities.search_messages import LexicalSearchCapability, SearchMessagesCapability
+from trivae.capabilities.semantic_search import SemanticSearchCapability
+from trivae.capabilities.tools import LexicalSearchTool, SearchMessagesTool, SemanticSearchTool
 
 __all__ = [
     "CapabilityContractError",
@@ -19,9 +21,14 @@ __all__ = [
     "CapabilityRegistry",
     "CapabilityScopeError",
     "ExecutionScope",
+    "LexicalSearchCapability",
+    "LexicalSearchTool",
     "SearchMessagesCapability",
     "SearchMessagesInput",
     "SearchMessagesTool",
+    "SemanticSearchCapability",
+    "SemanticSearchInput",
+    "SemanticSearchTool",
     "ToolEnvelope",
     "ToolError",
 ]

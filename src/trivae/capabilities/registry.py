@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, ToolEnvelope
+from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, SemanticSearchInput, ToolEnvelope
 
 
 class ToolHandler(Protocol):
@@ -12,7 +12,7 @@ class ToolHandler(Protocol):
 
     name: str
 
-    def invoke(self, request: SearchMessagesInput, scope: ExecutionScope) -> ToolEnvelope:
+    def invoke(self, request: SearchMessagesInput | SemanticSearchInput, scope: ExecutionScope) -> ToolEnvelope:
         """执行 typed tool call。"""
 
 
@@ -32,7 +32,7 @@ class CapabilityRegistry:
     def invoke(
         self,
         name: str,
-        request: SearchMessagesInput,
+        request: SearchMessagesInput | SemanticSearchInput,
         scope: ExecutionScope,
         *,
         trace_context: object | None = None,
