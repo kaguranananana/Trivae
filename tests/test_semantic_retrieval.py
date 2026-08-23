@@ -302,6 +302,46 @@ class SemanticRetrievalTests(unittest.TestCase):
             self.assertEqual(stats.embedding_batch_count, 2)
             self.assertEqual([len(batch) for batch in provider.document_batches], [8, 2])
 
+    def test_builder_isolates_long_embedding_input_from_short_batch(self) -> None:
+        """真实长文本不得把七个短文本一起 padding 到 MPS 高峰。"""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            raw = root / "raw"
+            raw.mkdir()
+            base = 1_768_435_200_000
+            contents = (
+                "long input " * 400,
+                *(f"short marker {index} " + "detail " * 30 for index in range(7)),
+            )
+            write_export(
+                raw,
+                "semantic-long-batch(100).json",
+                [
+                    make_message(
+                        f"long-batch-{index}",
+                        index,
+                        base + index * 2 * 60 * 60 * 1000,
+                        content,
+                    )
+                    for index, content in enumerate(contents)
+                ],
+                chat_name="Semantic Long Batch Fixture",
+                peer_uid=None,
+                version="5.5.64",
+            )
+            provider = _DeterministicProvider()
+            with create_application(root / "app.sqlite3", semantic_provider=provider) as application:
+                application.import_directory(raw)
+                stats = application.rebuild_semantic_index()
+
+            self.assertEqual(stats.status, "completed")
+            self.assertEqual(stats.chunk_count, 8)
+            self.assertEqual(stats.embedding_batch_count, 2)
+            self.assertEqual([len(batch) for batch in provider.document_batches], [1, 7])
+            self.assertGreater(len(provider.document_batches[0][0]), 2048)
+            self.assertLess(max(map(len, provider.document_batches[1])), 2048)
+
     def test_interrupted_rebuild_records_failed_terminal_state(self) -> None:
         """可捕获的 Ctrl+C 不能让已退出进程永久遗留 building 状态。"""
 

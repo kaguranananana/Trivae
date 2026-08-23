@@ -24,6 +24,8 @@ from trivae.retrieval.semantic.contracts import (
 )
 from trivae.retrieval.structured import CanonicalReadRepository, MessageQuery
 
+_LONG_INPUT_ISOLATION_CHARS = 2048
+
 
 @dataclass
 class _PendingParent:
@@ -201,8 +203,25 @@ class SemanticIndexBuilder:
         embedding_elapsed_ms = 0.0
         index_write_elapsed_ms = 0.0
         batch_size = self.provider.document_batch_size
-        while len(chunks) >= batch_size or (flush_all and chunks):
-            current_size = min(batch_size, len(chunks))
+        while chunks:
+            long_offset = next(
+                (
+                    index
+                    for index, chunk in enumerate(chunks)
+                    if len(chunk.embedding_input) > _LONG_INPUT_ISOLATION_CHARS
+                ),
+                None,
+            )
+            if len(chunks) < batch_size and not flush_all and long_offset is None:
+                break
+            if long_offset == 0:
+                # 长输入单独执行，避免其 padding 被放大到整个 batch 的 MPS activation。
+                current_size = 1
+            elif long_offset is not None:
+                # 先按原顺序写完长输入之前的短 chunks，再由下一轮隔离长输入。
+                current_size = min(batch_size, long_offset)
+            else:
+                current_size = min(batch_size, len(chunks))
             batch = tuple(chunks[:current_size])
             embedding_started = perf_counter()
             vectors = self.provider.embed_documents(tuple(chunk.embedding_input for chunk in batch))
