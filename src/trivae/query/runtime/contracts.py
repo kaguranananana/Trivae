@@ -205,6 +205,8 @@ class RuntimeEvent:
     type: Literal[
         "run_started",
         "turn_started",
+        "thinking_delta",
+        "thinking_completed",
         "content_delta",
         "tool_started",
         "tool_completed",

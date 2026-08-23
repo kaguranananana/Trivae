@@ -47,6 +47,7 @@ from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import Planner, SoftPlanner
 from trivae.query.router import Router, RuleRouter
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeResult
+from trivae.query.streaming import QueryStreamAdapter, QueryStreamEventHandler
 from trivae.retrieval.lexical import LexicalRetrieval
 from trivae.retrieval.structured import (
     AggregateQuery,
@@ -272,18 +273,28 @@ class TrivaeApplication:
         self._ensure_open()
         return await self._get_agent_runtime().run(request)
 
-    async def query(self, request: QueryRequest) -> QueryResult:
+    async def query(
+        self,
+        request: QueryRequest,
+        *,
+        on_event: QueryStreamEventHandler | None = None,
+    ) -> QueryResult:
         """Query 的正式 Application 入口，standard/planned 共享同一 runtime。"""
 
         self._ensure_open()
         request_id = request.request_id or f"request-{uuid.uuid4().hex}"
         trace_id = f"trace-{uuid.uuid4().hex}"
         traced_request = replace(request, request_id=request_id)
+        # 一个 adapter 同时消费 normalized facts 与 Runtime delta，并独立分配 Query live sequence。
+        stream_adapter = None if on_event is None else QueryStreamAdapter(on_event, trace_id=trace_id)
         trace = TraceCollector(
             self._trace_store,
             trace_id=trace_id,
             request_id=request_id,
             profile=request.trace_profile,
+            event_observer=(
+                None if stream_adapter is None else stream_adapter.handle_normalized_event
+            ),
         )
         trace.emit(
             stage="query",
@@ -335,7 +346,13 @@ class TrivaeApplication:
                     self._planner,
                     capability_names=self.capability_registry.names(),
                 )
-            result = await self._query_orchestrator.run(effective_request, trace=trace)
+            result = await self._query_orchestrator.run(
+                effective_request,
+                trace=trace,
+                runtime_event_observer=(
+                    None if stream_adapter is None else stream_adapter.handle_runtime_event
+                ),
+            )
             artifact = result.answer_artifact
             if result.is_successful:
                 if artifact is None:
@@ -376,7 +393,10 @@ class TrivaeApplication:
                         phase="failed",
                         operation_id="query",
                         outcome="error",
-                        payload={"error_code": "CONVERSATION_COMMIT_FAILED"},
+                        payload={
+                            "error_code": "CONVERSATION_COMMIT_FAILED",
+                            "error_message": "conversation commit failed",
+                        },
                         failure=FailureInfo(
                             error_code="CONVERSATION_COMMIT_FAILED",
                             origin_stage="conversation",
@@ -427,6 +447,13 @@ class TrivaeApplication:
                     if result.finalization_error is not None
                     else "runtime"
                 )
+                error_message = (
+                    result.finalization_error.message
+                    if result.finalization_error is not None
+                    else result.runtime_result.error.message
+                    if result.runtime_result.error is not None
+                    else "query did not complete"
+                )
                 trace.emit(
                     stage="query",
                     operation="query.aborted" if is_aborted else "query.failed",
@@ -436,6 +463,8 @@ class TrivaeApplication:
                     payload={
                         "termination": result.termination,
                         "error_code": error_code,
+                        # Finalizer/Runtime message 已是 Trivae-owned secret-safe contract。
+                        "error_message": error_message,
                     },
                     failure=FailureInfo(
                         error_code=error_code,
@@ -456,7 +485,11 @@ class TrivaeApplication:
                     phase="failed",
                     operation_id="query",
                     outcome="error",
-                    payload={"exception_type": type(exc).__name__},
+                    payload={
+                        "exception_type": type(exc).__name__,
+                        "error_code": "QUERY_EXCEPTION",
+                        "error_message": "query execution failed",
+                    },
                     failure=FailureInfo(
                         error_code="QUERY_EXCEPTION",
                         origin_stage="query",

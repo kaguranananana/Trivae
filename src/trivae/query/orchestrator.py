@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from time import perf_counter
 from typing import TYPE_CHECKING, Iterable
 
@@ -14,6 +15,7 @@ from trivae.query.runtime.contracts import AgentRuntime
 
 if TYPE_CHECKING:
     from trivae.observability.collector import TraceCollector
+    from trivae.query.runtime.contracts import RuntimeEvent
 
 
 class QueryOrchestrator:
@@ -34,9 +36,18 @@ class QueryOrchestrator:
         self.planner = planner
         self._capability_names = None if capability_names is None else tuple(capability_names)
 
-    async def run(self, request: QueryRequest, *, trace: TraceCollector | None = None) -> QueryResult:
+    async def run(
+        self,
+        request: QueryRequest,
+        *,
+        trace: TraceCollector | None = None,
+        runtime_event_observer: Callable[[RuntimeEvent], None] | None = None,
+    ) -> QueryResult:
         """路由、可选规划后调用一次同一 Runtime；Planner 失败不阻塞主链路。"""
 
+        if runtime_event_observer is not None and trace is None:
+            # live RuntimeEvent 与 normalized facts 必须经同一 Traceable wrapper 排序，禁止另建执行链。
+            raise ValueError("runtime_event_observer requires the query TraceCollector")
         if self._capability_names is not None:
             unknown = set(request.available_capabilities) - set(self._capability_names)
             if unknown:
@@ -271,7 +282,11 @@ class QueryOrchestrator:
             # 延迟导入避免 query package 与 observability collector 的初始化环相互依赖。
             from trivae.observability.collector import TraceableAgentRuntime
 
-            runtime = TraceableAgentRuntime(self.runtime, trace)
+            runtime = TraceableAgentRuntime(
+                self.runtime,
+                trace,
+                runtime_event_observer=runtime_event_observer,
+            )
         runtime_result = await runtime.run(runtime_request)
         if runtime_result.termination != "completed":
             # Runtime failure/abort/max-turn 不能被包装成 Evidence partial 或成功回答。

@@ -568,3 +568,15 @@ Trivae 继承的是“入口薄、装配集中、核心复用、Runtime 与入�
 M5a/M5b 已按本 ADR 的单 Composition Root / shared Query execution boundary 落地：`TrivaeApplication.query()` 仍只进入 `QueryOrchestrator`，由 Orchestrator 在同一 RuntimeResult 之后调用 `query/evidence.py` 的 Answer Finalizer；接口层没有自行组装 Evidence。M5b 再由 Application 从 Conversation Store 读取历史，并仅在 `QueryResult.is_successful` 且 Artifact 非空时调用 Store 的 atomic `commit_turn()`。
 
 Conversation Store 的 create/read/commit/close lifecycle 由 Application factory 统一装配；Runtime、Router、Planner、Tool 与 Finalizer 不直接执行 SQL，也不拥有 Conversation transaction。Conversation Store 独立维护自己的 SQLite connection 与表，replay 只恢复持久化 Artifact，不重新调用 LLM、Retrieval 或 hydration；历史 Evidence 仍不属于后续 Run 的 fresh provenance。Trace backend、Evaluation adapter、HTTP/API wire contract 与 UI 仍待后续 implementation task。
+
+## 17. Interactive CLI streaming implementation status（2026-08-23）
+
+`TrivaeApplication.query(request, on_event=...)` 以 keyword-only optional handler 暴露同一 Query 主链路的实时投影；不传 handler 的 API、Evaluation 与测试调用保持完成后返回 `QueryResult` 的语义。Application 建立 `QueryStreamAdapter`，分别订阅 Runtime Event 与 TraceCollector 已归一化的 domain event；CLI 不直接调用 Runtime、Tool、Retrieval 或 SQLite Trace Store。
+
+`interfaces/cli_renderer.py` 集中拥有普通终端展示：
+
+- normal：真实 Thinking、Route、Plan、Tool 主要参数、Tool/ Retrieval 真实摘要、Answer token streaming、错误与 trace/log identity；
+- verbose：选择可信 `trace_profile=debug`，额外显示 route diagnostics、plan details、bounded Tool arguments、coverage/partial/truncated/duration、usage 与 normalized source metadata；仍不 dump 聊天正文、secret 或 hidden reasoning；
+- Renderer 只维护 presentation segment（thinking/answer/none），不维护或推断 Agent state。完成、failure、abort 与 Ctrl+C 都先关闭开放文本行，下一轮 prompt 不与前一轮粘连。
+
+最终 `AnswerArtifact` 与 Conversation commit contract 不变：streaming 只改变传输与展示，不能逐 token 写 Conversation Store；若 finalization 或 commit 失败，已显示 preview 会以明确 terminal error 结束，不能被当作正式已提交答案。

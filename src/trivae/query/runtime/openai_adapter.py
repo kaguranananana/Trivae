@@ -33,6 +33,8 @@ from trivae.query.runtime.prompt import SYSTEM_PROMPT
 RuntimeEventType = Literal[
     "run_started",
     "turn_started",
+    "thinking_delta",
+    "thinking_completed",
     "content_delta",
     "tool_started",
     "tool_completed",
@@ -84,6 +86,8 @@ class _RunState:
     finalizing: bool = False
     aborted: bool = False
     settled: bool = False
+    # reasoning 只在当前 SDK stream 中短暂存在；该标记仅用于产生一次 completed 边界。
+    thinking_active: bool = False
 
 
 _HIDDEN_ITEM_TYPES = frozenset({"reasoning", "reasoning_item"})
@@ -576,6 +580,10 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             async for sdk_event in streamed_result.stream_events():
                 # hook 事件先进入稳定队列，按 SDK 观察到的顺序投影出去。
                 for pending in self._drain_pending(state):
+                    # Tool/model lifecycle 到达时，先关闭仍开放的 reasoning 段，避免跨阶段粘连。
+                    if state.thinking_active and pending.type != "usage_update":
+                        yield self._event(state, "thinking_completed")
+                        state.thinking_active = False
                     yield self._event(
                         state,
                         pending.type,
@@ -590,14 +598,30 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                     )
                 if state.aborted:
                     continue
-                delta = self._text_delta(sdk_event)
-                if delta:
-                    yield self._event(state, "content_delta", text=delta)
+                stream_delta = self._stream_delta(sdk_event)
+                if stream_delta is not None:
+                    delta_type, delta = stream_delta
+                    if delta_type == "thinking":
+                        # 只有 provider/SDK 实际返回非空 reasoning delta 才开启 Thinking 段。
+                        state.thinking_active = True
+                        yield self._event(state, "thinking_delta", text=delta)
+                    else:
+                        # SDK 没有显式 reasoning done 时，正文首 token 仍是可靠的段落边界。
+                        if state.thinking_active:
+                            yield self._event(state, "thinking_completed")
+                            state.thinking_active = False
+                        yield self._event(state, "content_delta", text=delta)
+                elif self._is_thinking_done(sdk_event) and state.thinking_active:
+                    yield self._event(state, "thinking_completed")
+                    state.thinking_active = False
 
             # SDK stream iterator 完整结束后，再清空最后一批 hook 事件。
             for pending in self._drain_pending(state):
                 if state.aborted and pending.type in {"finalizing", "turn_completed"}:
                     continue
+                if state.thinking_active and pending.type != "usage_update":
+                    yield self._event(state, "thinking_completed")
+                    state.thinking_active = False
                 yield self._event(
                     state,
                     pending.type,
@@ -610,6 +634,11 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                     model_visible_context=pending.model_visible_context,
                     observable_output=pending.observable_output,
                 )
+
+            # reasoning 后若没有正文或 hook 事件，SDK stream 结束本身就是最后的真实边界。
+            if state.thinking_active:
+                yield self._event(state, "thinking_completed")
+                state.thinking_active = False
 
             if state.aborted:
                 result = self._aborted_result(
@@ -767,14 +796,35 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         return items
 
     @staticmethod
-    def _text_delta(event: Any) -> str | None:
-        """只投影 Responses text delta，忽略 SDK raw tool/metadata payload。"""
+    def _stream_delta(event: Any) -> tuple[Literal["thinking", "content"], str] | None:
+        """把 SDK public delta 归一化为 provider-neutral reasoning/content。"""
 
         data = getattr(event, "data", None)
-        if getattr(data, "type", None) != "response.output_text.delta":
+        event_type = getattr(data, "type", None)
+        if event_type == "response.output_text.delta":
+            delta_type: Literal["thinking", "content"] = "content"
+        elif event_type in {
+            "response.reasoning_summary_text.delta",
+            "response.reasoning_text.delta",
+        }:
+            # DeepSeek reasoning_content 已由 SDK 转成 public Responses event；这里不读取 provider 字段。
+            delta_type = "thinking"
+        else:
             return None
         delta = getattr(data, "delta", None)
-        return delta if isinstance(delta, str) and delta else None
+        if not isinstance(delta, str) or not delta:
+            return None
+        return delta_type, delta
+
+    @staticmethod
+    def _is_thinking_done(event: Any) -> bool:
+        """识别 SDK public reasoning done，不依赖 DeepSeek-specific response 字段。"""
+
+        data = getattr(event, "data", None)
+        return getattr(data, "type", None) in {
+            "response.reasoning_summary_text.done",
+            "response.reasoning_text.done",
+        }
 
     @staticmethod
     def _drain_pending(state: _RunState) -> list[_PendingEvent]:

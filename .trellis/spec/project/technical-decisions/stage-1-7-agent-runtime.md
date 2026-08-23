@@ -940,6 +940,25 @@ Plan 只作为 soft guidance 注入，Runtime 不逐条执行 plan.steps
 Trivae 显式关闭 SDK built-in external tracing
 ```
 
+### Interactive CLI streaming implementation amendment（2026-08-23）
+
+本次实现把既有 canonical stream 继续向 Application Surface 投影，没有增加第二套 Agent Loop：
+
+```text
+DeepSeek reasoning_content
+  → OpenAI Agents SDK public reasoning delta
+  → RuntimeEvent(thinking_delta)
+  → QueryStreamEvent(thinking.delta)
+  → CLI Renderer
+
+RuntimeEvent(content_delta: Answer Artifact JSON)
+  → content_blocks[*].text incremental projection
+  → QueryStreamEvent(answer.delta)
+  → CLI Renderer
+```
+
+reasoning 仅在 Provider 确实返回非空内容时出现；CLI 不读取 Provider-specific 字段，也不根据阶段生成伪 thinking。Answer delta 只作实时 preview，完整输出仍由 Citation Finalizer 验证，并在 Query 真正完成后一次性提交 Conversation。`thinking_delta`、`thinking_completed` 与 token delta 不进入持久化 Trace，保持 Stage 1.9 的 hidden reasoning / Chain-of-Thought 隐私边界。
+
 ## 19. Result、Trade-off 与 Reopen Conditions
 
 ### Result

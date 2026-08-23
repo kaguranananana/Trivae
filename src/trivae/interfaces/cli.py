@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sys
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, TextIO, cast
 
 from trivae.bootstrap.application import TrivaeApplication, create_application
 from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope
@@ -23,6 +24,7 @@ from trivae.evaluation import (
 )
 from trivae.evaluation.review import M6_FAILURE_REGRESSION_MAP
 from trivae.evaluation.store import EvaluationStoreError
+from trivae.interfaces.cli_renderer import CliEventRenderer
 from trivae.observability.sqlite import ImportDiagnosticsError, TraceStoreError
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
 from trivae.retrieval.structured import RetrievalError
@@ -65,6 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/trivae.sqlite3"),
         help="SQLite Canonical Store path",
+    )
+    chat_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed route, plan, tool, retrieval, usage, and normalized event metadata",
     )
     trace_parser = subparsers.add_parser("trace", help="Read a persisted Trace projection")
     trace_subparsers = trace_parser.add_subparsers(dest="trace_command", required=True)
@@ -241,7 +248,13 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 evaluation_database_path=args.evaluation_database,
             ) as application:
                 runs = asyncio.run(application.evaluate_suite(suite, cases, variant, repetitions=args.repeat))
-            print(json.dumps({"suite": suite.identity, "variant": variant.to_dict(), "runs": [run.to_dict() for run in runs]}, ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    {"suite": suite.identity, "variant": variant.to_dict(), "runs": [run.to_dict() for run in runs]},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             return 0
 
         if args.evaluation_command == "show":
@@ -316,6 +329,28 @@ def _select_chat(
         output_fn("Invalid selection.")
 
 
+class _CallbackTextStream:
+    """把 write/flush 文本流适配到旧的逐行 output_fn，专供可注入 CLI 测试使用。"""
+
+    def __init__(self, output_fn: Callable[[str], None]) -> None:
+        """保存逐行回调和仍未遇到换行的流式片段。"""
+
+        self._output_fn = output_fn
+        self._buffer = ""
+
+    def write(self, content: str) -> int:
+        """按换行边界交付完整行，连续 token 在测试投影中仍保持同一文本段。"""
+
+        self._buffer += content
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", maxsplit=1)
+            self._output_fn(line)
+        return len(content)
+
+    def flush(self) -> None:
+        """回调没有独立缓冲设备；开放行由 Renderer 在段完成时显式关闭。"""
+
+
 def _query_failure_message(result: QueryResult) -> str:
     """从 QueryResult 的正式错误投影生成可读失败信息，不读取 runtime_answer。"""
 
@@ -335,14 +370,16 @@ def _print_query_result(
     output_fn: Callable[[str], None],
     log_path: Path | None = None,
     log_error: str | None = None,
+    answer_already_rendered: bool = False,
+    failure_already_rendered: bool = False,
 ) -> None:
-    """只投影 final_answer、可读失败信息、Trace ID 和文本日志路径。"""
+    """补齐未被 stream 投影的结果，并始终展示 Trace 与文本日志位置。"""
 
     # `is_successful` 与 `final_answer` 同时成立，才允许展示正式回答。
-    if result.is_successful and result.final_answer is not None:
+    if result.is_successful and result.final_answer is not None and not answer_already_rendered:
         output_fn("Trivae >")
         output_fn(result.final_answer)
-    else:
+    elif not result.is_successful and not failure_already_rendered:
         # 失败时明确暴露状态，绝不把 Runtime 原始文本当成用户答案。
         output_fn("Trivae >")
         output_fn(f"Error: {_query_failure_message(result)}")
@@ -363,12 +400,15 @@ async def _run_interactive_chat(
     *,
     input_fn: Callable[[str], str] | None = None,
     output_fn: Callable[[str], None] | None = None,
+    verbose: bool = False,
 ) -> int:
     """运行一段固定 session scope、可复用 Conversation 的交互式 Query loop。"""
 
     # 只在函数调用时解析默认 I/O，便于测试注入 scripted input 而不触碰 provider。
     read_input = input if input_fn is None else input_fn
     write_output = print if output_fn is None else output_fn
+    # 真实终端直接接收 token write；注入 output_fn 时用逐行 adapter 保持既有测试接口。
+    terminal_stream = sys.stdout if output_fn is None else cast(TextIO, _CallbackTextStream(write_output))
 
     # Session metadata 通过 Application facade 读取，CLI 不直接读 SQLite。
     sessions = application.list_sessions()
@@ -419,8 +459,19 @@ async def _run_interactive_chat(
             continue
 
         # 普通文本统一编译为正式 QueryRequest，并进入 Application Query path。
-        request = QueryRequest(query=query, scope=scope, conversation_id=conversation_id)
-        result = await application.query(request)
+        request = QueryRequest(
+            query=query,
+            scope=scope,
+            conversation_id=conversation_id,
+            trace_profile="debug" if verbose else "normal",
+        )
+        renderer = CliEventRenderer(terminal_stream, verbose=verbose)
+        try:
+            # Application 仍执行唯一 Query 主链路；CLI 只订阅同源实时事件。
+            result = await application.query(request, on_event=renderer.handle)
+        finally:
+            # 成功、分类错误、task cancellation 和 Ctrl+C 都必须恢复到完整终端行。
+            renderer.finish()
         # QueryResult 是 Conversation identity 的正式返回边界，后续轮次复用它。
         conversation_id = result.conversation_id
         log_path: Path | None = None
@@ -432,7 +483,14 @@ async def _run_interactive_chat(
             except TraceStoreError as exc:
                 # 文本日志是诊断 projection；失败时继续显示答案并保留明确原因。
                 log_error = str(exc)
-        _print_query_result(result, output_fn=write_output, log_path=log_path, log_error=log_error)
+        _print_query_result(
+            result,
+            output_fn=write_output,
+            log_path=log_path,
+            log_error=log_error,
+            answer_already_rendered=renderer.answer_rendered,
+            failure_already_rendered=renderer.failure_rendered,
+        )
 
 
 def _run_chat_command(args: argparse.Namespace) -> int:
@@ -441,7 +499,7 @@ def _run_chat_command(args: argparse.Namespace) -> int:
     try:
         # Application 统一拥有 Store、Provider、Conversation 和 Trace lifecycle。
         with create_application(args.database) as application:
-            return asyncio.run(_run_interactive_chat(application))
+            return asyncio.run(_run_interactive_chat(application, verbose=args.verbose))
     except (EOFError, KeyboardInterrupt):
         # Ctrl+D/Ctrl+C 即使发生在 Query 等待期间，也只做短退出提示。
         print("Bye.")

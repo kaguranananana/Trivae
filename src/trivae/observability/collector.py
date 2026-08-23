@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Literal, cast
@@ -186,6 +186,7 @@ class TraceCollector:
         started_at: str | None = None,
         secret_values: tuple[str, ...] = (),
         logger: logging.Logger | None = None,
+        event_observer: Callable[[NormalizedQueryEvent], None] | None = None,
     ) -> None:
         """创建 Trace metadata；Store 失败只影响诊断完整度，不改变业务控制流。"""
 
@@ -196,6 +197,8 @@ class TraceCollector:
         self.started_at = started_at or utc_now()
         self.policy = CapturePolicy.for_profile(profile, secret_values=secret_values)
         self.logger = logger or logging.getLogger(__name__)
+        # live observer 接收同 identity/sequence 的短生命周期 event；Query adapter 必须按字段白名单投影。
+        self._event_observer = event_observer
         self._sequence = 0
         self._degraded = False
         self._warnings: list[str] = []
@@ -256,17 +259,22 @@ class TraceCollector:
         raw_payload: Mapping[str, object] = {} if payload is None else payload
         try:
             captured_payload, capture_limitations = self.policy.capture(raw_payload)
-            all_limitations = list(limitations) + list(capture_limitations)
+            live_limitations = list(limitations)
             if self._degraded:
-                all_limitations.append("trace_collector_degraded")
+                live_limitations.append("trace_collector_degraded")
+            all_limitations = live_limitations + list(capture_limitations)
+            # 两个 projection 必须复用同一 identity/time，区别只在持久化 data-minimization。
+            event_id = f"event-{uuid.uuid4().hex}"
+            event_occurred_at = occurred_at or utc_now()
+            event_observed_at = utc_now()
             event = NormalizedQueryEvent(
                 schema_version=self.schema_version,
-                event_id=f"event-{uuid.uuid4().hex}",
+                event_id=event_id,
                 trace_id=self.trace_id,
                 request_id=self.request_id,
                 sequence=self._sequence,
-                occurred_at=occurred_at or utc_now(),
-                observed_at=utc_now(),
+                occurred_at=event_occurred_at,
+                observed_at=event_observed_at,
                 stage=stage,
                 operation=operation,
                 phase=phase,
@@ -278,14 +286,34 @@ class TraceCollector:
                 limitations=tuple(dict.fromkeys(all_limitations)),
                 failure=failure,
             )
-            self.store.append_event(event)
+            live_event = NormalizedQueryEvent(
+                schema_version=self.schema_version,
+                event_id=event_id,
+                trace_id=self.trace_id,
+                request_id=self.request_id,
+                sequence=self._sequence,
+                occurred_at=event_occurred_at,
+                observed_at=event_observed_at,
+                stage=stage,
+                operation=operation,
+                phase=phase,
+                operation_id=operation_id,
+                parent_operation_id=parent_operation_id,
+                outcome=outcome,
+                duration_ms=duration_ms,
+                payload=raw_payload,
+                limitations=tuple(dict.fromkeys(live_limitations)),
+                failure=failure,
+            )
         except (TraceCaptureError, TraceContractError) as exc:
             self._record_capture_failure("PAYLOAD_INVALID", exc)
             return None
+
+        try:
+            self.store.append_event(event)
         except Exception as exc:
             # append/constraint/connection failure 是 Trace degradation，不是业务 fallback。
             self._record_store_failure("APPEND_FAILED", exc)
-            return None
 
         if stage == "query" and operation in {"query.completed", "query.failed", "query.aborted"}:
             terminal = {
@@ -297,6 +325,10 @@ class TraceCollector:
                 self.store.mark_terminal(self.trace_id, terminal, event.observed_at)
             except Exception as exc:
                 self._record_store_failure("TERMINAL_UPDATE_FAILED", exc)
+        if self._event_observer is not None:
+            # Store 使用 captured event；live consumer 使用同 identity 的 pre-capture event，避免答案被截断。
+            # Observer 异常属于实时 consumer 本身，不能被误记为 Trace degradation 或静默吞掉。
+            self._event_observer(live_event)
         return event
 
     def _record_capture_failure(self, code: str, exc: Exception) -> None:
@@ -358,9 +390,16 @@ class TraceOperationContext:
 class TraceableAgentRuntime(AgentRuntime):
     """把 RuntimeEvent 或 run-only runtime 投影进当前 Trace，不改变 Runtime 结果。"""
 
-    def __init__(self, runtime: AgentRuntime, collector: TraceCollector) -> None:
+    def __init__(
+        self,
+        runtime: AgentRuntime,
+        collector: TraceCollector,
+        *,
+        runtime_event_observer: Callable[[RuntimeEvent], None] | None = None,
+    ) -> None:
         self.runtime = runtime
         self.collector = collector
+        self._runtime_event_observer = runtime_event_observer
         self._run_operation_id = "runtime.run"
         self._last_turn_operation_id: str | None = None
 
@@ -401,6 +440,9 @@ class TraceableAgentRuntime(AgentRuntime):
             async for event in stream(request):
                 if not isinstance(event, RuntimeEvent):
                     raise TypeError("runtime stream must yield RuntimeEvent values")
+                if self._runtime_event_observer is not None:
+                    # 同一 RuntimeEvent 先进入 live projection，再由 persistent mapper选择可落盘事实。
+                    self._runtime_event_observer(event)
                 self._map_runtime_event(event)
                 if event.type in {"completed", "failed", "aborted"}:
                     terminal = event.result
@@ -547,7 +589,7 @@ class TraceableAgentRuntime(AgentRuntime):
             )
         elif event.type in {"completed", "failed", "aborted"}:
             self._map_terminal_event(event, run_operation, payload)
-        # content_delta 有意不进入 persistent Trace，避免逐 token 永久存储。
+        # thinking/content delta 有意不进入 persistent Trace，避免 reasoning/token 永久存储。
 
     def _turn_operation_id(self, run_operation: str, event: RuntimeEvent) -> str:
         """把同一模型轮次的 started/usage/completed 绑定到同一个 operation。"""

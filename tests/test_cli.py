@@ -4,7 +4,8 @@ import asyncio
 import inspect
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from collections.abc import Callable
+from contextlib import nullcontext, redirect_stdout
 from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
@@ -17,6 +18,7 @@ from trivae.data.model import ChatSession
 from trivae.interfaces import cli
 from trivae.observability.sqlite import TraceStoreError
 from trivae.query.contracts import QueryRequest
+from trivae.query.streaming import QueryStreamEvent
 
 
 @dataclass(frozen=True)
@@ -42,10 +44,14 @@ class _FakeApplication:
         results: list[_FakeResult],
         *,
         export_error: Exception | None = None,
+        event_batches: list[tuple[QueryStreamEvent, ...]] | None = None,
+        query_error: BaseException | None = None,
     ) -> None:
         self.sessions = sessions
         self.results = results
         self.export_error = export_error
+        self.event_batches = event_batches or []
+        self.query_error = query_error
         self.requests: list[QueryRequest] = []
         self.exported_trace_ids: list[str] = []
         self.list_sessions_calls = 0
@@ -56,10 +62,21 @@ class _FakeApplication:
         self.list_sessions_calls += 1
         return self.sessions
 
-    async def query(self, request: QueryRequest) -> _FakeResult:
+    async def query(
+        self,
+        request: QueryRequest,
+        *,
+        on_event: Callable[[QueryStreamEvent], None] | None = None,
+    ) -> _FakeResult:
         """记录正式 QueryRequest，并按脚本返回 QueryResult 投影。"""
 
         self.requests.append(request)
+        if self.event_batches:
+            for event in self.event_batches.pop(0):
+                if on_event is not None:
+                    on_event(event)
+        if self.query_error is not None:
+            raise self.query_error
         if not self.results:
             raise AssertionError("the scripted query result list is exhausted")
         return self.results.pop(0)
@@ -116,6 +133,10 @@ class ChatCliTests(unittest.TestCase):
 
         self.assertEqual(args.command, "chat")
         self.assertEqual(args.database, Path("data/trivae.sqlite3"))
+        self.assertFalse(args.verbose)
+
+        verbose_args = cli.build_parser().parse_args(["chat", "--verbose"])
+        self.assertTrue(verbose_args.verbose)
 
     def test_chat_parser_keeps_existing_import_trace_and_eval_commands(self) -> None:
         """新增子命令不能让原有入口失去 parser 识别能力。"""
@@ -238,6 +259,38 @@ class ChatCliTests(unittest.TestCase):
         self.assertIn("formal final answer", output)
         self.assertNotIn("raw runtime answer", output)
 
+    def test_streamed_answer_is_not_printed_twice_and_verbose_selects_debug_trace(self) -> None:
+        """CLI 消费实时 Answer 后只展示一次正文，verbose 同时选择可信 debug profile。"""
+
+        application = _FakeApplication(
+            (_session("qq:100", "AI 群"),),
+            [_FakeResult("完整答案", "raw artifact", "conversation", "trace", True)],
+            event_batches=[
+                (
+                    QueryStreamEvent(type="answer.delta", sequence=1, content="完整"),
+                    QueryStreamEvent(type="answer.delta", sequence=2, content="答案"),
+                    QueryStreamEvent(type="answer.completed", sequence=3, content="完整答案"),
+                    QueryStreamEvent(type="query.completed", sequence=4),
+                )
+            ],
+        )
+        _, input_fn = _scripted_input(["1", "问题", "/exit"])
+        output: list[str] = []
+
+        asyncio.run(
+            cli._run_interactive_chat(
+                application,
+                input_fn=input_fn,
+                output_fn=output.append,
+                verbose=True,
+            )
+        )
+
+        self.assertEqual(application.requests[0].trace_profile, "debug")
+        self.assertEqual(output.count("完整答案"), 1)
+        self.assertNotIn("Trivae >", output)
+        self.assertIn("Answer:", output)
+
     def test_failed_query_displays_readable_error_without_runtime_fallback(self) -> None:
         """没有 final_answer 时显示正式错误投影，不能偷偷退回 runtime 文本。"""
 
@@ -344,6 +397,26 @@ class ChatCliTests(unittest.TestCase):
                 self.assertEqual(exit_code, 0)
                 self.assertEqual(application.requests, [])
                 self.assertIn("Bye.", output)
+
+    def test_ctrl_c_during_stream_closes_open_line_and_returns_to_terminal(self) -> None:
+        """Query 中途 Ctrl+C 必须执行 Renderer finally，下一行再显示退出提示。"""
+
+        application = _FakeApplication(
+            (_session("qq:100", "AI 群"),),
+            [],
+            event_batches=[(QueryStreamEvent(type="thinking.delta", sequence=1, content="处理中"),)],
+            query_error=KeyboardInterrupt(),
+        )
+        output = StringIO()
+        with (
+            patch.object(cli, "create_application", return_value=nullcontext(application)),
+            patch("builtins.input", side_effect=["1", "问题"]),
+            redirect_stdout(output),
+        ):
+            exit_code = cli.main(["chat"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Thinking...\n处理中\nBye.\n", output.getvalue())
 
     def test_chat_loop_uses_application_query_not_runtime_or_retrieval(self) -> None:
         """静态边界回归：交互 loop 只能通过 Application query 进入生产链路。"""

@@ -115,6 +115,14 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 
 `RuntimeErrorInfo` 只允许 Trivae-owned `code/message/stage/category/diagnostic_type`。对外 message 不使用原始 provider exception body；最多保留稳定异常 type 供定位。已知 `CapabilityContractError` 仍返回 `ToolEnvelope(status="error")` 供 Agent 恢复；未知 Tool/Adapter exception 继续 terminal failure。
 
+### Interactive streaming projection
+
+- Provider reasoning 只允许在 SDK / Runtime adapter 边界从公开 stream event 归一化为 `thinking_delta` / `thinking_completed`；CLI 不识别 `reasoning_content` 或 provider name。没有或为空时不产生 Thinking 输出，禁止按执行状态伪造推理文字。
+- `content_delta` 承载的是 Answer Artifact JSON。实时投影只能增量提取 `content_blocks[*].text`；Finalizer 仍以完整 JSON 为唯一验证边界，Conversation 只提交一次完整 Assistant message。
+- Runtime event 与 Router / Planner / Tool / Retrieval 的 normalized event 由同一个进程内 `QueryStreamAdapter` 投影为 `QueryStreamEvent`；Trace Store 不是实时队列，CLI 不轮询 SQLite。
+- reasoning 与 answer token delta 是 ephemeral stream facts，不能写入 Normal/Debug Trace；Trace 继续排除 hidden reasoning / Chain-of-Thought。Tool、Retrieval、Route 与 Plan 只显示真实结构化 event facts。
+- Renderer 归 `interfaces` 所有，只负责 normal/verbose 格式、bounded 参数摘要、文本段换行和 terminal 恢复；Runtime、Tool、Retrieval、Router、Planner 内部不得加入 CLI print。
+
 ## 4. Validation & Error Matrix
 
 | Condition | Required behavior |
@@ -134,6 +142,9 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 | User abort before/during run | `aborted`；无 final synthesis、无 completed，等待 SDK cleanup |
 | Invalid / unresolved citation after completed runtime | Query 返回 `finalization_error`；不返回 validated answer、不删除 binding、不自动修复 |
 | Closed runtime/application reused | 显式 lifecycle error；不得静默重建 provider/resource |
+| Provider 没有/返回空 reasoning | 不产生 Thinking；Tool、Answer 与 terminal event 正常继续 |
+| Provider stream 在 answer delta 后失败 | 关闭开放文本段、显示 normalized failure；不产生 answer.completed，不提交 Conversation |
+| 多轮 Tool Call | 按 Runtime/normalized event sequence 展示，不由 Renderer 推断或重排 |
 
 ## 5. Good / Base / Bad Cases
 

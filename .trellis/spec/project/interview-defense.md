@@ -212,3 +212,14 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
   Evidence: SQLite Store 直接 decode `answer_artifact_json`；restart test 只 close/reopen/load，真实 smoke 断言 Artifact/snapshot/citation replay。
 - Q: 未来什么证据会让你重新评估？
   Evidence: 单个 Conversation 的真实历史窗口、mutation/audit、branching 或 evaluation 需求出现可复现 Failure Case 后，再评估压缩、版本化 migration 或 mutation UX。
+
+## Interactive CLI streaming 事实索引
+
+- Problem / root cause：Runtime 本来已有 canonical SDK stream，M6 也已有 Router/Planner/Tool/Retrieval normalized facts；阻塞体验来自 Application 只在完成后返回 `QueryResult`，不是 Agent Loop 缺失。对应 task 的 `design.md` 与 `validation.md` 保存了 ChatLab mapping、代码证据和真实 smoke。
+- Why this design：`QueryStreamAdapter` 同时消费 Runtime delta 和 TraceCollector 的 pre-capture live event；Trace 使用同 identity 的 CapturePolicy projection。这样 CLI 不轮询 SQLite、不解析 SDK、不复制 Router/Planner/Tool 执行链，Trace 也不持久化 reasoning/token。
+- Provider boundary：DeepSeek `reasoning_content` 由 OpenAI Agents SDK 0.22.0 转成 public reasoning event，再由 Runtime adapter 转为 `thinking_delta`。Provider 不返回时不显示；禁止 CLI 根据 Tool 状态生成伪 reasoning。
+- Structured answer trade-off：Provider content 是 Citation-aware JSON，不能像 ChatLab 一样直接打印。增量 parser 只提取 `content_blocks[*].text`，Finalizer 仍验证完整 Artifact；parser failure/Finalizer failure 显式终止，不 repair 或提交 preview。
+- Failure evidence：测试覆盖空 reasoning、malformed stream、Tool failure recovery、Provider/Query failure、0 result、Trace Store failure、normal Trace truncation、Ctrl+C line recovery 和单次 Conversation commit。第一次真实 smoke 因进程未导出 API key 按 Settings contract 失败并留下 Trace；导出既有 `.env` 后成功，没有用 mock 替代。
+- Measured fact：真实 DeepSeek verbose run 产生 8 次 `search_messages`、8 次 Retrieval completion、1 次 finalization/Conversation commit/query completion；Trace complete，0 reasoning/content-delta persistence，Conversation 只有一个 560 字符 Assistant message并与最终 snapshot 相同。
+- Ownership：Runtime adapter 拥有 SDK → Runtime normalization；QueryStreamAdapter 拥有接口无关 live projection；TraceCollector 拥有持久化 data minimization；CLI Renderer 只拥有 terminal presentation；Conversation/Finalizer 语义未改变。
+- Evolution：只有真实 workload 证明普通终端 reasoning 过长、需要跨进程消费者或 HTTP/UI 产品需求时，才评估折叠、SSE/backpressure 或异步 event transport；当前不引入 TUI、queue 或第二套日志链。

@@ -32,17 +32,20 @@
 
 ### 2. Signatures
 
-- `trivae chat [--database PATH]`：默认数据库为 `data/trivae.sqlite3`。
+- `trivae chat [--database PATH] [--verbose]`：默认数据库为 `data/trivae.sqlite3`；verbose 选择可信本地 debug Trace profile，并扩大终端诊断投影。
 - `TrivaeApplication.list_sessions() -> tuple[ChatSession, ...]`：由 Application 暴露 session metadata read facade。
 - `SQLiteCanonicalReadRepository.list_sessions() -> tuple[ChatSession, ...]`：只读 `chat_sessions` canonical 表，并按 `name COLLATE NOCASE ASC, session_id ASC` 稳定排序。
-- 普通输入必须构造 `QueryRequest(query=..., scope=..., conversation_id=...)` 并调用 `await application.query(request)`。
+- 普通输入必须构造 `QueryRequest(query=..., scope=..., conversation_id=..., trace_profile=...)` 并调用 `await application.query(request, on_event=renderer.handle)`；仍只进入一次同一 Application Query 主链路。
 
 ### 3. Contracts
 
 - 选择具体 session 后，CLI 生命周期内固定 `ExecutionScope(allowed_session_ids=(selected_session_id,))`。
 - 选择 `0. All chats` 时使用 `ExecutionScope(allowed_session_ids=None)`；不得创建 `ALL`、`*` 等伪 session ID。
 - `conversation_id` 是独立于 scope 的 CLI 状态：首轮为 `None`，后续使用上一次 `QueryResult.conversation_id`，`/new` 只清空它。
-- 成功 Query 只展示 `QueryResult.final_answer` 和 `trace_id`；`runtime_answer` 不是用户答案 fallback。
+- 成功 Query 实时展示 `QueryStreamEvent` 投影，并在没有 answer delta 时使用 `QueryResult.final_answer` 补齐正式答案；已经 streamed 的正文不得重复打印，`runtime_answer` 不是用户答案 fallback。
+- normal 显示真实 Thinking、Route、Plan、Tool/ Retrieval 摘要、Answer streaming 与 terminal error；verbose 额外显示 bounded diagnostics、usage、timing 和 normalized source metadata。两者都不能 dump 巨大 Tool Result、secret 或越权数据。
+- Thinking 只能来自 Runtime adapter 对 Provider 实际 reasoning delta 的归一化；Provider 不支持或返回空值时完全不显示，CLI 不得按 stage 伪造 reasoning。
+- Renderer 在 Tool/status/terminal/interrupt 前关闭开放 thinking/answer 行；Streaming delta 只作展示，Conversation Store 仍一次提交完整 validated Assistant Answer。
 - Provider 继续使用 `load_settings()` 的 `DEEPSEEK_API_KEY`、`TRIVAE_MODEL_PROVIDER`、`TRIVAE_MODEL_NAME` 和 `DEEPSEEK_BASE_URL` contract，不在 CLI 创建 client。
 
 ### 4. Validation & Error Matrix
@@ -53,6 +56,9 @@
 | 选择序号非法或越界 | 展示 `Invalid selection.`，保留 picker，不改变 scope |
 | `SettingsError` / Query / Scope 等已分类错误 | 展示 `Error: ...`，必要时带 Trace ID，返回非零状态 |
 | EOF / Ctrl+C | 展示短退出提示并返回零状态 |
+| Provider 无 reasoning / 空 delta | 不显示 Thinking；其余事件与 Answer 正常 |
+| Tool / Retrieval failure | 关闭开放文本段并显示真实 normalized error；Agent 可恢复时继续后续事件 |
+| Provider stream failure | 显示 terminal error、恢复完整终端行；不产生正式 answer completion/commit |
 | 未知编程异常 | 不用 catch-all 静默吞掉，保留可诊断 traceback |
 
 ### 5. Good / Base / Bad Cases
@@ -67,6 +73,8 @@
 - Application read facade 返回真实 session 且顺序稳定。
 - 单 session scope、unrestricted scope、Query 调用、首轮/后续 conversation ID、`/new` 不改变 scope。
 - `final_answer` / Trace projection、无 final answer 时不展示 runtime 原文。
+- reasoning/content normalization、Renderer fragment 顺序、provider without reasoning、multi-tool、0 result、Tool/Provider failure 与 verbose metadata。
+- Streaming 与 non-streaming 的 Conversation Assistant Answer 完整内容一致；Trace 保留 M6 事件且不持久化 reasoning/token delta。
 - `/exit`、`/quit`、EOF、Ctrl+C 和已分类 Settings 错误。
 - changed source 的 lint/type check 与完整测试集。
 
@@ -100,7 +108,7 @@ Trace 需要被人工直接打开查看，或需要为既有 SQLite Trace 生成
 - Debug Transcript 必须尽可能显示本轮实际 model input、assistant visible output、Tool Call arguments 和下一轮 input 中的 `function_call_output.output`；Tool Result 正文以模型实际看到的 output 为准，检索完整性 metadata 单独显示。
 - `function_call` / `function_call_output` 以及 message content blocks 必须在 SDK adapter 内转换为 Trivae-owned plain data；禁止 `repr(item)`、无界 SDK dump、hidden reasoning、provider internal reasoning 或 SDK scratchpad 进入 Trace。
 - 当前 CapturePolicy 上限为 Normal `512` 字符/`16` 个集合项/深度 `6`、Debug `20,000` 字符/`128` 个集合项/深度 `10`；截断必须保留 limitation，Debug 不是 Data Access Scope 或 secret policy 的旁路。
-- `trivae chat` 先展示 Query 正式答案和 Trace ID，再展示日志路径；日志导出失败必须显式输出 `[trace log unavailable: ...]`，不能伪装成成功。
+- `trivae chat` 在执行中流式展示正式答案 preview，Query 完成后展示 Trace ID 和日志路径；日志导出失败必须显式输出 `[trace log unavailable: ...]`，不能伪装成成功。
 - 默认日志文件名拒绝路径分隔符；自定义 `--output` 仅表示用户明确指定的输出路径。
 
 ### 3.1 Human-readable Execution Transcript amendment

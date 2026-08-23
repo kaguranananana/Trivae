@@ -661,3 +661,18 @@ collector.emit(stage="query", operation="query.completed", phase="completed", ..
 ```
 
 The correct path keeps identity semantics separate, normalizes at the SDK boundary, and makes the Conversation commit the explicit completion boundary.
+
+## 21. Interactive streaming projection implementation record（2026-08-23）
+
+实时 CLI 与 M6 Trace 现在共享同一批运行事实，但使用两个生命周期不同的投影：
+
+```text
+Runtime / normalized domain event
+        ├── Trace Collector → CapturePolicy → SQLite Trace Store
+        └── in-memory observer → QueryStreamAdapter → CLI Renderer
+```
+
+- `TraceCollector` 在 normalized event 构造成功后可通知进程内 observer；CLI 不读取或轮询 Trace Store，Trace Store failure 也不把它变成消息队列。
+- Runtime token / reasoning delta 通过同一个 `TraceableAgentRuntime` stream 通知 live adapter；persistent mapper继续忽略它们。Normal/Debug Trace 都不保存 Provider reasoning 或 Answer token events。
+- Router、Planner、Tool、Retrieval、Finalization、Conversation commit 与 Query terminal 仍由各自真实 M6 boundary 发出；CLI 只消费其适合人读的 projection，不保存终端文本作为核心 Trace payload。
+- live `QueryStreamEvent.sequence` 只负责一次实时投影的确定顺序；M6 `NormalizedQueryEvent.sequence` 仍是持久化 Trace 的 canonical replay sequence，两者通过 `source_sequence/source_operation/trace_id` 关联而不混用身份。
