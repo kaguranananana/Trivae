@@ -536,3 +536,24 @@ Implemented trivae chat on main with Application-backed session selection, fixed
 ### Status
 
 [OK] **Completed**
+
+
+## Session 24: Add human-readable Trace logs
+
+**Date**: 2026-08-23
+**Task**: Add human-readable Trace logs
+**Branch**: `codex/interactive-chat-cli-main`
+
+### Summary
+
+Added derived UTF-8 Trace text logs, Application export facade, trace export CLI, chat log paths, tests, and migrated six existing real traces to data/traces/.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5683530` | (see git log) |
+
+### Status
+
+[OK] **Completed**
