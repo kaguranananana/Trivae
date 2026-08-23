@@ -35,12 +35,16 @@ class _DeterministicProvider:
     )
     document_batch_size = 8
 
+    def __init__(self) -> None:
+        self.document_batches: list[tuple[str, ...]] = []
+
     def preload(self) -> None:
         """确定性 fixture 没有模型资源，但遵守显式加载计时 contract。"""
 
     def embed_documents(self, texts: tuple[str, ...]) -> tuple[tuple[float, ...], ...]:
         """让包含 budget 的 child 与 query 对齐，其余 child 使用正交向量。"""
 
+        self.document_batches.append(tuple(texts))
         return tuple((1.0, 0.0, 0.0) if "budget" in text else (0.0, 1.0, 0.0) for text in texts)
 
     def embed_query(self, text: str) -> tuple[float, ...]:
@@ -166,7 +170,8 @@ class SemanticRetrievalTests(unittest.TestCase):
             root = Path(temporary)
             raw = _write_semantic_fixture(root)
             database_path = root / "app.sqlite3"
-            with create_application(database_path, semantic_provider=_DeterministicProvider()) as application:
+            provider = _DeterministicProvider()
+            with create_application(database_path, semantic_provider=provider) as application:
                 application.import_directory(raw)
                 stats = application.rebuild_semantic_index()
                 repeated_stats = application.rebuild_semantic_index()
@@ -191,7 +196,9 @@ class SemanticRetrievalTests(unittest.TestCase):
                 self.assertEqual(stats.chunk_count, 2)
                 self.assertEqual(stats.embedding_count, 2)
                 self.assertEqual(stats.embedding_batch_size, 8)
-                self.assertEqual(stats.embedding_batch_count, 2)
+                # 两个时间分隔的 Parent 共享一个 batch，避免真实模型逐 Parent 低利用率调用。
+                self.assertEqual(stats.embedding_batch_count, 1)
+                self.assertEqual([len(batch) for batch in provider.document_batches[:1]], [2])
                 self.assertGreater(stats.index_size_bytes, 0)
                 self.assertEqual(integrity.status, "valid")
                 self.assertEqual(integrity.metadata_chunk_count, 2)
@@ -222,6 +229,62 @@ class SemanticRetrievalTests(unittest.TestCase):
             with create_application(database_path, semantic_provider=_DeterministicProvider()) as reopened:
                 self.assertEqual(reopened.semantic_index_status().status, "completed")
                 self.assertEqual(reopened.validate_semantic_index().status, "valid")
+
+    def test_builder_coalesces_chunks_across_parent_boundaries(self) -> None:
+        """大量小 Parent 必须填满 provider batch，同时保持最终 canonical watermark。"""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            raw = root / "raw"
+            raw.mkdir()
+            base = 1_768_435_200_000
+            # 两小时 gap 强制形成十个 Parent；每个 Parent 只产生一个 child。
+            write_export(
+                raw,
+                "semantic-batches(100).json",
+                [
+                    make_message(
+                        f"batch-{index}",
+                        index,
+                        base + index * 2 * 60 * 60 * 1000,
+                        f"batch marker {index} " + "detail " * 30,
+                    )
+                    for index in range(10)
+                ],
+                chat_name="Semantic Batch Fixture",
+                peer_uid=None,
+                version="5.5.64",
+            )
+            provider = _DeterministicProvider()
+            with create_application(root / "app.sqlite3", semantic_provider=provider) as application:
+                application.import_directory(raw)
+                stats = application.rebuild_semantic_index()
+
+            self.assertEqual(stats.status, "completed")
+            self.assertEqual(stats.indexed_message_count, 10)
+            self.assertEqual(stats.parent_count, 10)
+            self.assertEqual(stats.chunk_count, 10)
+            self.assertEqual(stats.embedding_batch_count, 2)
+            self.assertEqual([len(batch) for batch in provider.document_batches], [8, 2])
+
+    def test_interrupted_rebuild_records_failed_terminal_state(self) -> None:
+        """可捕获的 Ctrl+C 不能让已退出进程永久遗留 building 状态。"""
+
+        class InterruptedProvider(_DeterministicProvider):
+            def embed_documents(self, texts: tuple[str, ...]) -> tuple[tuple[float, ...], ...]:
+                raise KeyboardInterrupt
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            raw = _write_semantic_fixture(root)
+            with create_application(root / "app.sqlite3", semantic_provider=InterruptedProvider()) as application:
+                application.import_directory(raw)
+                with self.assertRaises(KeyboardInterrupt):
+                    application.rebuild_semantic_index()
+                status = application.semantic_index_status()
+
+            self.assertEqual(status.status, "failed")
+            self.assertEqual(status.last_error, "KeyboardInterrupt")
 
     def test_application_status_distinguishes_missing_completed_and_stale_index(self) -> None:
         """运维 facade 必须把未建、可用和 canonical 漂移分别投影出来。"""
