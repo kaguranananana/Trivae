@@ -77,12 +77,28 @@ class _StreamingRuntime:
                 {"role": "user", "content": "question"},
             ),
         )
-        yield RuntimeEvent("content_delta", "stream-provider", "stream-model", 3, text="hidden delta")
+        yield RuntimeEvent(
+            "model_output",
+            "stream-provider",
+            "stream-model",
+            3,
+            tool_round=1,
+            run_id="stream-run",
+            observable_output=(
+                {
+                    "type": "function_call",
+                    "name": "search_messages",
+                    "arguments": '{"keyword":"question"}',
+                    "call_id": "provider-call-1",
+                },
+            ),
+        )
+        yield RuntimeEvent("content_delta", "stream-provider", "stream-model", 4, text="hidden delta")
         yield RuntimeEvent(
             "usage_update",
             "stream-provider",
             "stream-model",
-            4,
+            5,
             tool_round=1,
             usage={"total_tokens": 7},
             run_id="stream-run",
@@ -100,7 +116,7 @@ class _StreamingRuntime:
             "completed",
             "stream-provider",
             "stream-model",
-            5,
+            6,
             result=result,
             run_id="stream-run",
         )
@@ -242,12 +258,14 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual(payload["DEEPSEEK_API_KEY"], "[REDACTED]")
         self.assertEqual(payload["authorization"], "[REDACTED]")
         self.assertEqual(payload["chain_of_thought"], "[REDACTED]")
+        self.assertEqual(len(payload["query"]), 512)
         self.assertIn("payload.query.truncated", limitations)
         self.assertIn("payload.chain_of_thought.hidden_reasoning_redacted", limitations)
 
         debug = CapturePolicy.for_profile("debug")
-        debug_payload, debug_limitations = debug.capture({"query": "x" * 700})
-        self.assertEqual(len(debug_payload["query"]), 700)
+        debug_payload, debug_limitations = debug.capture({"query": "x" * 12_000, "answer_text": "a" * 12_000})
+        self.assertEqual(len(debug_payload["query"]), 12_000)
+        self.assertEqual(len(debug_payload["answer_text"]), 12_000)
         self.assertEqual(debug_limitations, ())
 
     def test_normalized_event_rejects_unknown_enum_values(self) -> None:
@@ -280,7 +298,14 @@ class ObservabilityTests(unittest.TestCase):
                 output_path=path.parent / "manual-export.log",
             )
             self.assertEqual(exported_path, (path.parent / "manual-export.log").resolve())
-            self.assertIn("event_count:", exported_path.read_text(encoding="utf-8"))
+            exported_text = exported_path.read_text(encoding="utf-8")
+            self.assertIn("event_count:", exported_text)
+            self.assertIn("EXECUTION TRANSCRIPT", exported_text)
+            self.assertIn("[FINAL ANSWER]", exported_text)
+            answer_event = next(
+                item for item in projection.timeline if item.operation == "answer.finalization.completed"
+            )
+            self.assertEqual(answer_event.payload["answer_text"], "Trace smoke answer")
             application.close()
 
             reopened = create_application(path, agent_runtime=_CompletedRuntime())
@@ -303,6 +328,8 @@ class ObservabilityTests(unittest.TestCase):
             self.assertNotIn("runtime.content_delta", operations)
             turn = next(item for item in projection.timeline if item.operation == "model.turn")
             self.assertEqual(turn.payload["model_visible_context"][0]["role"], "system")
+            model_output = next(item for item in projection.timeline if item.operation == "model.output")
+            self.assertEqual(model_output.payload["observable_output"][0]["type"], "function_call")
             self.assertEqual(projection.metrics.usage["total_tokens"], 7)
             self.assertEqual(projection.terminal_status, "completed")
             application.close()

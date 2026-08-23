@@ -208,6 +208,7 @@ class RuntimeEvent:
         "content_delta",
         "tool_started",
         "tool_completed",
+        "model_output",
         "turn_completed",
         "usage_update",
         "finalizing",
@@ -225,9 +226,11 @@ class RuntimeEvent:
     result: RuntimeResult | None = None
     tool_round: int | None = None
     usage: Mapping[str, int | float] | None = None
-    # 下面两个字段是 additive，供 Trace mapper 关联 run identity 和 model-visible facts。
+    # 下面三个字段是 additive，供 Trace mapper 关联 run identity 与 model-visible facts。
     run_id: str | None = None
     model_visible_context: tuple[Mapping[str, object], ...] | None = None
+    # 这是模型公开产生的 message/tool action，不包含 provider 内部 reasoning 或 SDK raw object。
+    observable_output: tuple[Mapping[str, object], ...] | None = None
 
 
 RuntimeStream = AsyncIterator[RuntimeEvent]

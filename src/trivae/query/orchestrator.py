@@ -207,6 +207,8 @@ class QueryOrchestrator:
                             "intent": plan.intent,
                             "step_count": len(plan.steps),
                             "criterion_count": len(plan.success_criteria),
+                            # Planner 的成功标准是显式 execution fact，供 Transcript 直接阅读。
+                            "success_criteria": plan.success_criteria,
                             "steps": [
                                 {
                                     "goal": step.goal,
@@ -424,6 +426,8 @@ class QueryOrchestrator:
                 payload={
                     "answer_length": len(answer_artifact.answer_text),
                     "limitation_count": len(answer_artifact.limitations),
+                    # 这是通过 finalization 校验后的 Debug execution snapshot；业务事实仍由 AnswerArtifact/Conversation Store 持有。
+                    "answer_text": answer_artifact.answer_text,
                 },
             )
         return QueryResult(

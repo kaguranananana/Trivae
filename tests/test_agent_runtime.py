@@ -13,8 +13,8 @@ from trivae.bootstrap.application import create_application
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import ToolEnvelope, ToolError
 from trivae.config.settings import DEFAULT_DEEPSEEK_BASE_URL, SettingsError, load_settings
-from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContractError
-from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContractError, RuntimeEvent
+from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter, _RuntimeHooks
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
 
 
@@ -29,6 +29,15 @@ class _RecordingSearchTool:
     def invoke(self, request: object, scope: ExecutionScope) -> ToolEnvelope:
         self.requests.append((request, scope))
         return ToolEnvelope("ok", None, {"truncated": False}, None)
+
+
+async def _collect_runtime_events(
+    runtime: OpenAIAgentsRuntimeAdapter,
+    request: AgentRunRequest,
+) -> list[RuntimeEvent]:
+    """完整消费 Runtime stream，确保 hook 事件已经进入可断言的顺序。"""
+
+    return [event async for event in runtime.stream(request)]
 
 
 class SettingsTests(unittest.TestCase):
@@ -207,6 +216,113 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(len(model.calls), 2)
         self.assertEqual(len(model.calls[0].tools), 1)
         self.assertNotIn("qq:100", str(model.calls[0].input))
+
+    def test_model_visible_projector_keeps_tool_items_and_omits_reasoning(self) -> None:
+        """模型输入投影保留真实 tool item，但不复制 hidden reasoning/SDK 字段。"""
+
+        class TypedToolResult:
+            """模拟 SDK typed input item；adapter 只读取公开 model_dump。"""
+
+            type = "function_call_output"
+
+            def model_dump(self, **_: object) -> dict[str, object]:
+                return {
+                    "type": "function_call_output",
+                    "call_id": "call-typed",
+                    "output": "typed result",
+                    "internal_sdk_field": "must not be copied",
+                }
+
+        projected = _RuntimeHooks._project_model_visible_context(
+            "system prompt",
+            [
+                {"role": "user", "content": "question"},
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "previous answer"}],
+                    "id": "sdk-message-id",
+                },
+                {
+                    "type": "function_call",
+                    "name": "search_messages",
+                    "arguments": '{"keyword":"alpha"}',
+                    "call_id": "call-1",
+                    "id": "sdk-call-id",
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call-1",
+                    "output": "actual tool result",
+                },
+                {"type": "reasoning", "summary": [{"text": "hidden reasoning"}]},
+                TypedToolResult(),
+            ],
+        )
+
+        assert projected is not None
+        self.assertEqual(projected[0], {"role": "system", "content": "system prompt"})
+        self.assertEqual(projected[1], {"role": "user", "content": "question"})
+        self.assertEqual(projected[2], {"role": "assistant", "content": [{"type": "output_text", "text": "previous answer"}]})
+        self.assertEqual(projected[3]["type"], "function_call")
+        self.assertEqual(projected[4]["output"], "actual tool result")
+        self.assertEqual(projected[5]["output"], "typed result")
+        serialized = str(projected)
+        self.assertNotIn("hidden reasoning", serialized)
+        self.assertNotIn("sdk-message-id", serialized)
+        self.assertNotIn("internal_sdk_field", serialized)
+
+    def test_runtime_trace_captures_next_turn_model_input_exact_tool_result(self) -> None:
+        """下一轮 input 的 function_call_output 必须和 SDK model call 收到的内容一致。"""
+
+        model = ScriptedModel(
+            [
+                ModelStep(
+                    output=[
+                        function_call(
+                            "search_messages",
+                            {"keyword": "alpha", "limit": 5},
+                            call_id="call-visible",
+                        )
+                    ]
+                ),
+                ModelStep(output=[assistant_message("answer")]),
+            ]
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=model, max_turns=4)
+        events = asyncio.run(
+            _collect_runtime_events(
+                runtime,
+                AgentRunRequest("question", self.scope),
+            )
+        )
+
+        turn_started = [event for event in events if event.type == "turn_started"]
+        self.assertEqual(len(turn_started), 2)
+        first_context = turn_started[0].model_visible_context
+        second_context = turn_started[1].model_visible_context
+        assert first_context is not None
+        assert second_context is not None
+        self.assertEqual(first_context[0]["role"], "system")
+        self.assertEqual(first_context[1], {"role": "user", "content": "question"})
+
+        second_result = next(
+            item for item in second_context if item.get("type") == "function_call_output"
+        )
+        actual_model_input_result = next(
+            item for item in model.calls[1].input if item.get("type") == "function_call_output"
+        )
+        self.assertEqual(second_result["output"], actual_model_input_result["output"])
+        self.assertIsInstance(second_result["output_projection"], dict)
+        self.assertEqual(
+            next(item for item in second_context if item.get("type") == "function_call")["arguments"],
+            '{"keyword":"alpha","limit":5}',
+        )
+
+        model_outputs = [event for event in events if event.type == "model_output"]
+        self.assertEqual(model_outputs[0].observable_output[0]["type"], "function_call")
+        self.assertEqual(model_outputs[-1].observable_output[0]["content"], [{"type": "output_text", "text": "answer"}])
+        self.assertNotIn("reasoning", str(second_context).lower())
 
     def test_scope_violation_is_explicit_tool_result(self) -> None:
         model = ScriptedModel(

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from trivae.observability.contracts import NormalizedQueryEvent, StoredTrace
+from trivae.observability.transcript import format_execution_transcript
 
 
 class TraceTextLogError(RuntimeError):
@@ -104,11 +105,12 @@ class TraceTextLogWriter:
 
 
 def format_trace_text(trace: StoredTrace) -> str:
-    """以稳定的普通文本格式渲染完整 Trace，不重新解释业务语义。"""
+    """组合 metadata、derived Transcript 和完整 Raw Events。"""
 
     lines = [
         "Trivae Trace Log",
         "================",
+        "Trace Metadata",
         f"trace_id: {trace.trace_id}",
         f"request_id: {trace.request_id}",
         f"profile: {trace.profile}",
@@ -116,6 +118,12 @@ def format_trace_text(trace: StoredTrace) -> str:
         f"terminal_at: {trace.terminal_at or '-'}",
         f"terminal_outcome: {trace.terminal_outcome or '-'}",
         f"event_count: {len(trace.events)}",
+        "",
+        format_execution_transcript(trace).rstrip(),
+        "",
+        "=================",
+        "RAW TRACE EVENTS",
+        "=================",
     ]
     for event in trace.events:
         lines.extend(_format_event_lines(event))

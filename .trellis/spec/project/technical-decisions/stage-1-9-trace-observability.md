@@ -24,6 +24,21 @@ Stage 1.9 不重新设计上述模块，也不把 Trace Collector 变成新的�
 - **修订范围**：只重开 Decision 8（Trace data minimization）与 Decision 9（Retention），以及对应的 privacy projection / guidance；Normalized Event、Failure Attribution、Coverage、Error Code ownership、append-only storage 与 Stage 1.10 boundary 不变。
 - **修订结果**：`normal` 与 `debug` 成为正式 Trace Profile。Normal 允许 bounded / redacted actual content；Debug 在授权范围内允许完整或近完整的 model-visible / system-visible execution facts，但仍禁止 secrets、越权数据和 hidden Chain-of-Thought。
 
+### Amendment（2026-08-23）：Debug model-visible execution facts 与 Transcript
+
+本次实现确认了一个具体 Observability Gap：OpenAI Agents SDK 的 `on_llm_start` 会在 input filter/deduplication 之后收到本次 Provider 调用的实际 `input_items`，其中除了 `{role, content}` 消息，还包括 `function_call` 与 `function_call_output`。原先只投影字符串 `role/content`，因此第二轮模型输入中的 previous assistant tool action 和 Tool Result 会从 Trace 消失。
+
+修订后的实现契约是：
+
+- adapter 在 `on_llm_start` 捕获当时真正传入 Provider 的 model-visible input；在 `on_llm_end` 捕获公开的 assistant message / function-call action；二者先转换为 Trivae-owned plain data，再进入既有 Collector、CapturePolicy、NormalizedQueryEvent 与 SQLite Trace Store。
+- Transcript 中的 Tool Result 正文必须来自后续 model turn 的 `function_call_output.output`，不能从 Conversation Store、Retrieval 或 `ToolResultRecord` 重新查询/拼装出更完整的内容。Retrieval 的 returned/total、partial、truncated、coverage 作为独立诊断事实保留。
+- 如果 SDK 已将结构化 Tool Result 序列化成超长字符串，adapter 可以从同一 `function_call_output.output` 生成 bounded `output_projection`，帮助 formatter 在原文截断时展示正文；它不是第二份运行事实，也不能脱离该 model input 或通过数据库查询生成。
+- `.log` 的 `EXECUTION TRANSCRIPT` 与 `RAW TRACE EVENTS` 都是同一份 `StoredTrace` 的 derived projection；Transcript 不建立第二套 runtime logging pipeline，也不改变 canonical event boundary。
+- Debug capture 继续允许 scope 内完整或近完整的 model-visible/system-visible execution facts，并将 `AnswerArtifact.answer_text` 在 finalization 成功后作为 Debug execution snapshot 进入 Trace；Conversation Store / Answer Artifact 仍是业务事实源。
+- 当前 CapturePolicy 上限为 Normal `512` 字符/`16` 个集合项/深度 `6`，Debug `20,000` 字符/`128` 个集合项/深度 `10`，均保留 secret redaction 和可见 limitation。
+
+本 amendment 不改变 hidden reasoning 决策：`reasoning` item、provider internal reasoning、SDK scratchpad、Chain-of-Thought 和未经 allowlist 的 SDK raw fields 不进入 Trace。完整 model-visible execution facts **不等于** hidden Chain-of-Thought；任何未来 provider reasoning summary 若要支持，仍必须是 optional provider-specific output，不能成为 execution ground truth 或 Evaluation label。
+
 ## 1. Context：为什么需要项目自有 Trace
 
 一个最终回答错误，可能来自完全不同的根因：
@@ -590,8 +605,8 @@ Trace tables are `traces` and append-only `trace_events`; `trace_events` enforce
 
 - Normalized event 必须包含 schema_version、event/request/trace identity、sequence、occurred/observed timestamps、stage、operation、phase、operation identity、outcome、duration、bounded payload、limitations 和 FailureInfo。
 - `FailureInfo` 保存 `error_code`、`origin_stage`、`observed_stage`、category、handling、cause event/operation、retry count 和 safe diagnostic reference。
-- Normal capture 上限为 512 字符/16 个集合项；Debug 为 4096 字符/64 个集合项；两者都递归 redacted，且 `chain_of_thought/cot/hidden_reasoning/reasoning_content` 不落明文。
-- `RuntimeEvent.content_delta` 只通过 stream，不持久化；Runtime 的 local run_id 每次 execution 新建，不等同 request_id；M5 旧 tool locator 的显式 request-id alias 仅用于 validated provenance compatibility。
+- Normal capture 上限为 512 字符/16 个集合项；Debug 为 20,000 字符/128 个集合项；两者都递归 redacted，且 `chain_of_thought/cot/hidden_reasoning/reasoning_content` 不落明文。
+- `RuntimeEvent.model_visible_context` 保存 SDK hook 在 Provider 调用前实际收到的安全 input item projection；`RuntimeEvent.observable_output` 保存 assistant visible message/function-call projection；`RuntimeEvent.content_delta` 仍只通过 stream、不持久化。Runtime 的 local run_id 每次 execution 新建，不等同 request_id；M5 旧 tool locator 的显式 request-id alias 仅用于 validated provenance compatibility。
 - `query.completed` 只在 `ConversationStore.commit_turn()` 返回后写入；finalization/runtime/commit failure 不产生 completed。
 - Import diagnostics 只读取既有 `import_batches` / `import_errors`，不新建第二套 ingestion facts，也不伪装为 RuntimeEvent。
 

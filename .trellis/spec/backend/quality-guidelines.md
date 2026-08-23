@@ -93,8 +93,22 @@ Trace 需要被人工直接打开查看，或需要为既有 SQLite Trace 生成
 
 - SQLite `traces` / `trace_events` 仍是 Trace source of truth；文本文件可删除、重建和覆盖，不参与 Query 事实读取。
 - 文本内容只能来自已经经过 `CapturePolicy` 的 `NormalizedQueryEvent` / `StoredTrace`，保留 metadata、sequence、stage、operation、phase、outcome、duration、payload、limitations 和 failure。
+- 完整导出的 `.log` 必须按 `Trace Metadata -> EXECUTION TRANSCRIPT -> RAW TRACE EVENTS` 排列；Transcript 是 `StoredTrace` 的纯 projection，不能查询 Conversation Store、Retrieval 或 Runtime 重新补内容。
+- Debug Transcript 必须尽可能显示本轮实际 model input、assistant visible output、Tool Call arguments 和下一轮 input 中的 `function_call_output.output`；Tool Result 正文以模型实际看到的 output 为准，检索完整性 metadata 单独显示。
+- `function_call` / `function_call_output` 以及 message content blocks 必须在 SDK adapter 内转换为 Trivae-owned plain data；禁止 `repr(item)`、无界 SDK dump、hidden reasoning、provider internal reasoning 或 SDK scratchpad 进入 Trace。
+- 当前 CapturePolicy 上限为 Normal `512` 字符/`16` 个集合项/深度 `6`、Debug `20,000` 字符/`128` 个集合项/深度 `10`；截断必须保留 limitation，Debug 不是 Data Access Scope 或 secret policy 的旁路。
 - `trivae chat` 先展示 Query 正式答案和 Trace ID，再展示日志路径；日志导出失败必须显式输出 `[trace log unavailable: ...]`，不能伪装成成功。
 - 默认日志文件名拒绝路径分隔符；自定义 `--output` 仅表示用户明确指定的输出路径。
+
+### 3.1 Human-readable Execution Transcript amendment
+
+Debug Trace 的人工阅读目标是回答“这一轮模型实际看到了什么”，而不是推测模型可能看到过什么。`on_llm_start` 已完成 SDK input filtering 后的 `input_items` 是 model-visible input 的事实边界；Transcript 只能投影该字段和已经 normalized 的 execution facts。
+
+当 SDK 将结构化 Tool Result 转成超长字符串且 bounded capture 在字典中间截断时，adapter 可以在同一 model input 字符串上生成 `output_projection`。该字段只是 Trivae-owned 的同源结构化投影，不能来自数据库重查或 Tool Result 重建；Transcript 仍以 `output` 原文为事实，并在可用时用该 projection 阅读正文，同时保留 truncation limitation。
+
+完整 model-visible execution facts 不等于 hidden Chain-of-Thought。允许展示 Router reason、Planner output/failure、Tool selection/arguments、Retrieval diagnostics、Evidence/Citation diagnostics 和 finalization reason；禁止展示 provider hidden reasoning、SDK reasoning item、scratchpad 或未向应用层暴露的内部推理 token。
+
+Normal 仍以 bounded/redacted execution facts 为主，不承诺完整 Transcript；Debug 才承担 Failure Case 的近完整 model input、Tool Result、assistant visible output 和 Final Answer snapshot。两者都必须复用同一个 CapturePolicy，Formatter 不重新实现 secret filter。
 
 ### 4. Validation & Error Matrix
 

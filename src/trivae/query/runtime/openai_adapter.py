@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import inspect
+import json
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
@@ -34,6 +36,7 @@ RuntimeEventType = Literal[
     "content_delta",
     "tool_started",
     "tool_completed",
+    "model_output",
     "turn_completed",
     "usage_update",
     "finalizing",
@@ -61,6 +64,7 @@ class _PendingEvent:
     tool_round: int | None = None
     usage: dict[str, int | float] | None = None
     model_visible_context: tuple[dict[str, object], ...] | None = None
+    observable_output: tuple[dict[str, object], ...] | None = None
 
 
 @dataclass
@@ -82,6 +86,168 @@ class _RunState:
     settled: bool = False
 
 
+_HIDDEN_ITEM_TYPES = frozenset({"reasoning", "reasoning_item"})
+_MODEL_ACTION_ITEM_TYPES = frozenset({"function_call", "custom_tool_call"})
+_MODEL_RESULT_ITEM_TYPES = frozenset({"function_call_output", "custom_tool_call_output"})
+
+
+def _item_mapping(item: Any) -> Mapping[str, object] | None:
+    """只从公开 mapping/model_dump 读取 SDK item，不把对象 repr 带入 Trace。"""
+
+    if isinstance(item, Mapping):
+        # SDK 当前通常已经把 Pydantic item 转成 dict；这里保留其普通 mapping 形态。
+        return item
+    model_dump = getattr(item, "model_dump", None)
+    if callable(model_dump):
+        # typed SDK item 只在 adapter 内转换为普通值，后续只读取白名单字段。
+        dumped = model_dump(exclude_unset=True)
+        if isinstance(dumped, Mapping):
+            return dumped
+    return None
+
+
+def _item_type(item: Any) -> str | None:
+    """读取 item type 供生命周期判断，优先使用公开 type 字段。"""
+
+    direct_type = getattr(item, "type", None)
+    if isinstance(direct_type, str):
+        return direct_type
+    mapping = _item_mapping(item)
+    item_type = None if mapping is None else mapping.get("type")
+    return item_type if isinstance(item_type, str) else None
+
+
+def _project_plain_value(value: object) -> object:
+    """递归保留 SDK 允许的 JSON-like 值，拒绝用 repr 猜测未知对象。"""
+
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, Mapping):
+        projected: dict[str, object] = {}
+        for key, nested in value.items():
+            if not isinstance(key, str) or not key:
+                raise TypeError("model-visible value contains a non-string key")
+            projected[key] = _project_plain_value(nested)
+        return projected
+    if isinstance(value, (list, tuple)):
+        return [_project_plain_value(item) for item in value]
+    raise TypeError(f"model-visible value contains unsupported type: {type(value).__name__}")
+
+
+def _parse_serialized_output(value: str) -> object | None:
+    """解析 SDK 为模型准备的 JSON/Python 文本，失败时不猜测其业务含义。"""
+
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return ast.literal_eval(value)
+    except (SyntaxError, ValueError):
+        return None
+
+
+def _project_content(content: object) -> object | None:
+    """只保留 message content 的公开文本 block，跳过 reasoning block。"""
+
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, (list, tuple)):
+        return None
+
+    blocks: list[object] = []
+    for block in content:
+        if isinstance(block, str):
+            blocks.append(block)
+            continue
+        block_mapping = _item_mapping(block)
+        if block_mapping is None:
+            # 未知 content object 没有安全字段可投影，不能用 repr 伪造正文。
+            continue
+        block_type = block_mapping.get("type")
+        if isinstance(block_type, str) and block_type in _HIDDEN_ITEM_TYPES:
+            continue
+        text = block_mapping.get("text")
+        if not isinstance(text, str):
+            text = block_mapping.get("refusal")
+        if isinstance(text, str):
+            blocks.append(
+                {
+                    "type": block_type if isinstance(block_type, str) else "text",
+                    "text": text,
+                }
+            )
+        elif isinstance(block_type, str):
+            # image/audio 等公开 block 只保留类型标记，不复制 provider-specific payload。
+            blocks.append({"type": block_type})
+    return blocks or None
+
+
+def _project_model_item(item: Any) -> dict[str, object] | None:
+    """将一个 SDK input/output item 转成可持久化的 Trivae-owned plain item。"""
+
+    item_mapping = _item_mapping(item)
+    item_type = _item_type(item)
+    if item_type in _HIDDEN_ITEM_TYPES:
+        # hidden reasoning item 直接丢弃，既不保存正文，也不保留 SDK 内部字段。
+        return None
+    if item_mapping is None:
+        # 对不可观察的未知对象保留明确的 capture 状态，而不是静默把它当成普通消息。
+        return {"type": "unsupported_visible_item", "item_type": item_type or "unknown"}
+
+    if item_type in _MODEL_ACTION_ITEM_TYPES:
+        projected_action: dict[str, object] = {"type": item_type}
+        name = item_mapping.get("name")
+        if isinstance(name, str):
+            projected_action["name"] = name
+        if "arguments" in item_mapping:
+            projected_action["arguments"] = _project_plain_value(item_mapping["arguments"])
+        call_id = item_mapping.get("call_id")
+        if isinstance(call_id, str):
+            projected_action["call_id"] = call_id
+        return projected_action
+
+    if item_type in _MODEL_RESULT_ITEM_TYPES:
+        # output 是 SDK 已经准备发送给下一轮模型的内容，不能从 DB 或 ToolResultRecord 重建。
+        projected_result: dict[str, object] = {"type": item_type}
+        call_id = item_mapping.get("call_id")
+        if isinstance(call_id, str):
+            projected_result["call_id"] = call_id
+        output = _project_plain_value(item_mapping.get("output"))
+        projected_result["output"] = output
+        if isinstance(output, str):
+            # SDK 当前会把普通 dict tool output 转成 Python 文本；保留同一文本的结构化投影，
+            # 让 CapturePolicy 截断长字符串后，Transcript 仍能读取模型实际收到的消息正文。
+            parsed_output = _parse_serialized_output(output)
+            if isinstance(parsed_output, (Mapping, list, tuple)):
+                projected_result["output_projection"] = _project_plain_value(parsed_output)
+        return projected_result
+
+    role = item_mapping.get("role")
+    content = _project_content(item_mapping.get("content"))
+    if isinstance(role, str) and content is not None:
+        # 保持既有 role/content 形状，避免破坏已消费 model_visible_context 的调用方。
+        return {"role": role, "content": content}
+
+    if item_type is None:
+        return None
+    # 当前 Trivae 只启用 function tool；其他公开 item 不复制 raw payload，只标记投影边界。
+    return {"type": "unsupported_visible_item", "item_type": item_type}
+
+
+def _project_model_output(output: object) -> tuple[dict[str, object], ...] | None:
+    """从 ModelResponse.output 提取 assistant visible text/tool action。"""
+
+    if not isinstance(output, (list, tuple)):
+        return None
+    projected = []
+    for item in output:
+        item_projection = _project_model_item(item)
+        if item_projection is not None:
+            projected.append(item_projection)
+    return tuple(projected) if projected else None
+
+
 class _RuntimeHooks(RunHooks[RuntimeContext]):
     """把 SDK lifecycle hook 转成不含 SDK payload 的内部事件。"""
 
@@ -90,8 +256,14 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         self._state = state
         self._max_tool_rounds = max_tool_rounds
 
-    async def on_llm_start(self, context: Any, agent: Any, system_prompt: str | None, input_items: list[Any]) -> None:
-        """每次模型调用开始时建立一个新的 tool-result 计数窗口。"""
+    async def on_llm_start(
+        self,
+        context: Any,
+        agent: Any,
+        system_prompt: str | None,
+        input_items: list[Any],
+    ) -> None:
+        """在 Provider 调用前捕获 SDK 已过滤的真实 model-visible input。"""
 
         self._state.turn += 1
         self._state.expected_tool_results = 0
@@ -118,28 +290,32 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         system_prompt: str | None,
         input_items: list[Any],
     ) -> tuple[dict[str, object], ...] | None:
-        """只保留普通 role/content，Debug capture 不包含 SDK item 或 hidden reasoning。"""
+        """将 SDK input item 转成 Trivae-owned plain facts，不保存 SDK raw object。"""
 
         projected: list[dict[str, object]] = []
         if isinstance(system_prompt, str) and system_prompt:
             projected.append({"role": "system", "content": system_prompt})
         for item in input_items:
-            if not isinstance(item, dict):
-                continue
-            role = item.get("role")
-            content = item.get("content")
-            if isinstance(role, str) and isinstance(content, str):
-                projected.append({"role": role, "content": content})
+            item_projection = _project_model_item(item)
+            if item_projection is not None:
+                projected.append(item_projection)
         return tuple(projected) if projected else None
 
     async def on_llm_end(self, context: Any, agent: Any, response: Any) -> None:
-        """从模型输出只读取 function-call 数量，决定何时结束本轮事件。"""
+        """捕获可观察模型输出，并根据 function call 数量推进回合状态。"""
 
         output = getattr(response, "output", ())
-        function_call_count = sum(
-            1 for item in output if getattr(item, "type", None) == "function_call"
-        )
+        function_call_count = sum(1 for item in output if _item_type(item) in _MODEL_ACTION_ITEM_TYPES)
         self._state.expected_tool_results = function_call_count
+        observable_output = _project_model_output(output)
+        if observable_output is not None:
+            self._state.pending.append(
+                _PendingEvent(
+                    "model_output",
+                    tool_round=self._state.tool_rounds + 1,
+                    observable_output=observable_output,
+                )
+            )
         usage = self._project_model_usage(response)
         if usage is not None:
             self._state.pending.append(_PendingEvent("usage_update", usage=usage))
@@ -410,6 +586,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                         tool_round=pending.tool_round,
                         usage=pending.usage,
                         model_visible_context=pending.model_visible_context,
+                        observable_output=pending.observable_output,
                     )
                 if state.aborted:
                     continue
@@ -431,6 +608,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                     tool_round=pending.tool_round,
                     usage=pending.usage,
                     model_visible_context=pending.model_visible_context,
+                    observable_output=pending.observable_output,
                 )
 
             if state.aborted:
@@ -619,6 +797,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         tool_round: int | None = None,
         usage: dict[str, int | float] | None = None,
         model_visible_context: tuple[dict[str, object], ...] | None = None,
+        observable_output: tuple[dict[str, object], ...] | None = None,
     ) -> RuntimeEvent:
         """为每个事件分配进程内 sequence，不暴露 provider 原始 sequence。"""
 
@@ -637,6 +816,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             usage=usage,
             run_id=state.run_id,
             model_visible_context=model_visible_context,
+            observable_output=observable_output,
         )
 
     def _failed_result(

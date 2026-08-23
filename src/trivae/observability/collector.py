@@ -59,7 +59,15 @@ class CapturePolicy:
         if profile == "normal":
             return cls(profile, max_string_length=512, max_items=16, secret_values=secret_values)
         if profile == "debug":
-            return cls(profile, max_string_length=4096, max_items=64, secret_values=secret_values)
+            # Debug 要覆盖 AnswerArtifact 的 20,000 字符上限，避免最终答案被 Trace 提前截断。
+            # 结构化 model-visible Tool Result 比普通 payload 多一层嵌套，因此放宽深度但仍有明确上限。
+            return cls(
+                profile,
+                max_string_length=20_000,
+                max_items=128,
+                max_depth=10,
+                secret_values=secret_values,
+            )
         raise TraceCaptureError(f"unsupported trace profile: {profile!r}")
 
     def capture(self, payload: Mapping[str, object]) -> tuple[dict[str, object], tuple[str, ...]]:
@@ -431,10 +439,17 @@ class TraceableAgentRuntime(AgentRuntime):
             payload["tool_name"] = event.tool_name
         if event.tool_call_id is not None:
             payload["tool_call_id"] = event.tool_call_id
+        if event.tool_call is not None:
+            # RuntimeToolCall 已是 Trivae-owned 状态；只把状态/错误码带入 Trace，不带 SDK 参数对象。
+            payload["tool_status"] = event.tool_call.status
+            if event.tool_call.error_code is not None:
+                payload["tool_error_code"] = event.tool_call.error_code
         if event.usage is not None:
             payload["usage"] = dict(event.usage)
         if event.model_visible_context is not None:
             payload["model_visible_context"] = [dict(item) for item in event.model_visible_context]
+        if event.observable_output is not None:
+            payload["observable_output"] = [dict(item) for item in event.observable_output]
 
         if event.type == "run_started":
             self.collector.emit(
@@ -451,6 +466,16 @@ class TraceableAgentRuntime(AgentRuntime):
                 phase="started",
                 operation_id=turn_operation,
                 parent_operation_id=run_operation,
+                payload=payload,
+            )
+        elif event.type == "model_output":
+            self.collector.emit(
+                stage="model",
+                operation="model.output",
+                phase="completed",
+                operation_id=turn_operation,
+                parent_operation_id=run_operation,
+                outcome="ok",
                 payload=payload,
             )
         elif event.type == "usage_update":
