@@ -19,12 +19,12 @@
 | Stage 1.5 | Confirmed / Completed | Router 与 Planner gating | [stage-1-5-router.md](./technical-decisions/stage-1-5-router.md) |
 | Stage 1.6 | Confirmed / Completed | Thin pre-execution investigation planner | [stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md) |
 | Stage 1.7 | Confirmed / Completed | Agent Loop · SDK · Runtime lifecycle | [stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md) |
-| Stage 1.8 | Confirmed / Completed；M5a implemented | Evidence · Citation · Source review | [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md) |
+| Stage 1.8 | Confirmed / Completed；M5a/M5b implemented | Evidence · Citation · Source review | [stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md) |
 | Stage 1.9 | Confirmed / Completed（修订版） | Normalized Trace · Failure Attribution · Coverage · Normal/Debug Profiles · Privacy / Retention · Error Ownership | [stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md) |
 | Stage 1.10 | Confirmed / Completed（架构契约） | Evaluation Case Bundle · Reference completeness / provenance · pinned Baseline · forced-path Planner Utility · blind paired review · Regression | [stage-1-10-evaluation.md](./technical-decisions/stage-1-10-evaluation.md) |
 | Stage 1.11 | Confirmed / Completed（架构边界） | Application Boundary · Composition Root · Python package ownership · unified Query execution core · CLI / API / Evaluation adapters | [stage-1-11-application-architecture.md](./technical-decisions/stage-1-11-application-architecture.md) |
 
-Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；业务实现、产品交互与实现级契约仍 Pending。
+Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；M4 Query、M5a Evidence/Citation 与 M5b Conversation persistence 已形成第一版实现级契约，Trace backend、Evaluation runner、产品交互与长期质量校准仍 Pending。
 
 ## 决策问题链
 
@@ -126,14 +126,14 @@ Regression
 
 ### Stage 1.7：Agent Runtime
 
-- 状态：**Confirmed / Completed（Stage 1.7）**。本阶段完成 Agent Runtime 架构决策沉淀；M4 已落地 SDK 0.22.0 streamed adapter、RuntimeEvent、tool budget、abort 和 lifecycle；Conversation/Trace/Evaluation 仍 Pending。
+- 状态：**Confirmed / Completed（Stage 1.7）**。本阶段完成 Agent Runtime 架构决策沉淀；M4 已落地 SDK 0.22.0 streamed adapter、RuntimeEvent、tool budget、abort 和 lifecycle；Conversation persistence 已由 M5b 落地第一版 Store/replay，Trace/Evaluation 仍 Pending。
 - 内容：继承 ChatLab 的 Thin Agent Core 架构，由 OpenAI Agents SDK 承载通用 Agent Loop；Trivae 拥有外层执行编排、Context、Conversation History、Tool Adapter、生命周期语义与事件契约；Thin Agent Runtime + 单 Agent + 两种 Route 用同一个 Runtime；OpenAI Agents SDK 通过概念性的 Runtime / Function Tool Adapter 接入，不冻结文件布局；RuntimeContext（local）与 Agent Model Context（LLM-visible）分离且 Data Access Scope 硬执行；Trivae Conversation Store 为 source of truth，SDK / Provider conversation state 只作可重建 adapter state，streaming、完成、中止与失败记录有明确提交边界；pre-run Context 压缩（不做 mid-run compaction）；Tool Round 按一个包含 Tool Result 的模型轮次计数，Trivae Budget 先触发 graceful final synthesis，SDK `max_turns` 预留最终模型调用并只作兜底；仅已知 Tool Contract Error 可由 Agent 恢复，未知 Tool / Adapter 异常显式 `FAILED`；Abort 采用协作式 cancellation，晚到结果不得重启执行；Streaming 为 canonical path；Runtime lifecycle 状态机；Planner soft guidance 注入；Trivae 显式关闭 SDK built-in external tracing；ChatLab 经验参数可直接继承但标注来源并保留 Evaluation 校准。
 - 记录位置：[technical-decisions/stage-1-7-agent-runtime.md](./technical-decisions/stage-1-7-agent-runtime.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
 - 后续：Stage 1.8 已确认 Evidence / Citation；Stage 1.9 已确认 Runtime / Evidence / Citation Event family、Trace conceptual envelope、Error Code ownership 与 Observability；具体 Trace Schema / 实现 Pending；Stage 1.10 已确认 correctness / diagnosability 以及成本分轴，Runtime 参数和真实结果仍 Pending。
 
 ### Stage 1.8：Evidence / Citation
 
-- 状态：**Confirmed / Completed（Stage 1.8）**。本阶段完成 Evidence / Citation 架构决策沉淀；业务代码与具体 Schema 尚未实现。
+- 状态：**Confirmed / Completed（Stage 1.8）**。本阶段完成 Evidence / Citation 架构决策沉淀；M5a/M5b 已落地第一版 finalization、Artifact codec、Conversation persistence 与 replay 实现，Trace/Evaluation 与长期质量校准仍 Pending。
 - 内容：主链路固定为 `Retrieval / Structured Result → Evidence Selection / Organization → Final Evidence → Citation-bound Answer`；Answer Content、claim Citation bindings、Evidence Items 与 limitations 组成单一 conceptual Answer Artifact；Evidence Item 按 claim / finding 组织，可包含 `supports / contradicts / context` 多 Source；Message Source 使用 current-run Tool provenance、显式 Session / Message locator 与可信人工复核 snapshot，Structured Result Source 使用独立结果 locator；Semantic Chunk 只作 acquisition provenance；question-specific criterion 与 `sufficient / partial / insufficient` 已确认，并与 Tool `partial / coverage / truncated / unavailable` 分轴表达；Citation Validator 只做确定性结构、provenance、locator 与 Data Access Scope 校验，不声称证明语义正确；invalid / unresolved Citation 显式阻止提交；validated Artifact 随 Assistant Message 持久化，旧 Evidence 不作后续 Run 的 fresh evidence；应用内只展示 bounded 原始上下文，全量聊天留在原社交平台；Evidence-aware stopping 第一版仅作 Agent guidance。
 - 明确不引入：`retrieve_evidence` Tool、Evidence Agent、固定关键词 Judge、固定时间聚类、Runtime-owned Evidence State Machine、silent citation drop、自动来源替换或无依据 repair / retry。
 - 记录位置：[technical-decisions/stage-1-8-evidence-citation.md](./technical-decisions/stage-1-8-evidence-citation.md)（详细 rationale、ChatLab 代码证据、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。

@@ -124,3 +124,75 @@ write_variant_when_projection_differs(incoming)
 
 - `search_messages` 是本轮最小 Tool registry 名称；Capability 继承 trusted session/time scope、验证 bound，再调用 Retrieval Core 的 lexical + automatic context expansion。
 - Tool envelope 只投影 `ok`/`partial`/`error`、`meta.truncated`、typed error 和 Retrieval Result；Tool 不执行 SQL、构造 FTS expression 或实现 context merge/order/trim。
+
+## M5b Conversation Store Contract
+
+Conversation persistence 与 Canonical Chat Store 共用 SQLite database path，但由独立 `SQLiteConversationStore` connection 和 `conversation/` package 拥有；它不修改 `messages` canonical facts，Retrieval read repository 仍保持 `mode=ro` 与 query-only 写保护。
+
+### 1. Scope / Trigger
+
+- Trigger：M5a 已有 validated `AnswerArtifact`，需要在 Application boundary 内形成可重启 replay 的 completed Conversation / Assistant Message。
+- Scope：Application history read/create → Runtime / Finalizer → `conversation/` Store → SQLite conversation tables；不扩展到 Trace、Evaluation、HTTP/UI 或 mutation UX。
+
+### 2. Signatures
+
+- `ConversationStore.create_conversation() -> Conversation`
+- `ConversationStore.get_conversation(conversation_id: str) -> Conversation`
+- `ConversationStore.commit_turn(conversation_id: str, user_content: str, answer_artifact: AnswerArtifact) -> Conversation`
+- `TrivaeApplication.query(request: QueryRequest) -> QueryResult`：成功结果包含 `conversation_id`，失败不产生 completed Assistant row。
+
+### 3. Contracts
+
+#### Physical schema
+
+- `conversations(conversation_id, created_at, updated_at)` 保存 Conversation 生命周期。
+- `conversation_messages(message_id, conversation_id, ordinal, role, content, created_at, answer_artifact_json)` 保存 completed User / Assistant message；`ordinal` 通过 `UNIQUE(conversation_id, ordinal)` 提供稳定 replay 顺序。
+- 外键保证 message 必须属于已存在的 conversation；CHECK 约束保证 User 没有 Artifact、Assistant 必须有 Artifact JSON。
+- `answer_artifact_json` 是显式 JSON snapshot，不是 SQLite 可查询的第二套 Evidence truth；Canonical Message 仍是聊天事实 source of truth，历史 Artifact 是回答时的记录。
+
+- Application 先完成 Runtime `completed`、Citation Finalizer、provenance validation 和 trusted hydration，再调用 Conversation Store 的 atomic `commit_turn()`。
+- `commit_turn()` 用单 connection 的 `BEGIN IMMEDIATE` 在一个 transaction 中追加 User + Assistant 并更新 `updated_at`；任一 insert、codec 或约束失败都 rollback，不留下半个 turn。
+- Assistant rows 读取时必须通过 `deserialize_answer_artifact()` 和现有 AnswerArtifact domain constructors 恢复；损坏 JSON、未知 source type、missing field 或 content mismatch 显式失败。
+- MessageSource 保存 current-run locator 与 trusted display snapshot；StructuredSource 保存 locator/value、query scope snapshot 和 execution limitations。历史读取不重新 Retrieval、hydrate 或调用 LLM。
+- Conversation history 可编译成 Runtime `ModelContextMessage` 以理解 follow-up，但不转换成当前 `ToolResultRecord`；后续 factual query 必须由新的 run/tool result 取得 fresh evidence。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 处理 | 可观察结果 |
+| --- | --- | --- |
+| 没有 conversation id | Application 创建空 Conversation | 返回新的 `conversation_id`；后续成功 Query 原子追加一整个 turn |
+| 有 conversation id | Store 读取并编译稳定排序历史 | 不重新搜索或 hydration；未知 id 显式 `ConversationNotFoundError` |
+| Runtime 未完成、Finalizer 失败或 Artifact 缺失 | 不调用 `commit_turn()` | `QueryResult.is_successful=False` 或显式应用错误；无 completed Assistant row |
+| User/Assistant 插入、约束或 codec 失败 | Store 回滚整个 transaction | 不留下半个 turn；SQLite/codec typed error 向上暴露 |
+| 历史 Artifact JSON 损坏或 content 不一致 | 领域 codec/constructor 拒绝 replay | `ConversationCodecError`，不静默丢弃或重新生成 |
+| 历史 Evidence 被新 Run 重用 | Finalizer 按 current-run provenance 拒绝 | `INVALID_PROVENANCE` |
+
+### 5. Good / Base / Bad Cases
+
+- Good：validated Artifact 经过 `commit_turn()`，close/reopen 后按 ordinal 恢复 User + Assistant，Artifact 与 trusted snapshot 语义一致。
+- Base：Conversation 只有 User 或为空时可读取；后续 Query 仍由新 Runtime 产生新的 ToolResult provenance。
+- Bad：Runtime/Finalizer 失败仍写 Assistant、把旧 source locator 变成当前 ToolResult，或用 LIKE/SDK Session 替代已定义边界；这些路径禁止实现。
+
+### 6. Tests Required
+
+- `tests/test_conversation.py` 使用真实 temporary SQLite 覆盖 codec round-trip、restart replay、stable ordering、transaction rollback、Application success/failure boundary 与 old Evidence provenance boundary。
+- 真实数据 smoke 使用 `messages=473236` 的 SQLite 副本，并显式重建 `messages_fts`；原始 canonical database 不因 smoke 改写。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+conversation_messages.append(assistant_text)
+```
+
+这会绕过 validated Artifact、current-run provenance 和 SQLite transaction，无法证明 Assistant Message 可回放。
+
+#### Correct
+
+```python
+if result.is_successful and result.answer_artifact is not None:
+    conversation_store.commit_turn(conversation_id, request.query, result.answer_artifact)
+```
+
+Application 只把已完成、已 finalise、已 hydration 的 Artifact 交给 Store，由 Store 在单个 transaction 中写入 User + Assistant。

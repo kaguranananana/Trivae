@@ -12,9 +12,9 @@
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1–1.11 completed；M1 ingestion 已实现；下一阶段为 Retrieval、Stage 1.10 Evaluation / Real-run Calibration 与 Stage 1.11 Product Interaction |
+| 当前阶段   | Stage 1.1–1.11 completed；M1–M5b 当前 vertical slices 已实现；下一阶段为 Trace、Stage 1.10 Evaluation / Real-run Calibration 与 Stage 1.11 Product Interaction |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
-| 业务实现   | M1 `src/trivae` ingestion、SQLite Canonical Store、Application facade 与 thin CLI 已实现；Query Plane 与产品交互按后续 Trellis task 实施 |
+| 业务实现   | M1 ingestion、M4 Query Plane、M5a Evidence/Citation finalization 与 M5b Conversation persistence 已实现；Trace backend、Evaluation runner、HTTP/API 产品交互与长期质量校准按后续 Trellis task 实施 |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
 
 ## Goals
@@ -1976,7 +1976,7 @@ Evaluation Suite
 8. **Two dependency rules**：Runtime Call Flow 与 Source Dependency Rule 分开记录；业务 contract 不依赖具体 infrastructure，concrete adapter 可以依赖 Trivae contract，bootstrap 可以组装两者；不新增 ports、adapters、domain、usecases 层级。
 9. **Separate surfaces**：Tool Surface、CLI Surface、HTTP API Surface 独立治理；Agent Tool 不自动成为公共命令或 endpoint。
 10. **Versioned HTTP boundary**：第一版保留 `/api/v1`；Streaming 优先使用 Normalized Event 的单向 SSE-like projection，WebSocket、UI、MCP、Daemon 与 self-update 暂不继承。
-11. **Deferred implementation**：Conversation / Assistant Message persistence schema、Trace implementation、package 细节的长期演进、API wire schema、Evaluation runner、真实 baseline 与数值参数仍为 Implementation / Real-run Calibration Pending；M5a 已落地 Evidence / Citation finalization 的第一版 Python contract。
+11. **Deferred implementation**：Trace implementation、package 细节的长期演进、API wire schema、Evaluation runner、真实 baseline 与数值参数仍为 Implementation / Real-run Calibration Pending；M5a/M5b 已落地 Evidence / Citation finalization 与 Conversation persistence 的第一版 Python contract。
 
 完整 rationale、Package Layout、Composition Root、Failure Case、ChatLab 继承 / 适配 / 暂不继承与 Reopen Conditions 见 [Stage 1.11 Application Architecture ADR](./technical-decisions/stage-1-11-application-architecture.md)。
 
@@ -1992,7 +1992,18 @@ Runtime Tool Result
   → QueryResult.answer_artifact 或 finalization_error
 ```
 
-`query/evidence.py` 是 Trivae-owned contract，定义 Answer Artifact、claim binding、finding-oriented Evidence、Message / Structured Source、Tool Result record 和 trusted metadata hydration；`query/runtime/` 只产生并传递 provenance，`retrieval/` 仍只返回 candidates / structured results，Application facade 不自行拼装 Evidence。M5a 的 durable Conversation / Assistant Message commit 尚未实现，validated Artifact 以 QueryResult 字段作为可验证的提交前边界，后续 M5b 才接入持久化。
+`query/evidence.py` 是 Trivae-owned contract，定义 Answer Artifact、claim binding、finding-oriented Evidence、Message / Structured Source、Tool Result record 和 trusted metadata hydration；`query/runtime/` 只产生并传递 provenance，`retrieval/` 仍只返回 candidates / structured results，Application facade 不自行拼装 Evidence。M5a 以 `QueryResult.answer_artifact` 形成 validated commit boundary，M5b 再由 Application 将该 Artifact 原子提交到独立的 Conversation Store。
+
+### M5b：Conversation persistence implementation status
+
+M5b 在不改变 M5a current-run provenance 与 Finalizer 语义的前提下落地了第一版 Conversation / Assistant Message durable vertical slice：
+
+- `conversation/contracts.py` 定义 `Conversation`、completed `ConversationMessage` 与 Store Protocol；Assistant message 必须携带 validated `AnswerArtifact`，User message 不携带 Artifact。
+- `conversation/serialization.py` 通过显式 JSON codec 保存并恢复 content block、CitationBinding、Evidence、MessageSource trusted snapshot、StructuredSource value/query-scope snapshot 与 limitations；读取不重新调用 LLM、Retrieval 或 hydration。
+- `conversation/sqlite.py` 只拥有 `conversations` / `conversation_messages` 两张表；`commit_turn()` 使用 `BEGIN IMMEDIATE` 在同一 transaction 中追加 User + Assistant，任一错误都 rollback。
+- `TrivaeApplication` 是唯一生命周期与 Query commit 边界：先从 Store 读取历史，再运行既有 Router → Planner → Runtime → Finalizer；只有 `QueryResult.is_successful` 且 Artifact 非空时才 commit。
+- 历史 Assistant Artifact 可直接 replay 为模型上下文和结构化记录，但旧 source locator 不会变成当前 `ToolResultRecord`；后续事实查询必须取得新 run/tool/result provenance，旧 Artifact 被重新引用时由现有 Finalizer 显式拒绝。
+- deterministic integration tests 与真实 DeepSeek + SQLite smoke 已验证 create → query → commit → close → reopen → replay 链路；详细 measured facts 记录在 M5b task validation artifact。
 
 ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采用。以下仅记录尚未确认的领域，或已有明确业务差异 / Evaluation 约束的偏离；不能把“参考设计”理解为可以无证据重新设计。
 
@@ -2052,7 +2063,7 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - OpenTelemetry 或其他 exporter 是否接入；若接入只能消费 privacy-projected Trivae Event，SDK built-in external tracing 当前继续显式关闭
 - Agent correctness benchmark、quality axes、budget / threshold 与参数校准（Stage 1.10 Implementation / Real-run Calibration；Case / Reference / Review 语义已由 ADR 确认）
 - Evidence-aware stopping 的 machine-enforced gate、minimum-citation / coverage gate 与参数（Stage 1.10 Implementation / Real-run Calibration；Stage 1.8 已确认第一版仅作 Agent guidance）
-- Answer Artifact 的 Durable Database Schema、Conversation commit / replay、Message mutation 后的 snapshot / current diff UX 与长期 Claim binding migration 仍 Pending；M5a 已落地第一版 Python / JSON finalization contract、Structured Result locator 与 calibrated bounded source limits，具体参数仍待 Evaluation 校准
+- Message mutation 后的 snapshot / current diff UX 与长期 Claim binding migration 仍 Pending；M5a 已落地第一版 Python / JSON finalization contract，M5b 已落地 Answer Artifact 的 SQLite persistence、Conversation commit / replay 与 calibrated bounded source limits，具体参数仍待 Evaluation 校准
 - Evidence / Citation Trace family、Error Code ownership、storage 与 operational metric 原则已由 Stage 1.9 确认；具体 Schema、枚举与实现 Pending
 - semantic entailment、criterion quality、sufficiency、citation precision / recall 与 bounded repair Evaluation 的具体 rubric / runner（Stage 1.10 Implementation / Real-run Calibration）
 - Evaluation Case authoring、Dataset / Snapshot 构建、Review workflow、result storage、quality metric 实现、threshold / gate、Evaluation runner 与 Regression 执行细节（Stage 1.10 Implementation / Real-run Calibration；总体 Evaluation architecture 已由 [Stage 1.10 ADR](./technical-decisions/stage-1-10-evaluation.md) 确认）

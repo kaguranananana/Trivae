@@ -563,6 +563,8 @@ Trivae 继承的是“入口薄、装配集中、核心复用、Runtime 与入�
 
 “多 package 看起来更专业”“目录更漂亮”“框架通常这样做”或“可以先复制一套 Evaluation 逻辑”不构成 Reopen Reason。重新打开时必须记录新的 Failure Case、技术约束、Evaluation 结果或业务需求，并说明兼容与迁移方案。
 
-## 16. M5a Implementation Status
+## 16. M5a/M5b Implementation Status
 
-M5a 已按本 ADR 的单 Composition Root / shared Query execution boundary 落地：`TrivaeApplication.query()` 仍只进入 `QueryOrchestrator`，由 Orchestrator 在同一 RuntimeResult 之后调用 `query/evidence.py` 的 Answer Finalizer；接口层没有自行组装 Evidence。M5a 暂不创建 Conversation Store 或 Assistant Message durable schema，因此 Stage 1.8 的“validated Artifact 才能 commit”当前以 `QueryResult.answer_artifact` 作为显式 commit boundary，持久化事务留给 M5b。
+M5a/M5b 已按本 ADR 的单 Composition Root / shared Query execution boundary 落地：`TrivaeApplication.query()` 仍只进入 `QueryOrchestrator`，由 Orchestrator 在同一 RuntimeResult 之后调用 `query/evidence.py` 的 Answer Finalizer；接口层没有自行组装 Evidence。M5b 再由 Application 从 Conversation Store 读取历史，并仅在 `QueryResult.is_successful` 且 Artifact 非空时调用 Store 的 atomic `commit_turn()`。
+
+Conversation Store 的 create/read/commit/close lifecycle 由 Application factory 统一装配；Runtime、Router、Planner、Tool 与 Finalizer 不直接执行 SQL，也不拥有 Conversation transaction。Conversation Store 独立维护自己的 SQLite connection 与表，replay 只恢复持久化 Artifact，不重新调用 LLM、Retrieval 或 hydration；历史 Evidence 仍不属于后续 Run 的 fresh provenance。Trace backend、Evaluation adapter、HTTP/API wire contract 与 UI 仍待后续 implementation task。

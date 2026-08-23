@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import inspect
+from dataclasses import replace
 from pathlib import Path
 
 from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, ToolEnvelope
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.capabilities.search_messages import SearchMessagesCapability
 from trivae.capabilities.tools import SearchMessagesTool
+from trivae.conversation import Conversation, ConversationStore, SQLiteConversationStore
 from trivae.data.ingestion.importer import SharedImporter
 from trivae.data.model import ImportRunSummary
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_lexical import LexicalIndexStats, SQLiteLexicalIndex
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
-from trivae.query.contracts import QueryRequest, QueryResult
+from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
 from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import Planner, SoftPlanner
 from trivae.query.router import Router, RuleRouter
@@ -44,6 +46,7 @@ class TrivaeApplication:
         agent_runtime: AgentRuntime | None = None,
         router: Router | None = None,
         planner: Planner | None = None,
+        conversation_store: ConversationStore | None = None,
     ) -> None:
         self.store = store
         self.importer = importer
@@ -51,6 +54,9 @@ class TrivaeApplication:
         self.structured_retrieval = structured_retrieval
         self.lexical_retrieval = lexical_retrieval
         self.capability_registry = capability_registry
+        if conversation_store is None:
+            raise ValueError("conversation_store is required")
+        self.conversation_store = conversation_store
         self._lexical_index = lexical_index
         # Runtime 是可注入且惰性创建的，检索-only caller 不需要 provider 配置。
         self._agent_runtime = agent_runtime
@@ -91,6 +97,18 @@ class TrivaeApplication:
 
         return self.capability_registry.invoke(name, request, scope)
 
+    def create_conversation(self) -> Conversation:
+        """通过 Application facade 创建 Conversation，不让接口层直接访问 Store。"""
+
+        self._ensure_open()
+        return self.conversation_store.create_conversation()
+
+    def read_conversation(self, conversation_id: str) -> Conversation:
+        """读取可 replay 的 User/Assistant 历史及结构化 AnswerArtifact。"""
+
+        self._ensure_open()
+        return self.conversation_store.get_conversation(conversation_id)
+
     async def run_agent(self, request: AgentRunRequest) -> RuntimeResult:
         """通过同一 Application composition path 执行 Agent Runtime。"""
 
@@ -101,6 +119,15 @@ class TrivaeApplication:
         """Query 的正式 Application 入口，standard/planned 共享同一 runtime。"""
 
         self._ensure_open()
+        conversation = self._conversation_for_request(request)
+        effective_request = request
+        if request.conversation_id is not None:
+            # 有持久化 conversation 时，Store 是 history source of truth，拒绝混入手工历史。
+            if request.prior_context:
+                raise QueryContractError(
+                    "prior_context cannot be combined with a persisted conversation_id"
+                )
+            effective_request = replace(request, prior_context=conversation.to_model_context())
         runtime = self._get_agent_runtime()
         if self._query_orchestrator is None:
             completion = getattr(runtime, "complete_text", None)
@@ -114,7 +141,21 @@ class TrivaeApplication:
                 self._planner,
                 capability_names=self.capability_registry.names(),
             )
-        return await self._query_orchestrator.run(request)
+        result = await self._query_orchestrator.run(effective_request)
+        artifact = result.answer_artifact
+        if result.is_successful:
+            if artifact is None:
+                # QueryResult contract 若出现不一致必须显式暴露，不能伪造持久化成功。
+                raise RuntimeError("successful query is missing its validated answer artifact")
+            self.conversation_store.commit_turn(conversation.conversation_id, request.query, artifact)
+        return replace(result, conversation_id=conversation.conversation_id)
+
+    def _conversation_for_request(self, request: QueryRequest) -> Conversation:
+        """解析 Query 的 conversation identity；无 id 时创建空 conversation。"""
+
+        if request.conversation_id is None:
+            return self.create_conversation()
+        return self.read_conversation(request.conversation_id)
 
     def _get_agent_runtime(self) -> AgentRuntime:
         """惰性构造 provider runtime，保持检索-only Application 无 provider 依赖。"""
@@ -156,9 +197,12 @@ class TrivaeApplication:
                         self._lexical_index.close()
                 finally:
                     try:
-                        self.read_repository.close()
+                        self.conversation_store.close()
                     finally:
-                        self.store.close()
+                        try:
+                            self.read_repository.close()
+                        finally:
+                            self.store.close()
             finally:
                 self._agent_runtime = None
                 self._query_orchestrator = None
@@ -208,6 +252,7 @@ def create_application(
     search_capability = SearchMessagesCapability(lexical_retrieval)
     capability_registry = CapabilityRegistry()
     capability_registry.register(SearchMessagesTool(search_capability))
+    conversation_store = SQLiteConversationStore(database_path)
     return TrivaeApplication(
         store=store,
         importer=importer,
@@ -215,6 +260,7 @@ def create_application(
         structured_retrieval=structured_retrieval,
         lexical_retrieval=lexical_retrieval,
         capability_registry=capability_registry,
+        conversation_store=conversation_store,
         agent_runtime=agent_runtime,
         router=router,
         planner=planner,

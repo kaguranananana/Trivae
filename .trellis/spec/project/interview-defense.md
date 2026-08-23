@@ -160,4 +160,55 @@ M5a 的事实来源集中在归档的 [task PRD](../../tasks/archive/2026-08/08-
 - 为什么 Retrieval Candidate 不等于 Final Evidence：Retrieval 只提供 bounded candidate / structured result，Agent final synthesis 组织 question-specific finding，validator 只验证结构、locator、scope 和可信 hydration。
 - 为什么不引入 Evidence Agent / Judge：Stage 1.8 ownership 与当前实现都把 semantic entailment 留给 M7 Evaluation；M5 没有第二套 Agent Loop。
 - 为什么 invalid citation 不 silent fallback：finalizer 通过 `finalization_error` 阻止正式 `final_answer`，不会删 binding、换来源或 retry；对应 bad cases 在 `tests/test_evidence.py`。
-- 当前限制：Conversation / Assistant Message durable persistence 仍是 M5b；Trace backend、semantic quality 和 bounds calibration 仍待 M6/M7 或 real-run evidence。
+- 当前限制：M5b 已完成第一版 Conversation / Assistant Message durable persistence；Trace backend、semantic quality 和 bounds calibration 仍待 M6/M7 或 real-run evidence。
+
+## M5b Conversation persistence 事实索引
+
+### Problem / Motivation
+
+- M5a 已能产出 validated `AnswerArtifact`，但进程重启后没有 Trivae-owned 的 Conversation / Assistant Message durable source；如果直接依赖 SDK/provider session，历史也无法保证与 Trivae 的 current-run provenance 语义一致。
+- M5b 的目标是把 validated Artifact 作为 completed Assistant Message 的结构化 snapshot 持久化，同时让历史上下文帮助 follow-up 理解指代，但不把旧 Evidence 冒充为新一轮事实。
+
+### Design Rationale / Why not
+
+- 选择独立 `conversation/` package 和独立 SQLite Store connection：保留 Canonical Message Store、Retrieval read repository 与 Conversation lifecycle 的 ownership，避免 Runtime / Tool / Finalizer 直接写 SQL。
+- 选择显式 JSON codec + 两张 Conversation 表：Artifact 是可回放的业务快照，需要通过领域构造函数恢复；当前没有证据要求把 Evidence 的每个字段拆成另一套可查询事实模型，因此暂不引入 normalized Artifact tables 或 migration framework。
+- 不采用 SDK/provider Session 作为 source of truth；Stage 1.7 已把 Trivae Conversation Store 定义为 canonical history。也不加入 retry、fallback 或 silent citation repair；失败必须停在 QueryResult / Store error 边界。
+
+### Failure / Regression Evidence
+
+- `regression test case`：注入 Assistant insert 失败，断言 User 与 Assistant 都不留存，证明 transaction rollback 覆盖整个 turn。
+- `regression test case`：Finalizer failure、Runtime failure 与 incomplete runtime 不产生 completed Assistant row；成功提交只发生在 `QueryResult.is_successful` 且 Artifact 非空时。
+- `regression test case`：使用旧 run 的 Evidence locator 配合新 run id 提交，Finalizer 返回 `INVALID_PROVENANCE`；历史 Artifact 可以 replay，但不能成为新 Runtime 的 ToolResult record。
+- `environment setup observation`：原始 SQLite 文件包含 `messages=473236`，直接检查时没有 `messages_fts`；按既有 derived-index contract，在临时副本上显式 rebuild 后得到 `indexed_messages=473236`、`fts5_available=true`。这是 smoke 前置条件记录，不是伪造的生产故障，也没有改写原始数据库。
+
+### Evaluation / Evidence
+
+- `measured fact`：`tests/test_conversation.py` focused suite 为 7 passed；全量 pytest、ruff、mypy、CLI help、Trellis validation 与 diff check 的最终结果记录在本任务 `validation.md`。
+- `measured fact`：真实 DeepSeek + SQLite smoke 在 `messages=473236` 的临时副本上成功完成 1 次 tool-assisted query；结果包含 1 个 ToolResult、1 个 Evidence、1 个 CitationBinding、5 个 hydrated MessageSource snapshots，close/reopen 后 Artifact、Evidence、CitationBinding、snapshot 与 answer text 均可 replay。
+- `engineering expectation`：数据量继续增长时，Conversation replay 的主要成本会随单个 Conversation 历史长度增长；是否需要 history window、压缩或 branching 必须由真实 workload / Evaluation 触发，当前不提前增加复杂度。
+
+### Observability / Debugging
+
+- 当前可通过 `QueryResult.finalization_error`、runtime termination/error、Conversation Store typed error、SQLite constraint/codec error 与测试断言定位失败层；Trace backend 尚未实现，不能把本任务描述为已有完整 Trace。
+- Store decode 失败会显式暴露损坏 JSON、未知 source type、缺失字段或 content mismatch；不会静默丢弃历史消息或重新搜索补全。
+
+### Boundary / Ownership
+
+```text
+Application owns lifecycle, history compilation and validated commit gate.
+Conversation Store owns conversations/conversation_messages SQL and Artifact codec boundary.
+Canonical Store owns imported chat facts; Retrieval read repository owns read-only projections/FTS.
+Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not write Conversation SQL.
+```
+
+### Evolution / Interview Evidence Map
+
+- Q: 为什么只提交 completed Assistant？
+  Evidence: `TrivaeApplication.query()`、`QueryResult.is_successful`、`tests/test_conversation.py` 的 success/failure boundary。
+- Q: 为什么历史 Evidence 不能直接支持 follow-up？
+  Evidence: `ConversationMessage.to_model_context()` 不编译 old locators 为 ToolResult，fresh-boundary regression 返回 `INVALID_PROVENANCE`。
+- Q: 如何证明重启后没有重新搜索？
+  Evidence: SQLite Store 直接 decode `answer_artifact_json`；restart test 只 close/reopen/load，真实 smoke 断言 Artifact/snapshot/citation replay。
+- Q: 未来什么证据会让你重新评估？
+  Evidence: 单个 Conversation 的真实历史窗口、mutation/audit、branching 或 evaluation 需求出现可复现 Failure Case 后，再评估压缩、版本化 migration 或 mutation UX。

@@ -62,6 +62,7 @@ class QueryRequest:
     prior_context: tuple[ModelContextMessage, ...] = ()
     data_snapshot: Mapping[str, object] = field(default_factory=dict)
     available_capabilities: tuple[str, ...] = ("search_messages",)
+    conversation_id: str | None = None
 
     def __post_init__(self) -> None:
         """在应用入口校验并规范化查询字段，减少下游分支。"""
@@ -74,6 +75,10 @@ class QueryRequest:
             if not isinstance(self.request_id, str) or not self.request_id.strip():
                 raise QueryContractError("request_id must be a non-empty string when provided")
             object.__setattr__(self, "request_id", self.request_id.strip())
+        if self.conversation_id is not None:
+            if not isinstance(self.conversation_id, str) or not self.conversation_id.strip():
+                raise QueryContractError("conversation_id must be a non-empty string when provided")
+            object.__setattr__(self, "conversation_id", self.conversation_id.strip())
         object.__setattr__(self, "query", self.query.strip())
         QueryContext(
             query=self.query,
@@ -128,6 +133,7 @@ class QueryResult:
     # 只有 finalizer 成功后该字段才非空，形成 M5 的 validated commit boundary。
     answer_artifact: AnswerArtifact | None = None
     finalization_error: FinalizationErrorInfo | None = None
+    conversation_id: str | None = None
 
     @property
     def final_answer(self) -> str | None:
