@@ -599,3 +599,24 @@ Added derived UTF-8 Trace text logs, Application export facade, trace export CLI
 ### Status
 
 [OK] **Completed**
+
+
+## Session 27: Interactive CLI agent event streaming
+
+**Date**: 2026-08-23
+**Task**: Interactive CLI agent event streaming
+**Branch**: `codex/interactive-cli-streaming-events`
+
+### Summary
+
+Implemented provider reasoning normalization, shared Runtime/Trace live projection, structured Answer streaming, normal/verbose CLI rendering, regression coverage, documentation, and a successful real DeepSeek retrieval smoke test.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e9f0484` | (see git log) |
+
+### Status
+
+[OK] **Completed**

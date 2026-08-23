@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 26
+- **Total Sessions**: 27
 - **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~601 | Active |
+| `journal-1.md` | ~622 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 27 | 2026-08-23 | Interactive CLI agent event streaming | `e9f0484` | `codex/interactive-cli-streaming-events` |
 | 26 | 2026-08-23 | Compact human-readable Trace projection | `baa852e` | `codex/human-readable-execution-transcript` |
 | 25 | 2026-08-23 | Model-visible execution transcript | `c594aa2` | `codex/human-readable-execution-transcript` |
 | 24 | 2026-08-23 | Add human-readable Trace logs | `5683530` | `codex/interactive-chat-cli-main` |
