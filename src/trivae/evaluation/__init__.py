@@ -1,6 +1,7 @@
 """Trivae Evaluation / Regression public contracts and services."""
 
 from .checks import (
+    agent_tool_behavior_projection,
     build_evaluation_result,
     operational_measurements,
     query_result_snapshot,
@@ -64,6 +65,7 @@ __all__ = [
     "RETRIEVAL_RUBRIC_VERSION",
     "BlindAnnotationPacket",
     "BlindCandidate",
+    "agent_tool_behavior_projection",
     "CaseProvenance",
     "CaseReference",
     "ControlledVariant",

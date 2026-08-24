@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"按项目既有测试、ruff、mypy 和验证门禁执行。"}
+{"file":".trellis/spec/backend/agent-runtime-guidelines.md","reason":"检查 Runtime tool registration、scope 传递和 provider 行为。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md","reason":"复核 Trace 是否能定位 selection、retrieval、context、evidence 和 answer 问题。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-10-evaluation.md","reason":"复核 Evaluation labels、成本/延迟/调用数和 provisional evidence 约束。"}

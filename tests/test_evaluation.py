@@ -32,12 +32,13 @@ from trivae.evaluation import (
     run_judge,
     scope_identity,
 )
+from trivae.evaluation.checks import operational_measurements, query_result_snapshot
 from trivae.observability.contracts import TraceMetrics, TraceProjection, TraceTimelineItem
 from trivae.query.contracts import ExecutionOverride, QueryRequest, QueryResult
 from trivae.query.evidence import FinalizationErrorInfo, ToolResultRecord
 from trivae.query.planner import Plan, PlannerResult, PlanStep
 from trivae.query.router import RouteDecision
-from trivae.query.runtime.contracts import RuntimeResult
+from trivae.query.runtime.contracts import RuntimeResult, RuntimeToolCall
 
 
 def _snapshot(snapshot_id: str = "snapshot:test") -> DatasetSnapshot:
@@ -292,6 +293,47 @@ class EvaluationContractTests(unittest.TestCase):
         )
         self.assertEqual(suite.identity, "suite-test@v1")
         self.assertEqual(suite.to_dict()["cases"], [{"case_id": "case-test", "version": 1}])
+
+    def test_agent_tool_behavior_is_recorded_as_observation_not_quality_judgement(self) -> None:
+        """Evaluation 保存 visible/selected sequence，preferred tool 仍留给诊断与 Review。"""
+
+        result = QueryResult(
+            runtime_result=RuntimeResult(
+                final_answer=None,
+                provider="test-provider",
+                model="test-model",
+                termination="failed",
+                tool_calls=(
+                    RuntimeToolCall("lexical_search", "ok", round=1),
+                    RuntimeToolCall("semantic_search", "error", error_code="CAPABILITY_UNAVAILABLE", round=2),
+                ),
+                tool_rounds=2,
+            ),
+            route_decision=RouteDecision("standard_execution", 1.0, "rule", "test"),
+        )
+
+        snapshot = query_result_snapshot(result)
+        measurements = operational_measurements(result, None)
+
+        self.assertEqual(
+            snapshot["runtime"]["tool_behavior"],
+            {
+                "first_selected_tool": "lexical_search",
+                "tool_sequence": ["lexical_search", "semantic_search"],
+                "retrieval_tool_sequence": ["lexical_search", "semantic_search"],
+                "tool_call_count": 2,
+                "tool_rounds": 2,
+                "tool_errors": [
+                    {
+                        "name": "semantic_search",
+                        "status": "error",
+                        "error_code": "CAPABILITY_UNAVAILABLE",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(measurements["agent_tool_behavior"]["tool_rounds"], 2)
+        self.assertNotIn("human_verified", measurements["agent_tool_behavior"])
 
 
 class EvaluationRunnerTests(unittest.TestCase):

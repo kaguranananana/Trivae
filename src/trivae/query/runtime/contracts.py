@@ -37,6 +37,7 @@ class AgentRunRequest:
 
     query: str
     scope: ExecutionScope
+    # Application 的 QueryRequest 会显式编译 canonical surface；低层直接 caller 默认保留 legacy contract。
     available_capabilities: tuple[str, ...] = ("search_messages",)
     model_context: tuple[ModelContextMessage, ...] = ()
     plan_guidance: str | None = None

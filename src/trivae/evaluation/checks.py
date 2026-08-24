@@ -26,6 +26,7 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
         return None
     plan = result.plan
     runtime_error = result.runtime_result.error
+    tool_behavior = agent_tool_behavior_projection(result)
     return {
         "termination": result.termination,
         "is_successful": result.is_successful,
@@ -48,6 +49,7 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
             "termination": result.runtime_result.termination,
             "tool_count": result.runtime_result.tool_count,
             "tool_rounds": result.runtime_result.tool_rounds,
+            "tool_behavior": tool_behavior,
             "usage": None if result.runtime_result.usage is None else dict(result.runtime_result.usage),
             "run_id": result.runtime_result.run_id,
             "error": None
@@ -72,6 +74,38 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
     }
 
 
+def agent_tool_behavior_projection(result: QueryResult | None) -> dict[str, object]:
+    """保存 Agent Tool Selection 的公开行为事实，不替模型行为下质量结论。"""
+
+    if result is None:
+        return {
+            "first_selected_tool": None,
+            "tool_sequence": [],
+            "retrieval_tool_sequence": [],
+            "tool_call_count": 0,
+            "tool_rounds": 0,
+            "tool_errors": [],
+        }
+    calls = result.runtime_result.tool_calls
+    retrieval_names = {"lexical_search", "semantic_search", "search_messages"}
+    return {
+        "first_selected_tool": None if not calls else calls[0].name,
+        "tool_sequence": [call.name for call in calls],
+        "retrieval_tool_sequence": [call.name for call in calls if call.name in retrieval_names],
+        "tool_call_count": len(calls),
+        "tool_rounds": result.runtime_result.tool_rounds,
+        "tool_errors": [
+            {
+                "name": call.name,
+                "status": call.status,
+                "error_code": call.error_code,
+            }
+            for call in calls
+            if call.status in {"error", "failed"} or call.error_code is not None
+        ],
+    }
+
+
 def operational_measurements(
     result: QueryResult | None,
     trace: TraceProjection | None,
@@ -89,6 +123,8 @@ def operational_measurements(
         else dict(result.runtime_result.usage),
         "trace_completeness": None if trace is None else trace.completeness,
         "retrieval_count": None if trace is None else trace.metrics.retrieval_count,
+        # 这是公开 action sequence 的 observation；preferred tool 仍由诊断 Case 和人工/模型 Review 分开判断。
+        "agent_tool_behavior": agent_tool_behavior_projection(result),
     }
     if trace is not None:
         measurements["latency_ms"] = trace.metrics.total_duration_ms

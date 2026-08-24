@@ -85,7 +85,8 @@ class QueryRequest:
     locale: str = "zh-CN"
     prior_context: tuple[ModelContextMessage, ...] = ()
     data_snapshot: Mapping[str, object] = field(default_factory=dict)
-    available_capabilities: tuple[str, ...] = ("search_messages",)
+    # 正常 Agent surface 默认同时提供精确 lexical 与语义 retrieval；legacy caller 可显式传入旧名称。
+    available_capabilities: tuple[str, ...] = ("lexical_search", "semantic_search")
     conversation_id: str | None = None
     trace_profile: TraceProfile = "normal"
     execution_override: ExecutionOverride = field(default_factory=ExecutionOverride)

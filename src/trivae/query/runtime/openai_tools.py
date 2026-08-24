@@ -47,15 +47,29 @@ class SearchMessagesSDKToolAdapter:
             if trusted_max_results <= 0:
                 raise ValueError("trusted_max_results must be positive when provided")
 
-        description = (
-            "Search Trivae messages with a bounded local context window. "
-            "Use this when the answer needs evidence from chat messages. "
-            "keyword must be exactly one non-empty string. "
-            "Omit optional filters, or use null; do not send empty arrays. "
-            "limit must be a positive integer within the current trusted result limit. "
-            "context_before and context_after must be non-negative integers. "
-            "Use one complete provenance message source entry for each citation."
-        )
+        if self.tool_name == "lexical_search":
+            # canonical lexical tool 只提供选择提示；实际是否继续 semantic 由 Agent 自主判断。
+            description = (
+                "Search Trivae messages with exact lexical matching and a bounded local context window. "
+                "Prefer this for repository names, URLs, code, error messages, nicknames, exact phrases, "
+                "or other precise terms. Use semantic_search when the user's wording is a paraphrase or "
+                "conceptual description. keyword must be exactly one non-empty string. "
+                "Omit optional filters, or use null; do not send empty arrays. "
+                "limit must be a positive integer within the current trusted result limit. "
+                "context_before and context_after must be non-negative integers. "
+                "Use one complete provenance message source entry for each citation."
+            )
+        else:
+            # legacy 名称保留原 contract，并明确它不是正常 Agent surface 的 canonical 名称。
+            description = (
+                "Legacy compatibility entry point for exact lexical search in Trivae messages, "
+                "with a bounded local context window. Prefer lexical_search for the normal Agent surface. "
+                "keyword must be exactly one non-empty string. "
+                "Omit optional filters, or use null; do not send empty arrays. "
+                "limit must be a positive integer within the current trusted result limit. "
+                "context_before and context_after must be non-negative integers. "
+                "Use one complete provenance message source entry for each citation."
+            )
         if trusted_max_results is not None:
             # 让 schema 与描述同时携带动态 bound，减少模型先生成越界 limit 再恢复的无效回合。
             description += f" The current trusted result limit is {trusted_max_results}."

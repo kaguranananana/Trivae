@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "diagnostic_id": "agent-tool-selection-stage-a-v1",
+  "dimension": "agent_tool_selection_retrieval_behavior",
+  "label_status": "diagnostic_contract_expectation",
+  "available_tools": ["lexical_search", "semantic_search"],
+  "cases": [
+    {
+      "case_id": "A1",
+      "category": "lexical_dominant",
+      "query": "谁提到过 sqlite-vec？",
+      "preferred_first_tools": ["lexical_search"],
+      "allowed_follow_up_tools": ["semantic_search"],
+      "quality_judgement": "separate_llm_or_human_review"
+    },
+    {
+      "case_id": "A2",
+      "category": "semantic_dominant",
+      "query": "之前大家有没有讨论过 Agent 框架太重、封装太多之类的问题？",
+      "preferred_first_tools": ["semantic_search"],
+      "allowed_follow_up_tools": ["lexical_search"],
+      "quality_judgement": "separate_llm_or_human_review"
+    },
+    {
+      "case_id": "A3",
+      "category": "weak_result_continuation",
+      "query": "先查一个明确术语，结果不足时再查相关语义讨论。",
+      "preferred_first_tools": ["lexical_search", "semantic_search"],
+      "allowed_follow_up_tools": ["lexical_search", "semantic_search"],
+      "quality_judgement": "sequence_is_task_dependent"
+    },
+    {
+      "case_id": "A4",
+      "category": "no_result_transparency",
+      "query": "搜索一个明确不存在的测试词，并说明有没有证据。",
+      "preferred_first_tools": ["lexical_search", "semantic_search"],
+      "allowed_follow_up_tools": ["lexical_search", "semantic_search"],
+      "required_behavior": "no_fabricated_evidence_or_silent_data_source_change",
+      "quality_judgement": "deterministic_contract_plus_answer_review"
+    },
+    {
+      "case_id": "A5",
+      "category": "semantic_unavailable_or_stale",
+      "query": "在语义索引不可用时调查一个概念问题。",
+      "preferred_first_tools": ["semantic_search"],
+      "allowed_follow_up_tools": ["lexical_search"],
+      "required_behavior": "preserve_explicit_semantic_failure_without_silent_fallback",
+      "quality_judgement": "deterministic_failure_contract"
+    }
+  ],
+  "recorded_observations": [
+    "available_tools",
+    "first_selected_tool",
+    "tool_sequence",
+    "tool_call_count",
+    "tool_rounds",
+    "retrieval_evidence_support",
+    "citation_state",
+    "latency_ms",
+    "usage",
+    "tool_errors",
+    "no_evidence_hallucination"
+  ],
+  "prohibited_conclusions": [
+    "preferred_first_tool_is_human_verified_ground_truth",
+    "one_tool_sequence_is_the_only_valid_sequence",
+    "llm_assisted_provisional_retrieval_labels_are_human_verified"
+  ]
+}

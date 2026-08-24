@@ -31,7 +31,7 @@
   "uncertainty_constraints": ["没有当前 Run 的 canonical message provenance 时不得声称存在相关讨论。"],
   "negative_constraints": ["不得引用 Scope 外消息。", "不得把 semantic chunk/vector row 作为最终 citation source。"],
   "critical_requirements": ["保留 lexical/semantic strategy、coverage、partial/truncated 与 current-run citation provenance。"],
-  "diagnostic_expectations": {"preferred_owner": "retrieval"},
+  "diagnostic_expectations": {"preferred_owner": "retrieval", "tool_selection": {"category": "semantic_dominant", "preferred_first_tools": ["semantic_search"], "allowed_follow_up_tools": ["lexical_search"], "judgement": "diagnostic_expectation_only"}},
   "review_policy": {"rubric_version": "semantic-v1-seed", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
   "provenance": {"source": "ChatLab-inspired Trivae design seed", "method": "semantic retrieval comparison seed; no quality claim", "created_at": "2026-08-23T00:00:00+00:00"}
 }

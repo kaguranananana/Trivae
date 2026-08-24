@@ -551,6 +551,7 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
                             "Where is Alpha?",
                             ExecutionScope(allowed_session_ids=("qq:100",), max_results=5),
                             request_id="m5-run",
+                            available_capabilities=("search_messages",),
                         )
                     )
                 )
@@ -589,7 +590,14 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
                 RuleRouter(),
                 SoftPlanner(),
                 capability_names=("search_messages",),
-            ).run(QueryRequest("investigate", ExecutionScope(), request_id=record.run_id))
+            ).run(
+                QueryRequest(
+                    "investigate",
+                    ExecutionScope(),
+                    request_id=record.run_id,
+                    available_capabilities=("search_messages",),
+                )
+            )
         )
         self.assertIsNone(result.answer_artifact)
         self.assertIsNone(result.final_answer)
@@ -619,7 +627,14 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
                 RuleRouter(),
                 SoftPlanner(),
                 capability_names=("search_messages",),
-            ).run(QueryRequest("investigate", ExecutionScope(), request_id=record.run_id))
+            ).run(
+                QueryRequest(
+                    "investigate",
+                    ExecutionScope(),
+                    request_id=record.run_id,
+                    available_capabilities=("search_messages",),
+                )
+            )
         )
 
         self.assertFalse(result.is_successful)

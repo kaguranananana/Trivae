@@ -1,0 +1,188 @@
+from __future__ import annotations
+
+import asyncio
+import tempfile
+import unittest
+from pathlib import Path
+
+from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
+
+from trivae.bootstrap.application import create_application
+from trivae.capabilities import CapabilityRegistry, ExecutionScope
+from trivae.capabilities.contracts import ToolEnvelope
+from trivae.observability.collector import TraceCollector
+from trivae.observability.projection import project_trace
+from trivae.query.contracts import QueryRequest
+from trivae.query.runtime.contracts import AgentRunRequest
+from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+from trivae.query.runtime.prompt import SYSTEM_PROMPT
+
+
+class _RecordingTool:
+    """测试两个独立 retrieval Tool 是否共享同一个 Runtime 调用链。"""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.calls: list[tuple[object, ExecutionScope]] = []
+
+    def invoke(self, request: object, scope: ExecutionScope) -> ToolEnvelope:
+        # Tool 只返回最小 envelope；测试重点是名称、顺序、scope 和 Tool Result identity。
+        self.calls.append((request, scope))
+        return ToolEnvelope(status="ok", data=None, meta={"truncated": False}, error=None)
+
+
+class AgentToolSurfaceTests(unittest.TestCase):
+    """验证 Stage A 的默认 surface、selection guidance 和同一 Runtime 的多 Tool 行为。"""
+
+    def test_query_default_exposes_dual_retrieval_and_legacy_is_explicit(self) -> None:
+        scope = ExecutionScope(max_results=5)
+        request = QueryRequest("谁提到过 sqlite-vec？", scope)
+        self.assertEqual(request.available_capabilities, ("lexical_search", "semantic_search"))
+
+        legacy = QueryRequest(
+            "legacy caller",
+            scope,
+            available_capabilities=("search_messages",),
+        )
+        self.assertEqual(legacy.available_capabilities, ("search_messages",))
+
+    def test_visible_tool_descriptions_guide_selection_without_legacy_tool(self) -> None:
+        registry = CapabilityRegistry()
+        registry.register(_RecordingTool("lexical_search"))
+        registry.register(_RecordingTool("semantic_search"))
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=ScriptedModel([]))
+        request = AgentRunRequest(
+            "之前是否讨论过 Agent 框架太重？",
+            ExecutionScope(max_results=5),
+            available_capabilities=("lexical_search", "semantic_search"),
+        )
+
+        agent = runtime._build_agent(request, runtime._build_context(request), object())
+        tools = {tool.name: tool for tool in agent.tools}
+
+        self.assertEqual(set(tools), {"lexical_search", "semantic_search"})
+        self.assertIn("exact lexical matching", tools["lexical_search"].description)
+        self.assertIn("semantic_search", tools["lexical_search"].description)
+        self.assertIn("wording differs", tools["semantic_search"].description)
+        self.assertIn("lexical_search", tools["semantic_search"].description)
+        self.assertIn("lexical_search", SYSTEM_PROMPT)
+        self.assertIn("semantic_search", SYSTEM_PROMPT)
+        self.assertIn("do not silently", SYSTEM_PROMPT)
+
+    def test_agent_can_continue_from_lexical_to_semantic_in_one_runtime(self) -> None:
+        lexical = _RecordingTool("lexical_search")
+        semantic = _RecordingTool("semantic_search")
+        registry = CapabilityRegistry()
+        registry.register(lexical)
+        registry.register(semantic)
+        model = ScriptedModel(
+            [
+                ModelStep(
+                    output=[
+                        function_call(
+                            "lexical_search",
+                            {"keyword": "sqlite-vec", "limit": 2},
+                            call_id="lexical-call",
+                        )
+                    ]
+                ),
+                ModelStep(
+                    output=[
+                        function_call(
+                            "semantic_search",
+                            {"query": "讨论 Agent 框架过重", "limit": 2},
+                            call_id="semantic-call",
+                        )
+                    ]
+                ),
+                ModelStep(output=[assistant_message("继续调查后得到的结果")]),
+            ]
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=model, max_turns=4)
+        request = AgentRunRequest(
+            "先查明确术语，再查可能的语义讨论",
+            ExecutionScope(max_results=2),
+            available_capabilities=("lexical_search", "semantic_search"),
+            request_id="stage-a-multi-tool",
+        )
+
+        result = asyncio.run(runtime.run(request))
+
+        self.assertEqual(result.termination, "completed")
+        self.assertEqual([call.name for call in result.tool_calls], ["lexical_search", "semantic_search"])
+        self.assertEqual(len(result.tool_results), 2)
+        self.assertEqual({record.run_id for record in result.tool_results}, {result.run_id})
+        self.assertEqual(
+            [record.tool_name for record in result.tool_results],
+            ["lexical_search", "semantic_search"],
+        )
+        self.assertIs(lexical.calls[0][1], semantic.calls[0][1])
+
+    def test_trace_keeps_selected_tools_and_explicit_semantic_failure(self) -> None:
+        """真实 Capability registry 的 Trace 能区分两次选择和 semantic unavailable。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            application = create_application(Path(directory) / "trace.sqlite3")
+            try:
+                # 测试只关注 semantic unavailable；lexical 的 derived index 前置条件显式建立。
+                application.rebuild_lexical_index()
+                collector = TraceCollector(
+                    application._trace_store,
+                    trace_id="trace-stage-a",
+                    request_id="request-stage-a",
+                )
+                model = ScriptedModel(
+                    [
+                        ModelStep(
+                            output=[
+                                function_call(
+                                    "lexical_search",
+                                    {"keyword": "sqlite-vec", "limit": 2},
+                                    call_id="lexical-call",
+                                )
+                            ]
+                        ),
+                        ModelStep(
+                            output=[
+                                function_call(
+                                    "semantic_search",
+                                    {"query": "讨论 Agent 框架过重", "limit": 2},
+                                    call_id="semantic-call",
+                                )
+                            ]
+                        ),
+                        ModelStep(output=[assistant_message("没有可用的语义索引证据")]),
+                    ]
+                )
+                runtime = OpenAIAgentsRuntimeAdapter(
+                    application.capability_registry,
+                    model=model,
+                    max_turns=4,
+                )
+                result = asyncio.run(
+                    runtime.run(
+                        AgentRunRequest(
+                            "先查术语，再调查语义讨论",
+                            ExecutionScope(max_results=2),
+                            available_capabilities=("lexical_search", "semantic_search"),
+                            trace_context=collector.operation_context("query"),
+                        )
+                    )
+                )
+                projection = project_trace(application._trace_store.read_trace("trace-stage-a"))
+            finally:
+                application.close()
+
+        tool_events = [item for item in projection.timeline if item.stage == "tool"]
+        started = [item for item in tool_events if item.operation == "tool.call.started"]
+        completed = [item for item in tool_events if item.operation == "tool.call.completed"]
+        failed = [item for item in tool_events if item.operation == "tool.call.failed"]
+        self.assertEqual(result.termination, "completed")
+        self.assertEqual([item.payload["tool_name"] for item in started], ["lexical_search", "semantic_search"])
+        self.assertEqual([item.payload["tool_name"] for item in completed], ["lexical_search"])
+        self.assertEqual([item.payload["tool_name"] for item in failed], ["semantic_search"])
+        self.assertEqual(failed[0].payload["error_code"], "SEMANTIC_INDEX_NOT_READY")
+
+
+if __name__ == "__main__":
+    unittest.main()

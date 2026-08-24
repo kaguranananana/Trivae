@@ -234,3 +234,41 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
 - Measured fact：真实 DeepSeek verbose run 产生 8 次 `search_messages`、8 次 Retrieval completion、1 次 finalization/Conversation commit/query completion；Trace complete，0 reasoning/content-delta persistence，Conversation 只有一个 560 字符 Assistant message并与最终 snapshot 相同。
 - Ownership：Runtime adapter 拥有 SDK → Runtime normalization；QueryStreamAdapter 拥有接口无关 live projection；TraceCollector 拥有持久化 data minimization；CLI Renderer 只拥有 terminal presentation；Conversation/Finalizer 语义未改变。
 - Evolution：只有真实 workload 证明普通终端 reasoning 过长、需要跨进程消费者或 HTTP/UI 产品需求时，才评估折叠、SSE/backpressure 或异步 event transport；当前不引入 TUI、queue 或第二套日志链。
+
+## Stage A Agent-facing retrieval surface 事实索引
+
+- Problem / boundary：正常 Application `QueryRequest` 默认 visible capabilities 已切换为
+  `lexical_search` + `semantic_search`；`search_messages` 仍是显式 legacy compatibility
+  entry point。低层直接构造 `AgentRunRequest` 的默认未被强行改写，避免破坏旧 caller；正常
+  Query/CLI 编译路径的行为由 `tests/test_agent_tool_surface.py` 覆盖。
+- Tool vs Capability：Tool adapter 只负责模型可见 contract、arguments 和 result envelope；
+  CapabilityRegistry 仍负责 scope-aware lexical/semantic execution。Stage A 没有创建第二个
+  Runtime、Query pipeline、Evidence 或 Trace 系统。
+- Selection rationale：prompt 和 Tool descriptions 对 exact URL/repo/code/error/nickname/
+  phrase 与 paraphrase/concept/vague memory 给出简短 guidance；模型仍自行选择。没有固定
+  hybrid、RRF、reranker、query rewrite 或 silent lexical fallback。
+- Context/Evidence boundary：现有 retrieval Tool 继续返回 bounded local context；同一 Runtime
+  内的第二个 retrieval call 共享 run/scope/ToolResult provenance，最终 Evidence/Citation
+  仍由现有 Finalizer 验证。
+- Evaluation：新增 behavior projection 只记录 first selected tool、实际 sequence、call count、
+  rounds、errors 和 final evidence/citation state；它是 diagnostic observation，不是
+  `human_verified` judgment。原 paired lexical-only / semantic-only benchmark 与
+  `llm_assisted_provisional` labels 保持不变。
+- Real Provider evidence：在 473,236 条 canonical messages 与已构建 semantic index 的临时
+  snapshot 上，四个 smoke case 均使模型实际看到双 retrieval surface。lexical-dominant 首选
+  lexical，semantic-dominant 首选 semantic；multi-search 完成 2 Evidence/2 citations；
+  no-result 完成但 0 Evidence/0 citations。真实运行同时暴露了 Router timeout degradation、
+  一次 Provider `SSLError`→`RUNTIME_ERROR` 和一次 invalid answer artifact；这些被记录为
+  Failure Case，不能包装成质量结论或 production SLA。
+- Debugging evidence：Trace 可区分 Router degradation、Tool `ok`/`partial`/error、semantic
+  unavailable、retrieval empty、citation validation 和 query terminal failure，因此可以定位
+  “选错工具”“工具返回弱/空结果”“Provider/runtime error”“答案 artifact 无效”不同层级。
+- Interview evidence map：
+  - Q: 为什么分批增加 Tool？ Evidence: Stage A 仅增加双 retrieval surface，Evaluation
+    先记录 selection/cost/evidence，再以 Stage B/C checkpoint 继续扩展，避免一次性扩大
+    surface 后无法归因 selection regression。
+  - Q: 为什么不把 semantic unavailable 改成 lexical 结果？ Evidence: explicit semantic
+    failure test、Trace failure projection 和 Stage A validation FC-A5。
+  - Q: 什么证据会让你重新评估？ Evidence: 重复且可定位的 Provider transport failure、
+    Agent selection regression 或 verified quality dataset；在此之前不改变 Qwen、dimension、
+    chunking 或 dense bounds。

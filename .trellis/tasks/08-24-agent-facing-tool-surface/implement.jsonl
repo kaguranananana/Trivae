@@ -1,0 +1,5 @@
+{"file":".trellis/spec/project/architecture.md","reason":"确认六个 Agent-facing tools、scope boundary、Tool 与 Capability 分离和禁止新增架构。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-4-tool-capability-layer.md","reason":"实现和验证 Tool contract、Envelope、兼容入口以及分阶段 surface。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-7-agent-runtime.md","reason":"复用现有 Runtime、visible capabilities、tool rounds 和错误语义。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-9-trace-observability.md","reason":"复用公开 tool action、result、evidence 和 answer 的 Trace boundary。"}
+{"file":".trellis/spec/project/technical-decisions/stage-1-10-evaluation.md","reason":"保留 paired retrieval evaluation，并增加 Agent behavior diagnostic 记录。"}

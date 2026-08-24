@@ -10,6 +10,19 @@
 
 运行结果、Review、Comparison 和 Failure Diagnosis 写入独立 SQLite Evaluation Store，不写入 Canonical Chat Store。
 
+## Stage A Agent Tool Selection
+
+`diagnostics/agent-tool-selection-stage-a-v1.json` 是新增的 Agent Retrieval Behavior diagnostic
+catalog。它把 lexical-dominant、semantic-dominant、weak-result continuation、no-result 和
+semantic unavailable/stale 分成可追踪 Case category，并明确 preferred tool 只是
+`diagnostic_contract_expectation`，不是自动 `human_verified` ground truth。
+
+现有 `EvaluationRunner` 的每次 Run 继续通过生产 Query 链路执行，并在 Evaluation Store 的
+bounded projection 中记录 `available_capabilities`、`first_selected_tool`、完整
+`tool_sequence`、`tool_call_count`、`tool_rounds`、tool errors、latency、usage 和 Trace
+completeness。paired lexical-vs-semantic retrieval evaluation 保持独立；两者都不保存真实聊天
+正文或 hidden chain-of-thought。
+
 ## Real snapshot and semantic smoke
 
 当前 Canonical Store 可以通过 Application facade materialize 为不含聊天正文的 Snapshot manifest：

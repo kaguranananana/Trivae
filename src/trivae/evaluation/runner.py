@@ -247,6 +247,9 @@ class EvaluationRunner:
                 "scope": scope_snapshot(request.scope),
                 "data_snapshot": dict(request.data_snapshot),
                 "available_capabilities": list(request.available_capabilities),
+                "diagnostic_expectations": None
+                if case.diagnostic_expectations is None
+                else dict(case.diagnostic_expectations),
                 "execution_override": request.execution_override.to_dict(),
             },
             terminal_status=terminal_status,

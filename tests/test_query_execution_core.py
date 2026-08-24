@@ -287,9 +287,20 @@ class OrchestratorTests(unittest.TestCase):
             capability_names=("search_messages",),
         )
 
-        standard = asyncio.run(orchestrator.run(QueryRequest("分析谁发言最多", scope)))
+        standard = asyncio.run(
+            orchestrator.run(
+                QueryRequest("分析谁发言最多", scope, available_capabilities=("search_messages",))
+            )
+        )
         planned = asyncio.run(
-            orchestrator.run(QueryRequest("找出完整证据链，并比较前后观点变化", scope)))
+            orchestrator.run(
+                QueryRequest(
+                    "找出完整证据链，并比较前后观点变化",
+                    scope,
+                    available_capabilities=("search_messages",),
+                )
+            )
+        )
 
         self.assertIsNone(standard.plan)
         self.assertIsNotNone(planned.plan)
@@ -309,7 +320,11 @@ class OrchestratorTests(unittest.TestCase):
         )
         result = asyncio.run(
             orchestrator.run(
-                QueryRequest("找出完整证据链，并比较前后观点变化", ExecutionScope())
+                QueryRequest(
+                    "找出完整证据链，并比较前后观点变化",
+                    ExecutionScope(),
+                    available_capabilities=("search_messages",),
+                )
             )
         )
         self.assertEqual(result.runtime_result.final_answer, "recorded")
@@ -349,6 +364,7 @@ class OrchestratorTests(unittest.TestCase):
                         "找出完整证据链，并比较前后观点变化",
                         ExecutionScope(),
                         trace_profile="debug",
+                        available_capabilities=("search_messages",),
                     ),
                     trace=trace,
                 )

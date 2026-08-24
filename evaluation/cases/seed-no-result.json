@@ -11,7 +11,7 @@
   "uncertainty_constraints": ["无结果不等于全局不存在。"],
   "negative_constraints": ["不得编造 Evidence 或 Citation。"],
   "critical_requirements": ["保留 no-result 的 retrieval fact。"],
-  "diagnostic_expectations": {"preferred_owner": "retrieval"},
+  "diagnostic_expectations": {"preferred_owner": "retrieval", "tool_selection": {"category": "no_result_transparency", "required_behavior": "preserve_explicit_no_result_without_fabricated_evidence", "judgement": "deterministic_contract_expectation"}},
   "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
   "provenance": {"source": "Trivae negative-result seed", "method": "deterministic negative scenario", "created_at": "2026-08-23T00:00:00+00:00"}
 }
