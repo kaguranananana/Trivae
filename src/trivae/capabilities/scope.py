@@ -9,8 +9,19 @@ from trivae.capabilities.contracts import (
     SearchMessagesInput,
     SemanticSearchInput,
 )
+from trivae.retrieval.structured import ScopeFilters
 
 CapabilitySearchInput = SearchMessagesInput | SemanticSearchInput
+
+
+def scope_filters(scope: ExecutionScope) -> ScopeFilters:
+    """把 Application trusted scope 投影为 Retrieval 共用的只读过滤。"""
+
+    return ScopeFilters(
+        session_ids=scope.allowed_session_ids,
+        start_timestamp=scope.start_timestamp,
+        end_timestamp=scope.end_timestamp,
+    )
 
 
 def effective_sessions(request: CapabilitySearchInput, scope: ExecutionScope) -> tuple[str, ...] | None:

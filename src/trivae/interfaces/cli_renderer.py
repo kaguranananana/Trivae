@@ -2,13 +2,37 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping, Sequence
 from typing import Literal, TextIO
 
 from trivae.query.streaming import QueryStreamEvent
 
 _Segment = Literal["thinking", "answer"]
+
+_TOOL_LABELS = {
+    "search_messages": "Search messages",
+    "lexical_search": "Search messages",
+    "semantic_search": "Semantic search",
+    "get_message_context": "Read nearby context",
+    "find_members": "Find members",
+    "get_schema": "Inspect schema",
+    "execute_sql": "Run structured query",
+}
+
+_ERROR_LABELS = {
+    "SEMANTIC_INDEX_NOT_READY": "Semantic index is not ready; run `trivae semantic rebuild` explicitly.",
+    "SEMANTIC_INDEX_STALE": "Semantic index is stale; run `trivae semantic rebuild` explicitly.",
+    "SEMANTIC_INDEX_STORAGE": "Semantic index storage is unavailable.",
+    "PROVIDER.STREAM_FAILED": "The model stream stopped before the answer completed.",
+    "CONVERSATION_COMMIT_FAILED": "The answer was generated but could not be saved.",
+    "QUERY_EXCEPTION": "The query failed unexpectedly; check the trace log.",
+    "RETRIEVAL_LEXICAL_INDEX": "Keyword search is unavailable; rebuild the lexical index explicitly.",
+    "RETRIEVAL_UNAVAILABLE": "Search is unavailable; the answer may be partial.",
+    "SCOPE_VIOLATION": "That request is outside the selected data scope.",
+    "MESSAGE_NOT_FOUND": "The cited message is no longer available in the selected scope.",
+    "SQL_READ_ONLY_VIOLATION": "The structured query was rejected because it is not read-only.",
+    "SQL_SCOPE_VIOLATION": "The structured query attempted to leave the selected scope.",
+}
 
 
 class CliEventRenderer:
@@ -90,15 +114,10 @@ class CliEventRenderer:
         self._stream.flush()
 
     def _render_thinking_delta(self, event: QueryStreamEvent) -> None:
-        """仅在 Provider 实际给出非空 reasoning 时打开 Thinking 段。"""
+        """不渲染 CoT；仍消费同一事件流以保证 Answer 段顺序不变。"""
 
-        if not event.content:
-            return
-        if self._segment != "thinking":
-            self._close_segment()
-            self._line("Thinking...")
-            self._segment = "thinking"
-        self._fragment(event.content)
+        # reasoning delta 不能进入用户终端，避免把内部思维过程伪装成产品输出。
+        return
 
     def _render_answer_delta(self, event: QueryStreamEvent) -> None:
         """连续写入 AnswerArtifact 正文片段，不为每个 token 自动换行。"""
@@ -126,7 +145,11 @@ class CliEventRenderer:
     def _render_route(self, event: QueryStreamEvent) -> None:
         """展示 Router 的真实决定；verbose 才附带诊断字段。"""
 
-        self._line(f"Route: {event.route or 'unknown'}")
+        route = {
+            "planned_execution": "planned",
+            "standard_execution": "standard",
+        }.get(event.route or "", event.route or "unknown")
+        self._line(f"Route: {route}")
         if not self._verbose:
             return
         details = {
@@ -161,10 +184,12 @@ class CliEventRenderer:
                     self._line(f"  {self._format_mapping(details, max_items=12, max_chars=1800)}")
             return
         if not event.plan:
-            self._line("Plan: completed")
+            self._line("Plan: ready")
             return
 
-        self._line("Plan:")
+        self._line("Plan: ready")
+        if not self._verbose:
+            return
         steps = event.plan.get("steps")
         if isinstance(steps, Sequence) and not isinstance(steps, (str, bytes, bytearray)):
             for index, step in enumerate(steps, start=1):
@@ -175,16 +200,16 @@ class CliEventRenderer:
                 if goal not in (None, ""):
                     self._line(f"  {index}. {self._bounded_text(goal, 240)}")
 
-        if self._verbose:
-            for key in ("title", "intent", "success_criteria"):
-                value = event.plan.get(key)
-                if value not in (None, "", (), []):
-                    self._line(f"  {key}: {self._bounded_text(value, 800)}")
+        for key in ("title", "intent", "success_criteria"):
+            value = event.plan.get(key)
+            if value not in (None, "", (), []):
+                self._line(f"  {key}: {self._bounded_text(value, 800)}")
 
     def _render_tool_started(self, event: QueryStreamEvent) -> None:
         """Tool 确定调用后立即显示名称与经过 Query adapter 投影的参数。"""
 
-        self._line(f"Tool: {event.tool_name or 'unknown'}")
+        tool_name = _TOOL_LABELS.get(event.tool_name or "", event.tool_name or "unknown")
+        self._line(f"Action: {tool_name}")
         if not event.arguments:
             return
         max_items = 20 if self._verbose else 5
@@ -196,7 +221,7 @@ class CliEventRenderer:
     def _render_tool_terminal(self, event: QueryStreamEvent) -> None:
         """Tool Result 默认只展示结构化摘要，不 dump 聊天正文。"""
 
-        tool_name = event.tool_name or "tool"
+        tool_name = _TOOL_LABELS.get(event.tool_name or "", event.tool_name or "tool")
         if event.type == "tool.failed":
             self._line(f"✗ {tool_name} failed: {self._error_text(event)}")
             return
@@ -241,25 +266,28 @@ class CliEventRenderer:
         self._line(f"{prefix}: {self._error_text(event)}")
 
     def _render_verbose_source(self, event: QueryStreamEvent) -> None:
-        """verbose 模式展示归一化来源，不输出 raw payload 或 Provider 字段。"""
+        """verbose 模式只展示阶段来源名称，不输出 raw event/sequence/identity。"""
 
         if not self._verbose or event.type.endswith(".delta"):
             return
-        values: list[str] = [f"stream_sequence={event.sequence}"]
-        if event.source_sequence is not None:
-            values.append(f"source_sequence={event.source_sequence}")
         if event.source_operation:
-            values.append(f"operation={event.source_operation}")
-        if event.trace_id:
-            values.append(f"trace={event.trace_id}")
-        self._line(f"  [{' '.join(values)}]")
+            self._line(f"  source: {event.source_operation}")
 
     def _error_text(self, event: QueryStreamEvent) -> str:
         """组合 adapter 已归一化的错误信息，不猜测底层异常。"""
 
-        if event.error_code and event.error_message:
-            return f"{event.error_code}: {event.error_message}"
-        return event.error_message or event.error_code or "unknown error"
+        friendly = _ERROR_LABELS.get(event.error_code or "")
+        if friendly is not None:
+            return f"{friendly} ({event.error_code})" if self._verbose else friendly
+        if event.error_message:
+            return event.error_message
+        if event.error_code:
+            return (
+                f"Operation failed ({event.error_code})"
+                if self._verbose
+                else "Operation failed; inspect the trace diagnostics."
+            )
+        return "unknown error"
 
     def _close_segment(self, expected: _Segment | None = None) -> None:
         """只关闭指定或当前开放段；没有输出字符时不额外制造空行。"""
@@ -287,12 +315,22 @@ class CliEventRenderer:
         self._line_open = False
 
     def _bounded_text(self, value: object, max_chars: int) -> str:
-        """把普通结构格式化为单行并显式截断，避免巨大 JSON 污染终端。"""
+        """把普通结构格式化为单行 key=value 摘要，避免 JSON 污染终端。"""
 
         if isinstance(value, str):
             rendered = value
+        elif isinstance(value, Mapping):
+            rendered = ", ".join(
+                f"{key}={self._bounded_text(item, max(80, max_chars // 4))}"
+                for key, item in list(value.items())[:12]
+            )
+        elif isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray)):
+            rendered = ", ".join(
+                self._bounded_text(item, max(80, max_chars // 4))
+                for item in list(value)[:12]
+            )
         else:
-            rendered = json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str)
+            rendered = str(value)
         rendered = rendered.replace("\n", "\\n")
         if len(rendered) <= max_chars:
             return rendered

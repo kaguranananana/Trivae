@@ -11,13 +11,14 @@ from trivae.capabilities.contracts import (
     ExecutionScope,
     GetMessageContextInput,
 )
+from trivae.capabilities.scope import scope_filters
 from trivae.retrieval.context import (
     MAX_CONTEXT_EXPANSION_MESSAGES,
     ContextExpander,
     ContextReadRepository,
     MessageContextResult,
 )
-from trivae.retrieval.structured import Coverage, MessageHit, RetrievalMetadata, ScopeFilters
+from trivae.retrieval.structured import Coverage, MessageHit, RetrievalMetadata
 
 
 class MessageContextNotFound(CapabilityContractError):
@@ -73,7 +74,7 @@ class GetMessageContextCapability:
             before=request.context_before,
             after=request.context_after,
             limit=result_limit,
-            scope=_scope_filters(scope),
+            scope=scope_filters(scope),
         )
         if any(message.session_id != anchor.session_id for message in expansion.messages):
             # repository 跨 conversation boundary 是主链路错误，不能把它投影成正常结果。
@@ -94,7 +95,7 @@ class GetMessageContextCapability:
                     "message_id": request.message_id,
                     "context_before": request.context_before,
                     "context_after": request.context_after,
-                    "scope": _scope_filters(scope).scope_dict(),
+                    "scope": scope_filters(scope).scope_dict(),
                 },
                 ordering="timestamp ASC, present seq ASC, missing seq after present seq, internal_message_id ASC",
                 latency_ms=(perf_counter() - started) * 1000,
@@ -108,16 +109,6 @@ class GetMessageContextCapability:
                 },
             ),
         )
-
-
-def _scope_filters(scope: ExecutionScope) -> ScopeFilters:
-    """把 trusted ExecutionScope 投影为 Retrieval 层可消费的只读过滤。"""
-
-    return ScopeFilters(
-        session_ids=scope.allowed_session_ids,
-        start_timestamp=scope.start_timestamp,
-        end_timestamp=scope.end_timestamp,
-    )
 
 
 def _scope_allows_anchor(anchor: object, scope: ExecutionScope) -> bool:

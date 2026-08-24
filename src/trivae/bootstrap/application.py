@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import inspect
 import logging
+import sqlite3
 import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 
+from trivae.bootstrap.status import ApplicationReadiness, ProviderReadiness
 from trivae.capabilities.contracts import (
     ExecuteSQLInput,
     ExecutionScope,
@@ -24,6 +26,7 @@ from trivae.capabilities.find_members import FindMembersCapability
 from trivae.capabilities.get_message_context import GetMessageContextCapability
 from trivae.capabilities.get_schema import GetSchemaCapability
 from trivae.capabilities.registry import CapabilityRegistry
+from trivae.capabilities.scope import scope_filters
 from trivae.capabilities.search_messages import LexicalSearchCapability, SearchMessagesCapability
 from trivae.capabilities.semantic_search import SemanticSearchCapability
 from trivae.capabilities.tools import (
@@ -35,7 +38,14 @@ from trivae.capabilities.tools import (
     SearchMessagesTool,
     SemanticSearchTool,
 )
-from trivae.conversation import Conversation, ConversationStore, SQLiteConversationStore
+from trivae.config.settings import SettingsError, load_settings
+from trivae.conversation import (
+    Conversation,
+    ConversationScopeError,
+    ConversationStore,
+    ConversationSummary,
+    SQLiteConversationStore,
+)
 from trivae.data.ingestion.importer import SharedImporter
 from trivae.data.model import ChatSession, ImportRunSummary
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
@@ -57,6 +67,8 @@ from trivae.evaluation import (
     SQLiteEvaluationStore,
     create_paired_comparison,
 )
+from trivae.feedback import FeedbackRecord, SQLiteFeedbackStore
+from trivae.feedback.contracts import FeedbackError, FeedbackRating, FeedbackStore, feedback_for_query
 from trivae.observability.collector import TraceCollector
 from trivae.observability.contracts import (
     FailureInfo,
@@ -70,7 +82,7 @@ from trivae.observability.sqlite import SQLiteImportDiagnosticsReader, SQLiteTra
 from trivae.observability.text import TraceTextLogError, TraceTextLogWriter, TraceTextView
 from trivae.observability.transcript import TranscriptContextMode
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
-from trivae.query.evidence import scope_snapshot
+from trivae.query.evidence import MessageSource, SourceInspectionError, scope_snapshot
 from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import Planner, SoftPlanner
 from trivae.query.router import Router, RuleRouter
@@ -81,6 +93,7 @@ from trivae.retrieval.semantic.builder import SemanticIndexBuilder
 from trivae.retrieval.semantic.contracts import (
     EmbeddingProvider,
     SemanticBuildStats,
+    SemanticError,
     SemanticIndexIntegrityReport,
     SemanticIndexStatusReport,
 )
@@ -89,7 +102,9 @@ from trivae.retrieval.semantic.index import SQLiteSemanticIndex
 from trivae.retrieval.semantic.retrieval import SemanticRetrieval
 from trivae.retrieval.structured import (
     AggregateQuery,
+    MessageProjection,
     MessageQuery,
+    RetrievalError,
     StructuredAggregateResult,
     StructuredMessageResult,
     StructuredRetrieval,
@@ -120,6 +135,7 @@ class TrivaeApplication:
         import_diagnostics_reader: SQLiteImportDiagnosticsReader | None = None,
         evaluation_store: EvaluationStore | None = None,
         evaluation_runner: EvaluationRunner | None = None,
+        feedback_store: FeedbackStore | None = None,
     ) -> None:
         self.store = store
         self.importer = importer
@@ -141,6 +157,9 @@ class TrivaeApplication:
         )
         self.evaluation_store = evaluation_store or SQLiteEvaluationStore(
             store.database_path.with_name(f"{store.database_path.stem}.evaluation.sqlite3")
+        )
+        self._feedback_store = feedback_store or SQLiteFeedbackStore(
+            store.database_path.with_name(f"{store.database_path.stem}.feedback.sqlite3")
         )
         self._lexical_index = lexical_index
         self._semantic_index = semantic_index
@@ -169,6 +188,49 @@ class TrivaeApplication:
         self._ensure_open()
         # 读取由既有只读 adapter 完成，Application 不复制 SQL 或 session projection 逻辑。
         return self.read_repository.list_sessions()
+
+    def readiness(self) -> ApplicationReadiness:
+        """读取启动所需的本地状态，不扫描重建 derived index，也不访问网络。"""
+
+        self._ensure_open()
+        database_status: Literal["ready", "unavailable"] = "ready"
+        session_count: int | None = None
+        message_count: int | None = None
+        database_error_code: str | None = None
+        database_message: str | None = None
+        try:
+            session_count = len(self.list_sessions())
+            message_count = self.read_repository.count_messages(MessageQuery(limit=1))
+        except (sqlite3.Error, RetrievalError) as exc:
+            database_status = "unavailable"
+            database_error_code = type(exc).__name__
+            database_message = "canonical database status is unavailable"
+
+        semantic: SemanticIndexStatusReport | None = None
+        semantic_error_code: str | None = None
+        semantic_message: str | None = None
+        try:
+            semantic = self.semantic_index_status()
+        except (SemanticError, RuntimeError) as exc:
+            semantic_error_code = getattr(exc, "error_code", type(exc).__name__)
+            semantic_message = str(exc)
+
+        try:
+            provider = ProviderReadiness.from_settings(load_settings())
+        except SettingsError as exc:
+            provider = ProviderReadiness.not_configured(type(exc).__name__, str(exc))
+
+        return ApplicationReadiness(
+            database_status=database_status,
+            session_count=session_count,
+            message_count=message_count,
+            database_error_code=database_error_code,
+            database_message=database_message,
+            semantic=semantic,
+            semantic_error_code=semantic_error_code,
+            semantic_message=semantic_message,
+            provider=provider,
+        )
 
     def retrieve_messages(self, query: MessageQuery) -> StructuredMessageResult:
         """Application facade 的 Structured message 入口。"""
@@ -291,17 +353,128 @@ class TrivaeApplication:
 
         return self.capability_registry.invoke(name, request, scope)
 
-    def create_conversation(self) -> Conversation:
-        """通过 Application facade 创建 Conversation，不让接口层直接访问 Store。"""
+    def create_conversation(self, scope: ExecutionScope | None = None) -> Conversation:
+        """通过 Application facade 创建带 trusted scope 的 Conversation。"""
 
         self._ensure_open()
-        return self.conversation_store.create_conversation()
+        return self.conversation_store.create_conversation(scope)
 
     def read_conversation(self, conversation_id: str) -> Conversation:
         """读取可 replay 的 User/Assistant 历史及结构化 AnswerArtifact。"""
 
         self._ensure_open()
         return self.conversation_store.get_conversation(conversation_id)
+
+    def list_conversations(self, limit: int = 20) -> tuple[ConversationSummary, ...]:
+        """通过 Application facade 读取 bounded conversation history metadata。"""
+
+        self._ensure_open()
+        return self.conversation_store.list_summaries(limit)
+
+    def resume_conversation(self, conversation_id: str) -> Conversation:
+        """恢复带有明确 scope contract 的 Conversation，拒绝猜测旧权限。"""
+
+        conversation = self.read_conversation(conversation_id)
+        if conversation.scope is None:
+            raise ConversationScopeError(
+                "conversation scope metadata is unavailable; this conversation cannot be resumed"
+            )
+        return conversation
+
+    def save_feedback(
+        self,
+        *,
+        conversation_id: str,
+        trace_id: str,
+        run_id: str | None,
+        scope: ExecutionScope,
+        rating: FeedbackRating,
+        note: str | None = None,
+    ) -> FeedbackRecord:
+        """将 good/bad 保存到独立反馈 Store，不进入 Evaluation Ground Truth。"""
+
+        self._ensure_open()
+        if run_id is None or not run_id:
+            raise FeedbackError("feedback requires a completed runtime run identity")
+        try:
+            trace = self.read_trace(trace_id)
+        except TraceStoreError as exc:
+            raise FeedbackError("feedback trace is unavailable") from exc
+        if trace.terminal_status != "completed":
+            raise FeedbackError("feedback requires a completed query trace")
+        context_events = tuple(
+            event
+            for event in trace.timeline
+            if event.operation == "context.prepared"
+        )
+        if not any(event.payload.get("conversation_id") == conversation_id for event in context_events):
+            raise FeedbackError("feedback trace does not belong to the conversation")
+        trace_run_ids = {
+            event.payload.get("run_id")
+            for event in trace.timeline
+            if isinstance(event.payload.get("run_id"), str)
+        }
+        if run_id not in trace_run_ids:
+            raise FeedbackError("feedback run identity does not match the trace")
+        conversation = self.read_conversation(conversation_id)
+        if conversation.scope is None:
+            raise ConversationScopeError(
+                "feedback cannot be bound because conversation scope metadata is unavailable"
+            )
+        if conversation.scope != scope:
+            raise ConversationScopeError("feedback scope does not match the conversation scope")
+        pending = feedback_for_query(
+            conversation_id=conversation_id,
+            trace_id=trace_id,
+            run_id=run_id,
+            scope=scope,
+            rating=rating,
+            note=note,
+        )
+        return self._feedback_store.save(pending)
+
+    def read_feedback(self, conversation_id: str, trace_id: str) -> FeedbackRecord | None:
+        """读取当前 Query 的用户体验反馈。"""
+
+        self._ensure_open()
+        return self._feedback_store.get(conversation_id, trace_id)
+
+    def inspect_message_source(
+        self,
+        source: MessageSource,
+        scope: ExecutionScope,
+        *,
+        before: int = 2,
+        after: int = 2,
+    ) -> tuple[MessageProjection, ...]:
+        """在 trusted scope 内重新读取来源及 bounded 上下文，绝不依赖 Answer 快照正文。"""
+
+        self._ensure_open()
+        if not isinstance(source, MessageSource):
+            raise SourceInspectionError("source inspection requires a message source")
+        if source.snapshot is None:
+            raise SourceInspectionError("message source has no trusted display snapshot")
+        if scope.allowed_session_ids is not None and source.session_id not in scope.allowed_session_ids:
+            raise SourceInspectionError("message source is outside the current scope")
+
+        # 来源查看复用 canonical read adapter，并由同一个 scope_filters 编译边界。
+        try:
+            messages = self.read_repository.read_message_context_scoped(
+                source.session_id,
+                source.internal_message_id,
+                before,
+                after,
+                scope_filters(scope),
+            )
+        except RetrievalError as exc:
+            # 读取失败保留明确的来源查看语义，调用方仍可看到原始异常作为 cause。
+            raise SourceInspectionError("canonical source context is unavailable") from exc
+
+        if not messages or not any(message.internal_message_id == source.internal_message_id for message in messages):
+            raise SourceInspectionError("canonical source context does not contain the cited message")
+        if any(message.session_id != source.session_id for message in messages):
+            raise SourceInspectionError("canonical source context crossed the conversation boundary")
+        return messages
 
     def read_trace(self, trace_id: str) -> TraceProjection:
         """从 Application facade 读取 deterministic Trace projection，不暴露 raw SQL。"""
@@ -654,11 +827,18 @@ class TrivaeApplication:
             raise
 
     def _conversation_for_request(self, request: QueryRequest) -> Conversation:
-        """解析 Query 的 conversation identity；无 id 时创建空 conversation。"""
+        """解析 conversation identity，并拒绝跨 scope 复用持久化历史。"""
 
         if request.conversation_id is None:
-            return self.create_conversation()
-        return self.read_conversation(request.conversation_id)
+            return self.create_conversation(request.scope)
+        conversation = self.read_conversation(request.conversation_id)
+        if conversation.scope is None:
+            raise QueryContractError(
+                "conversation scope metadata is unavailable; start a new conversation"
+            )
+        if conversation.scope != request.scope:
+            raise QueryContractError("conversation scope does not match the current trusted scope")
+        return conversation
 
     def _get_agent_runtime(self) -> AgentRuntime:
         """惰性构造 provider runtime，保持检索-only Application 无 provider 依赖。"""
@@ -722,7 +902,12 @@ class TrivaeApplication:
                                             if callable(close_evaluation_store):
                                                 close_evaluation_store()
                                         finally:
-                                            self.store.close()
+                                            try:
+                                                close_feedback_store = getattr(self._feedback_store, "close", None)
+                                                if callable(close_feedback_store):
+                                                    close_feedback_store()
+                                            finally:
+                                                self.store.close()
             finally:
                 self._agent_runtime = None
                 self._query_orchestrator = None
@@ -765,6 +950,8 @@ def create_application(
     conversation_store: ConversationStore | None = None,
     evaluation_database_path: Path | None = None,
     evaluation_store: EvaluationStore | None = None,
+    feedback_database_path: Path | None = None,
+    feedback_store: FeedbackStore | None = None,
     semantic_index_path: Path | None = None,
     semantic_index: SQLiteSemanticIndex | None = None,
     semantic_provider: EmbeddingProvider | None = None,
@@ -821,6 +1008,10 @@ def create_application(
         evaluation_database_path
         or database_path.with_name(f"{database_path.stem}.evaluation.sqlite3")
     )
+    owned_feedback_store = feedback_store or SQLiteFeedbackStore(
+        feedback_database_path
+        or database_path.with_name(f"{database_path.stem}.feedback.sqlite3")
+    )
     return TrivaeApplication(
         store=store,
         importer=importer,
@@ -838,4 +1029,5 @@ def create_application(
         planner=planner,
         trace_store=trace_store,
         evaluation_store=owned_evaluation_store,
+        feedback_store=owned_feedback_store,
     )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from trivae.capabilities.contracts import ExecutionScope
 from trivae.query.evidence import AnswerArtifact
 from trivae.query.runtime.contracts import ModelContextMessage
 
@@ -25,6 +26,10 @@ class ConversationPersistenceError(ConversationError):
 
 class ConversationCodecError(ConversationError):
     """AnswerArtifact 持久化 JSON 无法解析或不符合领域结构。"""
+
+
+class ConversationScopeError(ConversationError):
+    """Conversation 缺少 scope 或与当前 trusted scope 不一致。"""
 
 
 def _required_text(name: str, value: object) -> str:
@@ -105,6 +110,7 @@ class Conversation:
     created_at: str
     updated_at: str
     messages: tuple[ConversationMessage, ...] = ()
+    scope: ExecutionScope | None = None
 
     def __post_init__(self) -> None:
         # 聚合自身先校验 identity 和生命周期字段，再校验子消息归属。
@@ -113,6 +119,8 @@ class Conversation:
         object.__setattr__(self, "updated_at", _required_text("updated_at", self.updated_at))
         if not isinstance(self.messages, tuple):
             raise ConversationError("messages must be a tuple")
+        if self.scope is not None and not isinstance(self.scope, ExecutionScope):
+            raise ConversationError("scope must be an ExecutionScope or None")
 
         previous_ordinal = -1
         for message in self.messages:
@@ -130,14 +138,40 @@ class Conversation:
         return tuple(message.to_model_context() for message in self.messages)
 
 
+@dataclass(frozen=True)
+class ConversationSummary:
+    """历史列表使用的 bounded metadata，不加载完整回答正文。"""
+
+    conversation_id: str
+    created_at: str
+    updated_at: str
+    title: str
+    message_count: int
+    scope: ExecutionScope | None
+
+    def __post_init__(self) -> None:
+        # 历史标题来自首个 User query，仍限制长度避免列表被单条输入撑大。
+        object.__setattr__(self, "conversation_id", _required_text("conversation_id", self.conversation_id))
+        object.__setattr__(self, "created_at", _required_text("created_at", self.created_at))
+        object.__setattr__(self, "updated_at", _required_text("updated_at", self.updated_at))
+        object.__setattr__(self, "title", _required_text("title", self.title)[:120])
+        if isinstance(self.message_count, bool) or not isinstance(self.message_count, int) or self.message_count < 0:
+            raise ConversationError("message_count must be a non-negative integer")
+        if self.scope is not None and not isinstance(self.scope, ExecutionScope):
+            raise ConversationError("scope must be an ExecutionScope or None")
+
+
 class ConversationStore(Protocol):
     """Application 使用的最小 Conversation Store 接口。"""
 
-    def create_conversation(self) -> Conversation:
-        """创建一个空 conversation。"""
+    def create_conversation(self, scope: ExecutionScope | None = None) -> Conversation:
+        """创建一个带可选 trusted scope 的空 conversation。"""
 
     def get_conversation(self, conversation_id: str) -> Conversation:
         """读取完整、稳定排序的 conversation。"""
+
+    def list_summaries(self, limit: int = 20) -> tuple[ConversationSummary, ...]:
+        """按更新时间读取 bounded history metadata。"""
 
     def commit_turn(
         self,

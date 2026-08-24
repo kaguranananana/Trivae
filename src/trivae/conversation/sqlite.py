@@ -6,18 +6,21 @@ Retrieval read repository 暴露写入能力。
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import uuid
 from pathlib import Path
 
+from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope
 from trivae.data.storage.sqlite import utc_now
-from trivae.query.evidence import AnswerArtifact
+from trivae.query.evidence import AnswerArtifact, scope_snapshot
 
 from .contracts import (
     Conversation,
     ConversationMessage,
     ConversationNotFoundError,
     ConversationPersistenceError,
+    ConversationSummary,
 )
 from .serialization import deserialize_answer_artifact, serialize_answer_artifact
 
@@ -27,7 +30,8 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS conversations (
     conversation_id TEXT PRIMARY KEY,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    scope_snapshot_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS conversation_messages (
@@ -62,6 +66,7 @@ class SQLiteConversationStore:
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
         self.connection.executescript(SCHEMA_SQL)
+        self._ensure_scope_column()
         self.connection.commit()
         self._closed = False
 
@@ -73,28 +78,88 @@ class SQLiteConversationStore:
         self._closed = True
         self.connection.close()
 
-    def create_conversation(self) -> Conversation:
-        """创建并立即提交一个空 conversation。"""
+    def create_conversation(self, scope: ExecutionScope | None = None) -> Conversation:
+        """创建并立即提交一个带可选 scope 快照的空 conversation。"""
 
         self._ensure_open()
+        if scope is not None and not isinstance(scope, ExecutionScope):
+            raise ConversationPersistenceError("conversation scope must be an ExecutionScope or None")
         conversation_id = uuid.uuid4().hex
         timestamp = utc_now()
+        scope_json = self._encode_scope(scope)
         try:
             self.connection.execute(
-                "INSERT INTO conversations(conversation_id, created_at, updated_at) VALUES (?, ?, ?)",
-                (conversation_id, timestamp, timestamp),
+                """
+                INSERT INTO conversations(
+                    conversation_id, created_at, updated_at, scope_snapshot_json
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (conversation_id, timestamp, timestamp, scope_json),
             )
             self.connection.commit()
         except sqlite3.Error as exc:
             self.connection.rollback()
             raise ConversationPersistenceError("conversation creation failed") from exc
-        return Conversation(conversation_id, timestamp, timestamp)
+        return Conversation(conversation_id, timestamp, timestamp, scope=scope)
 
     def get_conversation(self, conversation_id: str) -> Conversation:
         """按稳定 ordinal 读取 conversation，不重新 hydrate 历史 Evidence。"""
 
         self._ensure_open()
         return self._load_conversation(conversation_id)
+
+    def list_summaries(self, limit: int = 20) -> tuple[ConversationSummary, ...]:
+        """读取最近 conversation 的 bounded title/count/scope metadata。"""
+
+        self._ensure_open()
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0 or limit > 100:
+            raise ConversationPersistenceError("conversation history limit must be between 1 and 100")
+        rows = self.connection.execute(
+            """
+            SELECT conversation_id, created_at, updated_at, scope_snapshot_json
+            FROM conversations
+            ORDER BY updated_at DESC, conversation_id ASC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        summaries: list[ConversationSummary] = []
+        for row in rows:
+            message_row = self.connection.execute(
+                """
+                SELECT
+                    COUNT(*) AS message_count,
+                    MIN(CASE WHEN role = 'user' THEN ordinal END) AS first_user_ordinal
+                FROM conversation_messages
+                WHERE conversation_id = ?
+                """,
+                (row["conversation_id"],),
+            ).fetchone()
+            count = 0 if message_row is None else int(message_row["message_count"])
+            first_user_ordinal = None if message_row is None else message_row["first_user_ordinal"]
+            title = "New conversation"
+            if first_user_ordinal is not None:
+                title_row = self.connection.execute(
+                    """
+                    SELECT content
+                    FROM conversation_messages
+                    WHERE conversation_id = ? AND ordinal = ? AND role = 'user'
+                    """,
+                    (row["conversation_id"], first_user_ordinal),
+                ).fetchone()
+                if title_row is not None and isinstance(title_row["content"], str):
+                    title = title_row["content"].strip()[:120] or title
+            summaries.append(
+                ConversationSummary(
+                    conversation_id=row["conversation_id"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                    title=title,
+                    message_count=count,
+                    scope=self._decode_scope(row["scope_snapshot_json"]),
+                )
+            )
+        return tuple(summaries)
 
     def commit_turn(
         self,
@@ -200,7 +265,11 @@ class SQLiteConversationStore:
 
         normalized_id = self._normalize_identity(conversation_id, "conversation_id")
         row = self.connection.execute(
-            "SELECT conversation_id, created_at, updated_at FROM conversations WHERE conversation_id = ?",
+            """
+            SELECT conversation_id, created_at, updated_at, scope_snapshot_json
+            FROM conversations
+            WHERE conversation_id = ?
+            """,
             (normalized_id,),
         ).fetchone()
         if row is None:
@@ -221,7 +290,62 @@ class SQLiteConversationStore:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             messages=messages,
+            scope=self._decode_scope(row["scope_snapshot_json"]),
         )
+
+    def _ensure_scope_column(self) -> None:
+        """为旧版 Conversation 表执行一次 additive nullable migration。"""
+
+        columns = {
+            row["name"]
+            for row in self.connection.execute("PRAGMA table_info(conversations)").fetchall()
+        }
+        if "scope_snapshot_json" not in columns:
+            self.connection.execute(
+                "ALTER TABLE conversations ADD COLUMN scope_snapshot_json TEXT"
+            )
+
+    @staticmethod
+    def _encode_scope(scope: ExecutionScope | None) -> str | None:
+        """将 trusted scope 编码为可审计 JSON；旧 conversation 保留 NULL。"""
+
+        if scope is None:
+            return None
+        return json.dumps(scope_snapshot(scope), ensure_ascii=False, sort_keys=True)
+
+    @staticmethod
+    def _decode_scope(value: object) -> ExecutionScope | None:
+        """严格恢复 scope 快照，损坏数据不猜测默认权限。"""
+
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ConversationPersistenceError("conversation scope snapshot is not text")
+        try:
+            payload = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ConversationPersistenceError("conversation scope snapshot is invalid JSON") from exc
+        if not isinstance(payload, dict):
+            raise ConversationPersistenceError("conversation scope snapshot must be an object")
+        allowed = payload.get("allowed_session_ids")
+        if allowed is not None:
+            if not isinstance(allowed, list) or any(not isinstance(item, str) for item in allowed):
+                raise ConversationPersistenceError("conversation scope session snapshot is invalid")
+            allowed_sessions = tuple(allowed)
+        else:
+            allowed_sessions = None
+        max_results = payload.get("max_results")
+        if isinstance(max_results, bool) or not isinstance(max_results, int):
+            raise ConversationPersistenceError("conversation scope max_results snapshot is invalid")
+        try:
+            return ExecutionScope(
+                allowed_session_ids=allowed_sessions,
+                start_timestamp=payload.get("start_timestamp"),
+                end_timestamp=payload.get("end_timestamp"),
+                max_results=max_results,
+            )
+        except (CapabilityContractError, TypeError, ValueError) as exc:
+            raise ConversationPersistenceError("conversation scope snapshot violates its contract") from exc
 
     def _row_to_message(self, row: sqlite3.Row) -> ConversationMessage:
         """把 SQL row 解码为领域 message，损坏数据显式失败。"""

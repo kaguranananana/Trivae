@@ -16,8 +16,8 @@ def _event(event_type: QueryStreamEventType, sequence: int, **values: object) ->
 class CliEventRendererTests(unittest.TestCase):
     """验证真实事件顺序、流式片段和终端段恢复。"""
 
-    def test_multi_tool_sequence_preserves_fragment_order(self) -> None:
-        """Thinking/Tool/Result 多轮切换后，Answer token 不逐个换行。"""
+    def test_multi_tool_sequence_preserves_fragment_order_without_cot(self) -> None:
+        """多轮 Action/Result 后 Answer token 保持顺序，CoT 不进入终端。"""
 
         output = StringIO()
         renderer = CliEventRenderer(output)
@@ -40,14 +40,10 @@ class CliEventRendererTests(unittest.TestCase):
 
         self.assertEqual(
             output.getvalue(),
-            "Thinking...\n"
-            "先检索\n"
-            "Tool: search_a\n"
+            "Action: search_a\n"
             "  keyword: GitHub\n"
             "✓ search_a completed\n"
-            "Thinking...\n"
-            "再核对\n"
-            "Tool: search_b\n"
+            "Action: search_b\n"
             "  days: 14\n"
             "✓ search_b completed\n"
             "Answer:\n"
@@ -102,7 +98,7 @@ class CliEventRendererTests(unittest.TestCase):
 
         self.assertEqual(
             output.getvalue(),
-            "Answer:\n未完成\nError: PROVIDER.STREAM_FAILED: stream interrupted\n",
+            "Answer:\n未完成\nError: The model stream stopped before the answer completed.\n",
         )
         self.assertTrue(renderer.answer_rendered)
         self.assertTrue(renderer.failure_rendered)
@@ -126,13 +122,9 @@ class CliEventRendererTests(unittest.TestCase):
 
         self.assertEqual(
             output.getvalue(),
-            "Thinking...\n"
-            "先尝试检索\n"
-            "Tool: search_messages\n"
+            "Action: Search messages\n"
             "  keyword: repo\n"
-            "✗ search_messages failed: RETRIEVAL_UNAVAILABLE\n"
-            "Thinking...\n"
-            "改用已有证据\n"
+            "✗ Search messages failed: Search is unavailable; the answer may be partial.\n"
             "Answer:\n"
             "当前只能给出部分结果。\n",
         )
@@ -171,12 +163,15 @@ class CliEventRendererTests(unittest.TestCase):
         renderer.handle(_event("usage.updated", 3, usage={"input_tokens": 11, "output_tokens": 7}))
 
         rendered = output.getvalue()
-        self.assertIn("Route: planned_execution", rendered)
+        self.assertIn("Route: planned", rendered)
         self.assertIn("confidence=0.8", rendered)
-        self.assertIn("operation=router.decision", rendered)
+        self.assertIn("source: router.decision", rendered)
         self.assertIn("3 hits, 9 expanded", rendered)
         self.assertIn("duration_ms=12.5", rendered)
         self.assertIn("input_tokens=11", rendered)
+        self.assertNotIn("stream_sequence", rendered)
+        self.assertNotIn("trace-1", rendered)
+        self.assertNotIn("{\"", rendered)
 
     def test_authoritative_answer_is_used_when_provider_sent_no_delta(self) -> None:
         """没有 content delta 时，answer.completed 仍展示 Finalizer 的完整正式回答。"""

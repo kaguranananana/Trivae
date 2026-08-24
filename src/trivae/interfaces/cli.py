@@ -5,17 +5,19 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import shlex
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence, TextIO, cast
+from typing import TextIO, cast
 
 from trivae.bootstrap.application import TrivaeApplication, create_application
 from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope, SemanticSearchInput
 from trivae.config.settings import SettingsError, load_settings
-from trivae.conversation.contracts import ConversationError
+from trivae.conversation.contracts import ConversationError, ConversationSummary
 from trivae.data.model import ChatSession, IngestionError
 from trivae.evaluation import (
     BlindAnnotationPacket,
@@ -32,9 +34,18 @@ from trivae.evaluation import (
 )
 from trivae.evaluation.review import M6_FAILURE_REGRESSION_MAP
 from trivae.evaluation.store import EvaluationStoreError
+from trivae.feedback.contracts import FeedbackError, FeedbackRecord
 from trivae.interfaces.cli_renderer import CliEventRenderer
 from trivae.observability.sqlite import ImportDiagnosticsError, TraceStoreError
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
+from trivae.query.evidence import (
+    AnswerArtifact,
+    AnswerSourceSummary,
+    MessageSource,
+    SourceInspectionError,
+    StructuredSource,
+    answer_source_summaries,
+)
 from trivae.retrieval.semantic.contracts import (
     SemanticError,
     SemanticIndexStatusReport,
@@ -709,6 +720,173 @@ def _select_chat(
         output_fn("Invalid selection.")
 
 
+def _print_chat_list(
+    sessions: tuple[ChatSession, ...],
+    *,
+    output_fn: Callable[[str], None],
+) -> None:
+    """输出稳定排序的群聊清单，序号只在当前 CLI 生命周期内有效。"""
+
+    output_fn("Available chats:")
+    for index, session in enumerate(sessions, start=1):
+        output_fn(f"{index}. {session.name}")
+    output_fn("0. All chats")
+
+
+def _print_chat_commands(*, output_fn: Callable[[str], None]) -> None:
+    """输出交互模式支持的命令，供启动提示和 /help 复用。"""
+
+    # 命令清单只描述当前 CLI 已实现的动作，避免帮助文本与分支逻辑漂移。
+    output_fn("/help  Show available commands")
+    output_fn("/new   Start a new conversation")
+    output_fn("/scope  Show current scope")
+    output_fn("/chats  Switch chat scope")
+    output_fn("/status Show local readiness")
+    output_fn("/history  List saved conversations")
+    output_fn("/resume n  Resume a saved conversation")
+    output_fn("/good [note]  Mark the last answer helpful")
+    output_fn("/bad [note]  Mark the last answer unhelpful")
+    output_fn("/feedback  Show feedback for the last answer")
+    output_fn("/source n  Inspect a cited source")
+    output_fn("/exit  Exit")
+
+
+def _scope_label(scope: ExecutionScope, selected_name: str) -> str:
+    """将 trusted scope 投影为不泄漏内部 locator 的人类标签。"""
+
+    return selected_name if scope.allowed_session_ids is not None else "All chats"
+
+
+def _print_scope(
+    scope: ExecutionScope,
+    selected_name: str,
+    conversation_id: str | None,
+    *,
+    output_fn: Callable[[str], None],
+) -> None:
+    """展示当前 scope/conversation 边界，避免用户猜测历史是否会复用。"""
+
+    output_fn(f"Scope: {_scope_label(scope, selected_name)}")
+    output_fn(f"Time range: {_scope_time_label(scope)}")
+    output_fn(f"Result limit: {scope.max_results}")
+    output_fn(f"Conversation: {'active' if conversation_id else 'new'}")
+
+
+def _scope_time_label(scope: ExecutionScope) -> str:
+    """输出半开时间区间的稳定描述。"""
+
+    start = "beginning" if scope.start_timestamp is None else str(scope.start_timestamp)
+    end = "end" if scope.end_timestamp is None else str(scope.end_timestamp)
+    return f"[{start}, {end})"
+
+
+def _print_readiness(
+    readiness: object,
+    *,
+    output_fn: Callable[[str], None],
+) -> None:
+    """用少量稳定字段展示本地 readiness，不把 safe dict 当作普通终端输出。"""
+
+    database_status = getattr(readiness, "database_status", "unavailable")
+    session_count = getattr(readiness, "session_count", None)
+    message_count = getattr(readiness, "message_count", None)
+    output_fn(
+        f"Ready: database={database_status}, sessions={session_count}, messages={message_count}"
+    )
+    provider = getattr(readiness, "provider", None)
+    if provider is not None:
+        provider_status = getattr(provider, "status", "unknown")
+        provider_name = getattr(provider, "provider", None)
+        model_name = getattr(provider, "model", None)
+        detail = ", ".join(value for value in (provider_name, model_name) if isinstance(value, str))
+        output_fn(f"Provider: {provider_status}{f' ({detail})' if detail else ''}")
+    semantic = getattr(readiness, "semantic", None)
+    if semantic is not None:
+        identity = getattr(semantic, "configured_identity", None)
+        embedding = getattr(identity, "embedding", None)
+        semantic_parts = [
+            value
+            for value in (
+                getattr(embedding, "provider", None),
+                getattr(embedding, "model", None),
+            )
+            if isinstance(value, str)
+        ]
+        dimension = getattr(embedding, "dimension", None)
+        if isinstance(dimension, int):
+            semantic_parts.append(f"dim={dimension}")
+        chunker_version = getattr(identity, "chunker_version", None)
+        if isinstance(chunker_version, str):
+            semantic_parts.append(f"chunker={chunker_version}")
+        semantic_detail = ", ".join(semantic_parts)
+        suffix = f" ({semantic_detail})" if semantic_detail else ""
+        output_fn(f"Semantic index: {semantic.status}{suffix}")
+    else:
+        error = getattr(readiness, "semantic_message", None)
+        output_fn(f"Semantic index: unavailable{f' ({error})' if error else ''}")
+
+
+def _print_history(
+    summaries: tuple[ConversationSummary, ...],
+    *,
+    sessions: tuple[ChatSession, ...],
+    output_fn: Callable[[str], None],
+) -> None:
+    """以序号展示 bounded history、更新时间和 scope，只有完整 scope 才允许恢复。"""
+
+    if not summaries:
+        output_fn("No saved conversations.")
+        return
+    output_fn("Conversation history:")
+    for index, summary in enumerate(summaries, start=1):
+        resumable = "resumable" if summary.scope is not None else "scope unavailable"
+        scope_name = (
+            _scope_name_from_sessions(summary.scope, sessions)
+            if summary.scope is not None
+            else "scope unavailable"
+        )
+        # 只展示 Store 提供的更新时间和首问标题，不为历史列表额外调用 Provider。
+        output_fn(
+            f"{index}. {summary.title} · {summary.updated_at} · {scope_name} · "
+            f"{summary.message_count} messages · {resumable}"
+        )
+
+
+def _scope_name_from_sessions(scope: ExecutionScope, sessions: tuple[ChatSession, ...]) -> str:
+    """仅在 session metadata 精确匹配时显示名称，否则使用不带猜测的通用标签。"""
+
+    if scope.allowed_session_ids is None:
+        return "All chats"
+    if len(scope.allowed_session_ids) == 1:
+        selected_id = scope.allowed_session_ids[0]
+        for session in sessions:
+            if session.session_id == selected_id:
+                return session.name
+    return "Saved scope"
+
+
+def _feedback_target(result: QueryResult | None) -> tuple[str, str, str] | None:
+    """从最后一轮成功 Query 提取 feedback 所需的完整关联 identity。"""
+
+    if result is None or not result.is_successful:
+        return None
+    if result.conversation_id is None or result.trace_id is None or result.runtime_result.run_id is None:
+        return None
+    return result.conversation_id, result.trace_id, result.runtime_result.run_id
+
+
+def _print_feedback(record: FeedbackRecord | None, *, output_fn: Callable[[str], None]) -> None:
+    """展示反馈状态，不输出内部 feedback id。"""
+
+    if record is None:
+        output_fn("No feedback saved for the last answer.")
+        return
+    output_fn(f"Feedback: {record.rating}")
+    if record.note:
+        output_fn(f"Note: {record.note}")
+    output_fn(f"Updated: {record.updated_at}")
+
+
 class _CallbackTextStream:
     """把 write/flush 文本流适配到旧的逐行 output_fn，专供可注入 CLI 测试使用。"""
 
@@ -752,6 +930,8 @@ def _print_query_result(
     log_error: str | None = None,
     answer_already_rendered: bool = False,
     failure_already_rendered: bool = False,
+    source_summaries: tuple[AnswerSourceSummary, ...] = (),
+    verbose: bool = False,
 ) -> None:
     """补齐未被 stream 投影的结果，并始终展示 Trace 与文本日志位置。"""
 
@@ -764,6 +944,14 @@ def _print_query_result(
         output_fn("Trivae >")
         output_fn(f"Error: {_query_failure_message(result)}")
 
+    if result.is_successful and source_summaries:
+        _print_source_block(source_summaries, output_fn=output_fn, verbose=verbose)
+    artifact = getattr(result, "answer_artifact", None)
+    if result.is_successful and isinstance(artifact, AnswerArtifact):
+        limitations = _answer_limitations(artifact)
+        if limitations:
+            output_fn(f"Note: answer limitations — {'; '.join(limitations)}")
+
     # 每一轮 Query 都沿用 Application 产生的 Trace identity，详细查看交给 trace CLI。
     if result.trace_id is not None:
         output_fn(f"[trace: {result.trace_id}]")
@@ -773,6 +961,133 @@ def _print_query_result(
     elif log_error is not None:
         # 导出失败必须可见，但不能把已经得到的正式答案改写成失败。
         output_fn(f"[trace log unavailable: {log_error}]")
+
+
+def _print_source_block(
+    source_summaries: tuple[AnswerSourceSummary, ...],
+    *,
+    output_fn: Callable[[str], None],
+    verbose: bool,
+) -> None:
+    """展示 finalized Artifact 的来源摘要，不把 raw event 或正文转储到终端。"""
+
+    output_fn("Sources:")
+    for summary in source_summaries:
+        reference = summary.reference
+        if isinstance(reference, MessageSource):
+            snapshot = reference.snapshot
+            if snapshot is None:
+                # 缺失 trusted snapshot 是 contract 问题，不能拿 locator 猜展示信息。
+                output_fn(f"{summary.index}. message source metadata unavailable")
+                continue
+            author = snapshot.author_display or "unknown author"
+            rendered = (
+                f"{summary.index}. message · {snapshot.session_display} · "
+                f"{author} · {_format_timestamp(snapshot.timestamp_ms, snapshot.timezone)} · "
+                f"{_bounded_cli_text(snapshot.excerpt, 240)}"
+            )
+            if verbose:
+                rendered += f" · {reference.internal_message_id}"
+            output_fn(rendered)
+
+
+            continue
+        if isinstance(reference, StructuredSource):
+            rendered = f"{summary.index}. {reference.locator_kind} source"
+            if reference.query_scope_snapshot:
+                rendered += " · scoped result"
+            if verbose:
+                rendered += f" · {reference.locator}"
+            output_fn(rendered)
+
+
+def _answer_limitations(artifact: AnswerArtifact) -> tuple[str, ...]:
+    """将 Artifact 的 partial/limitation 事实投影为简短用户提示。"""
+
+    labels = {
+        "tool_result_partial": "a tool returned partial results",
+        "retrieval_partial": "retrieval was partial",
+        "retrieval_truncated": "retrieval was truncated",
+    }
+    rendered: list[str] = []
+    for limitation in artifact.limitations:
+        label = labels.get(limitation, limitation)
+        if label not in rendered:
+            rendered.append(_bounded_cli_text(label, 240))
+    if any(item.sufficiency != "sufficient" for item in artifact.evidence_items):
+        rendered.append("some cited evidence is not complete")
+    return tuple(rendered[:6])
+
+
+def _format_timestamp(timestamp_ms: int, timezone_name: str) -> str:
+    """按 finalized snapshot 的 timezone 标记输出稳定的人工可读时间。"""
+
+    rendered = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat(timespec="seconds")
+    return f"{rendered} ({timezone_name})"
+
+
+def _print_source_detail(
+    summary: AnswerSourceSummary,
+    *,
+    application: TrivaeApplication,
+    scope: ExecutionScope,
+    output_fn: Callable[[str], None],
+    verbose: bool,
+) -> None:
+    """执行来源 drill-down；Message Source 必须重新读取 bounded canonical context。"""
+
+    reference = summary.reference
+    if isinstance(reference, StructuredSource):
+        output_fn(f"Source {summary.index}: {reference.locator_kind} result")
+        output_fn(f"Value: {_bounded_cli_value(reference.value_snapshot, 800)}")
+        if reference.execution_limitations:
+            output_fn(f"Limitations: {', '.join(reference.execution_limitations)}")
+        if verbose:
+            output_fn(f"Locator: {reference.locator}")
+        return
+
+    try:
+        messages = application.inspect_message_source(reference, scope)
+    except SourceInspectionError as exc:
+        output_fn(f"Source {summary.index} unavailable: {exc}")
+        return
+
+    output_fn(f"Source {summary.index}: message context")
+    for message in messages:
+        marker = ">" if message.internal_message_id == reference.internal_message_id else " "
+        author = message.sender_name or message.sender_user_id or "unknown author"
+        excerpt = _bounded_cli_text(message.normalized_content, 480)
+        output_fn(
+            f"{marker} {message.session_display} · {author} · "
+            f"{_format_timestamp(message.timestamp, 'UTC')} · {excerpt}"
+        )
+        if verbose and marker == ">":
+            output_fn(f"  message_id: {message.internal_message_id}")
+
+
+def _bounded_cli_text(value: object, max_chars: int) -> str:
+    """给来源查看提供单行、有限长度的正文投影。"""
+
+    rendered = str(value).replace("\n", "\\n")
+    return rendered if len(rendered) <= max_chars else f"{rendered[:max_chars - 1]}…"
+
+
+def _bounded_cli_value(value: object, max_chars: int) -> str:
+    """把 structured source 显示为 key=value，而不是 JSON 转储。"""
+
+    if isinstance(value, Mapping):
+        rendered = ", ".join(
+            f"{key}={_bounded_cli_value(item, max(80, max_chars // 4))}"
+            for key, item in list(value.items())[:12]
+        )
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        rendered = ", ".join(
+            _bounded_cli_value(item, max(80, max_chars // 4))
+            for item in list(value)[:12]
+        )
+    else:
+        rendered = str(value)
+    return _bounded_cli_text(rendered, max_chars)
 
 
 async def _run_interactive_chat(
@@ -790,6 +1105,10 @@ async def _run_interactive_chat(
     # 真实终端直接接收 token write；注入 output_fn 时用逐行 adapter 保持既有测试接口。
     terminal_stream = sys.stdout if output_fn is None else cast(TextIO, _CallbackTextStream(write_output))
 
+    readiness_reader = getattr(application, "readiness", None)
+    if callable(readiness_reader):
+        _print_readiness(readiness_reader(), output_fn=write_output)
+
     # Session metadata 通过 Application facade 读取，CLI 不直接读 SQLite。
     sessions = application.list_sessions()
     if not sessions:
@@ -799,10 +1118,7 @@ async def _run_interactive_chat(
     # 先展示稳定排序后的真实群聊，再提供 unrestricted 入口。
     write_output("Trivae interactive chat")
     write_output("")
-    write_output("Available chats:")
-    for index, session in enumerate(sessions, start=1):
-        write_output(f"{index}. {session.name}")
-    write_output("0. All chats")
+    _print_chat_list(sessions, output_fn=write_output)
 
     # picker 返回的 scope 在本次 CLI 生命周期内保持不变。
     selected = _select_chat(sessions, input_fn=read_input, output_fn=write_output)
@@ -810,11 +1126,12 @@ async def _run_interactive_chat(
         return 0
     scope, selected_name = selected
     write_output(f"Selected: {selected_name}")
-    write_output("/new   Start a new conversation")
-    write_output("/exit  Exit")
+    _print_chat_commands(output_fn=write_output)
 
-    # conversation_id 与 scope 是两个独立状态；/new 只会重置前者。
+    # conversation_id 与 scope 是两个独立状态；/new 还会清空上一轮来源索引。
     conversation_id: str | None = None
+    last_sources: tuple[AnswerSourceSummary, ...] = ()
+    last_result: QueryResult | None = None
     while True:
         try:
             raw_query = read_input("You > ")
@@ -832,10 +1149,142 @@ async def _run_interactive_chat(
             write_output("Bye.")
             return 0
 
+        if query == "/help":
+            # 帮助只读当前交互状态，不创建 Query 或改变 scope/conversation。
+            _print_chat_commands(output_fn=write_output)
+            continue
+
         # /new 只清空 Conversation identity，绝不改写已经选择的 trusted scope。
         if query == "/new":
             conversation_id = None
+            last_sources = ()
+            last_result = None
             write_output("Started a new conversation.")
+            continue
+
+        if query == "/scope":
+            _print_scope(scope, selected_name, conversation_id, output_fn=write_output)
+            continue
+
+        if query == "/status":
+            readiness_reader = getattr(application, "readiness", None)
+            if not callable(readiness_reader):
+                write_output("Status is unavailable from this application.")
+                continue
+            _print_readiness(readiness_reader(), output_fn=write_output)
+            _print_scope(scope, selected_name, conversation_id, output_fn=write_output)
+            continue
+
+        if query == "/chats":
+            _print_chat_list(sessions, output_fn=write_output)
+            selected = _select_chat(sessions, input_fn=read_input, output_fn=write_output)
+            if selected is None:
+                return 0
+            scope, selected_name = selected
+            conversation_id = None
+            last_sources = ()
+            last_result = None
+            write_output(f"Switched to: {selected_name}")
+            write_output("Started a new conversation.")
+            continue
+
+        if query == "/history":
+            try:
+                summaries = application.list_conversations()
+            except ConversationError as exc:
+                write_output(f"History unavailable: {exc}")
+                continue
+            _print_history(summaries, sessions=sessions, output_fn=write_output)
+            continue
+
+        if query.startswith("/resume"):
+            parts = query.split()
+            if len(parts) != 2 or not parts[1].isdigit():
+                write_output("Usage: /resume n")
+                continue
+            try:
+                summaries = application.list_conversations()
+            except ConversationError as exc:
+                write_output(f"History unavailable: {exc}")
+                continue
+            resume_index = int(parts[1])
+            if resume_index < 1 or resume_index > len(summaries):
+                write_output("Conversation number is not available.")
+                continue
+            summary = summaries[resume_index - 1]
+            try:
+                resumed = application.resume_conversation(summary.conversation_id)
+            except ConversationError as exc:
+                write_output(f"Conversation cannot be resumed: {exc}")
+                continue
+            if resumed.scope is None:
+                # Application contract 已检查；这里保留显式边界，防止未来 Store 破坏类型。
+                write_output("Conversation cannot be resumed: scope metadata is unavailable.")
+                continue
+            scope = resumed.scope
+            selected_name = _scope_name_from_sessions(scope, sessions)
+            conversation_id = resumed.conversation_id
+            last_sources = ()
+            last_result = None
+            write_output(f"Resumed: {summary.title}")
+            _print_scope(scope, selected_name, conversation_id, output_fn=write_output)
+            continue
+
+        if query == "/feedback":
+            target = _feedback_target(last_result)
+            if target is None:
+                write_output("Feedback is available after a completed answer.")
+                continue
+            try:
+                _print_feedback(
+                    application.read_feedback(target[0], target[1]),
+                    output_fn=write_output,
+                )
+            except FeedbackError as exc:
+                write_output(f"Feedback unavailable: {exc}")
+            continue
+
+        if query == "/good" or query.startswith("/good ") or query == "/bad" or query.startswith("/bad "):
+            command, _, note = query.partition(" ")
+            target = _feedback_target(last_result)
+            if target is None:
+                write_output("Feedback is available after a completed answer.")
+                continue
+            try:
+                application.save_feedback(
+                    conversation_id=target[0],
+                    trace_id=target[1],
+                    run_id=target[2],
+                    scope=scope,
+                    rating="good" if command == "/good" else "bad",
+                    note=note or None,
+                )
+            except FeedbackError as exc:
+                write_output(f"Feedback was not saved: {exc}")
+                continue
+            write_output("Feedback saved.")
+            continue
+
+        if query.startswith("/source"):
+            parts = query.split()
+            if len(parts) != 2 or not parts[1].isdigit():
+                write_output("Usage: /source n")
+                continue
+            source_index = int(parts[1])
+            selected_source = next(
+                (summary for summary in last_sources if summary.index == source_index),
+                None,
+            )
+            if selected_source is None:
+                write_output("Source number is not available from the last answer.")
+                continue
+            _print_source_detail(
+                selected_source,
+                application=application,
+                scope=scope,
+                output_fn=write_output,
+                verbose=verbose,
+            )
             continue
 
         # 普通文本统一编译为正式 QueryRequest，并进入 Application Query path。
@@ -849,11 +1298,43 @@ async def _run_interactive_chat(
         try:
             # Application 仍执行唯一 Query 主链路；CLI 只订阅同源实时事件。
             result = await application.query(request, on_event=renderer.handle)
+        except (
+            CapabilityContractError,
+            ConversationError,
+            QueryContractError,
+            RetrievalError,
+            SettingsError,
+            TraceStoreError,
+        ) as exc:
+            renderer.finish()
+            write_output(f"Error: {exc}")
+            trace_id = getattr(exc, "trace_id", None)
+            if isinstance(trace_id, str) and trace_id:
+                write_output(f"[trace: {trace_id}]")
+            last_result = None
+            continue
+        except Exception as exc:
+            # 未知异常写入日志，同时给终端一个可行动的类型诊断，不输出长 traceback。
+            renderer.finish()
+            logging.getLogger(__name__).exception("TRIVAE_INTERACTIVE_QUERY_FAILED")
+            write_output(f"Error: unexpected query failure ({type(exc).__name__}); inspect the trace log.")
+            trace_id = getattr(exc, "trace_id", None)
+            if isinstance(trace_id, str) and trace_id:
+                write_output(f"[trace: {trace_id}]")
+            last_result = None
+            continue
         finally:
             # 成功、分类错误、task cancellation 和 Ctrl+C 都必须恢复到完整终端行。
             renderer.finish()
         # QueryResult 是 Conversation identity 的正式返回边界，后续轮次复用它。
         conversation_id = result.conversation_id
+        artifact = getattr(result, "answer_artifact", None)
+        if result.is_successful and isinstance(artifact, AnswerArtifact):
+            last_sources = answer_source_summaries(artifact)
+            last_result = result
+        else:
+            last_sources = ()
+            last_result = None
         log_path: Path | None = None
         log_error: str | None = None
         if result.trace_id is not None:
@@ -870,6 +1351,8 @@ async def _run_interactive_chat(
             log_error=log_error,
             answer_already_rendered=renderer.answer_rendered,
             failure_already_rendered=renderer.failure_rendered,
+            source_summaries=last_sources,
+            verbose=verbose,
         )
 
 
@@ -894,6 +1377,14 @@ def _run_chat_command(args: argparse.Namespace) -> int:
     ) as exc:
         # 这些错误已有稳定业务语义；只展示消息，不把它们伪装成成功答案。
         print(f"Error: {exc}")
+        trace_id = getattr(exc, "trace_id", None)
+        if isinstance(trace_id, str) and trace_id:
+            print(f"[trace: {trace_id}]")
+        return 1
+    except Exception as exc:
+        # 未知启动错误保留 logger traceback，终端只显示稳定诊断类型。
+        logging.getLogger(__name__).exception("TRIVAE_CHAT_FAILED")
+        print(f"Error: unexpected failure ({type(exc).__name__}); inspect diagnostics.")
         trace_id = getattr(exc, "trace_id", None)
         if isinstance(trace_id, str) and trace_id:
             print(f"[trace: {trace_id}]")

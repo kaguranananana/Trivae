@@ -8,7 +8,9 @@ from .contracts import (
     ConversationNotFoundError,
     ConversationPersistenceError,
     ConversationRole,
+    ConversationScopeError,
     ConversationStore,
+    ConversationSummary,
 )
 from .serialization import deserialize_answer_artifact, serialize_answer_artifact
 from .sqlite import SQLiteConversationStore
@@ -20,7 +22,9 @@ __all__ = [
     "ConversationMessage",
     "ConversationNotFoundError",
     "ConversationPersistenceError",
+    "ConversationScopeError",
     "ConversationRole",
+    "ConversationSummary",
     "ConversationStore",
     "SQLiteConversationStore",
     "deserialize_answer_artifact",

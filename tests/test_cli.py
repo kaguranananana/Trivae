@@ -15,6 +15,8 @@ from unittest.mock import patch
 
 from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
+from trivae.capabilities.contracts import ExecutionScope
+from trivae.conversation import ConversationSummary
 from trivae.data.model import ChatSession
 from trivae.interfaces import cli
 from trivae.observability.sqlite import TraceStoreError
@@ -323,6 +325,44 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(application.requests[0].scope.allowed_session_ids, None)
 
+    def test_help_reprints_the_current_interactive_commands(self) -> None:
+        """/help 只重复当前命令清单，不触发 Query 或改变 scope。"""
+
+        application = _FakeApplication((_session("qq:100", "AI 群"),), [])
+        _, input_fn = _scripted_input(["1", "/help", "/exit"])
+        output: list[str] = []
+
+        exit_code = asyncio.run(cli._run_interactive_chat(application, input_fn=input_fn, output_fn=output.append))
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(application.requests, [])
+        self.assertEqual(output.count("/help  Show available commands"), 2)
+        self.assertIn("/source n  Inspect a cited source", output)
+
+    def test_history_projects_update_time_and_resolved_scope(self) -> None:
+        """history 列表显示 Store 时间和可信群聊名称，不额外生成标题。"""
+
+        summary = ConversationSummary(
+            conversation_id="conversation-1",
+            created_at="2026-08-25T10:00:00+00:00",
+            updated_at="2026-08-25T10:02:00+00:00",
+            title="A bounded query",
+            message_count=2,
+            scope=ExecutionScope(allowed_session_ids=("qq:100",)),
+        )
+        output: list[str] = []
+
+        cli._print_history(
+            (summary,),
+            sessions=(_session("qq:100", "AI 群"),),
+            output_fn=output.append,
+        )
+
+        self.assertIn("A bounded query", output[1])
+        self.assertIn("2026-08-25T10:02:00+00:00", output[1])
+        self.assertIn("AI 群", output[1])
+        self.assertIn("resumable", output[1])
+
     def test_new_resets_only_conversation(self) -> None:
         """/new 使下一轮 conversation_id 为空，但不改变选中的群聊 scope。"""
 
@@ -516,7 +556,8 @@ class ChatCliTests(unittest.TestCase):
             exit_code = cli.main(["chat"])
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("Thinking...\n处理中\nBye.\n", output.getvalue())
+        self.assertNotIn("处理中", output.getvalue())
+        self.assertIn("Bye.\n", output.getvalue())
 
     def test_chat_loop_uses_application_query_not_runtime_or_retrieval(self) -> None:
         """静态边界回归：交互 loop 只能通过 Application query 进入生产链路。"""

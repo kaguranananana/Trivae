@@ -57,6 +57,10 @@ class AnswerFinalizationError(AnswerContractError):
         super().__init__(message)
 
 
+class SourceInspectionError(AnswerContractError):
+    """来源查看无法在当前可信 scope 内完成时的显式错误。"""
+
+
 @dataclass(frozen=True)
 class FinalizationErrorInfo:
     """Query 对外暴露的 secret-safe finalization failure。"""
@@ -226,6 +230,78 @@ class StructuredSource:
 
 
 SourceReference: TypeAlias = MessageSource | StructuredSource
+
+
+@dataclass(frozen=True)
+class AnswerSourceSummary:
+    """AnswerArtifact 中一条去重后的来源摘要。"""
+
+    index: int
+    reference: SourceReference
+    evidence_ids: tuple[str, ...]
+    relations: tuple[SourceRelation, ...]
+
+
+def _source_identity(reference: SourceReference) -> tuple[str, ...]:
+    """使用 canonical locator 去重，不把正文或一次执行 provenance 当作 identity。"""
+
+    if isinstance(reference, MessageSource):
+        return (
+            "message",
+            reference.session_id,
+            reference.internal_message_id,
+        )
+    return (
+        "structured",
+        reference.run_id,
+        reference.tool_call_id,
+        reference.tool_result_id,
+        reference.locator_kind,
+        reference.locator,
+    )
+
+
+def answer_source_summaries(artifact: AnswerArtifact) -> tuple[AnswerSourceSummary, ...]:
+    """按 Evidence/source 原始顺序生成 bounded、去重且可复用的来源列表。"""
+
+    if not isinstance(artifact, AnswerArtifact):
+        raise SourceInspectionError("source list requires a finalized AnswerArtifact")
+
+    summaries: list[AnswerSourceSummary] = []
+    positions: dict[tuple[str, ...], int] = {}
+    evidence_ids: list[list[str]] = []
+    relations: list[list[SourceRelation]] = []
+    for evidence in artifact.evidence_items:
+        for evidence_source in evidence.sources:
+            key = _source_identity(evidence_source.reference)
+            position = positions.get(key)
+            if position is None:
+                position = len(summaries)
+                positions[key] = position
+                summaries.append(
+                    AnswerSourceSummary(
+                        index=position + 1,
+                        reference=evidence_source.reference,
+                        evidence_ids=(evidence.evidence_id,),
+                        relations=(evidence_source.relation,),
+                    )
+                )
+                evidence_ids.append([evidence.evidence_id])
+                relations.append([evidence_source.relation])
+                continue
+            if evidence.evidence_id not in evidence_ids[position]:
+                evidence_ids[position].append(evidence.evidence_id)
+            if evidence_source.relation not in relations[position]:
+                relations[position].append(evidence_source.relation)
+
+    return tuple(
+        replace(
+            summary,
+            evidence_ids=tuple(evidence_ids[index]),
+            relations=tuple(relations[index]),
+        )
+        for index, summary in enumerate(summaries)
+    )
 
 
 @dataclass(frozen=True)
