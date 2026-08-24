@@ -662,3 +662,25 @@ Completed the full Qwen baseline rebuild, integrity/reopen/stale checks, blind L
 ### Status
 
 [OK] **Completed**
+
+
+## Session 30: Product Experience Hardening
+
+**Date**: 2026-08-25
+**Task**: Product Experience Hardening
+**Branch**: `codex/product-experience-hardening`
+
+### Summary
+
+完成 CLI 产品体验硬化：可信 Source drill-down、scope/readiness/status、Conversation history/resume、独立 user feedback，以及 bounded normal/verbose renderer 和 friendly failure projection；最终全量回归 282 passed。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `56e05e6` | (see git log) |
+| `85f8ea0` | (see git log) |
+
+### Status
+
+[OK] **Completed**
