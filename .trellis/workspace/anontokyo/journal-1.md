@@ -684,3 +684,24 @@ Completed the full Qwen baseline rebuild, integrity/reopen/stale checks, blind L
 ### Status
 
 [OK] **Completed**
+
+
+## Session 31: Automatic CLI dotenv loading
+
+**Date**: 2026-08-25
+**Task**: Automatic CLI dotenv loading
+**Branch**: `codex/product-experience-hardening`
+
+### Summary
+
+Implemented CLI-only automatic .env loading for chat with explicit --env-file support, process-environment precedence, typed parse errors, regression tests, updated backend contracts, and a real no-source Provider readiness smoke.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ce25244` | (see git log) |
+
+### Status
+
+[OK] **Completed**

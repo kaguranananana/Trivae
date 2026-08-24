@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 30
+- **Total Sessions**: 31
 - **Last Active**: 2026-08-25
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~686 | Active |
+| `journal-1.md` | ~707 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 31 | 2026-08-25 | Automatic CLI dotenv loading | `ce25244` | `codex/product-experience-hardening` |
 | 30 | 2026-08-25 | Product Experience Hardening | `56e05e6`, `85f8ea0` | `codex/product-experience-hardening` |
 | 29 | 2026-08-24 | Semantic retrieval provisional evaluation | `332dbe3` | `codex/semantic-retrieval-vertical-slice` |
 | 28 | 2026-08-23 | Generalize Model Provider Configuration | `45bd747` | `codex/model-provider-config` |
