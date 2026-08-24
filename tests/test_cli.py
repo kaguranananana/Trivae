@@ -292,7 +292,7 @@ class ChatCliTests(unittest.TestCase):
         )
         self.assertEqual(
             application.requests[0].available_capabilities,
-            ("lexical_search", "semantic_search"),
+            ("lexical_search", "semantic_search", "get_message_context", "find_members"),
         )
         self.assertIn("Selected: AI 群", output)
         self.assertIn("answer-1", output)

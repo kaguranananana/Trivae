@@ -52,23 +52,23 @@
 
 ## Stage B checklist — Context and Member Tools
 
-> 当前按用户指令暂停 Stage B；以下条目保持未实现、未验证，直到 Checkpoint A 的后续决策。
+> 当前继续执行 Stage B；Stage C 保持冻结，直到本 checkpoint 独立提交完成。
 
 ### Implementation
 
-- [ ] 复用 canonical bounded context/read capability，实现并注册 `get_message_context`。
-- [ ] 复用 identity/membership capability，实现并注册 `find_members`，返回候选和匹配依据。
-- [ ] 接入现有 Runtime/Tool Envelope/Trace/Evidence，不创建 candidate state。
-- [ ] 扩展 Agent-facing Evaluation 与 Trellis/interview-defense。
+- [x] 复用 canonical bounded context/read capability，实现并注册 `get_message_context`。
+- [x] 复用 identity/membership capability，实现并注册 `find_members`，返回候选和匹配依据。
+- [x] 接入现有 Runtime/Tool Envelope/Trace/Evidence，不创建 candidate state。
+- [x] 扩展 Agent-facing Evaluation 与 Trellis/interview-defense。
 
 ### Validation gate
 
-- [ ] search → context、invalid message id、scope boundary、truncation、conversation boundary。
-- [ ] context 已足够时不机械调用的 Agent 行为检查。
-- [ ] unique member、same nickname candidates、alias、multiple sessions、unknown、scope restricted。
-- [ ] Trace 区分 search auto-context 与 explicit context deepening。
-- [ ] Unit/integration/full tests、ruff、mypy、真实综合 Provider smoke、Evaluation、Failure Case。
-- [ ] Checkpoint B commit：`feat: add context and member agent tools`。
+- [x] search → context、invalid message id、scope boundary、truncation、conversation boundary。
+- [x] context 已足够时不机械调用的 Agent 行为检查。
+- [x] unique member、same nickname candidates、alias、multiple sessions、unknown、scope restricted。
+- [x] Trace 区分 search auto-context 与 explicit context deepening。
+- [x] Unit/integration/full tests、ruff、mypy、真实综合 Provider smoke、Evaluation、Failure Case。
+- [x] Checkpoint B commit：`feat: add context and member agent tools`。
 
 ## Stage C checklist — Structured SQL Tools
 

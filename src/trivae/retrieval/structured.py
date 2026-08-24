@@ -306,6 +306,9 @@ class CanonicalReadRepository(Protocol):
     def read_messages(self, query: MessageQuery) -> tuple[MessageProjection, ...]:
         """读取有界且已排序的 canonical projections。"""
 
+    def read_message_by_id(self, internal_message_id: str) -> MessageProjection | None:
+        """按稳定 internal message ID 读取 canonical projection。"""
+
     def aggregate_messages(self, query: AggregateQuery) -> AggregateData:
         """执行 count/group aggregate。"""
 
@@ -323,6 +326,16 @@ class CanonicalReadRepository(Protocol):
         after: int,
     ) -> tuple[MessageProjection, ...]:
         """读取同 session 的 bounded surrounding context。"""
+
+    def read_message_context_scoped(
+        self,
+        session_id: str,
+        internal_message_id: str,
+        before: int,
+        after: int,
+        scope: ScopeFilters,
+    ) -> tuple[MessageProjection, ...]:
+        """读取 trusted Scope 内的同 session surrounding context。"""
 
     def iter_semantic_messages(self, batch_size: int) -> "Iterator[MessageProjection]":
         """按 canonical ordering 流式读取 semantic builder 所需的最小 projection。"""

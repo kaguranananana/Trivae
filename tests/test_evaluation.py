@@ -32,7 +32,11 @@ from trivae.evaluation import (
     run_judge,
     scope_identity,
 )
-from trivae.evaluation.checks import operational_measurements, query_result_snapshot
+from trivae.evaluation.checks import (
+    agent_tool_behavior_projection,
+    operational_measurements,
+    query_result_snapshot,
+)
 from trivae.observability.contracts import TraceMetrics, TraceProjection, TraceTimelineItem
 from trivae.query.contracts import ExecutionOverride, QueryRequest, QueryResult
 from trivae.query.evidence import FinalizationErrorInfo, ToolResultRecord
@@ -321,6 +325,8 @@ class EvaluationContractTests(unittest.TestCase):
                 "first_selected_tool": "lexical_search",
                 "tool_sequence": ["lexical_search", "semantic_search"],
                 "retrieval_tool_sequence": ["lexical_search", "semantic_search"],
+                "context_tool_sequence": [],
+                "member_tool_sequence": [],
                 "tool_call_count": 2,
                 "tool_rounds": 2,
                 "tool_errors": [
@@ -334,6 +340,33 @@ class EvaluationContractTests(unittest.TestCase):
         )
         self.assertEqual(measurements["agent_tool_behavior"]["tool_rounds"], 2)
         self.assertNotIn("human_verified", measurements["agent_tool_behavior"])
+
+    def test_agent_tool_behavior_keeps_stage_b_sequences_separate(self) -> None:
+        """Context/member action 进入同一 behavior projection，不被混成 retrieval quality。"""
+
+        result = QueryResult(
+            runtime_result=RuntimeResult(
+                final_answer=None,
+                provider="test-provider",
+                model="test-model",
+                termination="completed",
+                tool_calls=(
+                    RuntimeToolCall("find_members", "ok", round=1),
+                    RuntimeToolCall("lexical_search", "ok", round=2),
+                    RuntimeToolCall("get_message_context", "ok", round=3),
+                ),
+                tool_rounds=3,
+            ),
+            route_decision=RouteDecision("standard_execution", 1.0, "rule", "test"),
+        )
+
+        behavior = agent_tool_behavior_projection(result)
+
+        self.assertEqual(behavior["first_selected_tool"], "find_members")
+        self.assertEqual(behavior["tool_sequence"], ["find_members", "lexical_search", "get_message_context"])
+        self.assertEqual(behavior["retrieval_tool_sequence"], ["lexical_search"])
+        self.assertEqual(behavior["member_tool_sequence"], ["find_members"])
+        self.assertEqual(behavior["context_tool_sequence"], ["get_message_context"])
 
 
 class EvaluationRunnerTests(unittest.TestCase):

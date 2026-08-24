@@ -283,6 +283,47 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
     finalization 位于更后层，不能把 Runtime/provider error 误归为 retrieval quality。
   - Q: 为什么不把 semantic unavailable 改成 lexical 结果？ Evidence: explicit semantic
     failure test、Trace failure projection 和 Stage A validation FC-A6。
-  - Q: 什么证据会让你重新评估？ Evidence: 重复且可定位的 Provider transport failure、
-    Agent selection regression 或 verified quality dataset；在此之前不改变 Qwen、dimension、
-    chunking 或 dense bounds。
+- Q: 什么证据会让你重新评估？ Evidence: 重复且可定位的 Provider transport failure、
+  Agent selection regression 或 verified quality dataset；在此之前不改变 Qwen、dimension、
+  chunking 或 dense bounds。
+
+## Stage B Agent-facing context/member surface 事实索引
+
+- `get_message_context` 复用既有 `ContextExpander` 与 Canonical Read，不把 Search 的内部 context
+  步骤拆成 Agent 必须机械调用的流程；只有已知 message locator 且局部上下文不足时才显式
+  deepening。证据：`tests/test_stage_b_tools.py` 的 bounded same-session/time-scope、truncation、
+  invalid locator 和 explicit Trace assertions。
+- Search 自动带 bounded local context 与 explicit `get_message_context` 的边界不同：前者是
+  Retrieval result 的局部 acquisition，后者是 Agent 可解释的更大 bounded context request。
+  Trace 的 `context.expansion.completed` payload 明确标记 `explicit_deepening`，Transcript 也将
+  它单独渲染为 `[CONTEXT EXPANSION]`。
+- `find_members` 复用现有 `users` / `memberships`；返回 stable UserIdentity 候选、Membership
+  session 关联和 exact/partial match reasons，不新增 `resolve_member` 或 candidate state。多
+  昵称候选是需要呈现的 ambiguity，不是必须被模型猜成唯一人物；当前 physical schema 的
+  alias-like 值由 `remark` 承载，并通过 `alias` 投影说明这一边界。
+- Member candidate 是 Structured row provenance，必须从 `provenance.structured_sources` 使用
+  `locator_kind/locator/value_snapshot`；不能套用 message source 的
+  `session_id/internal_message_id`。FC-B2 证明了这类 citation shape 不清晰时，生产 Finalizer
+  会正确返回 `INVALID_SOURCE`；修复是补充 model-visible contract，不是放宽 validator。
+- `ExecutionScope` 由 Runtime 本地对象持有，member session filter、context anchor 和 scoped
+  context SQL 都在 Capability/read adapter 边界 enforcing；模型参数不能自行扩大 scope。成员
+  limit 的 provider 默认也绑定 trusted max，FC-B1 的真实 `INVALID_ARGUMENT` 已由动态 adapter
+  default 和 omitted-limit regression 覆盖。
+- Evaluation behavior projection 现在同时保存 `retrieval_tool_sequence`、
+  `context_tool_sequence`、`member_tool_sequence`、tool count/round/error；这些是 Agent behavior
+  observation，不是 preferred sequence 的 `human_verified` 结论。真实 smoke 的
+  `member → lexical` 与 `lexical → semantic → context` 均通过 current-run Evidence/Citation，
+  但 latency/usage 仍只是当前 Provider/index 的 measured facts，不是 SLA。
+- Q: 为什么 Search 已经有 bounded context 还需要 `get_message_context`？
+  Evidence: Stage 1.4 design、`ContextExpander` reuse、explicit Trace mode 和 required-context
+  Provider smoke；它让 Agent 在找到关键消息后有一个公开、可追踪的 deepening action。
+- Q: 为什么 `find_members` 不叫 `resolve_member`？
+  Evidence: Stage 1.2 identity/membership model、same nickname multi-candidate test 和真实
+  ambiguity smoke；名称查询证据不足时强行唯一 resolve 会把 ambiguity 变成未经证实的事实。
+- Q: 如何区分成员 Tool、Retrieval 和答案错误？
+  Evidence: Trace 依次展示 `member.lookup.*`、`retrieval.search.*`、
+  `context.expansion.*`、Evidence/Citation finalization；FC-B1 属于 Tool contract，FC-B2 属于
+  model-facing citation shape，FC-B3 是 Agent selection observation。
+- Q: 为什么这一批仍不加入 SQL？
+  Evidence: checkpoint 分批策略、Stage B focused/full/real smoke gate；Stage C 的
+  `get_schema/execute_sql` 尚未实现，避免一次扩展六个工具后无法归因 selection regression。

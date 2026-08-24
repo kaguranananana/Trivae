@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
-from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, SemanticSearchInput, ToolEnvelope
+from trivae.capabilities.contracts import (
+    ExecutionScope,
+    FindMembersInput,
+    GetMessageContextInput,
+    SearchMessagesInput,
+    SemanticSearchInput,
+    ToolEnvelope,
+)
+
+ToolRequest = SearchMessagesInput | SemanticSearchInput | GetMessageContextInput | FindMembersInput
 
 
 class ToolHandler(Protocol):
@@ -12,7 +21,7 @@ class ToolHandler(Protocol):
 
     name: str
 
-    def invoke(self, request: SearchMessagesInput | SemanticSearchInput, scope: ExecutionScope) -> ToolEnvelope:
+    def invoke(self, request: Any, scope: ExecutionScope) -> ToolEnvelope:
         """执行 typed tool call。"""
 
 
@@ -32,7 +41,7 @@ class CapabilityRegistry:
     def invoke(
         self,
         name: str,
-        request: SearchMessagesInput | SemanticSearchInput,
+        request: ToolRequest,
         scope: ExecutionScope,
         *,
         trace_context: object | None = None,

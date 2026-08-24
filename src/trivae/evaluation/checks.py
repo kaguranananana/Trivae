@@ -82,16 +82,23 @@ def agent_tool_behavior_projection(result: QueryResult | None) -> dict[str, obje
             "first_selected_tool": None,
             "tool_sequence": [],
             "retrieval_tool_sequence": [],
+            "context_tool_sequence": [],
+            "member_tool_sequence": [],
             "tool_call_count": 0,
             "tool_rounds": 0,
             "tool_errors": [],
         }
     calls = result.runtime_result.tool_calls
     retrieval_names = {"lexical_search", "semantic_search", "search_messages"}
+    context_names = {"get_message_context"}
+    member_names = {"find_members"}
     return {
         "first_selected_tool": None if not calls else calls[0].name,
         "tool_sequence": [call.name for call in calls],
         "retrieval_tool_sequence": [call.name for call in calls if call.name in retrieval_names],
+        # Stage B 保留 context/member 的公开 action sequence，是否合理仍交给 Case Review。
+        "context_tool_sequence": [call.name for call in calls if call.name in context_names],
+        "member_tool_sequence": [call.name for call in calls if call.name in member_names],
         "tool_call_count": len(calls),
         "tool_rounds": result.runtime_result.tool_rounds,
         "tool_errors": [

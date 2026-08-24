@@ -11,6 +11,8 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal, Mapping, TypeAlias
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
+from trivae.retrieval.context import MessageContextResult
+from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
 from trivae.retrieval.structured import (
     Coverage,
@@ -540,6 +542,21 @@ def build_tool_result_record(
     elif isinstance(data, StructuredMessageResult):
         message_items = _message_items(data.messages)
         query_snapshot = data.query.to_dict()
+    elif isinstance(data, MessageContextResult):
+        # Explicit context 的所有消息都属于当前 Tool Result，可继续使用 MessageSource citation。
+        message_items = _message_items(data.messages)
+        raw_scope = data.metadata.filters.get("scope", {})
+        query_snapshot = {
+            "message_id": data.message_id,
+            "session_id": data.session_id,
+            "requested_before": data.requested_before,
+            "requested_after": data.requested_after,
+            "scope": dict(raw_scope) if isinstance(raw_scope, Mapping) else {},
+        }
+    elif isinstance(data, FindMembersResult):
+        # 成员候选以 bounded structured row 暴露，复用现有 StructuredSource 校验机制。
+        structured_items = _member_items(data)
+        query_snapshot = data.query.to_dict()
     elif isinstance(data, StructuredAggregateResult):
         query_snapshot = data.query.to_dict()
         structured_items = _aggregate_items(data)
@@ -572,6 +589,15 @@ def _aggregate_items(result: StructuredAggregateResult) -> tuple[ToolStructuredI
         items.append(ToolStructuredItem("field", f"{row_locator}.group_key", bucket.group_key))
         items.append(ToolStructuredItem("field", f"{row_locator}.count", bucket.count))
     return tuple(items)
+
+
+def _member_items(result: FindMembersResult) -> tuple[ToolStructuredItem, ...]:
+    """为每个成员候选建立可验证的 row locator，并保留完整匹配依据。"""
+
+    return tuple(
+        ToolStructuredItem("row", f"candidates[{index}]", candidate.to_dict())
+        for index, candidate in enumerate(result.candidates)
+    )
 
 
 def _model_error(code: str, message: str, path: str | None = None) -> AnswerFinalizationError:

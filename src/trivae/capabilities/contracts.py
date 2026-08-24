@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal, Mapping, Sequence
 
+from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, MessageContextResult
+from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
 from trivae.retrieval.structured import (
     RetrievalResult,
@@ -12,7 +14,14 @@ from trivae.retrieval.structured import (
     StructuredMessageResult,
 )
 
-ToolData = RetrievalResult | SemanticRetrievalResult | StructuredMessageResult | StructuredAggregateResult
+ToolData = (
+    RetrievalResult
+    | SemanticRetrievalResult
+    | StructuredMessageResult
+    | StructuredAggregateResult
+    | MessageContextResult
+    | FindMembersResult
+)
 
 
 class CapabilityContractError(Exception):
@@ -172,6 +181,55 @@ class SemanticSearchInput:
 
 
 @dataclass(frozen=True)
+class GetMessageContextInput:
+    """get_message_context 的稳定 message locator 与 bounded 窗口字段。"""
+
+    message_id: str
+    context_before: int = 8
+    context_after: int = 8
+
+    def __post_init__(self) -> None:
+        """拒绝空 locator、负窗口和超过 transport bound 的请求。"""
+
+        object.__setattr__(self, "message_id", _normalize_required_identifier("message_id", self.message_id))
+        for name, value in (
+            ("context_before", self.context_before),
+            ("context_after", self.context_after),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise CapabilityContractError(f"{name} must be non-negative")
+        if self.context_before + self.context_after + 1 > MAX_CONTEXT_EXPANSION_MESSAGES:
+            raise CapabilityContractError(
+                f"requested context exceeds {MAX_CONTEXT_EXPANSION_MESSAGES} message bound"
+            )
+
+
+@dataclass(frozen=True)
+class FindMembersInput:
+    """find_members 的名称/身份查询与可选 session filter。"""
+
+    query: str
+    session_ids: tuple[str, ...] | None = None
+    limit: int = 20
+
+    def __post_init__(self) -> None:
+        """在 Tool contract 层规范化查询文本、session filter 和候选上限。"""
+
+        object.__setattr__(self, "query", _normalize_required_identifier("query", self.query))
+        object.__setattr__(self, "session_ids", _normalize_scope_sessions(self.session_ids))
+        if isinstance(self.limit, bool) or not isinstance(self.limit, int) or self.limit <= 0:
+            raise CapabilityContractError("limit must be positive")
+
+
+def _normalize_required_identifier(name: str, value: object) -> str:
+    """统一校验 Agent 提供的稳定 locator 或身份查询文本。"""
+
+    if not isinstance(value, str) or not value.strip():
+        raise CapabilityContractError(f"{name} must be a non-empty string")
+    return value.strip()
+
+
+@dataclass(frozen=True)
 class CapabilityMetadata:
     """Agent-facing capability metadata，不绑定 SDK 类型。"""
 
@@ -282,6 +340,12 @@ class ToolEnvelope:
                     "details": dict(self.data.metadata.details),
                 },
             }
+        elif isinstance(self.data, MessageContextResult):
+            # Explicit context 使用自己的 strategy/result fields，避免误报为 Structured Retrieval。
+            data = self.data.to_dict()
+        elif isinstance(self.data, FindMembersResult):
+            # 成员候选包含 UserIdentity、Membership 和 match reasons，全部来自 bounded projection。
+            data = self.data.to_dict()
         else:
             # Aggregate 结果拥有自己的 locator/value 语义，不能套成 MessageHit。
             data = {

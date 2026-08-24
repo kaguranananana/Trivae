@@ -31,6 +31,8 @@ from trivae.query.runtime.contracts import (
     RuntimeToolCall,
 )
 from trivae.query.runtime.openai_tools import (
+    FindMembersSDKToolAdapter,
+    GetMessageContextSDKToolAdapter,
     LexicalSearchSDKToolAdapter,
     SearchMessagesSDKToolAdapter,
     SemanticSearchSDKToolAdapter,
@@ -1037,6 +1039,14 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         if "semantic_search" in context.available_capabilities:
             tools.append(
                 SemanticSearchSDKToolAdapter(context.capability_registry).as_sdk_tool(
+                    trusted_max_results=context.scope.max_results
+                )
+            )
+        if "get_message_context" in context.available_capabilities:
+            tools.append(GetMessageContextSDKToolAdapter(context.capability_registry).as_sdk_tool())
+        if "find_members" in context.available_capabilities:
+            tools.append(
+                FindMembersSDKToolAdapter(context.capability_registry).as_sdk_tool(
                     trusted_max_results=context.scope.max_results
                 )
             )

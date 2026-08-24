@@ -9,11 +9,26 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 
-from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput, SemanticSearchInput, ToolEnvelope
+from trivae.capabilities.contracts import (
+    ExecutionScope,
+    FindMembersInput,
+    GetMessageContextInput,
+    SearchMessagesInput,
+    SemanticSearchInput,
+    ToolEnvelope,
+)
+from trivae.capabilities.find_members import FindMembersCapability
+from trivae.capabilities.get_message_context import GetMessageContextCapability
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.capabilities.search_messages import LexicalSearchCapability, SearchMessagesCapability
 from trivae.capabilities.semantic_search import SemanticSearchCapability
-from trivae.capabilities.tools import LexicalSearchTool, SearchMessagesTool, SemanticSearchTool
+from trivae.capabilities.tools import (
+    FindMembersTool,
+    GetMessageContextTool,
+    LexicalSearchTool,
+    SearchMessagesTool,
+    SemanticSearchTool,
+)
 from trivae.conversation import Conversation, ConversationStore, SQLiteConversationStore
 from trivae.data.ingestion.importer import SharedImporter
 from trivae.data.model import ChatSession, ImportRunSummary
@@ -256,7 +271,7 @@ class TrivaeApplication:
     def invoke_tool(
         self,
         name: str,
-        request: SearchMessagesInput | SemanticSearchInput,
+        request: SearchMessagesInput | SemanticSearchInput | GetMessageContextInput | FindMembersInput,
         scope: ExecutionScope,
     ) -> ToolEnvelope:
         """通过显式 registry 调用 agent-facing Tool。"""
@@ -781,6 +796,8 @@ def create_application(
     capability_registry.register(SearchMessagesTool(search_capability))
     capability_registry.register(LexicalSearchTool(lexical_capability))
     capability_registry.register(SemanticSearchTool(SemanticSearchCapability(semantic_retrieval)))
+    capability_registry.register(GetMessageContextTool(GetMessageContextCapability(read_repository)))
+    capability_registry.register(FindMembersTool(FindMembersCapability(read_repository)))
     owned_conversation_store = (
         SQLiteConversationStore(database_path) if conversation_store is None else conversation_store
     )

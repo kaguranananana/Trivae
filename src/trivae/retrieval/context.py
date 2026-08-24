@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Protocol, Sequence
 
-from trivae.retrieval.structured import MessageHit, MessageProjection, RetrievalError, message_sort_key
+from trivae.retrieval.structured import (
+    Coverage,
+    MessageHit,
+    MessageProjection,
+    RetrievalError,
+    RetrievalMetadata,
+    ScopeFilters,
+    message_sort_key,
+)
 
 # ToolResultRecord 当前最多承载 100 条 message/structured item；这是 transport bound，
 # 不是 semantic candidate pool、chunking 或 embedding 参数，超出时必须由 Retrieval 显式标记 truncated。
@@ -15,6 +23,9 @@ MAX_CONTEXT_EXPANSION_MESSAGES = 100
 class ContextReadRepository(Protocol):
     """Context Expansion 只需要同 session 的窗口读取能力。"""
 
+    def read_message_by_id(self, internal_message_id: str) -> MessageProjection | None:
+        """按稳定 internal message ID 恢复一个 canonical projection。"""
+
     def read_message_context(
         self,
         session_id: str,
@@ -23,6 +34,16 @@ class ContextReadRepository(Protocol):
         after: int,
     ) -> tuple[MessageProjection, ...]:
         """读取 anchor 周围的 canonical projection。"""
+
+    def read_message_context_scoped(
+        self,
+        session_id: str,
+        internal_message_id: str,
+        before: int,
+        after: int,
+        scope: ScopeFilters,
+    ) -> tuple[MessageProjection, ...]:
+        """在 trusted scope 内读取 anchor 周围的 canonical projection。"""
 
     def read_message_range(
         self,
@@ -54,6 +75,57 @@ class ContextExpansionResult:
     candidate_count: int
 
 
+@dataclass(frozen=True)
+class MessageContextResult:
+    """显式上下文 Tool 的 bounded 结果，不把上下文伪装成一次搜索命中。"""
+
+    strategy: str
+    message_id: str
+    session_id: str
+    messages: tuple[MessageProjection, ...]
+    requested_before: int
+    requested_after: int
+    coverage: Coverage
+    partial: bool
+    truncated: bool
+    metadata: RetrievalMetadata
+
+    def __post_init__(self) -> None:
+        """固定 context strategy，避免调用方把其他 Retrieval 结果冒充上下文。"""
+
+        if self.strategy != "context":
+            raise ValueError("message context strategy must be context")
+        if not self.message_id or not self.session_id:
+            raise ValueError("message context identity must be non-empty")
+        if self.requested_before < 0 or self.requested_after < 0:
+            raise ValueError("message context bounds must be non-negative")
+
+    def to_dict(self) -> dict[str, object]:
+        """把 context 结果投影成 Tool Envelope 可安全序列化的普通值。"""
+
+        return {
+            "strategy": self.strategy,
+            "message_id": self.message_id,
+            "session_id": self.session_id,
+            "messages": [asdict(message) for message in self.messages],
+            "requested_before": self.requested_before,
+            "requested_after": self.requested_after,
+            "returned_messages": len(self.messages),
+            "coverage": {
+                "status": self.coverage.status,
+                "basis": self.coverage.basis,
+            },
+            "partial": self.partial,
+            "truncated": self.truncated,
+            "metadata": {
+                "filters": dict(self.metadata.filters),
+                "ordering": self.metadata.ordering,
+                "latency_ms": self.metadata.latency_ms,
+                "details": dict(self.metadata.details),
+            },
+        }
+
+
 class ContextExpander:
     """合并 lexical hits 的同 session 局部窗口，并保护真实 hit。"""
 
@@ -66,6 +138,8 @@ class ContextExpander:
         before: int,
         after: int,
         limit: int,
+        *,
+        scope: ScopeFilters | None = None,
     ) -> ContextExpansionResult:
         """合并、去重、排序并 bounded trim；不把 context 当成新的检索 hit。"""
 
@@ -80,12 +154,26 @@ class ContextExpander:
         for hit in hits:
             if before == 0 and after == 0:
                 continue
-            window = self.repository.read_message_context(
-                session_id=hit.message.session_id,
-                internal_message_id=hit.message.internal_message_id,
-                before=before,
-                after=after,
-            )
+            if scope is None:
+                # 既有 Search 路径继续使用原始 context reader，保持已验证的调用契约。
+                window = self.repository.read_message_context(
+                    session_id=hit.message.session_id,
+                    internal_message_id=hit.message.internal_message_id,
+                    before=before,
+                    after=after,
+                )
+            else:
+                # 显式 deepening 必须使用带 scope 的 reader，不能先读取越权消息再靠上层丢弃。
+                scoped_reader = getattr(self.repository, "read_message_context_scoped", None)
+                if not callable(scoped_reader):
+                    raise RetrievalError("Context repository does not provide scoped context reads")
+                window = scoped_reader(
+                    session_id=hit.message.session_id,
+                    internal_message_id=hit.message.internal_message_id,
+                    before=before,
+                    after=after,
+                    scope=scope,
+                )
             for message in window:
                 # session 是上下文边界；违反它表示 repository 主链路有 bug，必须显式暴露。
                 if message.session_id != hit.message.session_id:

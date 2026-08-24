@@ -5,6 +5,7 @@ from __future__ import annotations
 from trivae.capabilities.contracts import (
     CapabilityScopeError,
     ExecutionScope,
+    FindMembersInput,
     SearchMessagesInput,
     SemanticSearchInput,
 )
@@ -41,3 +42,16 @@ def effective_end(request: CapabilitySearchInput, scope: ExecutionScope) -> int 
     if scope.end_timestamp is not None and (end is None or end > scope.end_timestamp):
         raise CapabilityScopeError("requested end timestamp is outside trusted scope")
     return end
+
+
+def effective_member_sessions(request: FindMembersInput, scope: ExecutionScope) -> tuple[str, ...] | None:
+    """成员查询的 session filter 必须是 trusted access scope 的子集。"""
+
+    if scope.allowed_session_ids is None:
+        return request.session_ids
+    if request.session_ids is None:
+        return scope.allowed_session_ids
+    allowed = set(scope.allowed_session_ids)
+    if not set(request.session_ids).issubset(allowed):
+        raise CapabilityScopeError("requested member session is outside trusted data access scope")
+    return request.session_ids

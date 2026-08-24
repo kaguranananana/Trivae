@@ -5,19 +5,32 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
+from time import perf_counter
+from typing import Literal
 
 from trivae.data.model import ChatSession
+from trivae.retrieval.identity import (
+    FindMembersResult,
+    MemberCandidate,
+    MemberMatch,
+    MemberMatchField,
+    MemberMatchKind,
+    MemberQuery,
+    MemberSession,
+)
 from trivae.retrieval.structured import (
     AggregateBucket,
     AggregateData,
     AggregateQuery,
     CanonicalReadRepository,
+    Coverage,
     LexicalIndexError,
     LexicalQuery,
     MessageHit,
     MessageProjection,
     MessageQuery,
     RetrievalError,
+    RetrievalMetadata,
     ScopeFilters,
 )
 
@@ -124,6 +137,165 @@ def _fts_match_expression(query: LexicalQuery) -> str:
     return " AND ".join(f'"{term.replace(chr(34), chr(34) * 2)}"' for term in query.terms)
 
 
+def _member_where_clause(scope: ScopeFilters) -> tuple[str, list[object]]:
+    """生成 Membership scope predicates，不让模型输入改变 SQL 结构。"""
+
+    clauses: list[str] = []
+    parameters: list[object] = []
+    if scope.session_ids is not None:
+        placeholders = ", ".join("?" for _ in scope.session_ids)
+        clauses.append(f"m.session_id IN ({placeholders})")
+        parameters.extend(scope.session_ids)
+    if scope.start_timestamp is not None:
+        # Membership 的观察区间与查询范围有交集时，才把候选暴露给 Agent。
+        clauses.append("(m.last_seen_timestamp IS NULL OR m.last_seen_timestamp >= ?)")
+        parameters.append(scope.start_timestamp)
+    if scope.end_timestamp is not None:
+        clauses.append("(m.first_seen_timestamp IS NULL OR m.first_seen_timestamp < ?)")
+        parameters.append(scope.end_timestamp)
+    return (" AND ".join(clauses) if clauses else "1 = 1"), parameters
+
+
+def _escape_like(value: str) -> str:
+    """把身份查询中的通配符当作普通字符，避免模型改变 LIKE 语义。"""
+
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _member_match_clause(query: str) -> tuple[str, list[object]]:
+    """在稳定 UserIdentity 与局部 Membership 字段上执行 exact/contains 候选筛选。"""
+
+    fields = (
+        "u.platform_user_id",
+        "u.platform_uin",
+        "u.display_name",
+        "u.nickname",
+        "u.remark",
+        "m.display_name",
+        "m.nickname",
+        "m.group_card",
+        "m.remark",
+    )
+    escaped = _escape_like(query)
+    clauses: list[str] = []
+    parameters: list[object] = []
+    for field in fields:
+        # exact 命中优先由 Python 侧排序，SQL 同时保留 contains 以支持局部昵称查询。
+        clauses.append(
+            f"(lower(COALESCE({field}, '')) = lower(?) "
+            f"OR lower(COALESCE({field}, '')) LIKE lower(?) ESCAPE '\\')"
+        )
+        parameters.extend((query, f"%{escaped}%"))
+    return " OR ".join(clauses), parameters
+
+
+def _member_match(value: object, query: str) -> tuple[MemberMatchKind, str] | None:
+    """计算单个显示字段的 exact/partial 匹配种类。"""
+
+    if not isinstance(value, str) or not value:
+        return None
+    normalized_value = value.casefold()
+    normalized_query = query.casefold()
+    if normalized_value == normalized_query:
+        return "exact", value
+    if normalized_query in normalized_value:
+        return "partial", value
+    return None
+
+
+def _member_candidates_from_rows(
+    rows: list[sqlite3.Row],
+    query: str,
+) -> tuple[MemberCandidate, ...]:
+    """将多条 session membership row 合并成稳定 UserIdentity 候选。"""
+
+    candidates: dict[str, dict[str, object]] = {}
+    field_specs: tuple[tuple[MemberMatchField, Literal["user", "membership"], str], ...] = (
+        ("platform_user_id", "user", "platform_user_id"),
+        ("platform_uin", "user", "platform_uin"),
+        ("display_name", "user", "user_display_name"),
+        ("nickname", "user", "user_nickname"),
+        ("remark", "user", "user_remark"),
+        ("display_name", "membership", "membership_display_name"),
+        ("nickname", "membership", "membership_nickname"),
+        ("group_card", "membership", "group_card"),
+        ("remark", "membership", "membership_remark"),
+    )
+    for row in rows:
+        user_id = str(row["user_id"])
+        state = candidates.setdefault(
+            user_id,
+            {
+                "user_id": user_id,
+                "platform": str(row["platform"]),
+                "platform_user_id": str(row["platform_user_id"]),
+                "platform_uin": row["platform_uin"],
+                "display_name": row["user_display_name"],
+                "nickname": row["user_nickname"],
+                "remark": row["user_remark"],
+                "memberships": [],
+                "matches": [],
+            },
+        )
+        memberships = state["memberships"]
+        if not isinstance(memberships, list):
+            raise RetrievalError("Member candidate membership projection is invalid")
+        memberships.append(
+            MemberSession(
+                session_id=str(row["session_id"]),
+                session_display=str(row["session_display"] or ""),
+                display_name=row["membership_display_name"],
+                nickname=row["membership_nickname"],
+                group_card=row["group_card"],
+                remark=row["membership_remark"],
+                first_seen_timestamp=(
+                    None if row["first_seen_timestamp"] is None else int(row["first_seen_timestamp"])
+                ),
+                last_seen_timestamp=(
+                    None if row["last_seen_timestamp"] is None else int(row["last_seen_timestamp"])
+                ),
+            )
+        )
+        matches = state["matches"]
+        if not isinstance(matches, list):
+            raise RetrievalError("Member candidate match projection is invalid")
+        for field, owner, column in field_specs:
+            matched = _member_match(row[column], query)
+            if matched is None:
+                continue
+            kind, value = matched
+            match = MemberMatch(field=field, owner=owner, kind=kind, value=value)
+            if not any(
+                existing.field == match.field
+                and existing.owner == match.owner
+                and existing.kind == match.kind
+                and existing.value == match.value
+                for existing in matches
+            ):
+                matches.append(match)
+
+    output: list[MemberCandidate] = []
+    for state in candidates.values():
+        memberships = state["memberships"]
+        matches = state["matches"]
+        if not isinstance(memberships, list) or not isinstance(matches, list):
+            raise RetrievalError("Member candidate projection cannot be materialized")
+        output.append(
+            MemberCandidate(
+                user_id=str(state["user_id"]),
+                platform=str(state["platform"]),
+                platform_user_id=str(state["platform_user_id"]),
+                platform_uin=state["platform_uin"] if isinstance(state["platform_uin"], str) else None,
+                display_name=state["display_name"] if isinstance(state["display_name"], str) else None,
+                nickname=state["nickname"] if isinstance(state["nickname"], str) else None,
+                remark=state["remark"] if isinstance(state["remark"], str) else None,
+                memberships=tuple(memberships),
+                matches=tuple(matches),
+            )
+        )
+    return tuple(output)
+
+
 class SQLiteCanonicalReadRepository(CanonicalReadRepository):
     """只读读取 adapter，集中承载 Structured、Lexical 和 Context SQL。"""
 
@@ -190,6 +362,22 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             [*parameters, query.limit],
         ).fetchall()
         return tuple(_row_to_projection(row) for row in rows)
+
+    def read_message_by_id(self, internal_message_id: str) -> MessageProjection | None:
+        """按全局稳定 internal message ID 读取限定 canonical projection。"""
+
+        if not isinstance(internal_message_id, str) or not internal_message_id:
+            raise ValueError("internal_message_id must be a non-empty string")
+        row = self._connection.execute(
+            f"""
+            SELECT {PROJECTION_COLUMNS}
+            FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE m.internal_message_id = ?
+            """,
+            (internal_message_id,),
+        ).fetchone()
+        return None if row is None else _row_to_projection(row)
 
     def iter_semantic_messages(self, batch_size: int) -> Iterator[MessageProjection]:
         """以 cursor/fetchmany 流式读取全量 canonical projection，避免 build 一次性载入消息。"""
@@ -326,13 +514,60 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
     ) -> tuple[MessageProjection, ...]:
         """使用同 session 的显式 order boundary 读取 anchor 前后消息。"""
 
+        return self._read_message_context(
+            session_id=session_id,
+            internal_message_id=internal_message_id,
+            before=before,
+            after=after,
+            scope=None,
+        )
+
+    def read_message_context_scoped(
+        self,
+        session_id: str,
+        internal_message_id: str,
+        before: int,
+        after: int,
+        scope: ScopeFilters,
+    ) -> tuple[MessageProjection, ...]:
+        """只读取 trusted Scope 内的同 session context，阻止时间边界外消息进入 Tool。"""
+
+        return self._read_message_context(
+            session_id=session_id,
+            internal_message_id=internal_message_id,
+            before=before,
+            after=after,
+            scope=scope,
+        )
+
+    def _read_message_context(
+        self,
+        *,
+        session_id: str,
+        internal_message_id: str,
+        before: int,
+        after: int,
+        scope: ScopeFilters | None,
+    ) -> tuple[MessageProjection, ...]:
+        """复用同一排序边界实现普通 context 与 scope-bound context。"""
+
+        if isinstance(before, bool) or not isinstance(before, int) or before < 0:
+            raise ValueError("context before must be non-negative")
+        if isinstance(after, bool) or not isinstance(after, int) or after < 0:
+            raise ValueError("context after must be non-negative")
+
+        scope_sql = "1 = 1"
+        scope_parameters: list[object] = []
+        if scope is not None:
+            scope_sql, scope_parameters = _where_clause(scope)
+
         anchor_row = self._connection.execute(
-            """
+            f"""
             SELECT timestamp, seq
-            FROM messages
-            WHERE session_id = ? AND internal_message_id = ?
+            FROM messages AS m
+            WHERE m.session_id = ? AND m.internal_message_id = ? AND {scope_sql}
             """,
-            (session_id, internal_message_id),
+            [session_id, internal_message_id, *scope_parameters],
         ).fetchone()
         if anchor_row is None:
             raise RetrievalError(f"Context anchor not found: {session_id}/{internal_message_id}")
@@ -357,11 +592,11 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
                 SELECT {PROJECTION_COLUMNS}
                 FROM messages AS m
                 INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
-                WHERE m.session_id = ? AND {boundary_sql}
+                WHERE m.session_id = ? AND {scope_sql} AND {boundary_sql}
                 ORDER BY {ORDER_BY_SQL_DESC}
                 LIMIT ?
                 """,
-                [session_id, *boundary_parameters, before],
+                [session_id, *scope_parameters, *boundary_parameters, before],
             ).fetchall()
             before_messages = tuple(_row_to_projection(row) for row in reversed(before_rows))
 
@@ -380,15 +615,94 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
                 SELECT {PROJECTION_COLUMNS}
                 FROM messages AS m
                 INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
-                WHERE m.session_id = ? AND {boundary_sql}
+                WHERE m.session_id = ? AND {scope_sql} AND {boundary_sql}
                 ORDER BY {ORDER_BY_SQL}
                 LIMIT ?
                 """,
-                [session_id, *boundary_parameters, after],
+                [session_id, *scope_parameters, *boundary_parameters, after],
             ).fetchall()
             after_messages = tuple(_row_to_projection(row) for row in after_rows)
 
         return (*before_messages, anchor, *after_messages)
+
+    def read_member_candidates(self, query: MemberQuery) -> FindMembersResult:
+        """读取 UserIdentity 与 scope 内 Membership，并保留每个候选的匹配依据。"""
+
+        started = perf_counter()
+        where_sql, parameters = _member_where_clause(query.scope)
+        match_sql, match_parameters = _member_match_clause(query.query)
+        total_row = self._connection.execute(
+            f"""
+            SELECT COUNT(DISTINCT u.user_id) AS total
+            FROM users AS u
+            INNER JOIN memberships AS m ON m.user_id = u.user_id
+            WHERE {where_sql} AND ({match_sql})
+            """,
+            [*parameters, *match_parameters],
+        ).fetchone()
+        if total_row is None:
+            raise RetrievalError("Member lookup count returned no scalar row")
+        total_candidates = int(total_row["total"])
+
+        rows = self._connection.execute(
+            f"""
+            WITH matched_users AS (
+                SELECT u.user_id
+                FROM users AS u
+                INNER JOIN memberships AS m ON m.user_id = u.user_id
+                WHERE {where_sql} AND ({match_sql})
+                GROUP BY u.user_id
+                ORDER BY u.user_id ASC
+                LIMIT ?
+            )
+            SELECT
+                u.user_id,
+                u.platform,
+                u.platform_user_id,
+                u.platform_uin,
+                u.display_name AS user_display_name,
+                u.nickname AS user_nickname,
+                u.remark AS user_remark,
+                m.session_id,
+                s.name AS session_display,
+                m.display_name AS membership_display_name,
+                m.nickname AS membership_nickname,
+                m.group_card,
+                m.remark AS membership_remark,
+                m.first_seen_timestamp,
+                m.last_seen_timestamp
+            FROM matched_users AS selected
+            INNER JOIN users AS u ON u.user_id = selected.user_id
+            INNER JOIN memberships AS m ON m.user_id = u.user_id
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE {where_sql}
+            ORDER BY u.user_id ASC, m.session_id ASC
+            """,
+            [*parameters, *match_parameters, query.limit, *parameters],
+        ).fetchall()
+
+        candidates = _member_candidates_from_rows(rows, query.query)
+        truncated = total_candidates > len(candidates)
+        latency_ms = (perf_counter() - started) * 1000
+        return FindMembersResult(
+            query=query,
+            strategy="identity",
+            candidates=candidates,
+            total_candidates=total_candidates,
+            coverage=Coverage(status="complete", basis="canonical_users_and_memberships"),
+            partial=False,
+            truncated=truncated,
+            metadata=RetrievalMetadata(
+                filters=query.to_dict(),
+                ordering="user_id ASC, session_id ASC",
+                latency_ms=latency_ms,
+                details={
+                    "returned_candidates": len(candidates),
+                    "total_candidates": total_candidates,
+                    "ambiguous": len(candidates) > 1,
+                },
+            ),
+        )
 
     def read_message_range(
         self,

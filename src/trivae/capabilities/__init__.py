@@ -5,15 +5,25 @@ from trivae.capabilities.contracts import (
     CapabilityMetadata,
     CapabilityScopeError,
     ExecutionScope,
+    FindMembersInput,
+    GetMessageContextInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
     ToolError,
 )
-from trivae.capabilities.registry import CapabilityRegistry
+from trivae.capabilities.find_members import FindMembersCapability
+from trivae.capabilities.get_message_context import GetMessageContextCapability, MessageContextNotFound
+from trivae.capabilities.registry import CapabilityRegistry, ToolRequest
 from trivae.capabilities.search_messages import LexicalSearchCapability, SearchMessagesCapability
 from trivae.capabilities.semantic_search import SemanticSearchCapability
-from trivae.capabilities.tools import LexicalSearchTool, SearchMessagesTool, SemanticSearchTool
+from trivae.capabilities.tools import (
+    FindMembersTool,
+    GetMessageContextTool,
+    LexicalSearchTool,
+    SearchMessagesTool,
+    SemanticSearchTool,
+)
 
 __all__ = [
     "CapabilityContractError",
@@ -21,6 +31,13 @@ __all__ = [
     "CapabilityRegistry",
     "CapabilityScopeError",
     "ExecutionScope",
+    "FindMembersCapability",
+    "FindMembersTool",
+    "FindMembersInput",
+    "GetMessageContextInput",
+    "GetMessageContextCapability",
+    "GetMessageContextTool",
+    "MessageContextNotFound",
     "LexicalSearchCapability",
     "LexicalSearchTool",
     "SearchMessagesCapability",
@@ -31,4 +48,5 @@ __all__ = [
     "SemanticSearchTool",
     "ToolEnvelope",
     "ToolError",
+    "ToolRequest",
 ]

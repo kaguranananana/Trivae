@@ -37,7 +37,10 @@ class AgentToolSurfaceTests(unittest.TestCase):
     def test_query_default_exposes_dual_retrieval_and_legacy_is_explicit(self) -> None:
         scope = ExecutionScope(max_results=5)
         request = QueryRequest("谁提到过 sqlite-vec？", scope)
-        self.assertEqual(request.available_capabilities, ("lexical_search", "semantic_search"))
+        self.assertEqual(
+            request.available_capabilities,
+            ("lexical_search", "semantic_search", "get_message_context", "find_members"),
+        )
 
         legacy = QueryRequest(
             "legacy caller",

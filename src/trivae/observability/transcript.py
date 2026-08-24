@@ -39,6 +39,16 @@ def format_trace_summary(trace: StoredTrace) -> str:
     truncated_retrievals = sum(
         1 for event in retrieval_events if event.payload.get("truncated") is True
     )
+    explicit_context_calls = sum(
+        1
+        for event in trace.events
+        if event.operation == "context.expansion.completed" and event.phase == "completed"
+    )
+    member_lookups = sum(
+        1
+        for event in trace.events
+        if event.operation == "member.lookup.completed" and event.phase == "completed"
+    )
     final_answer_available = any(
         event.operation == "answer.finalization.completed"
         and isinstance(event.payload.get("answer_text"), str)
@@ -61,6 +71,8 @@ def format_trace_summary(trace: StoredTrace) -> str:
             f"planner_failures: {planner_failures}",
             f"retrieval_partial_events: {partial_retrievals}",
             f"retrieval_truncated_events: {truncated_retrievals}",
+            f"explicit_context_calls: {explicit_context_calls}",
+            f"member_lookups: {member_lookups}",
             f"final_answer: {'available' if final_answer_available else 'not available'}",
             "",
         )
@@ -126,6 +138,18 @@ def format_execution_transcript(
             "skipped",
         }:
             _render_retrieval(lines, event)
+        elif event.operation.startswith("context.expansion.") and event.phase in {
+            "completed",
+            "failed",
+            "skipped",
+        }:
+            _render_context_expansion(lines, event)
+        elif event.operation.startswith("member.lookup.") and event.phase in {
+            "completed",
+            "failed",
+            "skipped",
+        }:
+            _render_member_lookup(lines, event)
         elif event.operation == "evidence.prepare.completed":
             _render_evidence(lines, event)
         elif event.operation == "citation.validation.completed":
@@ -577,12 +601,21 @@ def _tool_result_metadata(parsed: Mapping[str, object], data: object) -> dict[st
     if status is not None:
         metadata["status"] = status
     if isinstance(data, Mapping):
-        for key in ("returned_messages", "returned_count", "total_hits", "partial", "truncated", "coverage"):
+        for key in (
+            "returned_messages",
+            "returned_count",
+            "returned_candidates",
+            "total_candidates",
+            "total_hits",
+            "partial",
+            "truncated",
+            "coverage",
+        ):
             if key in data:
                 metadata[key] = data[key]
     meta = parsed.get("meta")
     if isinstance(meta, Mapping):
-        for key in ("returned_messages", "total_hits", "truncated"):
+        for key in ("returned_messages", "returned_candidates", "total_candidates", "total_hits", "truncated"):
             if key not in metadata and key in meta:
                 metadata[key] = meta[key]
     return metadata
@@ -623,6 +656,43 @@ def _render_retrieval(lines: list[str], event: NormalizedQueryEvent) -> None:
             f"partial: {_pretty_value(payload.get('partial'))}",
             f"truncated: {_pretty_value(payload.get('truncated'))}",
             f"coverage: {_pretty_value(payload.get('coverage'))}",
+        ),
+    )
+
+
+def _render_context_expansion(lines: list[str], event: NormalizedQueryEvent) -> None:
+    """区分 Search 自动 context 与 Agent 明确请求的 explicit deepening。"""
+
+    payload = event.payload
+    _section(
+        lines,
+        "[CONTEXT EXPANSION]",
+        (
+            f"status: {event.phase}",
+            "mode: explicit_deepening",
+            f"message_id: {_pretty_value(payload.get('message_id'))}",
+            f"returned messages: {_pretty_value(payload.get('returned_messages'))}",
+            f"partial: {_pretty_value(payload.get('partial'))}",
+            f"truncated: {_pretty_value(payload.get('truncated'))}",
+            f"error_code: {_pretty_value(payload.get('error_code') or _failure_value(event.failure, 'error_code'))}",
+        ),
+    )
+
+
+def _render_member_lookup(lines: list[str], event: NormalizedQueryEvent) -> None:
+    """渲染成员候选数量和 ambiguity 事实，不替 Agent 做唯一身份判断。"""
+
+    payload = event.payload
+    _section(
+        lines,
+        "[MEMBER LOOKUP]",
+        (
+            f"status: {event.phase}",
+            f"returned candidates: {_pretty_value(payload.get('returned_candidates'))}",
+            f"total candidates: {_pretty_value(payload.get('total_candidates'))}",
+            f"ambiguous: {_pretty_value(payload.get('ambiguous'))}",
+            f"truncated: {_pretty_value(payload.get('truncated'))}",
+            f"error_code: {_pretty_value(payload.get('error_code') or _failure_value(event.failure, 'error_code'))}",
         ),
     )
 

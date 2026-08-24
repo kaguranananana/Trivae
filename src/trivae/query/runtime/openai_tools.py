@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from agents import RunContextWrapper, function_tool
 
 from trivae.capabilities.contracts import (
     CapabilityContractError,
+    FindMembersInput,
+    GetMessageContextInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -145,7 +147,7 @@ class SearchMessagesSDKToolAdapter:
             except CapabilityContractError as exc:
                 envelope = _contract_error_envelope(exc)
                 if trace_context is not None:
-                    trace_context.emit(
+                    cast(Any, trace_context).emit(
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
@@ -324,7 +326,7 @@ class SemanticSearchSDKToolAdapter:
             except CapabilityContractError as exc:
                 envelope = _contract_error_envelope(exc)
                 if trace_context is not None:
-                    trace_context.emit(
+                    cast(Any, trace_context).emit(
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
@@ -402,3 +404,249 @@ class SemanticSearchSDKToolAdapter:
             limit_schema["default"] = min(10, trusted_max_results)
 
         return semantic_search
+
+
+def _tool_runtime_context(
+    context: RunContextWrapper[RuntimeContext],
+    tool_name: str,
+) -> tuple[RuntimeContext, str, object | None]:
+    """统一解析 Runtime local context、Trivae Tool ID 和 Trace child。"""
+
+    runtime_context = context.context
+    provider_tool_call_id = getattr(context, "tool_call_id", None)
+    if not isinstance(provider_tool_call_id, str):
+        provider_tool_call_id = None
+    tool_call_id = runtime_context.resolve_tool_call_id(provider_tool_call_id)
+    trace_context = runtime_context.trace_context
+    if trace_context is not None:
+        child = getattr(trace_context, "child", None)
+        if not callable(child):
+            raise TypeError("runtime trace_context must provide child()")
+        trace_context = child(f"tool:{tool_call_id}")
+    if tool_name not in runtime_context.available_capabilities:
+        # Tool 不可见时属于 Runtime invariant failure，不能返回普通 Agent 可恢复结果。
+        raise RuntimeError(f"{tool_name} was invoked outside the allowed capability set")
+    return runtime_context, tool_call_id, trace_context
+
+
+def _append_runtime_tool_result(
+    runtime_context: RuntimeContext,
+    tool_name: str,
+    tool_call_id: str,
+    envelope: ToolEnvelope,
+) -> dict[str, object]:
+    """把同一 Tool Result 同时写入 Evidence provenance 和 Runtime action projection。"""
+
+    error_code = envelope.error.code if envelope.error is not None else None
+    tool_result_id = f"{tool_call_id}/result"
+    record = build_tool_result_record(
+        run_id=runtime_context.run_id,
+        tool_call_id=tool_call_id,
+        tool_result_id=tool_result_id,
+        tool_name=tool_name,
+        envelope=envelope,
+        scope=runtime_context.scope,
+    )
+    runtime_context.tool_results.append(record)
+    runtime_context.tool_calls.append(
+        RuntimeToolCall(
+            tool_name,
+            envelope.status,
+            error_code,
+            tool_call_id=tool_call_id,
+            tool_result_id=tool_result_id,
+            round=runtime_context.current_tool_round,
+        )
+    )
+    result_payload = envelope.to_dict()
+    result_payload["provenance"] = record.to_model_provenance()
+    return result_payload
+
+
+class GetMessageContextSDKToolAdapter:
+    """把 get_message_context 接入现有 Runtime/Trace/Evidence 主链路。"""
+
+    def __init__(self, registry: CapabilityRegistry) -> None:
+        self.registry = registry
+
+    def as_sdk_tool(self) -> Any:
+        """创建只接受稳定 message_id 和 bounded 窗口的 Function Tool。"""
+
+        description = (
+            "Recover a larger but still bounded same-conversation context around one message_id "
+            "returned by lexical_search or semantic_search. Call only when the search result's local "
+            "context is insufficient; do not call this mechanically for every hit. It never crosses "
+            "the trusted session/time scope and may return truncated=true."
+        )
+
+        @function_tool(
+            name_override="get_message_context",
+            description_override=description,
+            failure_error_function=None,
+            strict_mode=False,
+        )
+        async def get_message_context(
+            context: RunContextWrapper[RuntimeContext],
+            message_id: str,
+            context_before: int = 8,
+            context_after: int = 8,
+        ) -> dict[str, object]:
+            """恢复已由 Search 结果公开的 stable message locator。"""
+
+            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "get_message_context")
+            try:
+                request = GetMessageContextInput(
+                    message_id=message_id,
+                    context_before=context_before,
+                    context_after=context_after,
+                )
+            except CapabilityContractError as exc:
+                envelope = _contract_error_envelope(exc)
+                if trace_context is not None:
+                    cast(Any, trace_context).emit(
+                        stage="tool",
+                        operation="tool.call.failed",
+                        phase="failed",
+                        operation_id=f"tool:{tool_call_id}",
+                        parent_operation_id=getattr(trace_context, "parent_operation_id", None),
+                        outcome="error",
+                        payload={"tool_name": "get_message_context", "error_code": exc.error_code},
+                        failure=FailureInfo(
+                            error_code=exc.error_code,
+                            origin_stage="tool",
+                            observed_stage="tool",
+                            category="contract",
+                            handling="returned_to_agent",
+                            cause_operation_id=f"tool:{tool_call_id}",
+                        ),
+                    )
+            else:
+                try:
+                    if runtime_context.capability_registry is not self.registry:
+                        raise RuntimeError("SDK local context registry does not match the registered tool adapter")
+                    envelope = runtime_context.capability_registry.invoke(
+                        "get_message_context",
+                        request,
+                        runtime_context.scope,
+                        trace_context=trace_context,
+                    )
+                except Exception:
+                    runtime_context.tool_calls.append(
+                        RuntimeToolCall(
+                            "get_message_context",
+                            "failed",
+                            tool_call_id=tool_call_id,
+                            round=runtime_context.current_tool_round,
+                        )
+                    )
+                    raise
+            return _append_runtime_tool_result(runtime_context, "get_message_context", tool_call_id, envelope)
+
+        return get_message_context
+
+
+class FindMembersSDKToolAdapter:
+    """把 find_members 的候选/歧义结果接入同一 ToolResultRecord。"""
+
+    def __init__(self, registry: CapabilityRegistry) -> None:
+        self.registry = registry
+
+    def as_sdk_tool(self, *, trusted_max_results: int | None = None) -> Any:
+        """创建 scope-bounded member lookup Function Tool。"""
+
+        if trusted_max_results is not None:
+            if isinstance(trusted_max_results, bool) or not isinstance(trusted_max_results, int):
+                raise TypeError("trusted_max_results must be an integer when provided")
+            if trusted_max_results <= 0:
+                raise ValueError("trusted_max_results must be positive when provided")
+
+        # provider 省略 limit 时也必须落在当前 scope 内，不能使用静态 20 触发无意义的 contract round。
+        default_limit = 20 if trusted_max_results is None else min(20, trusted_max_results)
+
+        description = (
+            "Find candidate members by nickname, group card, username/display name, alias-like "
+            "remark, platform user ID, or UIN. Use before filtering retrieval by a person when the "
+            "identity is unclear. Return candidates and matching reasons; multiple candidates are "
+            "normal, so do not claim a unique person without resolving the ambiguity."
+        )
+        if trusted_max_results is not None:
+            description += f" The current trusted candidate limit is {trusted_max_results}."
+
+        @function_tool(
+            name_override="find_members",
+            description_override=description,
+            failure_error_function=None,
+            strict_mode=False,
+        )
+        async def find_members(
+            context: RunContextWrapper[RuntimeContext],
+            query: str,
+            session_ids: list[str] | None = None,
+            limit: int = default_limit,
+        ) -> dict[str, object]:
+            """只将模型身份查询字段转换成 FindMembersInput。"""
+
+            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "find_members")
+            try:
+                request = FindMembersInput(
+                    query=query,
+                    session_ids=None if session_ids is None else tuple(session_ids),
+                    limit=limit,
+                )
+            except CapabilityContractError as exc:
+                envelope = _contract_error_envelope(exc)
+                if trace_context is not None:
+                    cast(Any, trace_context).emit(
+                        stage="tool",
+                        operation="tool.call.failed",
+                        phase="failed",
+                        operation_id=f"tool:{tool_call_id}",
+                        parent_operation_id=getattr(trace_context, "parent_operation_id", None),
+                        outcome="error",
+                        payload={"tool_name": "find_members", "error_code": exc.error_code},
+                        failure=FailureInfo(
+                            error_code=exc.error_code,
+                            origin_stage="tool",
+                            observed_stage="tool",
+                            category="contract",
+                            handling="returned_to_agent",
+                            cause_operation_id=f"tool:{tool_call_id}",
+                        ),
+                    )
+            else:
+                if runtime_context.capability_registry is not self.registry:
+                    raise RuntimeError("SDK local context registry does not match the registered tool adapter")
+                try:
+                    envelope = runtime_context.capability_registry.invoke(
+                        "find_members",
+                        request,
+                        runtime_context.scope,
+                        trace_context=trace_context,
+                    )
+                except Exception:
+                    runtime_context.tool_calls.append(
+                        RuntimeToolCall(
+                            "find_members",
+                            "failed",
+                            tool_call_id=tool_call_id,
+                            round=runtime_context.current_tool_round,
+                        )
+                    )
+                    raise
+            return _append_runtime_tool_result(runtime_context, "find_members", tool_call_id, envelope)
+
+        if trusted_max_results is not None:
+            schema = getattr(find_members, "params_json_schema", None)
+            if not isinstance(schema, dict):
+                raise TypeError("SDK Function Tool did not expose params_json_schema")
+            properties = schema.get("properties")
+            if not isinstance(properties, dict):
+                raise TypeError("SDK Function Tool schema did not expose properties")
+            limit_schema = properties.get("limit")
+            if not isinstance(limit_schema, dict):
+                raise TypeError("find_members schema did not expose limit")
+            limit_schema["minimum"] = 1
+            limit_schema["maximum"] = trusted_max_results
+            limit_schema["default"] = min(20, trusted_max_results)
+
+        return find_members

@@ -1,6 +1,13 @@
 """Retrieval Core 的稳定业务契约与实现入口。"""
 
-from trivae.retrieval.context import ContextExpander, ContextExpansionResult
+from trivae.retrieval.context import ContextExpander, ContextExpansionResult, MessageContextResult
+from trivae.retrieval.identity import (
+    FindMembersResult,
+    MemberCandidate,
+    MemberMatch,
+    MemberQuery,
+    MemberSession,
+)
 from trivae.retrieval.lexical import LexicalRetrieval
 from trivae.retrieval.semantic import (
     EmbeddingModelIdentity,
@@ -47,6 +54,7 @@ __all__ = [
     "CanonicalReadRepository",
     "ContextExpander",
     "ContextExpansionResult",
+    "FindMembersResult",
     "Coverage",
     "InvalidRetrievalQuery",
     "LexicalIndexError",
@@ -54,6 +62,11 @@ __all__ = [
     "LexicalRetrieval",
     "MessageHit",
     "MessageProjection",
+    "MessageContextResult",
+    "MemberCandidate",
+    "MemberMatch",
+    "MemberQuery",
+    "MemberSession",
     "MessageQuery",
     "RetrievalError",
     "RetrievalMetadata",

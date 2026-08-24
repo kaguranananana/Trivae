@@ -2,7 +2,7 @@
 
 ## 1. Problem / Motivation
 
-本记录当前只覆盖 Checkpoint A；按最新开发指令，Stage B/C 保持冻结，不在本轮继续扩展。
+本记录先保存 Checkpoint A 的独立证据；Stage B 完成后追加独立的 Context/Member 验证记录。
 
 Stage A 将正常 Application `QueryRequest` 的 Agent-visible retrieval surface 从旧的
 `search_messages` 默认入口切换为 `lexical_search` + `semantic_search`。旧入口仍保留，
@@ -189,10 +189,11 @@ Planner policy, answer semantic correctness or a second Evidence/Trace system.
 
 ## 9. Evolution
 
-Stage B context/member behavior and Stage C structured SQL remain pending and frozen for the current
-handoff. A future hybrid, reranker, query rewrite or retrieval parameter change requires a reproducible
-Failure Case plus paired/Agent Evaluation evidence. A repeated Provider SSL failure needs provider
-transport diagnostics or configuration evidence before any further compatibility change is considered.
+Stage B context/member behavior is recorded below as a separate checkpoint. Stage C structured SQL
+remains pending and frozen. A future hybrid, reranker, query rewrite or retrieval parameter change
+requires a reproducible Failure Case plus paired/Agent Evaluation evidence. A repeated Provider SSL
+failure needs provider transport diagnostics or configuration evidence before any further compatibility
+change is considered.
 
 ## 10. Interview Defense Notes
 
@@ -209,3 +210,118 @@ transport diagnostics or configuration evidence before any further compatibility
 - Q: 这轮真实运行证明了什么？ 证据：四个 Provider smoke trace；它证明了 surface、sequence、
   error attribution 和 no-result transparency 可被观测，但不证明 Agent answer quality、
   production latency SLA 或 paired retrieval 的 human-verified correctness。
+
+## 11. Stage B Validation — Context and Member Tools
+
+### 11.1 Scope and implementation evidence
+
+Stage B 增加了两个 Agent-facing Tool，并继续使用同一个正式链路：
+
+```text
+Agent Runtime
+  → get_message_context / find_members Tool adapter
+  → CapabilityRegistry
+  → ContextExpander / Canonical SQLite read adapter / UserIdentity + Membership
+  → ToolResultRecord
+  → Evidence/Citation + TraceCollector + EvaluationRunner
+```
+
+- `get_message_context` 复用 `ContextExpander` 和 Canonical message projection；显式读取只在
+  trusted `ExecutionScope` 内执行，保持同一 session、时间边界和 transport bound，并把
+  `explicit_deepening=true`、`automatic_search_context=false` 写入结果/Trace。
+- `find_members` 复用现有 `users`、`memberships` physical tables，按 stable UserIdentity
+  去重，并返回 nickname、group card、display/identity、alias-like `remark` 的匹配依据及
+  scope 内全部 Membership。当前 schema 没有独立 alias 列，因此 `alias` 是 `remark` 的明确
+  Agent-facing 投影，不新增第二套 identity model。
+- 多候选是正常结果；Tool 不引入 `resolve_member`、candidate state machine 或唯一人物推断。
+- Member candidate row 作为 existing `StructuredSource` 进入 ToolResultRecord；Finalizer 继续
+  校验 current-run locator、exact `value_snapshot` 和 scope，没有放宽 citation contract。
+
+### 11.2 Deterministic validation
+
+`tests/test_stage_b_tools.py` 覆盖 10 个 Stage B contract/integration cases：
+
+- context success、same-conversation boundary、invalid message ID、session/time scope、
+  bounded truncation、input window bound；
+- unique member、same nickname ambiguity、alias-like remark、multiple sessions、unknown member、
+  requested-session scope violation 和 result bound；
+- SDK 默认 Tool surface、同一 Runtime 的 `find_members → lexical_search`、Trace 内部 operation、
+  public tool count 去重、transcript summary、Message/Structured provenance 和 Finalizer row
+  citation；
+- Evaluation behavior projection 新增 `context_tool_sequence` 与 `member_tool_sequence`，仍只
+  记录公开行为事实，不生成 `human_verified` 质量判断。
+
+最终本轮本地质量结果：`pytest` 全量 `264 passed`；Stage B focused `10 passed`；`ruff check`
+和 `mypy src` 均通过。
+
+### 11.3 Real Provider smoke evidence
+
+Smoke 使用当前真实 Canonical Store（473,236 条消息）和已构建 semantic index，Provider 为
+现有配置 `opencode-go / deepseek-v4-flash`。只保存 query category、Tool sequence、round/count、
+Trace、Evidence/Citation、usage、latency 和 failure category；真实聊天正文、身份查询值、raw
+transcript 和 credentials 没有进入 Git。
+
+| Case category | Actual sequence | Calls / rounds | Final state | Evidence / citations | Trace | Observation |
+| --- | --- | ---: | --- | ---: | --- | --- |
+| member → lexical | `find_members → lexical_search` | 2 / 1 | `completed/complete` | 2 / 2 | `trace-58e9399de36f47d6a692f9b77ee146ea` | 68.5s, 9,506 total tokens |
+| required context deepening | `lexical_search → semantic_search → get_message_context` | 3 / 3 | `completed/complete` | 3 / 3 | `trace-bc259f1fc6194e77890f3fca265ed8b6` | 228.1s, 80,547 total tokens; semantic result `partial` remained visible |
+| member ambiguity | `find_members` | 1 / 1 | `completed/complete` | 1 / 1 | `trace-e401f4d785064bc0b1a350382a50bd6f` | 36.4s, 6,964 total tokens |
+| no-result | `lexical_search` | 1 / 1 | `completed/complete` | 0 / 0 | `trace-fcc1a703c1ab4fd7aa5cfbb00f66e5e9` | no evidence was fabricated |
+
+这里的 latency/usage 是当前 Provider、真实 snapshot 和本次模型行为的诊断事实，不是 production
+SLA，也不是调整 dense top-k、embedding、chunking 或引入 hybrid 的依据。`semantic_search` 的
+`partial` 没有被静默转换为 lexical success；required-context case 的第二次检索由 Agent
+选择，随后才调用 explicit context。
+
+### 11.4 Stage B Failure Cases
+
+#### FC-B1 — Omitted member limit used static default
+
+- Type: `real failure`。
+- Scenario: 真实 Provider 在 scope `max_results=5` 下省略 `find_members.limit`。
+- Observed failure: Python function static default `20` 进入 Capability，返回 `INVALID_ARGUMENT`；
+  Agent 随后重试才完成，因此不能视为干净 smoke。
+- Root cause: provider-facing JSON Schema 的动态 default 没有改变 SDK adapter Python function 的
+  runtime default。
+- Fix: `FindMembersSDKToolAdapter` 根据 trusted bound 设置闭包内 dynamic default；显式越界参数
+  仍由 Capability 返回 `INVALID_ARGUMENT`，没有扩大 scope 或改用其他数据源。
+- Validation: scripted SDK case 现在省略 limit 仍直接成功；修复后真实 member → lexical 与
+  member ambiguity smoke 均无 Tool error。
+
+#### FC-B2 — Member structured citation used message-shaped source
+
+- Type: `real failure`。
+- Scenario: `find_members → lexical_search` 两个 Tool 都成功，但模型把 candidate structured
+  provenance 按 message source 形状生成。
+- Observed failure: production Finalizer 返回 `INVALID_SOURCE`，Trace terminal 为 failed；没有
+  提交未经验证的 AnswerArtifact。
+- Root cause: prompt 只说了 structured source 的字段名，没有明确指出 `find_members` candidate
+  必须从 `provenance.structured_sources` 复制完整 `locator_kind/locator/value_snapshot`。
+- Fix: 补充 structured candidate citation contract；Finalizer 校验保持不变，并增加 exact row
+  value 的 deterministic regression。
+- Validation: 修复后真实 member → lexical case 为 `completed/complete`、2 Evidence/2 citations；
+  unit test 验证 member row 可以通过现有 StructuredSource finalization。
+
+#### FC-B3 — Context call is not mechanical
+
+- Type: `Agent behavior diagnostic`，不是 Tool failure。
+- Scenario: 一次仅要求搜索并回答的 query 实际只调用 lexical；没有因为 visible surface 增加就
+  自动调用 `get_message_context`。
+- Observation: 当问题明确要求前后三条消息时，Agent 使用
+  `lexical_search → semantic_search → get_message_context`，并完成 Citation；Trace 能区分
+  retrieval completion 与 `context.expansion.completed`。
+- Handling: 不在 Runtime 固定 context call；继续让 Agent 根据局部上下文是否足够作选择，并由
+  Evaluation 记录 sequence/round/cost。
+
+### 11.5 Observability and interview evidence
+
+Trace/Transcript 现在可以显示：用户 query、visible capabilities、member/context Tool action、
+arguments、candidate/message result summary、是否继续 retrieval、explicit context deepening、
+Evidence/Citation 和 final outcome；`project_trace` 的 `tool_count` 只统计公开
+`tool.call.completed/failed`，不会把 `member.lookup.*` 或 `context.expansion.*` 内部事件重复计算。
+hidden chain-of-thought 仍不落盘。
+
+Stage B 的答辩事实索引已补入 `interview-defense.md`：为什么 Search 自带 bounded context 仍保留
+显式 deepening、为什么身份查询返回候选而不是唯一 resolve、为什么 member row 使用 structured
+Evidence、以及如何用 FC-B1/FC-B2/FC-B3 区分 Tool contract、Agent selection 和 Finalizer 错误。
+Stage C `get_schema/execute_sql` 尚未开始。

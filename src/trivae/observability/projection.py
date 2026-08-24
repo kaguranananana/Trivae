@@ -112,7 +112,9 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
             for key, value in raw_usage.items():
                 if isinstance(key, str) and isinstance(value, (int, float)) and not isinstance(value, bool):
                     usage[key] = usage.get(key, 0) + value
-        if event.stage == "tool" and event.phase in {"completed", "failed", "observed"}:
+        # 只有公开的 tool.call terminal event 代表一次 Agent tool round；
+        # capability 内部的 member.lookup/context.expansion event 不能重复计数。
+        if event.operation in {"tool.call.completed", "tool.call.failed"}:
             tool_count += 1
         if event.stage == "retrieval" and event.phase in {"completed", "failed"}:
             retrieval_count += 1
