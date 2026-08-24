@@ -641,3 +641,24 @@ Generalized DeepSeek-specific settings into OpenAI-compatible ModelSettings with
 ### Status
 
 [OK] **Completed**
+
+
+## Session 29: Semantic retrieval provisional evaluation
+
+**Date**: 2026-08-24
+**Task**: Semantic retrieval provisional evaluation
+**Branch**: `codex/semantic-retrieval-vertical-slice`
+
+### Summary
+
+Completed the full Qwen baseline rebuild, integrity/reopen/stale checks, blind LLM-assisted provisional annotations, paired lexical-versus-semantic metrics, canonical range regression fix, safe aggregate report, and final validation gates. Archived the task; human audit remains the next step.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `332dbe3` | (see git log) |
+
+### Status
+
+[OK] **Completed**

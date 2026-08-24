@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 28
-- **Last Active**: 2026-08-23
+- **Total Sessions**: 29
+- **Last Active**: 2026-08-24
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~643 | Active |
+| `journal-1.md` | ~664 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 29 | 2026-08-24 | Semantic retrieval provisional evaluation | `332dbe3` | `codex/semantic-retrieval-vertical-slice` |
 | 28 | 2026-08-23 | Generalize Model Provider Configuration | `45bd747` | `codex/model-provider-config` |
 | 27 | 2026-08-23 | Interactive CLI agent event streaming | `e9f0484` | `codex/interactive-cli-streaming-events` |
 | 26 | 2026-08-23 | Compact human-readable Trace projection | `baa852e` | `codex/human-readable-execution-transcript` |
