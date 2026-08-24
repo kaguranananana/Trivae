@@ -137,9 +137,13 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(args.command, "chat")
         self.assertEqual(args.database, Path("data/trivae.sqlite3"))
         self.assertFalse(args.verbose)
+        self.assertIsNone(args.env_file)
 
         verbose_args = cli.build_parser().parse_args(["chat", "--verbose"])
         self.assertTrue(verbose_args.verbose)
+
+        env_file_args = cli.build_parser().parse_args(["chat", "--env-file", "custom.env"])
+        self.assertEqual(env_file_args.env_file, Path("custom.env"))
 
     def test_chat_parser_keeps_existing_import_trace_and_eval_commands(self) -> None:
         """新增子命令不能让原有入口失去 parser 识别能力。"""
@@ -573,13 +577,44 @@ class ChatCliTests(unittest.TestCase):
         """Provider 配置缺失时显示分类错误，而不是吞错或打印未知成功。"""
 
         output = StringIO()
-        with patch.object(cli, "create_application", side_effect=cli.SettingsError("DEEPSEEK_API_KEY is required")):
+        with (
+            patch.object(cli, "load_environment_file"),
+            patch.object(cli, "create_application", side_effect=cli.SettingsError("DEEPSEEK_API_KEY is required")),
+        ):
             with redirect_stdout(output):
                 # 使用 main 验证 parser 到 chat command 的完整同步入口；错误由 CLI 转投影。
                 exit_code = cli.main(["chat"])
 
         self.assertEqual(exit_code, 1)
         self.assertIn("Error: DEEPSEEK_API_KEY is required", output.getvalue())
+
+    def test_chat_passes_explicit_env_file_to_loader_before_application(self) -> None:
+        """显式 dotenv 路径必须在 Application 创建之前进入 loader。"""
+
+        output = StringIO()
+        with (
+            patch.object(cli, "load_environment_file") as load_environment,
+            patch.object(cli, "create_application", side_effect=cli.SettingsError("missing provider")),
+            redirect_stdout(output),
+        ):
+            exit_code = cli.main(["chat", "--env-file", "custom.env"])
+
+        self.assertEqual(exit_code, 1)
+        load_environment.assert_called_once_with(Path("custom.env"))
+        self.assertIn("Error: missing provider", output.getvalue())
+
+    def test_chat_dotenv_error_is_readable(self) -> None:
+        """dotenv 根因要在 CLI 边界显示，不得落入未知异常分支。"""
+
+        output = StringIO()
+        with (
+            patch.object(cli, "load_environment_file", side_effect=cli.DotenvError("broken.env:2")),
+            redirect_stdout(output),
+        ):
+            exit_code = cli.main(["chat", "--env-file", "broken.env"])
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Error: broken.env:2", output.getvalue())
 
 
 if __name__ == "__main__":

@@ -74,6 +74,7 @@ src/trivae/
 src/trivae/
 ├── config/
 │   ├── __init__.py
+│   ├── dotenv.py          # CLI-only dotenv parsing/injection；不改变 settings 纯读取边界
 │   └── settings.py        # DeepSeek env contract 与 secret-safe settings
 └── query/
     ├── __init__.py           # Query exports

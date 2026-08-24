@@ -16,6 +16,7 @@ from typing import TextIO, cast
 
 from trivae.bootstrap.application import TrivaeApplication, create_application
 from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope, SemanticSearchInput
+from trivae.config.dotenv import DotenvError, load_environment_file
 from trivae.config.settings import SettingsError, load_settings
 from trivae.conversation.contracts import ConversationError, ConversationSummary
 from trivae.data.model import ChatSession, IngestionError
@@ -96,6 +97,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--verbose",
         action="store_true",
         help="Show detailed route, plan, tool, retrieval, usage, and normalized event metadata",
+    )
+    chat_parser.add_argument(
+        "--env-file",
+        type=Path,
+        default=None,
+        help="Optional dotenv path; defaults to .env in the current directory when present",
     )
     trace_parser = subparsers.add_parser("trace", help="Read a persisted Trace projection")
     trace_subparsers = trace_parser.add_subparsers(dest="trace_command", required=True)
@@ -1360,6 +1367,8 @@ def _run_chat_command(args: argparse.Namespace) -> int:
     """创建正式 Application 并运行 chat；已分类错误可读，未知错误继续暴露。"""
 
     try:
+        # CLI 入口负责注入工作目录配置，库层 load_settings 不隐式读取凭据文件。
+        load_environment_file(args.env_file)
         # Application 统一拥有 Store、Provider、Conversation 和 Trace lifecycle。
         with create_application(args.database) as application:
             return asyncio.run(_run_interactive_chat(application, verbose=args.verbose))
@@ -1368,6 +1377,7 @@ def _run_chat_command(args: argparse.Namespace) -> int:
         print("Bye.")
         return 0
     except (
+        DotenvError,
         CapabilityContractError,
         ConversationError,
         QueryContractError,

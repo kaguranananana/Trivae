@@ -32,7 +32,7 @@
 
 ### 2. Signatures
 
-- `trivae chat [--database PATH] [--verbose]`：默认数据库为 `data/trivae.sqlite3`；verbose 选择可信本地 debug Trace profile，并扩大终端诊断投影。
+- `trivae chat [--database PATH] [--verbose] [--env-file PATH]`：默认数据库为 `data/trivae.sqlite3`；未指定 `--env-file` 时读取当前工作目录下存在的 `.env`；verbose 选择可信本地 debug Trace profile，并扩大终端诊断投影。
 - `TrivaeApplication.list_sessions() -> tuple[ChatSession, ...]`：由 Application 暴露 session metadata read facade。
 - `SQLiteCanonicalReadRepository.list_sessions() -> tuple[ChatSession, ...]`：只读 `chat_sessions` canonical 表，并按 `name COLLATE NOCASE ASC, session_id ASC` 稳定排序。
 - 普通输入必须构造 `QueryRequest(query=..., scope=..., conversation_id=..., trace_profile=...)` 并调用 `await application.query(request, on_event=renderer.handle)`；仍只进入一次同一 Application Query 主链路。
@@ -46,7 +46,8 @@
 - normal 显示 Route、Plan、Tool/Retrieval 摘要、Answer streaming 与 terminal error；verbose 额外显示 bounded diagnostics、usage、timing 和 normalized source metadata。两者都不能 dump 巨大 Tool Result、secret、raw event identity 或越权数据。
 - Runtime adapter 仍只把 Provider 实际 reasoning delta 归一化为同一 stream event；CLI 可以消费该 event 维持顺序，但 normal/verbose 都不把 hidden CoT 渲染到终端，也不得按 stage 伪造 reasoning。
 - Renderer 在 Tool/status/terminal/interrupt 前关闭开放 thinking/answer 行；Streaming delta 只作展示，Conversation Store 仍一次提交完整 validated Assistant Answer。
-- Provider 继续使用 `load_settings()` 的 `DEEPSEEK_API_KEY`、`TRIVAE_MODEL_PROVIDER`、`TRIVAE_MODEL_NAME` 和 `DEEPSEEK_BASE_URL` contract，不在 CLI 创建 client。
+- Provider 继续使用 `load_settings()` 的 `DEEPSEEK_API_KEY`、`TRIVAE_MODEL_PROVIDER`、`TRIVAE_MODEL_NAME` 和 `DEEPSEEK_BASE_URL` contract，不在 CLI 创建 client。CLI 只在创建 Application 前加载可选 dotenv；进程环境优先，`load_settings()` 不自动读取文件。
+- dotenv 缺失的默认 `.env` 不改变原有环境变量启动语义；显式路径缺失或格式非法时显示分类错误并返回非零状态，错误投影不得包含密钥值。
 - CLI 启动和 `/status` 只能通过 `TrivaeApplication.readiness()` 读取 database/semantic/provider 状态；不在接口层拼接 SQLite、触发 semantic rebuild 或执行网络健康检查。
 - `/source n`、`/history`、`/resume n`、`/good`、`/bad [note]`、`/feedback` 只能调用 Application facade；scope switch 清空 conversation/source/feedback binding，legacy scope 缺失时明确拒绝 resume。
 

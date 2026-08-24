@@ -86,8 +86,11 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 
 新 `TRIVAE_MODEL_*` 字段优先于 legacy 字段；变量显式存在但为空时必须报错，不能静默
 回退。legacy-only DeepSeek 继续保留 `https://api.deepseek.com` 默认 URL，以兼容已有
-smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`.env` 由启动命令
-显式 export，Settings 的 mapping 注入接口不得隐式读取工作区 credential。
+smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`trivae chat` CLI
+入口默认读取当前工作目录下存在的 `.env`，也可用 `--env-file PATH` 指定文件；进程环境
+变量（包括显式空值）优先于文件值。dotenv 缺失的默认文件保持旧的环境变量启动语义，显式
+文件缺失或格式错误必须在 Application 创建前报错。`load_settings()` 及其 mapping 注入
+接口仍不得隐式读取工作区 credential，非 CLI 库调用不产生文件系统副作用。
 
 ### Query boundary
 

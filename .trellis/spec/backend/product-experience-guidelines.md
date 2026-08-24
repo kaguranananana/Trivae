@@ -28,6 +28,8 @@
 
 ### CLI commands
 
+`trivae chat` 默认从当前工作目录自动加载存在的 `.env`；`--env-file PATH` 可显式指定
+配置文件，进程环境变量优先，dotenv 解析失败要在启动时明确提示且不打印密钥。
 `/scope` 只读当前 scope；`/chats` 重新选择 scope 并清空 conversation/source/feedback state；
 `/new` 只清空同 scope 的 conversation；`/status` 显示 readiness 与当前 scope/conversation；
 `/source n` 读取当前 finalized answer 的来源；`/good`、`/bad [note]`、`/feedback` 只作用于
