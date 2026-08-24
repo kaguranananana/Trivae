@@ -55,3 +55,12 @@
 - CLI、HTTP API、Evaluation 不得各自定义 Trace / Error 语义；入口只能投影同一个 Trivae-owned Normalized Event 与 canonical Error。
 - request_id 与 trace_id 必须从 Application Boundary 贯通到 Stream Projection、Trace Collector 与 Evaluation Result；入口丢失关联属于可诊断 Failure。
 - Stage 1.9 operational metrics 不自动证明 Stage 1.10 quality；Evaluation quality、numerical threshold、Review artifact 与 gate 仍需真实运行校准。
+
+## CLI projection addendum（2026-08-25）
+
+- live CLI 继续从 `QueryStreamAdapter` 接收 normalized facts；不会轮询 Trace Store，也不会把终端文本
+  写回 Trace。
+- Renderer normal/verbose 都不展示 raw stream sequence、operation identity、JSON、provider raw
+  payload 或 hidden CoT；Trace/log identity仍由 Application result 作为后续诊断入口提供。
+- Query failure、partial preview、commit failure 和 unknown exception 保留原 owner/error code；
+  normal 终端只做 bounded friendly projection，Python logging/Trace 继续保留 root-cause 线索。

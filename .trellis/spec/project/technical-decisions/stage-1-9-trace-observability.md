@@ -676,3 +676,11 @@ Runtime / normalized domain event
 - Runtime token / reasoning delta 通过同一个 `TraceableAgentRuntime` stream 通知 live adapter；persistent mapper继续忽略它们。Normal/Debug Trace 都不保存 Provider reasoning 或 Answer token events。
 - Router、Planner、Tool、Retrieval、Finalization、Conversation commit 与 Query terminal 仍由各自真实 M6 boundary 发出；CLI 只消费其适合人读的 projection，不保存终端文本作为核心 Trace payload。
 - live `QueryStreamEvent.sequence` 只负责一次实时投影的确定顺序；M6 `NormalizedQueryEvent.sequence` 仍是持久化 Trace 的 canonical replay sequence，两者通过 `source_sequence/source_operation/trace_id` 关联而不混用身份。
+
+## CLI projection addendum（2026-08-25）
+
+live CLI 仍从 `QueryStreamAdapter` 接收同一次 Query 的 normalized facts；normal/verbose renderer
+不输出 raw event sequence、operation identity、JSON artifact、provider raw payload 或 hidden
+CoT。Trace Store 不是实时队列，`/status`、`/source`、`/history`、`/resume` 和 feedback 不轮询
+Trace Store。unknown exception 由 logging 保留 root cause，CLI 只投影 bounded diagnostic；Trace
+identity 仍可用于后续 `trace` 查看。

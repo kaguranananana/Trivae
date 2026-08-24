@@ -140,23 +140,23 @@ Trace、Evidence/Citation 和 Conversation persistence 的 Trivae，收敛成可
 
 ## Acceptance Criteria
 
-- [ ] `trivae chat` 启动后在首次提问前显示 database/semantic/provider readiness；`/status`
+- [x] `trivae chat` 启动后在首次提问前显示 database/semantic/provider readiness；`/status`
       同时显示当前 scope 和 conversation，状态语义与现有 facade 一致。
-- [ ] 成功回答显示 bounded Sources；`/source n` 能在 scope 内展示真实 target message 和
+- [x] 成功回答显示 bounded Sources；`/source n` 能在 scope 内展示真实 target message 和
       bounded local context；structured source 明确展示 summary 而非伪造 message。
-- [ ] `/scope`、`/chats`、`/new` 满足 scope hard boundary、new Conversation 和 history
+- [x] `/scope`、`/chats`、`/new` 满足 scope hard boundary、new Conversation 和 history
       隔离；切换后旧 source/feedback/history 不污染后续 Query。
-- [ ] `/good`、`/bad`、`/bad note`、`/feedback` 持久化并绑定正确
+- [x] `/good`、`/bad`、`/bad note`、`/feedback` 持久化并绑定正确
       conversation/trace/run/scope；重复反馈 upsert，不能被 Evaluation 当作 ground truth。
-- [ ] `/history` 排序稳定；`/resume` 对新 scope metadata 安全恢复，对缺失 scope 的
+- [x] `/history` 排序稳定；`/resume` 对新 scope metadata 安全恢复，对缺失 scope 的
       legacy conversation 明确拒绝猜测；不会跨 scope 注入历史。
-- [ ] normal/verbose 事件来自同一次 Query；normal 无内部 JSON/ID/hidden CoT，verbose
+- [x] normal/verbose 事件来自同一次 Query；normal 无内部 JSON/ID/hidden CoT，verbose
       仍 bounded/redacted；0 result、partial、known failure、partial answer failure、
       Ctrl+C、Unicode、行边界有回归测试。
-- [ ] Query production path、Evidence/Citation Finalizer、Conversation atomic commit、
+- [x] Query production path、Evidence/Citation Finalizer、Conversation atomic commit、
       Trace semantic contract、六 canonical tools、`search_messages` compatibility 和
       Evaluation runner 的既有测试全部保持通过。
-- [ ] 完成仓库可用的 pytest、ruff、mypy、compileall、Trellis validation，并完成真实
+- [x] 完成仓库可用的 pytest、ruff、mypy、compileall、Trellis validation，并完成真实
       provider/database smoke；真实 smoke 若因外部配置/网络失败，必须按 failure category
       记录，不以 mock 成功替代。
 

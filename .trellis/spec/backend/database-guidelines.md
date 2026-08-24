@@ -260,3 +260,16 @@ if result.is_successful and result.answer_artifact is not None:
 ```
 
 Application 只把已完成、已 finalise、已 hydration 的 Artifact 交给 Store，由 Store 在单个 transaction 中写入 User + Assistant。
+
+## CLI Product Experience persistence addendum（2026-08-25）
+
+- `ConversationStore.create_conversation(scope: ExecutionScope | None = None)` 为新 Query 保存
+  `conversations.scope_snapshot_json`；初始化时只做 additive nullable migration。旧 row 的
+  `NULL` scope 是 history-only，不得按当前 CLI scope 猜测恢复。
+- `ConversationStore.list_summaries(limit=20)` 只读取最近 bounded metadata，排序为
+  `updated_at DESC, conversation_id ASC`；标题使用首个 user query 的有界 projection，不调用 LLM。
+- `SQLiteFeedbackStore` 使用独立的相邻数据库文件和 `user_feedback` 表，保存 feedback identity、
+  timestamps、conversation/trace/run、trusted scope snapshot、`good|bad`、bounded note 和
+  `feedback_kind=user_experiential`；`(conversation_id, trace_id)` upsert，不写 canonical、Trace 或 Evaluation。
+- Conversation atomic turn contract 未改变：只有 validated `AnswerArtifact` 成功 commit 才追加
+  User + Assistant；feedback 不参与 commit success。

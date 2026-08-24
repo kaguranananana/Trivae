@@ -43,10 +43,12 @@
 - 选择 `0. All chats` 时使用 `ExecutionScope(allowed_session_ids=None)`；不得创建 `ALL`、`*` 等伪 session ID。
 - `conversation_id` 是独立于 scope 的 CLI 状态：首轮为 `None`，后续使用上一次 `QueryResult.conversation_id`，`/new` 只清空它。
 - 成功 Query 实时展示 `QueryStreamEvent` 投影，并在没有 answer delta 时使用 `QueryResult.final_answer` 补齐正式答案；已经 streamed 的正文不得重复打印，`runtime_answer` 不是用户答案 fallback。
-- normal 显示真实 Thinking、Route、Plan、Tool/ Retrieval 摘要、Answer streaming 与 terminal error；verbose 额外显示 bounded diagnostics、usage、timing 和 normalized source metadata。两者都不能 dump 巨大 Tool Result、secret 或越权数据。
-- Thinking 只能来自 Runtime adapter 对 Provider 实际 reasoning delta 的归一化；Provider 不支持或返回空值时完全不显示，CLI 不得按 stage 伪造 reasoning。
+- normal 显示 Route、Plan、Tool/Retrieval 摘要、Answer streaming 与 terminal error；verbose 额外显示 bounded diagnostics、usage、timing 和 normalized source metadata。两者都不能 dump 巨大 Tool Result、secret、raw event identity 或越权数据。
+- Runtime adapter 仍只把 Provider 实际 reasoning delta 归一化为同一 stream event；CLI 可以消费该 event 维持顺序，但 normal/verbose 都不把 hidden CoT 渲染到终端，也不得按 stage 伪造 reasoning。
 - Renderer 在 Tool/status/terminal/interrupt 前关闭开放 thinking/answer 行；Streaming delta 只作展示，Conversation Store 仍一次提交完整 validated Assistant Answer。
 - Provider 继续使用 `load_settings()` 的 `DEEPSEEK_API_KEY`、`TRIVAE_MODEL_PROVIDER`、`TRIVAE_MODEL_NAME` 和 `DEEPSEEK_BASE_URL` contract，不在 CLI 创建 client。
+- CLI 启动和 `/status` 只能通过 `TrivaeApplication.readiness()` 读取 database/semantic/provider 状态；不在接口层拼接 SQLite、触发 semantic rebuild 或执行网络健康检查。
+- `/source n`、`/history`、`/resume n`、`/good`、`/bad [note]`、`/feedback` 只能调用 Application facade；scope switch 清空 conversation/source/feedback binding，legacy scope 缺失时明确拒绝 resume。
 
 ### 4. Validation & Error Matrix
 
@@ -60,6 +62,8 @@
 | Tool / Retrieval failure | 关闭开放文本段并显示真实 normalized error；Agent 可恢复时继续后续事件 |
 | Provider stream failure | 显示 terminal error、恢复完整终端行；不产生正式 answer completion/commit |
 | 未知编程异常 | 不用 catch-all 静默吞掉，保留可诊断 traceback |
+| semantic missing/stale/failed/partial | 保留原状态，不自动 rebuild 或 lexical fallback |
+| legacy conversation 无 scope | 可列出但不可 resume，不猜测当前 scope |
 
 ### 5. Good / Base / Bad Cases
 
@@ -77,6 +81,7 @@
 - Streaming 与 non-streaming 的 Conversation Assistant Answer 完整内容一致；Trace 保留 M6 事件且不持久化 reasoning/token delta。
 - `/exit`、`/quit`、EOF、Ctrl+C 和已分类 Settings 错误。
 - changed source 的 lint/type check 与完整测试集。
+- Source summary/index、scope snapshot/mismatch、readiness、独立 feedback upsert、history/resume 与 product failure regression。
 
 ### 7. Wrong vs Correct
 

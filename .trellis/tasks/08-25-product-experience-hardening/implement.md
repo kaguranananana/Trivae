@@ -9,7 +9,7 @@
 - [x] 确认当前 `main`、working tree、最近六工具 commits、真实 CLI/Application/Renderer/
   Conversation/Evidence/Trace/Semantic status contracts。
 - [x] 建立 baseline：275 tests、ruff、mypy、compileall 和真实 DB/index status。
-- [ ] 用户批准本次最终 planning summary 后，创建 `codex/product-experience-hardening`
+- [x] 用户批准本次最终 planning summary 后，创建 `codex/product-experience-hardening`
   branch 并运行 `task.py start` 进入 implementation phase。
 
 ## Common implementation rules

@@ -575,8 +575,22 @@ Conversation Store 的 create/read/commit/close lifecycle 由 Application factor
 
 `interfaces/cli_renderer.py` 集中拥有普通终端展示：
 
-- normal：真实 Thinking、Route、Plan、Tool 主要参数、Tool/ Retrieval 真实摘要、Answer token streaming、错误与 trace/log identity；
+- normal：Route、Plan、Tool 主要参数、Tool/Retrieval 真实摘要、Answer token streaming、错误与 trace/log identity；Runtime reasoning event 仍走同一 live source，但 hidden CoT 不渲染；
 - verbose：选择可信 `trace_profile=debug`，额外显示 route diagnostics、plan details、bounded Tool arguments、coverage/partial/truncated/duration、usage 与 normalized source metadata；仍不 dump 聊天正文、secret 或 hidden reasoning；
 - Renderer 只维护 presentation segment（thinking/answer/none），不维护或推断 Agent state。完成、failure、abort 与 Ctrl+C 都先关闭开放文本行，下一轮 prompt 不与前一轮粘连。
 
 最终 `AnswerArtifact` 与 Conversation commit contract 不变：streaming 只改变传输与展示，不能逐 token 写 Conversation Store；若 finalization 或 commit 失败，已显示 preview 会以明确 terminal error 结束，不能被当作正式已提交答案。
+
+## CLI Product Experience hardening record（2026-08-25）
+
+- Application 新增 `readiness()`、`inspect_message_source()`、`list_conversations()`、
+  `resume_conversation()`、`save_feedback()` 与 `read_feedback()`；CLI 只调用这些 facade。
+- `ExecutionScope` 在新 Conversation 中以 nullable additive snapshot 保存；恢复和带 id Query
+  都做 exact scope comparison。legacy null scope 只能 history display，不能猜测权限。
+- `SQLiteFeedbackStore` 是独立相邻 persistence boundary，`user_experiential` 不进入 Trace
+  event 或 Evaluation labels；同一 `(conversation_id, trace_id)` 反馈 upsert。
+- startup 与 `/status` 读取 canonical count、existing semantic status 和 safe settings，不能
+  自动 rebuild、全库扫描或网络探活。`/source` 复用 canonical scoped context read，不开启第二
+  Query/Retrieval pipeline。
+- CLI normal/verbose 仍复用同一 `QueryStreamEvent` source；renderer 不展示 hidden CoT/raw IDs/
+  JSON，known failure 映射为 friendly message，unknown failure 交给 logging/Trace 诊断。

@@ -132,6 +132,14 @@ smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`.en
 - reasoning 与 answer token delta 是 ephemeral stream facts，不能写入 Normal/Debug Trace；Trace 继续排除 hidden reasoning / Chain-of-Thought。Tool、Retrieval、Route 与 Plan 只显示真实结构化 event facts。
 - Renderer 归 `interfaces` 所有，只负责 normal/verbose 格式、bounded 参数摘要、文本段换行和 terminal 恢复；Runtime、Tool、Retrieval、Router、Planner 内部不得加入 CLI print。
 
+### CLI Product Experience boundary（2026-08-25）
+
+- `CliEventRenderer` 继续消费 `QueryStreamEvent`，不创建第二个 Runtime、Query 或 Trace reader。
+- Runtime reasoning event 仍可作为 live ordering fact 传递，但终端 normal/verbose 不渲染 hidden
+  CoT；终端也不显示 raw event sequence、operation identity、JSON artifact 或 provider-specific fields。
+- Source review、scope/readiness、feedback 和 history/resume 均由 `TrivaeApplication` facade
+  拥有；CLI 不直接读取 SQLite、不从 prompt 推断 trusted scope。
+
 ## 4. Validation & Error Matrix
 
 | Condition | Required behavior |

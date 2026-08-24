@@ -458,3 +458,29 @@ query.received
 scope 和 Finalizer hard boundary；没有证明 Agent selection accuracy、自然语言答案 correctness、
 production latency SLA 或 provisional retrieval quality。下一轮只有在这些 Failure Case 重复且有
 paired Evaluation 证据时，才考虑 prompt/Planner/cost guidance 的最小调整。
+
+### CLI Product Experience hardening evidence（2026-08-25）
+
+- Q：为什么 `/source` 不直接把 AnswerArtifact 里的 excerpt 当作最终正文？
+  Evidence：`TrivaeApplication.inspect_message_source()` 复用 scoped canonical read；
+  `tests/test_product_experience.py` 锁定 source locator 的确定性去重，来源展示字段仍来自
+  Finalizer trusted snapshot，避免模型正文成为 metadata authority。
+- Q：为什么 legacy Conversation 不允许直接 resume？
+  Evidence：`conversations.scope_snapshot_json` 是 additive nullable migration；NULL scope
+  只能 history display，`ConversationScopeError` 拒绝猜测权限，避免跨 scope history injection。
+- Q：为什么用户反馈不写 Evaluation 或 Trace？
+  Evidence：独立 `SQLiteFeedbackStore` 的 `user_experiential` record 按
+  `(conversation_id, trace_id)` upsert；反馈测试断言后一次 rating/note 更新同一 identity。
+- Q：如何证明 readiness 不会暗中修复 semantic index？
+  Evidence：`ApplicationReadiness` 只调用现有 status facade、canonical count 和
+  `load_settings()`；product regression 断言空数据库保留 `semantic=missing`，没有 rebuild path。
+- Q：如何处理 CoT、raw event 和未知异常？
+  Evidence：renderer regression 断言 normal/verbose 不出现 reasoning text、stream sequence、
+  trace event identity 或 JSON；unknown exception 由 Python logging 保留 root cause，CLI 只输出
+  bounded type diagnostic。
+
+本轮新增 product regression 后 deterministic 全量为 `282 passed`；单次本地 smoke 读取临时
+Canonical 数据的同 session context，返回 `before / anchor / after` 三条 bounded projection，
+未触发第二套 Query、Provider 或 Retrieval。该事实不证明真实 provider latency、答案质量或网络
+健康状态。真实 Canonical DB 的 metadata-only startup smoke 显示 database/semantic ready 与
+provider `not_configured`；因此没有虚构 provider Query 结果。

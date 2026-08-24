@@ -3,7 +3,7 @@
 > 状态：**Draft / In Progress**
 >
 > 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation、Stage 1.9 Trace / Observability、Stage 1.10 Evaluation 与 Stage 1.11 Application Boundary 架构确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1–1.11 completed；M1–M7 deterministic vertical slices、Trace backend、Evaluation runner 与本 Semantic Retrieval slice 已实现；官方 Qwen provider 已完成真实 473,236-message baseline rebuild、integrity/reopen/stale validation 与 LLM-assisted provisional paired evaluation；human verification、长期 quality threshold 与 Stage 1.11 Product Interaction 仍 Pending。
+> 当前状态为：Stage 1.1–1.11 completed；M1–M7 deterministic vertical slices、Trace backend、Evaluation runner、Semantic Retrieval slice 与 CLI Product Experience hardening 已实现；官方 Qwen provider 已完成真实 473,236-message baseline rebuild、integrity/reopen/stale validation 与 LLM-assisted provisional paired evaluation；HTTP Product Interaction、human verification 与长期 quality threshold 仍 Pending。
 > 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
 
 ---
@@ -14,7 +14,7 @@
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 当前阶段   | Stage 1.1–1.11 completed；M1–M7 与 Semantic Retrieval vertical slice 已实现；下一阶段为 human-verified quality calibration、长期阈值与 Stage 1.11 Product Interaction |
 | 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
-| 业务实现   | M1 ingestion、M4 Query Plane、M5a Evidence/Citation、M5b Conversation、M6 Trace、M7 Evaluation 与 Semantic Retrieval 已实现；HTTP/API 产品交互、human-verified quality 与长期阈值仍待后续 Trellis task |
+| 业务实现   | M1 ingestion、M4 Query Plane、M5a Evidence/Citation、M5b Conversation、M6 Trace、M7 Evaluation、Semantic Retrieval 与 CLI source/scope/readiness/feedback/history hardening 已实现；HTTP/API 产品交互、human-verified quality 与长期阈值仍待后续 Trellis task |
 | 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
 
 ## Goals
@@ -2079,6 +2079,30 @@ ChatLab 是主要参考基线：已存在且适用于 Trivae 的设计默认采�
 - Python package 的具体文件、class / interface signature、DI 方式与依赖锁定（Stage 1.11 已确认概念 package ownership，具体实现 Pending）
 - 其他模块的 Retry / Fallback 策略（Stage 1.5 Router 的显式可用性降级契约除外）
 - 会明显改变系统复杂度的新依赖或基础设施
+
+## Stage 1.11 CLI Product Experience hardening（2026-08-25）
+
+CLI 仍是薄 Interface Adapter，新增行为全部经过 `TrivaeApplication` facade：
+
+```text
+finalized AnswerArtifact → bounded Sources → /source n
+CLI picker → trusted ExecutionScope → scoped Conversation
+Application.readiness() → startup /status projection
+completed Query → independent Feedback Store
+ConversationStore summaries → /history → explicit scoped /resume
+QueryStreamEvent → normal/verbose CliEventRenderer projection
+```
+
+- Message source display 使用 Finalizer hydrate 的 `MessageDisplaySnapshot`；`/source` 重新
+  读取同一 session 的 bounded canonical context，StructuredSource 只显示 structured summary。
+- 新 Conversation 保存 scope snapshot；legacy `NULL` scope 只能列出，不能恢复或带入 Query。
+- readiness 只读 database count、已有 semantic status 与 safe provider settings，不 rebuild、
+  full scan 或网络探活；semantic `missing/building/failed/stale/partial` 不会被改写为 ready。
+- feedback 使用独立相邻 SQLite，语义为 `user_experiential`，不写 Trace/Evaluation ground truth。
+- Runtime/Trace event source 未改变；终端不渲染 hidden CoT、raw event identity 或 JSON dump，
+  unknown exception 由 logging 保留诊断而不在 normal 终端打印长 traceback。
+
+对应的可执行 contract、错误矩阵与验证点见 [Product Experience Guidelines](../backend/product-experience-guidelines.md)。
 
 ## Evolution Rule
 

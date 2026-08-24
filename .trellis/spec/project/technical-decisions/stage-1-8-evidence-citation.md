@@ -521,3 +521,12 @@ M5b `m5-conversation-persistence-finalization` 在不放宽 Stage 1.8 current-ru
 - `commit_turn()` 在 `BEGIN IMMEDIATE` 中追加 User + Assistant 并更新 Conversation 时间；插入、约束或 codec 错误显式失败并回滚，避免半个 completed turn。
 - replay 直接反序列化持久化 Artifact，不重新调用 LLM、Retrieval 或 hydration。历史 Artifact 可帮助 follow-up 理解上下文，但历史 source locator 不会注入新 Runtime 的 ToolResult provenance；旧 Evidence 被新一轮引用时仍由 Finalizer 以 `INVALID_PROVENANCE` 拒绝。
 - deterministic tests、全量质量门禁和真实 DeepSeek + SQLite smoke 的 measured facts 记录在 M5b task 的 `validation.md`；M6 Trace、M7 Evaluation、HTTP/UI 与长期参数校准保持后续边界。
+
+## CLI Source Review Addendum（2026-08-25）
+
+`AnswerArtifact` finalized/hydrated 后，CLI 通过确定性 source flatten 生成 bounded `Sources` 区块。
+Message source 的 session、author、time、excerpt 只来自 `MessageDisplaySnapshot`；`/source n`
+通过 `TrivaeApplication.inspect_message_source()` 复用 scoped canonical context read，并高亮
+anchor。StructuredSource 只显示 locator/value/scope/limitations summary，不伪装成 message。
+该 review 不新增 Evidence 模型、不重新执行 Agent/Retrieval/Provider，也不改变 Finalizer 的
+current-run provenance、scope 或 trusted hydration 规则。
