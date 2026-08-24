@@ -10,21 +10,27 @@ from pathlib import Path
 from typing import Literal
 
 from trivae.capabilities.contracts import (
+    ExecuteSQLInput,
     ExecutionScope,
     FindMembersInput,
     GetMessageContextInput,
+    GetSchemaInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
 )
+from trivae.capabilities.execute_sql import ExecuteSQLCapability
 from trivae.capabilities.find_members import FindMembersCapability
 from trivae.capabilities.get_message_context import GetMessageContextCapability
+from trivae.capabilities.get_schema import GetSchemaCapability
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.capabilities.search_messages import LexicalSearchCapability, SearchMessagesCapability
 from trivae.capabilities.semantic_search import SemanticSearchCapability
 from trivae.capabilities.tools import (
+    ExecuteSQLTool,
     FindMembersTool,
     GetMessageContextTool,
+    GetSchemaTool,
     LexicalSearchTool,
     SearchMessagesTool,
     SemanticSearchTool,
@@ -271,7 +277,14 @@ class TrivaeApplication:
     def invoke_tool(
         self,
         name: str,
-        request: SearchMessagesInput | SemanticSearchInput | GetMessageContextInput | FindMembersInput,
+        request: (
+            SearchMessagesInput
+            | SemanticSearchInput
+            | GetMessageContextInput
+            | FindMembersInput
+            | GetSchemaInput
+            | ExecuteSQLInput
+        ),
         scope: ExecutionScope,
     ) -> ToolEnvelope:
         """通过显式 registry 调用 agent-facing Tool。"""
@@ -798,6 +811,9 @@ def create_application(
     capability_registry.register(SemanticSearchTool(SemanticSearchCapability(semantic_retrieval)))
     capability_registry.register(GetMessageContextTool(GetMessageContextCapability(read_repository)))
     capability_registry.register(FindMembersTool(FindMembersCapability(read_repository)))
+    # Stage C 继续复用同一个 canonical read adapter；SQL Tool 不建立第二套查询管线。
+    capability_registry.register(GetSchemaTool(GetSchemaCapability(read_repository)))
+    capability_registry.register(ExecuteSQLTool(ExecuteSQLCapability(read_repository)))
     owned_conversation_store = (
         SQLiteConversationStore(database_path) if conversation_store is None else conversation_store
     )

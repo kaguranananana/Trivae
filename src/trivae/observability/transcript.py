@@ -49,6 +49,16 @@ def format_trace_summary(trace: StoredTrace) -> str:
         for event in trace.events
         if event.operation == "member.lookup.completed" and event.phase == "completed"
     )
+    schema_inspections = sum(
+        1
+        for event in trace.events
+        if event.operation == "schema.inspect.completed" and event.phase == "completed"
+    )
+    sql_executions = sum(
+        1
+        for event in trace.events
+        if event.operation == "sql.execute.completed" and event.phase == "completed"
+    )
     final_answer_available = any(
         event.operation == "answer.finalization.completed"
         and isinstance(event.payload.get("answer_text"), str)
@@ -73,6 +83,8 @@ def format_trace_summary(trace: StoredTrace) -> str:
             f"retrieval_truncated_events: {truncated_retrievals}",
             f"explicit_context_calls: {explicit_context_calls}",
             f"member_lookups: {member_lookups}",
+            f"schema_inspections: {schema_inspections}",
+            f"sql_executions: {sql_executions}",
             f"final_answer: {'available' if final_answer_available else 'not available'}",
             "",
         )
@@ -150,6 +162,18 @@ def format_execution_transcript(
             "skipped",
         }:
             _render_member_lookup(lines, event)
+        elif event.operation.startswith("schema.inspect.") and event.phase in {
+            "completed",
+            "failed",
+            "skipped",
+        }:
+            _render_schema_inspection(lines, event)
+        elif event.operation.startswith("sql.execute.") and event.phase in {
+            "completed",
+            "failed",
+            "skipped",
+        }:
+            _render_sql_execution(lines, event)
         elif event.operation == "evidence.prepare.completed":
             _render_evidence(lines, event)
         elif event.operation == "citation.validation.completed":
@@ -607,6 +631,10 @@ def _tool_result_metadata(parsed: Mapping[str, object], data: object) -> dict[st
             "returned_candidates",
             "total_candidates",
             "total_hits",
+            "returned_tables",
+            "returned_rows",
+            "columns",
+            "sql_rewritten",
             "partial",
             "truncated",
             "coverage",
@@ -615,7 +643,17 @@ def _tool_result_metadata(parsed: Mapping[str, object], data: object) -> dict[st
                 metadata[key] = data[key]
     meta = parsed.get("meta")
     if isinstance(meta, Mapping):
-        for key in ("returned_messages", "returned_candidates", "total_candidates", "total_hits", "truncated"):
+        for key in (
+            "returned_messages",
+            "returned_candidates",
+            "total_candidates",
+            "total_hits",
+            "returned_tables",
+            "returned_rows",
+            "columns",
+            "sql_rewritten",
+            "truncated",
+        ):
             if key not in metadata and key in meta:
                 metadata[key] = meta[key]
     return metadata
@@ -692,6 +730,44 @@ def _render_member_lookup(lines: list[str], event: NormalizedQueryEvent) -> None
             f"total candidates: {_pretty_value(payload.get('total_candidates'))}",
             f"ambiguous: {_pretty_value(payload.get('ambiguous'))}",
             f"truncated: {_pretty_value(payload.get('truncated'))}",
+            f"error_code: {_pretty_value(payload.get('error_code') or _failure_value(event.failure, 'error_code'))}",
+        ),
+    )
+
+
+def _render_schema_inspection(lines: list[str], event: NormalizedQueryEvent) -> None:
+    """渲染 schema inspection 的表数量和公开边界，不展开内部 schema。"""
+
+    payload = event.payload
+    _section(
+        lines,
+        "[SCHEMA INSPECTION]",
+        (
+            f"status: {event.phase}",
+            f"returned tables: {_pretty_value(payload.get('returned_tables'))}",
+            f"table names: {_pretty_value(payload.get('table_names'))}",
+            f"partial: {_pretty_value(payload.get('partial'))}",
+            f"truncated: {_pretty_value(payload.get('truncated'))}",
+            f"error_code: {_pretty_value(payload.get('error_code') or _failure_value(event.failure, 'error_code'))}",
+        ),
+    )
+
+
+def _render_sql_execution(lines: list[str], event: NormalizedQueryEvent) -> None:
+    """渲染 SQL rows/bound/scope enforcement 事实，不记录 hidden chain-of-thought。"""
+
+    payload = event.payload
+    _section(
+        lines,
+        "[SQL EXECUTION]",
+        (
+            f"status: {event.phase}",
+            f"returned rows: {_pretty_value(payload.get('returned_rows'))}",
+            f"columns: {_pretty_value(payload.get('columns'))}",
+            f"partial: {_pretty_value(payload.get('partial'))}",
+            f"truncated: {_pretty_value(payload.get('truncated'))}",
+            f"sql rewritten: {_pretty_value(payload.get('sql_rewritten'))}",
+            f"coverage: {_pretty_value(payload.get('coverage'))}",
             f"error_code: {_pretty_value(payload.get('error_code') or _failure_value(event.failure, 'error_code'))}",
         ),
     )

@@ -84,6 +84,8 @@ def agent_tool_behavior_projection(result: QueryResult | None) -> dict[str, obje
             "retrieval_tool_sequence": [],
             "context_tool_sequence": [],
             "member_tool_sequence": [],
+            "schema_tool_sequence": [],
+            "sql_tool_sequence": [],
             "tool_call_count": 0,
             "tool_rounds": 0,
             "tool_errors": [],
@@ -92,6 +94,8 @@ def agent_tool_behavior_projection(result: QueryResult | None) -> dict[str, obje
     retrieval_names = {"lexical_search", "semantic_search", "search_messages"}
     context_names = {"get_message_context"}
     member_names = {"find_members"}
+    schema_names = {"get_schema"}
+    sql_names = {"execute_sql"}
     return {
         "first_selected_tool": None if not calls else calls[0].name,
         "tool_sequence": [call.name for call in calls],
@@ -99,6 +103,9 @@ def agent_tool_behavior_projection(result: QueryResult | None) -> dict[str, obje
         # Stage B 保留 context/member 的公开 action sequence，是否合理仍交给 Case Review。
         "context_tool_sequence": [call.name for call in calls if call.name in context_names],
         "member_tool_sequence": [call.name for call in calls if call.name in member_names],
+        # Stage C 将 schema inspection 与 SQL execution 分轴记录，便于判断 schema→SQL 链路。
+        "schema_tool_sequence": [call.name for call in calls if call.name in schema_names],
+        "sql_tool_sequence": [call.name for call in calls if call.name in sql_names],
         "tool_call_count": len(calls),
         "tool_rounds": result.runtime_result.tool_rounds,
         "tool_errors": [
@@ -130,6 +137,7 @@ def operational_measurements(
         else dict(result.runtime_result.usage),
         "trace_completeness": None if trace is None else trace.completeness,
         "retrieval_count": None if trace is None else trace.metrics.retrieval_count,
+        "structured_sql": None if trace is None else _structured_sql_measurements(trace),
         # 这是公开 action sequence 的 observation；preferred tool 仍由诊断 Case 和人工/模型 Review 分开判断。
         "agent_tool_behavior": agent_tool_behavior_projection(result),
     }
@@ -151,6 +159,55 @@ def operational_measurements(
         measurements["trace_limitations"] = tuple(sorted(set(limitations)))
         measurements["coverage_statuses"] = tuple(sorted(set(coverage_statuses)))
     return measurements
+
+
+def _structured_sql_measurements(trace: TraceProjection) -> dict[str, object]:
+    """从 Trace 的公开 structured operation 摘要记录 SQL/schema 行为事实。"""
+
+    schema_events = tuple(
+        item
+        for item in trace.timeline
+        if item.operation == "schema.inspect.completed" and item.phase == "completed"
+    )
+    sql_events = tuple(
+        item
+        for item in trace.timeline
+        if item.operation == "sql.execute.completed" and item.phase == "completed"
+    )
+    sql_failures = tuple(
+        item
+        for item in trace.timeline
+        if item.operation == "sql.execute.failed" and item.phase == "failed"
+    )
+    return {
+        "schema_calls": len(schema_events),
+        "schema_returned_tables": tuple(
+            value
+            for item in schema_events
+            for value in (item.payload.get("returned_tables"),)
+            if isinstance(value, int) and not isinstance(value, bool)
+        ),
+        "sql_calls": len(sql_events),
+        "sql_returned_rows": tuple(
+            value
+            for item in sql_events
+            for value in (item.payload.get("returned_rows"),)
+            if isinstance(value, int) and not isinstance(value, bool)
+        ),
+        "sql_truncated": tuple(item.payload.get("truncated") is True for item in sql_events),
+        "sql_scope_enforcement": tuple(
+            value
+            for item in sql_events
+            for value in (item.payload.get("scope_enforcement"),)
+            if isinstance(value, str)
+        ),
+        "sql_errors": tuple(
+            value
+            for item in sql_failures
+            for value in (item.payload.get("error_code"),)
+            if isinstance(value, str)
+        ),
+    }
 
 
 def _check(

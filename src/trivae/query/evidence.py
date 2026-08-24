@@ -14,6 +14,7 @@ from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
 from trivae.retrieval.context import MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
+from trivae.retrieval.sql import SchemaResult, SQLQueryResult
 from trivae.retrieval.structured import (
     Coverage,
     MessageProjection,
@@ -560,6 +561,20 @@ def build_tool_result_record(
     elif isinstance(data, StructuredAggregateResult):
         query_snapshot = data.query.to_dict()
         structured_items = _aggregate_items(data)
+    elif isinstance(data, SchemaResult):
+        # Schema table row 是可验证的 structured source，不伪装成 message citation。
+        query_snapshot = {
+            "schema_tables": tuple(table.name for table in data.tables),
+            "scope": dict(data.metadata.filters),
+        }
+        structured_items = _schema_items(data)
+    elif isinstance(data, SQLQueryResult):
+        # SQL 结果保留原始 query、scope 和 bound，finalizer 只接受 record 中的精确 row value。
+        query_snapshot = {
+            "query": data.query.to_dict(),
+            "scope": dict(data.metadata.filters),
+        }
+        structured_items = _sql_items(data)
 
     error_code = envelope.error.code if envelope.error is not None else None
     return ToolResultRecord(
@@ -597,6 +612,24 @@ def _member_items(result: FindMembersResult) -> tuple[ToolStructuredItem, ...]:
     return tuple(
         ToolStructuredItem("row", f"candidates[{index}]", candidate.to_dict())
         for index, candidate in enumerate(result.candidates)
+    )
+
+
+def _schema_items(result: SchemaResult) -> tuple[ToolStructuredItem, ...]:
+    """为 schema inspection 建立稳定 table row locator。"""
+
+    return tuple(
+        ToolStructuredItem("row", f"tables[{index}]", table.to_dict())
+        for index, table in enumerate(result.tables)
+    )
+
+
+def _sql_items(result: SQLQueryResult) -> tuple[ToolStructuredItem, ...]:
+    """为每一条 bounded SQL row 建立可复核 locator，不把 query 改写成 citation。"""
+
+    return tuple(
+        ToolStructuredItem("row", f"rows[{index}]", dict(row))
+        for index, row in enumerate(result.rows)
     )
 
 

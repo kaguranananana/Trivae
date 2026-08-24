@@ -7,9 +7,11 @@ from typing import Any, Literal
 
 from trivae.capabilities.contracts import (
     CapabilityContractError,
+    ExecuteSQLInput,
     ExecutionScope,
     FindMembersInput,
     GetMessageContextInput,
+    GetSchemaInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -20,6 +22,7 @@ from trivae.observability.contracts import FailureInfo
 from trivae.retrieval.context import MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticError, SemanticQueryError, SemanticRetrievalResult
+from trivae.retrieval.sql import SchemaResult, SQLQueryResult
 from trivae.retrieval.structured import (
     InvalidRetrievalQuery,
     LexicalIndexError,
@@ -391,12 +394,13 @@ class SemanticSearchTool(SearchMessagesTool):
         super().__init__(capability)
 
 
-class _StageBTool:
-    """Stage B Tool 的共同 envelope/trace 边界，不复制 Context/Identity 业务逻辑。"""
+class _CapabilityTool:
+    """Context/Identity/Structured Tool 共用的 envelope/trace 边界。"""
 
     name: str
-    trace_stage: Literal["context", "tool"]
+    trace_stage: Literal["context", "retrieval", "tool"]
     internal_operation_prefix: str
+    failure_origin_stage: Literal["context", "retrieval", "tool"] = "tool"
 
     def __init__(self, capability: Any, request_type: type[Any]) -> None:
         self.capability = capability
@@ -404,7 +408,14 @@ class _StageBTool:
 
     def invoke(
         self,
-        request: SearchMessagesInput | SemanticSearchInput | GetMessageContextInput | FindMembersInput,
+        request: (
+            SearchMessagesInput
+            | SemanticSearchInput
+            | GetMessageContextInput
+            | FindMembersInput
+            | GetSchemaInput
+            | ExecuteSQLInput
+        ),
         scope: ExecutionScope,
     ) -> ToolEnvelope:
         """向旧 registry caller 暴露同一 ToolEnvelope 语义。"""
@@ -414,7 +425,14 @@ class _StageBTool:
 
     def _invoke_with_origin(
         self,
-        request: SearchMessagesInput | SemanticSearchInput | GetMessageContextInput | FindMembersInput,
+        request: (
+            SearchMessagesInput
+            | SemanticSearchInput
+            | GetMessageContextInput
+            | FindMembersInput
+            | GetSchemaInput
+            | ExecuteSQLInput
+        ),
         scope: ExecutionScope,
     ) -> tuple[ToolEnvelope, Literal["tool", "capability"] | None]:
         """把已知 Stage B contract/retrieval 错误投影为显式 envelope。"""
@@ -464,7 +482,14 @@ class _StageBTool:
 
     def invoke_with_trace(
         self,
-        request: SearchMessagesInput | SemanticSearchInput | GetMessageContextInput | FindMembersInput,
+        request: (
+            SearchMessagesInput
+            | SemanticSearchInput
+            | GetMessageContextInput
+            | FindMembersInput
+            | GetSchemaInput
+            | ExecuteSQLInput
+        ),
         scope: ExecutionScope,
         trace_context: object,
     ) -> ToolEnvelope:
@@ -548,7 +573,7 @@ class _StageBTool:
                     payload={"error_code": envelope.error.code},
                     failure=self._failure(
                         envelope.error.code,
-                        "context" if self.trace_stage == "context" else "tool",
+                        "tool" if origin == "tool" else self.failure_origin_stage,
                         "returned_to_agent",
                         internal_operation,
                         None,
@@ -573,7 +598,7 @@ class _StageBTool:
             if error is None
             else self._failure(
                 error.code,
-                "context" if self.trace_stage == "context" else "tool",
+                "tool" if origin == "tool" else self.failure_origin_stage,
                 "returned_to_agent",
                 tool_operation,
                 None,
@@ -602,7 +627,7 @@ class _StageBTool:
             payload={"exception_type": exception_type},
             failure=self._failure(
                 "CAPABILITY_EXCEPTION",
-                "context" if self.trace_stage == "context" else "tool",
+                self.failure_origin_stage,
                 "propagated",
                 operation_id,
                 exception_type,
@@ -612,7 +637,7 @@ class _StageBTool:
     @staticmethod
     def _failure(
         error_code: str,
-        origin_stage: Literal["context", "tool"],
+        origin_stage: Literal["context", "retrieval", "tool"],
         handling: str,
         operation_id: str,
         diagnostic_reference: str | None,
@@ -623,7 +648,7 @@ class _StageBTool:
             error_code=error_code,
             origin_stage=origin_stage,
             observed_stage="tool",
-            category="context" if origin_stage == "context" else "identity",
+            category={"context": "context", "retrieval": "structured", "tool": "identity"}[origin_stage],
             handling=handling,
             cause_operation_id=operation_id,
             diagnostic_reference=diagnostic_reference,
@@ -641,6 +666,10 @@ class _StageBTool:
             }
         if isinstance(request, FindMembersInput):
             return {"query": request.query, "session_ids": request.session_ids, "limit": request.limit}
+        if isinstance(request, GetSchemaInput):
+            return {}
+        if isinstance(request, ExecuteSQLInput):
+            return {"sql": request.sql, "max_rows": request.max_rows}
         return {}
 
     def _result_payload(self, result: object) -> dict[str, object]:
@@ -667,11 +696,33 @@ class _StageBTool:
                 "partial": result.partial,
                 "truncated": result.truncated,
             }
+        if isinstance(result, SchemaResult):
+            return {
+                "tool_name": "get_schema",
+                "returned_tables": len(result.tables),
+                "table_names": [table.name for table in result.tables],
+                "partial": result.partial,
+                "truncated": result.truncated,
+            }
+        if isinstance(result, SQLQueryResult):
+            return {
+                "tool_name": "execute_sql",
+                "returned_rows": result.returned_rows,
+                "columns": result.columns,
+                "partial": result.partial,
+                "truncated": result.truncated,
+                "coverage": {"status": result.coverage.status, "basis": result.coverage.basis},
+                "sql_rewritten": result.metadata.details.get("sql_rewritten"),
+                "result_bound": result.metadata.details.get("result_bound"),
+                "scope_enforcement": result.metadata.details.get("scope_enforcement"),
+            }
         return {"tool_name": self.name}
 
     @staticmethod
-    def _result_meta(result: MessageContextResult | FindMembersResult) -> dict[str, object]:
-        """构造统一 envelope meta，保留 no-result 与 truncation 事实。"""
+    def _result_meta(
+        result: MessageContextResult | FindMembersResult | SchemaResult | SQLQueryResult,
+    ) -> dict[str, object]:
+        """构造统一 envelope meta，保留 no-result、schema 和 truncation 事实。"""
 
         if isinstance(result, MessageContextResult):
             return {
@@ -679,30 +730,67 @@ class _StageBTool:
                 "returned_messages": len(result.messages),
                 "message_id": result.message_id,
             }
+        if isinstance(result, FindMembersResult):
+            return {
+                "truncated": result.truncated,
+                "returned_candidates": len(result.candidates),
+                "total_candidates": result.total_candidates,
+            }
+        if isinstance(result, SchemaResult):
+            return {
+                "truncated": result.truncated,
+                "returned_tables": len(result.tables),
+            }
         return {
             "truncated": result.truncated,
-            "returned_candidates": len(result.candidates),
-            "total_candidates": result.total_candidates,
+            "returned_rows": result.returned_rows,
+            "columns": result.columns,
         }
 
 
-class GetMessageContextTool(_StageBTool):
+class GetMessageContextTool(_CapabilityTool):
     """Agent-facing get_message_context Tool。"""
 
     name = "get_message_context"
     trace_stage = "context"
     internal_operation_prefix = "context.expansion"
+    failure_origin_stage = "context"
 
     def __init__(self, capability: Any) -> None:
         super().__init__(capability, GetMessageContextInput)
 
 
-class FindMembersTool(_StageBTool):
+class FindMembersTool(_CapabilityTool):
     """Agent-facing find_members Tool；多候选正常返回，不做唯一 resolve。"""
 
     name = "find_members"
     trace_stage = "tool"
     internal_operation_prefix = "member.lookup"
+    failure_origin_stage = "tool"
 
     def __init__(self, capability: Any) -> None:
         super().__init__(capability, FindMembersInput)
+
+
+class GetSchemaTool(_CapabilityTool):
+    """Agent-facing get_schema Tool，共享 Structured SQL read capability。"""
+
+    name = "get_schema"
+    trace_stage = "retrieval"
+    internal_operation_prefix = "schema.inspect"
+    failure_origin_stage = "retrieval"
+
+    def __init__(self, capability: Any) -> None:
+        super().__init__(capability, GetSchemaInput)
+
+
+class ExecuteSQLTool(_CapabilityTool):
+    """Agent-facing execute_sql Tool；只读、scope 和 result bound 由下层共同 enforcement。"""
+
+    name = "execute_sql"
+    trace_stage = "retrieval"
+    internal_operation_prefix = "sql.execute"
+    failure_origin_stage = "retrieval"
+
+    def __init__(self, capability: Any) -> None:
+        super().__init__(capability, ExecuteSQLInput)

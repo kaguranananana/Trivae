@@ -327,6 +327,8 @@ class EvaluationContractTests(unittest.TestCase):
                 "retrieval_tool_sequence": ["lexical_search", "semantic_search"],
                 "context_tool_sequence": [],
                 "member_tool_sequence": [],
+                "schema_tool_sequence": [],
+                "sql_tool_sequence": [],
                 "tool_call_count": 2,
                 "tool_rounds": 2,
                 "tool_errors": [
@@ -367,6 +369,58 @@ class EvaluationContractTests(unittest.TestCase):
         self.assertEqual(behavior["retrieval_tool_sequence"], ["lexical_search"])
         self.assertEqual(behavior["member_tool_sequence"], ["find_members"])
         self.assertEqual(behavior["context_tool_sequence"], ["get_message_context"])
+
+    def test_structured_sql_measurements_record_schema_rows_truncation_and_scope(self) -> None:
+        """Evaluation 从公开 Trace 摘要保存 Stage C SQL 行为，而不保存 SQL 正文。"""
+
+        trace = replace(
+            _trace(status="completed"),
+            timeline=(
+                TraceTimelineItem(
+                    sequence=1,
+                    stage="retrieval",
+                    operation="schema.inspect.completed",
+                    phase="completed",
+                    operation_id="schema",
+                    parent_operation_id="tool:schema",
+                    outcome="ok",
+                    duration_ms=1.0,
+                    limitations=(),
+                    payload={"returned_tables": 4},
+                ),
+                TraceTimelineItem(
+                    sequence=2,
+                    stage="retrieval",
+                    operation="sql.execute.completed",
+                    phase="completed",
+                    operation_id="sql",
+                    parent_operation_id="tool:sql",
+                    outcome="ok",
+                    duration_ms=2.0,
+                    limitations=(),
+                    payload={
+                        "returned_rows": 2,
+                        "truncated": True,
+                        "scope_enforcement": "scope_filtered_temp_tables_and_sqlite_authorizer",
+                    },
+                ),
+            ),
+        )
+
+        structured = operational_measurements(None, trace)["structured_sql"]
+
+        self.assertEqual(
+            structured,
+            {
+                "schema_calls": 1,
+                "schema_returned_tables": (4,),
+                "sql_calls": 1,
+                "sql_returned_rows": (2,),
+                "sql_truncated": (True,),
+                "sql_scope_enforcement": ("scope_filtered_temp_tables_and_sqlite_authorizer",),
+                "sql_errors": (),
+            },
+        )
 
 
 class EvaluationRunnerTests(unittest.TestCase):

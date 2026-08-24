@@ -85,12 +85,14 @@ class QueryRequest:
     locale: str = "zh-CN"
     prior_context: tuple[ModelContextMessage, ...] = ()
     data_snapshot: Mapping[str, object] = field(default_factory=dict)
-    # Stage B 默认把已确认的 context/member Tool 加入同一 Agent Surface；legacy caller 仍可显式传旧名称。
+    # Stage C 默认把结构化 schema/SQL Tool 加入同一 Agent Surface；legacy caller 仍可显式传旧名称。
     available_capabilities: tuple[str, ...] = (
         "lexical_search",
         "semantic_search",
         "get_message_context",
         "find_members",
+        "get_schema",
+        "execute_sql",
     )
     conversation_id: str | None = None
     trace_profile: TraceProfile = "normal"

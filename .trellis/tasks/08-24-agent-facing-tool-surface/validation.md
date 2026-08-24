@@ -190,7 +190,7 @@ Planner policy, answer semantic correctness or a second Evidence/Trace system.
 ## 9. Evolution
 
 Stage B context/member behavior is recorded below as a separate checkpoint. Stage C structured SQL
-remains pending and frozen. A future hybrid, reranker, query rewrite or retrieval parameter change
+validation is recorded in section 12 below. A future hybrid, reranker, query rewrite or retrieval parameter change
 requires a reproducible Failure Case plus paired/Agent Evaluation evidence. A repeated Provider SSL
 failure needs provider transport diagnostics or configuration evidence before any further compatibility
 change is considered.
@@ -324,4 +324,126 @@ hidden chain-of-thought 仍不落盘。
 Stage B 的答辩事实索引已补入 `interview-defense.md`：为什么 Search 自带 bounded context 仍保留
 显式 deepening、为什么身份查询返回候选而不是唯一 resolve、为什么 member row 使用 structured
 Evidence、以及如何用 FC-B1/FC-B2/FC-B3 区分 Tool contract、Agent selection 和 Finalizer 错误。
-Stage C `get_schema/execute_sql` 尚未开始。
+
+## 12. Stage C Validation — Structured Schema and SQL Tools
+
+### 12.1 Scope and implementation evidence
+
+Stage C 增加 `get_schema` 与 `execute_sql`，但继续沿用同一个正式链路：
+
+```text
+Agent Runtime
+  → get_schema / execute_sql Tool adapter
+  → CapabilityRegistry
+  → SQLiteCanonicalReadRepository Structured SQL port
+  → public physical schema / scoped read-only SQL
+  → ToolResultRecord / StructuredSource
+  → TraceCollector + EvaluationRunner
+```
+
+- `get_schema` 读取现有 Canonical SQLite 的 public physical projection，只暴露
+  `chat_sessions`、`users`、`memberships`、`messages` 及允许的列/关系；raw payload、ingestion
+  diagnostics 和 lexical/semantic derived tables 不进入 Agent schema。没有新增 Analysis View。
+- `execute_sql` 接收一条原始 SQL，通过独立 `mode=ro` connection 执行；不追加 LIMIT、不重写
+  SQL、不静默 fallback。结果上限取 trusted `ExecutionScope.max_results` 与现有
+  `ToolResultRecord` 100-item transport bound 的较小值，超限显式 `truncated`。
+- partial session/time scope 在 driver authorizer 安装前 materialize 同名 temporary public
+  tables；模型仍使用 public table names，SQLite authorizer 拒绝 `main` 越界读、写/DDL、PRAGMA、
+  ATTACH、内部表和非 public 列。模型是否写 `WHERE session_id = ...` 不决定权限。
+- SQL rows 和 schema tables 以 existing `StructuredSource` row locator 进入 Evidence/Finalizer；
+  zero rows 是 `ok` 的空 structured result，SQL error 作为 Tool Envelope error 返回。
+
+### 12.2 Deterministic validation
+
+`tests/test_stage_c_tools.py` 覆盖 7 个 Stage C contract/integration cases：
+
+- public physical schema inspection 与内部表/列隐藏；
+- COUNT、GROUP BY、sender/session aggregation、time range 和 public JOIN；
+- zero rows、malformed SQL、write/DDL/ATTACH/PRAGMA/internal schema rejection；
+- session/time trusted scope、显式 `main` escape、结果 bound/truncation；
+- SQL row `StructuredSource` finalization；
+- schema/SQL Trace operation、public tool count、summary/transcript；
+- scripted `get_schema → execute_sql` 同一 Runtime，以及六个 canonical Tool 的默认装配。
+
+本地 Stage C focused 结果：`7 passed`。当前全量结果：`272 passed`；`.venv/bin/ruff check
+src tests` 和 `.venv/bin/mypy src` 均通过。`AgentRunRequest` 低层默认仍保留
+`search_messages` legacy contract；Application `QueryRequest`/CLI 默认 surface 已是六个
+canonical tools，旧入口仍可显式调用。
+
+### 12.3 Failure Cases
+
+#### FC-C1 — Unqualified SQLite READ callback has no database name
+
+- Type: implementation failure，已修复。
+- Scenario: unrestricted SQL `SELECT COUNT(*) FROM messages` 被 authorizer 当成 scope escape。
+- Observed failure: SQLite authorizer 的 `SQLITE_READ` callback 对未限定表名返回
+  `database=None`，初版只允许 `main`/`temp`，导致正常 COUNT 返回 `SQL_SCOPE_VIOLATION`。
+- Root cause: 把 Python sqlite3 authorizer 的 database 参数误认为始终包含 `main`/`temp`。
+- Fix: full scope 下允许 public table 的 `database=None`；partial scope 预先为全部 public table
+  建立同名 temporary shadow，未限定 public read 只命中 scoped temp projection；显式
+  `main.messages` 仍被拒绝。
+- Validation: COUNT、JOIN、session/time scope 和 explicit main escape 回归测试均通过。
+
+#### FC-C2 — Canonical identity uses normalized platform user ID
+
+- Type: test fixture failure，已修复。
+- Scenario: sender aggregation 预期使用 fixture 的 raw `u1`，Canonical Store 实际保存
+  `qq:uid:u1`。
+- Root cause: Stage C 测试绕过了 Canonical identity normalization 的既有 contract。
+- Fix: 测试按 public canonical `sender_user_id` 断言，没有修改 identity model 或 SQL Tool。
+
+#### FC-C3 — Structured SQL Tool success did not imply a valid final citation artifact
+
+- Type: real Provider Agent/finalization failure，已定位并修复提示 contract。
+- Scenario: `get_schema → execute_sql` 两个 Tool 都返回 `ok`，但最终 JSON 的
+  `citation_bindings.evidence_ids` 没有与同一对象的 `evidence_items.evidence_id` 对齐。
+- Observed failure: `trace-ea31a454943b4bd1a52d6ebb31df5ce8` 的 Query termination 为 runtime
+  `completed`，但 finalizer 返回 `INVALID_ANSWER_ARTIFACT`，错误为
+  `citation binding references an unknown evidence ID`；未提交未经验证的回答。
+- Root cause: Provider 遵循了 Tool sequence，却把示例中的 `e1` 当成 placeholder，违反了已有
+  Artifact identity contract；不是 SQL、scope 或 Evidence hydration 失败。
+- Fix: 在既有 final synthesis prompt 中明确要求 binding/evidence/content block 三组 identity
+  必须在同一 JSON 内 exact match；不放宽 validator、不静默补 citation、不重试另一数据源。
+- Validation: 修复后的同类真实 case 重新执行并记录在下方；仍保留本次失败 Trace 作为诊断证据。
+
+#### FC-C4 — Agent sometimes used a second SQL call for intermediate confirmation
+
+- Type: real Provider Agent behavior observation，不是 Tool contract failure。
+- Scenario: aggregation、time-range 和 scoped-count cases 都先执行了 schema→SQL，随后又执行
+  一次 SQL；这些调用仍在同一 Runtime、同一 scope 和同一 Evidence 链路内完成。
+- Observation: 当前 Trace 可见实际 sequence 和每次 returned rows/columns；没有静默合并、固定
+  hybrid 或 Runtime blocker。第二次调用有时用于确认时间换算/聚合事实，但也增加了 round、token
+  和 latency cost。
+- Handling: 不把唯一 sequence 写成硬脚本；Evaluation 记录 `sql_tool_sequence`、call count、
+  rounds、usage 和 latency，后续只有在重复、可复核的 unnecessary-call failure evidence 足够
+  时才调整 prompt/Planner。
+
+### 12.4 Trace / Evaluation / real smoke status
+
+Trace 已记录 `schema.inspect.*`、`sql.execute.*`、tool arguments、table/row summary、columns、
+truncation、coverage、scope enforcement 和 SQL rewrite=false；不保存 hidden chain-of-thought。
+Evaluation 新增 `diagnostics/agent-tool-selection-stage-c-v1.json`，保留
+`schema_tool_sequence`/`sql_tool_sequence` 等公开行为 observation；preferred sequence 只是
+`diagnostic_contract_expectation`，不是 `human_verified` ground truth。既有 paired
+lexical-only vs semantic-only retrieval evaluation 未删除。
+
+真实 Provider smoke 使用当前 Canonical Store（473,236 条消息）和已完成 semantic index，Provider
+为现有配置 `opencode-go / deepseek-v4-flash`。只保存公开行为元数据；没有输出或提交聊天正文、
+完整 SQL rows、raw transcript 或 credentials：
+
+| Case | Actual sequence | Calls / rounds | Final state | Evidence / citations | Duration / total tokens | Trace |
+| --- | --- | ---: | --- | ---: | ---: | --- |
+| schema → count（修复后） | `get_schema → execute_sql` | 2 / 2 | `completed/complete` | 1 / 1 | 26.1s / 17,183 | `trace-88d5cec414a2436594a3cc004e1d4d55` |
+| aggregation | `get_schema → execute_sql → execute_sql` | 3 / 3 | `completed/complete` | 1 / 1 | 47.2s / 31,557 | `trace-154afe7c6f5d4345a674d6dff17ec66a` |
+| time range | `get_schema → execute_sql → execute_sql` | 3 / 3 | `completed/complete` | 1 / 1 | 42.2s / 28,142 | `trace-23476435f2d54a81826374552c5059f8` |
+| structured zero count | `get_schema → execute_sql` | 2 / 2 | `completed/complete` | 1 / 1 | 19.1s / 17,491 | `trace-e5db7689a0d2456b94855550078adf3c` |
+| scoped count | `get_schema → execute_sql → execute_sql` | 3 / 3 | `completed/complete` | 1 / 1 | 12.3s / 26,460 | `trace-31d9777e31154a708acf2fceb1263bca` |
+| SQL zero rows | `get_schema → execute_sql` | 2 / 2 | `completed/complete` | 0 / 0 | 12.1s / 19,430 | `trace-f2847654eb8448a594214dc0d9b15e94` |
+
+真实 smoke 的结构化结果均保持 `sql_rewritten=false`、`partial=false`；SQL zero rows 的 Trace
+明确记录 `returned_rows=0` 和 0 Evidence/0 citations，没有把空结果编造成消息证据。初次 schema→
+count 的失败 Trace `trace-ea31a454943b4bd1a52d6ebb31df5ce8` 保留为 FC-C3；修复 prompt 后重跑
+成功。以上 latency/usage 是当前 Provider 和运行时的诊断事实，不是生产 SLA，也不是调整 SQL
+bound、semantic 参数或增加新架构的依据。
+
+Checkpoint C commit 在本节完成、Trellis validation 和质量门禁重新确认后创建。

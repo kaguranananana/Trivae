@@ -23,6 +23,30 @@ bounded projection 中记录 `available_capabilities`、`first_selected_tool`、
 completeness。paired lexical-vs-semantic retrieval evaluation 保持独立；两者都不保存真实聊天
 正文或 hidden chain-of-thought。
 
+## Stage C Structured SQL Tool Behavior
+
+`diagnostics/agent-tool-selection-stage-c-v1.json` 是 Stage C 的 structured retrieval diagnostic
+catalog。它覆盖 deterministic count、GROUP BY/sender aggregation、time range、schema→SQL、zero
+rows/SQL error 和 scope enforcement。`get_schema` 与 `execute_sql` 的 preferred sequence 只表示
+version-controlled contract expectation；实际 Agent sequence、tool rounds、returned rows、
+truncation、coverage、errors、Evidence/Citation、latency 和 usage 由同一 Evaluation projection
+记录，不能自动标成 `human_verified` 或自然语言质量结论。
+
+`get_schema` 返回 public physical canonical schema；`execute_sql` 只执行一条 bounded read-only
+statement。trusted `ExecutionScope` 在 adapter/SQLite driver boundary 强制，不由模型 SQL 的
+`WHERE` 决定；zero rows 是正常结果，超过 `max_rows` 保留 `truncated`。SQL structured evidence
+通过现有 `ToolResultRecord`/`StructuredSource` finalizer 校验，不能拼接 message citation。
+
+Stage C 的最小验证入口：
+
+```bash
+.venv/bin/pytest -q tests/test_stage_c_tools.py
+.venv/bin/pytest -q
+```
+
+真实 Provider smoke 只保存 query category、tool sequence、Trace/usage/latency 元数据；真实
+聊天正文、完整 SQL 结果和 credentials 不进入仓库。
+
 ## Real snapshot and semantic smoke
 
 当前 Canonical Store 可以通过 Application facade materialize 为不含聊天正文的 Snapshot manifest：

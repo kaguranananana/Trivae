@@ -31,8 +31,10 @@ from trivae.query.runtime.contracts import (
     RuntimeToolCall,
 )
 from trivae.query.runtime.openai_tools import (
+    ExecuteSQLSDKToolAdapter,
     FindMembersSDKToolAdapter,
     GetMessageContextSDKToolAdapter,
+    GetSchemaSDKToolAdapter,
     LexicalSearchSDKToolAdapter,
     SearchMessagesSDKToolAdapter,
     SemanticSearchSDKToolAdapter,
@@ -1047,6 +1049,14 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         if "find_members" in context.available_capabilities:
             tools.append(
                 FindMembersSDKToolAdapter(context.capability_registry).as_sdk_tool(
+                    trusted_max_results=context.scope.max_results
+                )
+            )
+        if "get_schema" in context.available_capabilities:
+            tools.append(GetSchemaSDKToolAdapter(context.capability_registry).as_sdk_tool())
+        if "execute_sql" in context.available_capabilities:
+            tools.append(
+                ExecuteSQLSDKToolAdapter(context.capability_registry).as_sdk_tool(
                     trusted_max_results=context.scope.max_results
                 )
             )

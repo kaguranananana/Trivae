@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "diagnostic_id": "agent-tool-selection-stage-c-v1",
+  "dimension": "agent_tool_selection_structured_sql_behavior",
+  "label_status": "diagnostic_contract_expectation",
+  "available_tools": [
+    "lexical_search",
+    "semantic_search",
+    "get_message_context",
+    "find_members",
+    "get_schema",
+    "execute_sql"
+  ],
+  "cases": [
+    {
+      "case_id": "C1",
+      "category": "structured_count",
+      "query": "一共有多少条消息？",
+      "preferred_first_tools": ["execute_sql"],
+      "required_behavior": "use_structured_read_for_deterministic_count",
+      "quality_judgement": "separate_llm_or_human_review"
+    },
+    {
+      "case_id": "C2",
+      "category": "structured_aggregation",
+      "query": "谁发言最多？按成员统计消息数量。",
+      "preferred_first_tools": ["get_schema", "execute_sql"],
+      "allowed_sequences": [
+        ["get_schema", "execute_sql"],
+        ["execute_sql"]
+      ],
+      "required_behavior": "return_bounded_grouped_rows_with_structured_evidence",
+      "quality_judgement": "sequence_is_task_dependent"
+    },
+    {
+      "case_id": "C3",
+      "category": "structured_time_range",
+      "query": "某个时间段内有多少条消息？",
+      "preferred_first_tools": ["execute_sql"],
+      "required_behavior": "preserve_half_open_time_scope_and_cite_sql_result",
+      "quality_judgement": "separate_llm_or_human_review"
+    },
+    {
+      "case_id": "C4",
+      "category": "schema_then_sql",
+      "query": "先确认可用表结构，再统计各群的活跃消息数。",
+      "preferred_first_tools": ["get_schema", "execute_sql"],
+      "required_behavior": "schema_inspection_then_one_bounded_read_only_sql_call",
+      "quality_judgement": "deterministic_contract_plus_answer_review"
+    },
+    {
+      "case_id": "C5",
+      "category": "sql_no_rows_or_error",
+      "query": "统计一个不存在条件下的消息数，并说明是否有结果。",
+      "preferred_first_tools": ["execute_sql"],
+      "required_behavior": "preserve_zero_rows_or_explicit_sql_error_without_retrieval_fallback",
+      "quality_judgement": "deterministic_failure_contract"
+    },
+    {
+      "case_id": "C6",
+      "category": "scope_enforcement",
+      "query": "只统计当前允许群聊中的消息，不要读取其他群。",
+      "preferred_first_tools": ["execute_sql"],
+      "required_behavior": "trusted_execution_scope_must_hold_even_without_model_where_clause",
+      "quality_judgement": "deterministic_scope_contract"
+    }
+  ],
+  "recorded_observations": [
+    "available_tools",
+    "first_selected_tool",
+    "tool_sequence",
+    "schema_tool_sequence",
+    "sql_tool_sequence",
+    "tool_call_count",
+    "tool_rounds",
+    "returned_rows",
+    "truncated",
+    "coverage",
+    "retrieval_evidence_support",
+    "citation_state",
+    "latency_ms",
+    "usage",
+    "tool_errors",
+    "scope_enforcement"
+  ],
+  "prohibited_conclusions": [
+    "preferred_first_tool_is_human_verified_ground_truth",
+    "get_schema_is_required_before_every_sql_call",
+    "one_tool_sequence_is_the_only_valid_sequence",
+    "structured_sql_smoke_proves_natural_language_answer_quality"
+  ]
+}

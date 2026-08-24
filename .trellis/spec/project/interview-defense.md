@@ -324,6 +324,46 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
   Evidence: Trace 依次展示 `member.lookup.*`、`retrieval.search.*`、
   `context.expansion.*`、Evidence/Citation finalization；FC-B1 属于 Tool contract，FC-B2 属于
   model-facing citation shape，FC-B3 是 Agent selection observation。
-- Q: 为什么这一批仍不加入 SQL？
-  Evidence: checkpoint 分批策略、Stage B focused/full/real smoke gate；Stage C 的
-  `get_schema/execute_sql` 尚未实现，避免一次扩展六个工具后无法归因 selection regression。
+- Q: 为什么 Stage B 不同时加入 SQL？
+  Evidence: checkpoint 分批策略、Stage B focused/full/real smoke gate；先验证 context/member
+  的 identity 和 context boundary，再用独立 Stage C 验证 structured SQL，避免一次扩展六个工具
+  后无法归因 selection regression。
+
+## Stage C Agent-facing structured SQL surface 事实索引
+
+- `get_schema` 复用同一个 `SQLiteCanonicalReadRepository`，只投影现有 physical canonical schema
+  的 public tables/columns/relationships；没有引入 Analysis View，也没有把 ingestion、raw
+  payload 或 lexical/semantic derived implementation tables交给模型。证据：`PUBLIC_SQL_COLUMNS`、
+  `SchemaResult` 和 Stage C schema inspection regression。
+- `execute_sql` 是 Tool/Capability 分离的具体例子：SDK adapter 负责模型参数和 Tool Envelope，
+  `ExecuteSQLCapability` 负责 trusted result bound，SQLite read adapter 负责 driver-level
+  read-only、public schema 和 scope enforcement。Agent SQL 不能通过自己的 `WHERE` 决定权限。
+- 为什么不只用 denylist？只拦几个关键词不能覆盖 SQLite 写操作、DDL、ATTACH、PRAGMA、内部表/列
+  和 qualified database escape；实现使用 mode=ro connection、SQLite authorizer 和 partial-scope
+  temporary public projection。它仍保持原 SQL，不通过拼接 LIMIT 或重写来伪造安全。
+- 为什么要 bounded result？`max_rows` 由 Capability 与 trusted `ExecutionScope.max_results`
+  共同确定，并与现有 `ToolResultRecord` 100-item transport bound 对齐；zero rows 是正常
+  `ok` result，超 bound 则公开 `truncated`，不是静默截断后宣称完整。
+- 为什么结构化统计使用 SQL？COUNT、GROUP BY、time range、sender/session aggregation 是由
+  canonical rows 确定的结构化问题；让 Agent 用 retrieval 扫大量消息自己计数会增加 token/cost
+  并引入可避免的计数错误。`get_schema → execute_sql` 是可观测的公开 sequence，已进入同一
+  Runtime/Trace/Evidence。
+- SQL Evidence 不伪装成 message citation：schema table 与 SQL row 使用 existing
+  `StructuredSource` 的 `row` locator/value snapshot，Finalizer 按 current-run ToolResult
+  和 scope exact match；没有放宽 message provenance contract。
+- Trace 现在可以区分 schema inspection、SQL execution、返回 rows/columns/truncation/coverage、
+  explicit SQL error、Evidence/Citation 和 final answer；它不保存 hidden chain-of-thought。Evaluation
+  新增 structured count/aggregation/time/scope diagnostic cases，preferred tool 只是
+  `diagnostic_contract_expectation`，不自动生成 `human_verified`。
+- 为什么分批增加 Tool？Stage A 先验证双 retrieval selection，Stage B 再验证 context/member
+  identity，Stage C 才加入 structured SQL；每批都有 focused/full/real smoke、Trace、Failure
+  Case 和独立 checkpoint，避免六个工具同时变化后无法归因 selection regression。
+- Stage C 目前已验证的 Failure Case 包括 SQLite unqualified READ callback 的 database=None
+  误判，以及 canonical sender identity normalization 导致的测试预期错误。修复分别位于
+  authorizer boundary 和测试 fixture expectation，没有新增 silent fallback 或第二套 pipeline。
+- 真实 Provider smoke 使用 473,236 条 Canonical 消息和已完成 semantic index，schema→count、
+  aggregation、time range、zero-result、scoped-count 均完成 `completed/complete`，Trace 能看见
+  `get_schema → execute_sql` 以及部分 case 的第二次 SQL call；首次 schema→count 因 Artifact
+  citation binding identity 不一致失败，补充 exact identity prompt 后重跑成功。这里的
+  latency/usage 和 sequence 是当前 Provider 的 diagnostic facts，不是 SLA，也不是
+  `human_verified` answer-quality 结论。

@@ -8,6 +8,7 @@ from typing import Literal, Mapping, Sequence
 from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
+from trivae.retrieval.sql import SchemaResult, SQLQueryResult
 from trivae.retrieval.structured import (
     RetrievalResult,
     StructuredAggregateResult,
@@ -21,6 +22,8 @@ ToolData = (
     | StructuredAggregateResult
     | MessageContextResult
     | FindMembersResult
+    | SchemaResult
+    | SQLQueryResult
 )
 
 
@@ -221,6 +224,28 @@ class FindMembersInput:
             raise CapabilityContractError("limit must be positive")
 
 
+@dataclass(frozen=True)
+class GetSchemaInput:
+    """get_schema 的无参数 typed request，保持 Tool Registry 统一入口。"""
+
+
+@dataclass(frozen=True)
+class ExecuteSQLInput:
+    """execute_sql 的原始 read-only SQL 与可选返回行上限。"""
+
+    sql: str
+    max_rows: int | None = None
+
+    def __post_init__(self) -> None:
+        """只校验输入形状；权限和最终 bound 由 Capability 结合 trusted scope 决定。"""
+
+        object.__setattr__(self, "sql", _normalize_required_identifier("sql", self.sql))
+        if self.max_rows is not None and (
+            isinstance(self.max_rows, bool) or not isinstance(self.max_rows, int) or self.max_rows <= 0
+        ):
+            raise CapabilityContractError("max_rows must be a positive integer or None")
+
+
 def _normalize_required_identifier(name: str, value: object) -> str:
     """统一校验 Agent 提供的稳定 locator 或身份查询文本。"""
 
@@ -345,6 +370,12 @@ class ToolEnvelope:
             data = self.data.to_dict()
         elif isinstance(self.data, FindMembersResult):
             # 成员候选包含 UserIdentity、Membership 和 match reasons，全部来自 bounded projection。
+            data = self.data.to_dict()
+        elif isinstance(self.data, SchemaResult):
+            # Schema 只投影允许 Agent 使用的 public tables/columns/relationships。
+            data = self.data.to_dict()
+        elif isinstance(self.data, SQLQueryResult):
+            # SQL rows 是当前 Tool Result 的 structured evidence，保留 query 与 truncation 事实。
             data = self.data.to_dict()
         else:
             # Aggregate 结果拥有自己的 locator/value 语义，不能套成 MessageHit。

@@ -18,6 +18,19 @@ from trivae.retrieval.identity import (
     MemberQuery,
     MemberSession,
 )
+from trivae.retrieval.sql import (
+    SchemaColumn,
+    SchemaForeignKey,
+    SchemaResult,
+    SchemaTable,
+    SQLMalformedError,
+    SQLQuery,
+    SQLQueryResult,
+    SQLReadOnlyViolation,
+    SQLSchemaViolation,
+    SQLScopeViolation,
+    StructuredSQLError,
+)
 from trivae.retrieval.structured import (
     AggregateBucket,
     AggregateData,
@@ -66,6 +79,205 @@ ORDER_BY_SQL_DESC = """
     COALESCE(m.seq, 0) DESC,
     m.internal_message_id DESC
 """
+
+# Agent-facing SQL 只暴露 canonical 的公共表和列；raw payload、导入诊断、source provenance
+# 以及 lexical/semantic derived tables 继续留在内部 read boundary 之外。
+PUBLIC_SQL_COLUMNS: dict[str, tuple[str, ...]] = {
+    "chat_sessions": (
+        "session_id",
+        "platform",
+        "external_chat_id",
+        "name",
+        "chat_type",
+        "first_message_timestamp",
+        "last_message_timestamp",
+    ),
+    "users": (
+        "user_id",
+        "platform",
+        "platform_user_id",
+        "platform_uin",
+        "display_name",
+        "nickname",
+        "remark",
+        "last_seen_timestamp",
+    ),
+    "memberships": (
+        "session_id",
+        "user_id",
+        "display_name",
+        "nickname",
+        "group_card",
+        "remark",
+        "first_seen_timestamp",
+        "last_seen_timestamp",
+    ),
+    "messages": (
+        "internal_message_id",
+        "session_id",
+        "platform",
+        "source_message_id",
+        "seq",
+        "timestamp",
+        "message_type",
+        "content_text",
+        "sender_user_id",
+        "sender_platform_id",
+        "sender_uin",
+        "sender_name",
+        "reply_to_source_message_id",
+        "recalled",
+        "system",
+    ),
+}
+PUBLIC_SQL_TABLES = tuple(PUBLIC_SQL_COLUMNS)
+
+
+def _sql_scope_clause(scope: ScopeFilters, alias: str) -> tuple[str, list[object]]:
+    """为 SQL scoped materialization 生成只包含 trusted session/time 边界的 predicate。"""
+
+    clauses: list[str] = []
+    parameters: list[object] = []
+    if scope.session_ids is not None:
+        placeholders = ", ".join("?" for _ in scope.session_ids)
+        clauses.append(f"{alias}.session_id IN ({placeholders})")
+        parameters.extend(scope.session_ids)
+    if scope.start_timestamp is not None:
+        clauses.append(f"{alias}.timestamp >= ?")
+        parameters.append(scope.start_timestamp)
+    if scope.end_timestamp is not None:
+        clauses.append(f"{alias}.timestamp < ?")
+        parameters.append(scope.end_timestamp)
+    return (" AND ".join(clauses) if clauses else "1 = 1"), parameters
+
+
+def _membership_scope_clause(scope: ScopeFilters, alias: str) -> tuple[str, list[object]]:
+    """按 Membership 的观察区间裁剪 scope table，避免身份查询暴露越界群聊。"""
+
+    clauses: list[str] = []
+    parameters: list[object] = []
+    if scope.session_ids is not None:
+        placeholders = ", ".join("?" for _ in scope.session_ids)
+        clauses.append(f"{alias}.session_id IN ({placeholders})")
+        parameters.extend(scope.session_ids)
+    if scope.start_timestamp is not None:
+        clauses.append(f"({alias}.last_seen_timestamp IS NULL OR {alias}.last_seen_timestamp >= ?)")
+        parameters.append(scope.start_timestamp)
+    if scope.end_timestamp is not None:
+        clauses.append(f"({alias}.first_seen_timestamp IS NULL OR {alias}.first_seen_timestamp < ?)")
+        parameters.append(scope.end_timestamp)
+    return (" AND ".join(clauses) if clauses else "1 = 1"), parameters
+
+
+def _qualified_columns(table: str, alias: str) -> str:
+    """只从静态 public column map 生成 SELECT 列表，不接受模型 SQL 片段。"""
+
+    return ", ".join(f"{alias}.{column}" for column in PUBLIC_SQL_COLUMNS[table])
+
+
+def _requires_scoped_materialization(scope: ScopeFilters) -> bool:
+    """只有非全量 session/time scope 才需要建立隔离的 temporary public tables。"""
+
+    return scope.session_ids is not None or scope.start_timestamp is not None or scope.end_timestamp is not None
+
+
+def _unique_column_names(description: tuple[object, ...] | None) -> tuple[str, ...]:
+    """为 JOIN 中重复列名建立稳定后缀，避免 dict 覆盖结果列。"""
+
+    names: list[str] = []
+    counts: dict[str, int] = {}
+    for index, item in enumerate(description or ()):
+        raw_name = item[0] if isinstance(item, tuple) and item else None
+        base = str(raw_name) if isinstance(raw_name, str) and raw_name else f"column_{index + 1}"
+        count = counts.get(base, 0) + 1
+        counts[base] = count
+        names.append(base if count == 1 else f"{base}_{count}")
+    return tuple(names)
+
+
+def _sql_scalar(value: object) -> bool | float | int | str | None:
+    """将 SQLite scalar 投影为 Evidence/JSON 可承载的有限值。"""
+
+    if value is None or isinstance(value, (bool, float, int, str)):
+        return value
+    # 当前 public canonical projection 没有 BLOB；不把未知二进制值偷偷转换成 Evidence 文本。
+    raise SQLSchemaViolation(f"SQL returned unsupported value type: {type(value).__name__}")
+
+
+def _sql_authorizer(
+    action: int,
+    first: str | None,
+    second: str | None,
+    database: str | None,
+    _source: str | None,
+    state: dict[str, str],
+    allow_main: bool,
+) -> int:
+    """在 SQLite driver 层阻止写操作、内部表访问和 scoped data escape。"""
+
+    write_actions = {
+        sqlite3.SQLITE_ALTER_TABLE,
+        sqlite3.SQLITE_ANALYZE,
+        sqlite3.SQLITE_ATTACH,
+        sqlite3.SQLITE_CREATE_INDEX,
+        sqlite3.SQLITE_CREATE_TABLE,
+        sqlite3.SQLITE_CREATE_TEMP_INDEX,
+        sqlite3.SQLITE_CREATE_TEMP_TABLE,
+        sqlite3.SQLITE_CREATE_TEMP_TRIGGER,
+        sqlite3.SQLITE_CREATE_TEMP_VIEW,
+        sqlite3.SQLITE_CREATE_TRIGGER,
+        sqlite3.SQLITE_CREATE_VIEW,
+        sqlite3.SQLITE_CREATE_VTABLE,
+        sqlite3.SQLITE_DELETE,
+        sqlite3.SQLITE_DETACH,
+        sqlite3.SQLITE_DROP_INDEX,
+        sqlite3.SQLITE_DROP_TABLE,
+        sqlite3.SQLITE_DROP_TEMP_INDEX,
+        sqlite3.SQLITE_DROP_TEMP_TABLE,
+        sqlite3.SQLITE_DROP_TEMP_TRIGGER,
+        sqlite3.SQLITE_DROP_TEMP_VIEW,
+        sqlite3.SQLITE_DROP_TRIGGER,
+        sqlite3.SQLITE_DROP_VIEW,
+        sqlite3.SQLITE_DROP_VTABLE,
+        sqlite3.SQLITE_INSERT,
+        sqlite3.SQLITE_REINDEX,
+        sqlite3.SQLITE_SAVEPOINT,
+        sqlite3.SQLITE_TRANSACTION,
+        sqlite3.SQLITE_UPDATE,
+    }
+    if action in write_actions:
+        state["code"] = SQLReadOnlyViolation.error_code
+        return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_PRAGMA:
+        state["code"] = SQLSchemaViolation.error_code
+        return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_FUNCTION:
+        function_name = (second or first or "").lower()
+        if function_name in {"eval", "load_extension", "writefile"} or function_name.startswith("pragma_"):
+            state["code"] = SQLSchemaViolation.error_code
+            return sqlite3.SQLITE_DENY
+        return sqlite3.SQLITE_OK
+    if action in {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_RECURSIVE}:
+        return sqlite3.SQLITE_OK
+    if action != sqlite3.SQLITE_READ:
+        return sqlite3.SQLITE_OK
+
+    table = first or ""
+    column = second or ""
+    allowed_columns = PUBLIC_SQL_COLUMNS.get(table)
+    # SQLite 用空列名表示 COUNT(*)/EXISTS 等只需要读取表行的操作；仍要求表本身 public。
+    if allowed_columns is None or (column and column not in allowed_columns):
+        state["code"] = SQLSchemaViolation.error_code
+        return sqlite3.SQLITE_DENY
+    # SQLite 对未限定表名的 READ callback 在当前 driver 返回 None；partial scope 已为全部 public
+    # 表建立同名 temp shadow，因此 None 在该分支只会命中 scoped temp table。
+    if database == "main" and not allow_main:
+        state["code"] = SQLScopeViolation.error_code
+        return sqlite3.SQLITE_DENY
+    if database not in {"main", "temp", None}:
+        state["code"] = SQLScopeViolation.error_code
+        return sqlite3.SQLITE_DENY
+    return sqlite3.SQLITE_OK
 
 
 def _readonly_uri(database_path: Path) -> str:
@@ -300,7 +512,9 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
     """只读读取 adapter，集中承载 Structured、Lexical 和 Context SQL。"""
 
     def __init__(self, database_path: Path) -> None:
-        self._connection = sqlite3.connect(_readonly_uri(database_path), uri=True)
+        # 保存 resolved path，execute_sql 为每次 scope 建立隔离 read connection。
+        self._database_path = database_path.resolve()
+        self._connection = sqlite3.connect(_readonly_uri(self._database_path), uri=True)
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA query_only = ON")
         self._connection.execute("PRAGMA foreign_keys = ON")
@@ -333,6 +547,167 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             )
             for row in rows
         )
+
+    def read_schema(self) -> SchemaResult:
+        """读取 public Physical SQLite schema，不把内部 ingestion/derived 表交给 Agent。"""
+
+        started = perf_counter()
+        tables: list[SchemaTable] = []
+        for table_name in PUBLIC_SQL_TABLES:
+            # 表名来自静态 public map，不接受模型提供的 identifier，PRAGMA 只读物理 schema metadata。
+            table_info = self._connection.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+            if not table_info:
+                raise RetrievalError(f"public SQL table is missing: {table_name}")
+            allowed_columns = set(PUBLIC_SQL_COLUMNS[table_name])
+            columns = tuple(
+                SchemaColumn(
+                    name=str(row["name"]),
+                    data_type=str(row["type"] or ""),
+                    nullable=not bool(row["notnull"]),
+                    primary_key=bool(row["pk"]),
+                    default_value=None if row["dflt_value"] is None else str(row["dflt_value"]),
+                )
+                for row in table_info
+                if str(row["name"]) in allowed_columns
+            )
+            foreign_keys = tuple(
+                SchemaForeignKey(
+                    column=str(row["from"]),
+                    referenced_table=str(row["table"]),
+                    referenced_column=str(row["to"]),
+                )
+                for row in self._connection.execute(f'PRAGMA foreign_key_list("{table_name}")').fetchall()
+                if str(row["from"]) in allowed_columns and str(row["table"]) in PUBLIC_SQL_COLUMNS
+            )
+            tables.append(SchemaTable(table_name, columns, foreign_keys))
+        return SchemaResult(
+            strategy="schema",
+            tables=tuple(tables),
+            coverage=Coverage(status="complete", basis="canonical_physical_schema_public_projection"),
+            partial=False,
+            truncated=False,
+            metadata=RetrievalMetadata(
+                filters={"tables": PUBLIC_SQL_TABLES},
+                ordering="public table declaration order, physical column order",
+                latency_ms=(perf_counter() - started) * 1000,
+                details={
+                    "exposed_tables": PUBLIC_SQL_TABLES,
+                    "hidden_table_policy": "canonical_public_tables_only",
+                },
+            ),
+        )
+
+    def execute_readonly_sql(self, query: SQLQuery, scope: ScopeFilters) -> SQLQueryResult:
+        """在隔离 SQLite connection 上执行原始 SQL，并用 driver authorizer enforcement scope。"""
+
+        started = perf_counter()
+        connection = sqlite3.connect(_readonly_uri(self._database_path), uri=True)
+        connection.row_factory = sqlite3.Row
+        state: dict[str, str] = {}
+        allow_main = not _requires_scoped_materialization(scope)
+        try:
+            # bootstrap 阶段只做 adapter 自己的 temp-table materialization，不执行模型 SQL。
+            if not allow_main:
+                self._prepare_scoped_sql_connection(connection, scope)
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("PRAGMA query_only = ON")
+            connection.set_authorizer(
+                lambda action, first, second, database, source: _sql_authorizer(
+                    action,
+                    first,
+                    second,
+                    database,
+                    source,
+                    state,
+                    allow_main,
+                )
+            )
+            cursor = connection.execute(query.sql)
+            columns = _unique_column_names(cursor.description)
+            raw_rows = cursor.fetchmany(query.max_rows + 1)
+            truncated = len(raw_rows) > query.max_rows
+            selected_rows = raw_rows[: query.max_rows]
+            rows = tuple(
+                {
+                    column: _sql_scalar(row[index])
+                    for index, column in enumerate(columns)
+                }
+                for row in selected_rows
+            )
+            return SQLQueryResult(
+                query=query,
+                strategy="sql",
+                columns=columns,
+                rows=rows,
+                returned_rows=len(rows),
+                coverage=Coverage(status="complete", basis="canonical_store_execution_scope"),
+                partial=False,
+                truncated=truncated,
+                metadata=RetrievalMetadata(
+                    filters={"scope": scope.scope_dict()},
+                    ordering="SQLite statement ordering",
+                    latency_ms=(perf_counter() - started) * 1000,
+                    details={
+                        "result_bound": query.max_rows,
+                        "rows_observed": len(raw_rows),
+                        "scope_enforcement": (
+                            "scope_filtered_temp_tables_and_sqlite_authorizer"
+                            if not allow_main
+                            else "sqlite_authorizer_full_canonical_scope"
+                        ),
+                        "sql_rewritten": False,
+                    },
+                ),
+            )
+        except sqlite3.Error as exc:
+            self._raise_sql_error(exc, state)
+            raise AssertionError("_raise_sql_error must always raise")
+        finally:
+            connection.close()
+
+    def _prepare_scoped_sql_connection(self, connection: sqlite3.Connection, scope: ScopeFilters) -> None:
+        """在 authorizer 安装前建立只含 trusted scope 的 public temporary tables。"""
+
+        message_scope, message_parameters = _sql_scope_clause(scope, "m")
+        connection.execute(
+            f"CREATE TEMP TABLE messages AS SELECT {_qualified_columns('messages', 'm')} "
+            f"FROM main.messages AS m WHERE {message_scope}",
+            message_parameters,
+        )
+        connection.execute(
+            f"CREATE TEMP TABLE chat_sessions AS "
+            f"SELECT {_qualified_columns('chat_sessions', 's')} FROM main.chat_sessions AS s "
+            f"WHERE EXISTS (SELECT 1 FROM main.messages AS m WHERE m.session_id = s.session_id AND {message_scope})",
+            message_parameters,
+        )
+        membership_scope, membership_parameters = _membership_scope_clause(scope, "m")
+        connection.execute(
+            f"CREATE TEMP TABLE memberships AS SELECT {_qualified_columns('memberships', 'm')} "
+            f"FROM main.memberships AS m WHERE {membership_scope}",
+            membership_parameters,
+        )
+        connection.execute(
+            f"CREATE TEMP TABLE users AS SELECT {_qualified_columns('users', 'u')} FROM main.users AS u "
+            f"WHERE EXISTS (SELECT 1 FROM main.memberships AS m WHERE m.user_id = u.user_id AND {membership_scope})",
+            membership_parameters,
+        )
+
+    @staticmethod
+    def _raise_sql_error(exc: sqlite3.Error, state: dict[str, str]) -> None:
+        """把 SQLite driver failure 映射为稳定 SQL owner error，不返回原始 connection/path。"""
+
+        code = state.get("code")
+        message = str(exc).strip() or "SQLite rejected the statement"
+        if code == SQLReadOnlyViolation.error_code:
+            raise SQLReadOnlyViolation("read-only SQL statement was rejected") from exc
+        if code == SQLScopeViolation.error_code:
+            raise SQLScopeViolation("SQL attempted to access data outside the trusted scope") from exc
+        if code == SQLSchemaViolation.error_code:
+            raise SQLSchemaViolation("SQL accessed a table, column, function, or pragma outside the public schema") from exc
+        # SQLite compilation errors are actionable model input errors; preserve only the bounded driver message.
+        if isinstance(exc, (sqlite3.OperationalError, sqlite3.ProgrammingError)):
+            raise SQLMalformedError(message) from exc
+        raise StructuredSQLError("read-only SQL execution failed") from exc
 
     def count_messages(self, query: MessageQuery) -> int:
         """统计同一 scope 的所有 canonical message。"""

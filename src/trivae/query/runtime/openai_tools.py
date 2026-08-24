@@ -8,8 +8,10 @@ from agents import RunContextWrapper, function_tool
 
 from trivae.capabilities.contracts import (
     CapabilityContractError,
+    ExecuteSQLInput,
     FindMembersInput,
     GetMessageContextInput,
+    GetSchemaInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -650,3 +652,180 @@ class FindMembersSDKToolAdapter:
             limit_schema["default"] = min(20, trusted_max_results)
 
         return find_members
+
+
+class GetSchemaSDKToolAdapter:
+    """把 public Physical SQLite schema inspection 接入同一 Runtime/Evidence 链路。"""
+
+    def __init__(self, registry: CapabilityRegistry) -> None:
+        self.registry = registry
+
+    def as_sdk_tool(self) -> Any:
+        """创建无模型参数的 schema inspection Function Tool。"""
+
+        description = (
+            "Inspect the exposed physical canonical SQLite schema before writing SQL. "
+            "Returns public tables, columns, and relationships only; it does not return message rows, "
+            "does not change the trusted scope, and does not expose internal ingestion or derived tables. "
+            "Call this when the available table or column names are not already known."
+        )
+
+        @function_tool(
+            name_override="get_schema",
+            description_override=description,
+            failure_error_function=None,
+            strict_mode=False,
+        )
+        async def get_schema(context: RunContextWrapper[RuntimeContext]) -> dict[str, object]:
+            """读取 schema；模型不能通过参数选择未公开的表或列。"""
+
+            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "get_schema")
+            try:
+                request = GetSchemaInput()
+            except CapabilityContractError as exc:
+                # 保留统一 contract envelope，未知异常仍不会被吞掉。
+                envelope = _contract_error_envelope(exc)
+                if trace_context is not None:
+                    cast(Any, trace_context).emit(
+                        stage="tool",
+                        operation="tool.call.failed",
+                        phase="failed",
+                        operation_id=f"tool:{tool_call_id}",
+                        parent_operation_id=getattr(trace_context, "parent_operation_id", None),
+                        outcome="error",
+                        payload={"tool_name": "get_schema", "error_code": exc.error_code},
+                        failure=FailureInfo(
+                            error_code=exc.error_code,
+                            origin_stage="tool",
+                            observed_stage="tool",
+                            category="contract",
+                            handling="returned_to_agent",
+                            cause_operation_id=f"tool:{tool_call_id}",
+                        ),
+                    )
+            else:
+                try:
+                    if runtime_context.capability_registry is not self.registry:
+                        raise RuntimeError("SDK local context registry does not match the registered tool adapter")
+                    envelope = runtime_context.capability_registry.invoke(
+                        "get_schema",
+                        request,
+                        runtime_context.scope,
+                        trace_context=trace_context,
+                    )
+                except Exception:
+                    runtime_context.tool_calls.append(
+                        RuntimeToolCall(
+                            "get_schema",
+                            "failed",
+                            tool_call_id=tool_call_id,
+                            round=runtime_context.current_tool_round,
+                        )
+                    )
+                    raise
+            return _append_runtime_tool_result(runtime_context, "get_schema", tool_call_id, envelope)
+
+        return get_schema
+
+
+class ExecuteSQLSDKToolAdapter:
+    """把原始 read-only SQL 接入 trusted scope、bounded result 和现有 evidence。"""
+
+    def __init__(self, registry: CapabilityRegistry) -> None:
+        self.registry = registry
+
+    def as_sdk_tool(self, *, trusted_max_results: int | None = None) -> Any:
+        """创建 provider-facing SQL tool；最终权限仍由 Capability/SQLite adapter enforcement。"""
+
+        if trusted_max_results is not None:
+            if isinstance(trusted_max_results, bool) or not isinstance(trusted_max_results, int):
+                raise TypeError("trusted_max_results must be an integer when provided")
+            if trusted_max_results <= 0:
+                raise ValueError("trusted_max_results must be positive when provided")
+
+        description = (
+            "Execute one read-only SQL statement against the exposed canonical SQLite tables for exact "
+            "counts, GROUP BY, time-range totals, sender/session aggregation, and other deterministic "
+            "structured questions. Call get_schema first when table or column names are uncertain. "
+            "The trusted session/time scope is enforced by the tool and cannot be expanded by SQL WHERE. "
+            "Do not add a LIMIT just for safety; max_rows is bounded by the tool. Writes, DDL, ATTACH, "
+            "PRAGMA, internal tables, and scope escape are rejected. No query rewrite or retrieval fallback "
+            "is performed. Respect returned_rows and truncated in the result when citing rows."
+        )
+        if trusted_max_results is not None:
+            description += f" The current trusted maximum result rows is {trusted_max_results}."
+
+        @function_tool(
+            name_override="execute_sql",
+            description_override=description,
+            failure_error_function=None,
+            strict_mode=False,
+        )
+        async def execute_sql(
+            context: RunContextWrapper[RuntimeContext],
+            sql: str,
+            max_rows: int | None = None,
+        ) -> dict[str, object]:
+            """执行一条模型 SQL；scope 不从 SQL 文本或模型参数读取。"""
+
+            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "execute_sql")
+            try:
+                request = ExecuteSQLInput(sql=sql, max_rows=max_rows)
+            except CapabilityContractError as exc:
+                # 参数形状错误返回可诊断 envelope，不静默改写 SQL。
+                envelope = _contract_error_envelope(exc)
+                if trace_context is not None:
+                    cast(Any, trace_context).emit(
+                        stage="tool",
+                        operation="tool.call.failed",
+                        phase="failed",
+                        operation_id=f"tool:{tool_call_id}",
+                        parent_operation_id=getattr(trace_context, "parent_operation_id", None),
+                        outcome="error",
+                        payload={"tool_name": "execute_sql", "error_code": exc.error_code},
+                        failure=FailureInfo(
+                            error_code=exc.error_code,
+                            origin_stage="tool",
+                            observed_stage="tool",
+                            category="contract",
+                            handling="returned_to_agent",
+                            cause_operation_id=f"tool:{tool_call_id}",
+                        ),
+                    )
+            else:
+                try:
+                    if runtime_context.capability_registry is not self.registry:
+                        raise RuntimeError("SDK local context registry does not match the registered tool adapter")
+                    envelope = runtime_context.capability_registry.invoke(
+                        "execute_sql",
+                        request,
+                        runtime_context.scope,
+                        trace_context=trace_context,
+                    )
+                except Exception:
+                    runtime_context.tool_calls.append(
+                        RuntimeToolCall(
+                            "execute_sql",
+                            "failed",
+                            tool_call_id=tool_call_id,
+                            round=runtime_context.current_tool_round,
+                        )
+                    )
+                    raise
+            return _append_runtime_tool_result(runtime_context, "execute_sql", tool_call_id, envelope)
+
+        if trusted_max_results is not None:
+            # Provider schema 只是减少无效调用；Capability 仍使用 trusted scope 再次判断上限。
+            schema = getattr(execute_sql, "params_json_schema", None)
+            if not isinstance(schema, dict):
+                raise TypeError("SDK Function Tool did not expose params_json_schema")
+            properties = schema.get("properties")
+            if not isinstance(properties, dict):
+                raise TypeError("SDK Function Tool schema did not expose properties")
+            max_rows_schema = properties.get("max_rows")
+            if not isinstance(max_rows_schema, dict):
+                raise TypeError("execute_sql schema did not expose max_rows")
+            max_rows_schema["minimum"] = 1
+            max_rows_schema["maximum"] = trusted_max_results
+
+        return execute_sql

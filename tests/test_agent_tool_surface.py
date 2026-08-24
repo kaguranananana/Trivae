@@ -39,7 +39,14 @@ class AgentToolSurfaceTests(unittest.TestCase):
         request = QueryRequest("谁提到过 sqlite-vec？", scope)
         self.assertEqual(
             request.available_capabilities,
-            ("lexical_search", "semantic_search", "get_message_context", "find_members"),
+            (
+                "lexical_search",
+                "semantic_search",
+                "get_message_context",
+                "find_members",
+                "get_schema",
+                "execute_sql",
+            ),
         )
 
         legacy = QueryRequest(

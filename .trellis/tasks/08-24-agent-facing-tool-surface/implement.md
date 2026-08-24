@@ -52,7 +52,7 @@
 
 ## Stage B checklist — Context and Member Tools
 
-> 当前继续执行 Stage B；Stage C 保持冻结，直到本 checkpoint 独立提交完成。
+> Stage A/B checkpoint 已完成；当前执行 Stage C，Checkpoint C 必须独立提交。
 
 ### Implementation
 
@@ -74,19 +74,19 @@
 
 ### Implementation
 
-- [ ] 复用 canonical SQLite schema/access path，实现受边界控制的 `get_schema`。
-- [ ] 实现 `execute_sql` read-only contract、结构化 SQL validation、hard scope enforcement、
+- [x] 复用 canonical SQLite schema/access path，实现受边界控制的 `get_schema`。
+- [x] 实现 `execute_sql` read-only contract、结构化 SQL validation、hard scope enforcement、
   bounded result/truncation 和显式错误。
-- [ ] 接入现有 Runtime/Trace/Evidence/Evaluation；不添加 Analysis View。
+- [x] 接入现有 Runtime/Trace/Evidence/Evaluation；不添加 Analysis View。
 
 ### Validation gate
 
-- [ ] COUNT、GROUP BY、time range、sender/session aggregation、合理 JOIN、no rows。
-- [ ] malformed SQL、write SQL、DDL、scope escape、large result truncation。
-- [ ] schema inspect → execute_sql；citation/evidence policy 与现有设计一致。
-- [ ] Unit/integration/full tests、ruff、mypy、真实 SQL Provider smoke、Trace、Evaluation、
+- [x] COUNT、GROUP BY、time range、sender/session aggregation、合理 JOIN、no rows。
+- [x] malformed SQL、write SQL、DDL、scope escape、large result truncation。
+- [x] schema inspect → execute_sql；citation/evidence policy 与现有设计一致。
+- [x] Unit/integration/full tests、ruff、mypy、真实 SQL Provider smoke、Trace、Evaluation、
   Failure Case。
-- [ ] Checkpoint C commit：`feat: add structured sql agent tools`。
+- [x] Checkpoint C commit：`feat: add structured sql agent tools`。
 
 ## Final synthesis checklist
 

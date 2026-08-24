@@ -5,15 +5,24 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from trivae.capabilities.contracts import (
+    ExecuteSQLInput,
     ExecutionScope,
     FindMembersInput,
     GetMessageContextInput,
+    GetSchemaInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
 )
 
-ToolRequest = SearchMessagesInput | SemanticSearchInput | GetMessageContextInput | FindMembersInput
+ToolRequest = (
+    SearchMessagesInput
+    | SemanticSearchInput
+    | GetMessageContextInput
+    | FindMembersInput
+    | GetSchemaInput
+    | ExecuteSQLInput
+)
 
 
 class ToolHandler(Protocol):
