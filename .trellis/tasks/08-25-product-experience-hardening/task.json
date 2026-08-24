@@ -1,0 +1,28 @@
+{
+  "id": "product-experience-hardening",
+  "name": "product-experience-hardening",
+  "title": "Product Experience Hardening",
+  "description": "",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": "CLI-only product experience hardening across source review, scope/readiness, feedback/history, and renderer/failure UX",
+  "package": null,
+  "priority": "P2",
+  "creator": "anontokyo",
+  "assignee": "anontokyo",
+  "createdAt": "2026-08-25",
+  "completedAt": null,
+  "branch": "codex/product-experience-hardening",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "description": "Improve daily trivae chat CLI product experience without changing Query semantics, scope authorization, evidence, trace, or evaluation contracts."
+  }
+}
