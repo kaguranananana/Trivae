@@ -367,3 +367,94 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
   citation binding identity 不一致失败，补充 exact identity prompt 后重跑成功。这里的
   latency/usage 和 sequence 是当前 Provider 的 diagnostic facts，不是 SLA，也不是
   `human_verified` answer-quality 结论。
+
+## Six-tool comprehensive Agent diagnostic 事实索引
+
+### Problem / Boundary
+
+Stage A/B/C 已分别证明六个 Tool 的 capability、adapter、scope、Evidence/Citation 和 Trace contract，
+但分别验证不能回答“六个 Tool 同时可见时，Agent 是否会在 retrieval、context、member 和 SQL 之间
+合理切换”。本轮只补综合 diagnostic，不新增 Tool、Runtime、Planner、Evidence 或 Trace 系统。
+
+### Why 分批后还要做综合 suite
+
+- Stage A 先只暴露 lexical/semantic，能够把 retrieval selection、semantic unavailable 和 no-result
+  Failure Case 单独归因；
+- Stage B 加入 context/member 后，新增 identity ambiguity 和 explicit deepening 的行为轴；
+- Stage C 加入 schema/SQL 后，结构化统计与 retrieval 的路径选择、scope 和 citation 形状又增加了
+  新的交互；
+- 因此最终需要一个同时暴露六个 canonical Tool 的 diagnostic catalog，才能发现跨 category 的
+  重复调用、过早终止和 Finalizer contract failure。`evaluation/diagnostics/agent-tool-selection-
+  comprehensive-v1.json` 的 14 个 case 保存了这个版本化问题集。
+
+### Deterministic contract vs quality judgement
+
+- Deterministic：六个 Tool 是否完整且不重复注册、legacy 是否没有进入默认 surface、实际 sequence/
+  rounds/status/error、ToolResult current-run provenance、returned rows/messages、partial/truncated、
+  coverage、scope enforcement、Evidence/Citation/Finalizer 状态、termination、latency、usage。
+- Quality judgement：preferred first Tool 是否合理、第二次 Tool 是否必要、自然语言答案是否正确、
+  证据是否充分。它们继续标记为 diagnostic expectation，交给 LLM-assisted 或人工 review，不自动
+  变成 `human_verified`。
+- 现有 paired lexical-vs-semantic retrieval benchmark 和 `llm_assisted_provisional` labels 未被
+  删除或升级成 ground truth。
+
+### Observability / Failure Attribution
+
+综合 Trace 的公开链路是：
+
+```text
+query.received
+  → visible capabilities / model tool action
+  → tool.call.* + retrieval/context/member/schema/sql result summary
+  → optional next Tool category
+  → evidence.prepare / citation.validation
+  → answer.finalization / query terminal
+```
+
+`operational_measurements` 通过同一 `TraceProjection` 派生 `tool_result_facts`，不重查数据库、不
+保存 raw SQL rows 或 hidden chain-of-thought。真实运行中可以区分：
+
+- 选错或重复 Tool：F2 的 `semantic → semantic`、F6 的 member query 却走 `schema → sql ×4`；
+- Tool 成功但任务组合不完整：F10 首次/重跑分别出现 Finalizer provenance failure 和停止在 schema
+  前未执行 SQL；
+- Tool/Scope 正确但 Provider/Artifact 错误：F13 SQL `returned_rows=0` 后 Provider 仍提交不可解析的
+  structured citation，Finalizer 返回 `UNRESOLVED_STRUCTURED_SOURCE`；
+- external Provider failure：F5/F14 的 `SSLError` 在 Trace 中归属 `runtime`，不被改写成 Tool
+  error 或 silent fallback；
+- 不必要成本：F14 rerun 的第二次 SQL 在同一 scope、same Trace/Evidence 链内可见，当前只是 cost
+  observation，不足以增加 execution timeout/progress handler。
+
+### Design Defense
+
+- Q：为什么 Search 已带 bounded context 仍保留 `get_message_context`？
+  Evidence：F3 使用 `lexical → semantic → context`，F4 对照只调用 lexical；deterministic Trace
+  能区分自动 search context 与 explicit deepening，说明 context Tool 不是机械必选步骤。
+- Q：为什么 lexical/semantic 仍是两个 Tool，而不是固定 hybrid？
+  Evidence：F1/F2/F3/F12 的实际序列有 lexical-first、semantic-first 和交替补查；catalog 允许
+  多种序列，Runtime 不加入 fixed hybrid/RRF/reranker/query rewrite。
+- Q：为什么成员查询返回 candidate 而不是唯一 resolve？
+  Evidence：Stage B ambiguity contract、F6 的 diagnostic expectation 和 existing multi-candidate
+  tests；F6 走错 SQL 也能通过 Trace 暴露为 selection failure，而不是把 SQL 结果包装成身份结论。
+- Q：为什么统计交给 SQL？
+  Evidence：F8/F9 真实 Agent 使用 `get_schema → execute_sql`，返回 bounded structured rows，且
+  SQL scope enforcement 可直接观察；这比让模型扫描大量 retrieval message 自己计数更容易做
+  provenance 和 scope 诊断。
+- Q：为什么 SQL 允许模型写，权限却不能由模型决定？
+  Evidence：F14 rerun 在不依赖模型完整过滤条件时仍使用
+  `scope_filtered_temp_tables_and_sqlite_authorizer`；模型 SQL 是查询意图，trusted
+  `ExecutionScope` 才是授权边界。
+- Q：为什么 Finalizer 不能为了 smoke 通过而放宽？
+  Evidence：F10 `INVALID_PROVENANCE`、F13 `UNRESOLVED_STRUCTURED_SOURCE`；两次 SQL/Runtime 都
+  有成功事实，但不合法 citation 被拒绝，避免把 Tool success 伪装成 grounded answer。
+- Q：如何用综合 Evaluation 防止 Tool 增加后 selection 退化？
+  Evidence：catalog 固定 category 与 deterministic observation fields；projection 保存实际
+  first/sequence/call/round/error/result/finalization/cost，preferred sequence 不作为唯一脚本，
+  后续以重复 Failure Case 和 answer-quality review 决定是否调整 guidance。
+
+### Current measured boundary
+
+本轮 deterministic 全量为 `275 passed`，ruff、mypy、compileall 通过；真实 Provider 运行 14 个
+综合 case，并对 F5/F10/F13/F14 做 targeted rerun。结果证明 Trace/Evaluation 能定位跨 Tool 行为、
+scope 和 Finalizer hard boundary；没有证明 Agent selection accuracy、自然语言答案 correctness、
+production latency SLA 或 provisional retrieval quality。下一轮只有在这些 Failure Case 重复且有
+paired Evaluation 证据时，才考虑 prompt/Planner/cost guidance 的最小调整。

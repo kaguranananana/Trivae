@@ -90,11 +90,11 @@
 
 ## Final synthesis checklist
 
-- [ ] 六个 canonical tools 的最终 Agent surface 和 `search_messages` compatibility boundary。
-- [ ] 12 类综合 diagnostic query：exact lexical、semantic、deep context、member ambiguity、
+- [x] 六个 canonical tools 的最终 Agent surface 和 `search_messages` compatibility boundary。
+- [x] 14 类综合 diagnostic query：exact lexical、semantic、deep context、member ambiguity、
   member→retrieval、count、aggregation、mixed task、no-result、ambiguous、time-bounded、
   cross-tool。
-- [ ] 汇总 tool sequence、unnecessary calls、success/failure category、Evidence/Citation、
+- [x] 汇总 tool sequence、unnecessary calls、success/failure category、Evidence/Citation、
   latency、usage、rounds；不把 provisional evidence 写成确定结论。
-- [ ] 完整 tests、ruff、mypy、CI 可复核，Trellis validation 完成，interview-defense 更新。
+- [x] 完整 tests、ruff、mypy、compileall、Trellis validation 可复核，interview-defense 更新。
 - [ ] working tree clean，提交 task bookkeeping，不 push、不 amend。

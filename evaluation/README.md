@@ -37,6 +37,35 @@ statement。trusted `ExecutionScope` 在 adapter/SQLite driver boundary 强制�
 `WHERE` 决定；zero rows 是正常结果，超过 `max_rows` 保留 `truncated`。SQL structured evidence
 通过现有 `ToolResultRecord`/`StructuredSource` finalizer 校验，不能拼接 message citation。
 
+## Six-tool comprehensive Agent diagnostic
+
+`diagnostics/agent-tool-selection-comprehensive-v1.json` 是六个 canonical Agent-facing Tool 同时
+暴露时的综合 diagnostic catalog，包含 14 个 case，覆盖 lexical/semantic、context deepening、成员
+候选、COUNT/GROUP BY、mixed retrieval + SQL、no-result、zero rows 和 scope-sensitive execution。
+`search_messages` 只在 catalog 的 compatibility metadata 中出现，不进入 `available_tools`。
+
+这个 catalog 的 `preferred_first_tools`、`allowed_sequences` 和 `deterministic_contract` 是
+version-controlled diagnostic expectation，不是唯一正确序列，也不生成 `human_verified`。自然
+语言答案正确性、证据充分性和“是否需要下一次 Tool call”继续交给 LLM-assisted 或人工 review。
+
+综合 Run 仍使用现有 Query → Runtime → CapabilityRegistry → ToolResultRecord → Evidence/Citation
+→ Finalizer → Trace → Evaluation 链路。Evaluation 的 bounded operational projection 额外保存
+`tool_result_facts`、`evidence_count`、`citation_count`、`citation_state`、`finalization_state` 和
+`scope_enforcement`；它只从公开 Trace terminal facts 派生，不复制原始 Trace、聊天正文、SQL rows
+或 hidden chain-of-thought。
+
+Deterministic regression 入口：
+
+```bash
+.venv/bin/pytest -q tests/test_comprehensive_tool_diagnostics.py
+.venv/bin/pytest -q
+```
+
+真实 Provider smoke 只保存 case category、实际 Tool sequence、call/round、bounded result facts、
+Evidence/Citation/Finalizer 状态、Trace ID、latency、usage 和 Failure Case。单次重复 Tool call、
+Provider transport error 或 Finalizer rejection 都先进入诊断记录，不自动升级为 Runtime blocker，
+也不通过 fallback 或 citation repair 掩盖。
+
 Stage C 的最小验证入口：
 
 ```bash

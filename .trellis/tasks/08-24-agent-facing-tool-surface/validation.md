@@ -447,3 +447,194 @@ count 的失败 Trace `trace-ea31a454943b4bd1a52d6ebb31df5ce8` 保留为 FC-C3�
 bound、semantic 参数或增加新架构的依据。
 
 Checkpoint C commit 在本节完成、Trellis validation 和质量门禁重新确认后创建。
+
+## 13. Six-tool comprehensive diagnostic — 2026-08-24
+
+### 13.1 Diagnostic catalog and boundary
+
+本轮新增 `evaluation/diagnostics/agent-tool-selection-comprehensive-v1.json`，包含 14 个
+version-controlled diagnostic cases：
+
+- lexical/semantic dominant、context deepening 与 context-sufficient 对照；
+- unique/ambiguous/unknown member、member → retrieval；
+- COUNT、GROUP BY、mixed retrieval + SQL、structured zero rows；
+- lexical/semantic no-result、scope-sensitive mixed execution。
+
+所有 case 的 `available_tools` 恰好是：
+`lexical_search`、`semantic_search`、`get_message_context`、`find_members`、`get_schema`、
+`execute_sql`。`search_messages` 只出现在 compatibility metadata，不进入默认 surface。
+`preferred_first_tools`、`allowed_sequences` 和 `deterministic_contract` 明确标记为
+`diagnostic_contract_expectation`，不被解释为唯一正确序列或 `human_verified` ground truth。
+
+### 13.2 Evaluation projection and deterministic regression
+
+综合行为继续复用现有 `agent_tool_behavior_projection` 和 `operational_measurements`。本轮只在
+同一 projection 上增加 bounded `tool_result_facts`，并汇总：
+
+- 每个公开 Tool 的 category、status、returned messages/rows/candidates/tables、partial、truncated、
+  coverage、result bound、scope enforcement 和 SQL rewrite 状态；
+- 当前 Run 的 `evidence_count`、`citation_count`、`citation_state`、`finalization_state`；
+- 既有 `termination`、`latency_ms`、`usage`、`coverage_statuses` 和 Tool category sequences。
+
+投影只读取已有 normalized Trace terminal facts 和当前 `QueryResult` validated Artifact，不重新
+查询 Canonical Store，不保存聊天正文、SQL rows 或 hidden chain-of-thought。
+
+新增 `tests/test_comprehensive_tool_diagnostics.py` 覆盖：catalog case/category、六个 Tool 无重复
+注册、legacy 不进入默认 surface、六 Tool 在同一 Runtime/run_id/scope 中执行、ToolResult provenance、
+公开 Tool 计数和 Evaluation category/finalization projection。结果：`3 passed`；与既有测试合计
+全量 `275 passed`。
+
+### 13.3 Real Provider comprehensive smoke
+
+运行条件：
+
+- Provider：`opencode-go / deepseek-v4-flash`；
+- Canonical Store：当前真实 snapshot，473,236 条消息、7 个 session；
+- semantic index：现有 Qwen semantic index；
+- scope-sensitive case 的 session scope 由 `Application.list_sessions()` 读取，不绕过 Application
+  直接读数据库；
+- 输出只保留 case category、公开 Tool 行为、bounded result facts、Trace、Evidence/Citation、
+  Finalizer、latency/usage；没有把身份值、聊天正文、完整 SQL 结果或 credentials 写入 Git。
+
+下表中的 Evidence/Citation 是 `evidence_count/citation_count`；`—` 表示 Finalizer 未成功产生
+validated Artifact。latency/usage 是本次 provider、snapshot 和模型行为的 measured diagnostic
+facts，不是生产 SLA 或答案质量结论。
+
+| Case | Actual Tool sequence | Calls / rounds | Evidence / Citation | Final state | Trace | Latency / total tokens | Observation |
+| --- | --- | ---: | ---: | --- | --- | ---: | --- |
+| F1 lexical | `lexical → semantic → context` | 3 / 3 | 1 / 1 | completed | `trace-71e93d514359414195d0c74ada740ecb` | 163.4s / 62,822 | lexical first；后续 semantic/context 均保留 partial/truncated |
+| F2 semantic | `semantic → semantic` | 2 / 2 | 3 / 3 | completed | `trace-4af210d2b8f54d40a5ed27a8931f536d` | 72.4s / 91,123 | 同一意图重复 semantic call；两次 partial/truncated |
+| F3 context deepening | `lexical → semantic → context` | 3 / 3 | 1 / 1 | completed | `trace-5966249be8084aa6b0ca60f685851fde` | 80.1s / 65,940 | 显式 context deepening 可观察，未静默替换 retrieval |
+| F4 context sufficient | `lexical` | 1 / 1 | 0 / 0 | completed | `trace-6daf6f0b87ac4779aa6fa19ca5bea633` | 18.0s / 8,900 | 没有机械调用 context；无证据状态透明 |
+| F5 member → retrieval | `lexical → member → semantic → member → member → context` | 6 / 3 | — / — | failed | `trace-6e5844c0133245a2a647dc62c665f171` | 154.9s / 38,125 | Agent 重复 member；terminal `RUNTIME_ERROR/SSLError` |
+| F6 member ambiguity | `schema → sql ×4` | 5 / 3 | 2 / 2 | completed | `trace-d81f84f504cf468a98c389713ba147b6` | 206.8s / 54,036 | 未选择 find_members；SQL scope 正确但重复调用 |
+| F7 member no-result | `member` | 1 / 1 | 0 / 0 | completed | `trace-c52310a5d6fd45e79a0ef86183a1ce95` | 38.4s / 8,570 | 0 candidates 是显式成功，无身份编造 |
+| F8 structured count | `schema → sql` | 2 / 2 | 1 / 1 | completed | `trace-404a3e3001f44b66829e0e71fc08a57f` | 10.1s / 19,361 | public schema 后 bounded SQL，scope enforcement 完整 |
+| F9 aggregation | `schema → sql` | 2 / 2 | 1 / 1 | completed | `trace-7f38dde2f2a941ea9ccd0701de545ca2` | 55.3s / 19,416 | GROUP BY 走 structured path，结果有 truncation 摘要 |
+| F10 mixed (first) | `lexical → schema → semantic → sql` | 4 / 3 | — / — | failed | `trace-8456cd5115c74663968f5974f244b94a` | 103.3s / 83,790 | Tool 都成功，但 `INVALID_PROVENANCE` 阻止最终 Artifact |
+| F11 lexical no-result | `lexical` | 1 / 1 | 0 / 0 | completed | `trace-d4b7bb6cd74f4693b93ebd398bd28dd1` | 37.8s / 8,543 | 空结果透明，无 silent fallback |
+| F12 semantic weak | `lexical → semantic` | 2 / 2 | 1 / 1 | completed | `trace-b34131793573495682990ec6190f5ad9` | 87.7s / 39,879 | 先 lexical 后 semantic；semantic partial/truncated 可见 |
+| F13 structured zero (wording v1) | `schema → sql → sql` | 3 / 2 | 2 / 2 | completed | `trace-b53fb1ebc87f4e199b93b6241ec30f6c` | 83.5s / 20,915 | 得到 `COUNT=0` 一行，证明原 query wording 不是 zero-row case |
+| F14 scope (first) | no Tool call | 0 / 0 | — / — | failed | `trace-ee2fe9af3eb74fdfb1f7011a3128318c` | 60.2s / — | pre-tool `RUNTIME_ERROR/SSLError`，无 scope 结论 |
+
+### 13.4 Targeted reruns and corrected case evidence
+
+| Case | Actual Tool sequence | Calls / rounds | Evidence / Citation | Final state | Trace | Latency / total tokens | Observation |
+| --- | --- | ---: | ---: | --- | --- | ---: | --- |
+| F5 rerun | `lexical → member → semantic → member → context` | 5 / 3 | 2 / 2 | completed | `trace-7a1ab9bc457b4c29bd2859665e9f02a9` | 98.8s / 70,038 | provider SSL 未复现；Agent 仍 lexical first 且重复 member，完成但 cost 高 |
+| F10 rerun | `lexical → semantic → schema` | 3 / 3 | 2 / 2 | completed | `trace-dafffc8a1c52410e8fa7364723f75075` | 137.5s / 64,700 | 没有继续 `execute_sql`，mixed 统计未完成；sequence 具有模型方差 |
+| F13 corrected | `schema → sql` | 2 / 2 | — / — | failed | `trace-db848f1520204fd0bab18766aeb173e6` | 60.5s / 17,921 | SQL `returned_rows=0` 正确；Provider 提交不存在的 structured citation，被 `UNRESOLVED_STRUCTURED_SOURCE` 拒绝 |
+| F14 rerun | `schema → sql → sql` | 3 / 3 | 2 / 1 | completed | `trace-419e032605a74a9cb3f8427fbe6a230a` | 27.9s / 28,280 | partial scope 的 temp table + authorizer enforcement 正确；第二次 SQL 是 cost observation |
+
+### 13.5 Failure Cases and ownership
+
+#### FC-F1 — Same-intent semantic repetition
+
+- Scenario：F2 semantic-dominant case。
+- Observed behavior：`semantic_search → semantic_search`，两次均 partial/truncated；Finalizer 成功。
+- Owner layer：Agent Tool Selection / Runtime behavior observation，不是 Semantic Capability failure。
+- Root cause：当前 Provider 在已有 partial result 后重复选择同一 retrieval category；没有证据证明是
+  index stale 或 Tool contract 错误。
+- Handling：保留实际 sequence、round、latency、usage 和 partial facts；不加 query-specific blocker、
+  fixed hybrid 或 silent dedupe。
+- Regression evidence：catalog F2、deterministic sequence projection test、Trace
+  `trace-4af210d2b8f54d40a5ed27a8931f536d`。
+- Real rerun evidence：同意图重复行为在 F5/F12 以不同组合出现，但没有把单次 sequence 当唯一
+  ground truth；是否需要 prompt/planner 调整留待下一轮 Evaluation 决策。
+
+#### FC-F2 — Member task selection variance with transient provider failure
+
+- Scenario：F5 member → retrieval。
+- Observed behavior：首次 lexical first，随后重复 `find_members`，最终 `RUNTIME_ERROR/SSLError`；
+  member Tool 本身返回 ok，无 Tool error。
+- Owner layer：行为部分属于 Agent Selection；terminal failure 属于 external Provider Runtime。
+- Root cause：Trace 明确显示 provider transport `SSLError`，不是 scope、identity 或 retrieval
+  fallback；同一 case rerun 没有复现 transport failure。
+- Handling：不新增静默 retry/fallback；保留首次失败 Trace，并用 targeted rerun 区分 transient provider
+  failure 与 Agent behavior。
+- Regression evidence：现有 Runtime/provider error tests、catalog F5、Failure attribution Trace。
+- Real rerun evidence：`trace-7a1ab9bc457b4c29bd2859665e9f02a9` completed，但仍记录 lexical first
+  和重复 member cost；不能包装为 selection accuracy 结论。
+
+#### FC-F3 — Mixed retrieval/SQL composition can stop before required SQL
+
+- Scenario：F10 mixed retrieval + structured aggregation。
+- Observed behavior：首次调用到 `execute_sql` 但 Finalizer 因 provenance 失败；rerun 在 `get_schema`
+  后停止，没有执行 `execute_sql`，虽 completed 但任务维度未完成。
+- Owner layer：Agent Selection / termination / answer contract，各层 Trace 已分开记录。
+- Root cause：两次 sequence 不同；首次是 Provider artifact provenance contract failure，rerun 是
+  Agent 未完成结构化阶段。没有证据支持 SQL adapter 本身错误。
+- Handling：不硬编码 `retrieval → schema → sql`，Evaluation 记录 category switch、是否实际 SQL、
+  Finalizer 状态和 cost，等待重复 Failure Case 后再决定是否调整 guidance。
+- Regression evidence：catalog F10、same-runtime mixed sequence test、existing Finalizer provenance
+  regression。
+- Real rerun evidence：首次 `trace-8456cd5115c74663968f5974f244b94a`，rerun
+  `trace-dafffc8a1c52410e8fa7364723f75075`。
+
+#### FC-F4 — Finalizer rejects invalid current-run provenance
+
+- Scenario：F10 first run，Retrieval/Schema/SQL Tool 都返回 success。
+- Observed behavior：`runtime completed` 后 `citation.validation.failed(INVALID_PROVENANCE)`，Query
+  失败且没有提交 AnswerArtifact。
+- Owner layer：Evidence/Citation/Finalizer contract；不是 Tool success 判断。
+- Root cause：Provider 输出的 citation provenance 没有通过 current-run identity validation；Trace
+  的 failure attribution 为 `origin_stage=citation`。
+- Handling：保持 Finalizer hard gate，不猜 evidence ID、不做 citation repair、不删除 citation、不
+  fallback 到旧 Run 或其他数据源。
+- Regression evidence：existing current-run provenance tests、FC-C3、Trace
+  `trace-8456cd5115c74663968f5974f244b94a`。
+- Real rerun evidence：F10 rerun `trace-dafffc8a1c52410e8fa7364723f75075` 没有复现同一 Finalizer
+  failure，但暴露了另一种 Agent composition incompleteness；不能把 rerun 当作首次失败消失的质量证明。
+
+#### FC-F5 — Zero-row SQL result cannot support a fabricated structured citation
+
+- Scenario：修正后的 F13 structured zero-row case。
+- Observed behavior：`get_schema → execute_sql`，SQL `returned_rows=0`、scope enforcement 正确；
+  Provider 仍提交不存在的 structured source，Finalizer 返回 `UNRESOLVED_STRUCTURED_SOURCE`。
+- Owner layer：Provider answer artifact / Finalizer boundary；SQL zero-row semantics 本身正确。
+- Root cause：空 structured result 没有可引用的 row locator，但 Provider 仍生成了 citation；不是
+  Tool error，也不是将 zero rows 误报为 SQL error。
+- Handling：Finalizer 继续拒绝 unresolved source；Evaluation 分开记录 `returned_rows=0` 与
+  `citation_state=failed`，不 silent repair。
+- Regression evidence：Stage C zero-row and structured-source tests、catalog F13、Trace
+  `trace-db848f1520204fd0bab18766aeb173e6`。
+- Real rerun evidence：该 corrected rerun 已确认 SQL empty-result contract 与 Finalizer hard gate
+  同时生效。
+
+#### FC-F6 — Repeated SQL calls are observable cost, not scope escape
+
+- Scenario：F6 member ambiguity 和 F14 scope rerun。
+- Observed behavior：F6 错误选择 schema/SQL 并重复 SQL；F14 在正确 partial scope 下重复 SQL；两者
+  SQL rows、scope enforcement 和 Trace provenance 均保持 bounded。
+- Owner layer：Agent Selection / cost observation。
+- Root cause：Provider 对可见结果进行重复确认；没有发现 SQL rewrite、scope expansion 或第二套 pipeline。
+- Handling：记录 call count、rounds、latency、usage、returned rows 和 scope enforcement；当前不增加
+  progress handler、execution timeout 或 Runtime blocker，因为没有 runaway SQL Failure Case。
+- Regression evidence：Stage C structured tests、comprehensive projection test、F14 Trace
+  `trace-419e032605a74a9cb3f8427fbe6a230a`。
+- Real rerun evidence：F14 rerun 完成，scope enforcement 为
+  `scope_filtered_temp_tables_and_sqlite_authorizer`；重复 SQL 仍是可见 cost observation。
+
+### 13.6 Trace / Evaluation conclusion
+
+综合 Trace 可按以下链路定位问题：
+
+```text
+query.received
+  → visible capabilities / model tool action
+  → tool.call.* + retrieval/context/member/schema/sql terminal summary
+  → optional next Tool category
+  → evidence.prepare / citation.validation
+  → answer.finalization / query terminal
+```
+
+`TraceProjection.metrics.tool_count` 只统计公开 `tool.call.completed/failed`，不会把内部
+`retrieval.search.*`、`member.lookup.*`、`context.expansion.*` 或 `sql.execute.*` 重复计算。综合
+Evaluation 现在能直接观察 retrieval、context、member、schema、SQL、Evidence、Citation、
+Finalizer、termination、latency、usage、partial/truncated 和 scope enforcement；hidden
+chain-of-thought 没有进入 projection。
+
+本轮没有发现需要改动 Router、Planner、Agent Runtime、Retrieval 参数、SQL access boundary 或
+Finalizer contract 的确定性生产 bug。真实结果证明的是“行为可观察、失败可归属、scope/citation
+hard boundary 生效”，不是 Agent selection accuracy、自然语言答案 correctness、production
+latency SLA 或 `llm_assisted_provisional` retrieval quality 的结论。

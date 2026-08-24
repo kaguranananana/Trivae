@@ -126,6 +126,7 @@ def operational_measurements(
 ) -> dict[str, object]:
     """从 Runtime/Trace 派生运行事实，保持与回答质量分轴。"""
 
+    tool_result_facts = () if trace is None else _tool_result_facts(trace)
     measurements: dict[str, object] = {
         "termination": None if result is None else result.termination,
         "tool_calls": None if result is None else result.runtime_result.tool_count,
@@ -137,12 +138,17 @@ def operational_measurements(
         else dict(result.runtime_result.usage),
         "trace_completeness": None if trace is None else trace.completeness,
         "retrieval_count": None if trace is None else trace.metrics.retrieval_count,
+        "latency_ms": None if trace is None else trace.metrics.total_duration_ms,
+        "trace_limitations": (),
+        "coverage_statuses": (),
+        "scope_enforcement": (),
         "structured_sql": None if trace is None else _structured_sql_measurements(trace),
+        # 综合诊断需要按公开 Tool 保留 bounded 结果事实，而不是把原始 Trace 复制进 Evaluation。
+        "tool_result_facts": tool_result_facts,
         # 这是公开 action sequence 的 observation；preferred tool 仍由诊断 Case 和人工/模型 Review 分开判断。
         "agent_tool_behavior": agent_tool_behavior_projection(result),
     }
     if trace is not None:
-        measurements["latency_ms"] = trace.metrics.total_duration_ms
         limitations: list[str] = []
         coverage_statuses: list[str] = []
         for item in trace.timeline:
@@ -158,7 +164,148 @@ def operational_measurements(
                 limitations.append("partial")
         measurements["trace_limitations"] = tuple(sorted(set(limitations)))
         measurements["coverage_statuses"] = tuple(sorted(set(coverage_statuses)))
+        # scope_enforcement 只汇总 Tool 已公开的 enforcement 摘要，不从 SQL 或数据库重新推断权限。
+        measurements["scope_enforcement"] = tuple(
+            sorted(
+                {
+                    value
+                    for fact in tool_result_facts
+                    if isinstance(fact, Mapping)
+                    for value in (fact.get("scope_enforcement"),)
+                    if isinstance(value, str)
+                }
+            )
+        )
+    measurements.update(_finalization_measurements(result, trace))
     return measurements
+
+
+_TOOL_RESULT_OPERATION_CATEGORIES = (
+    ("retrieval.search.", "retrieval"),
+    ("context.expansion.", "context"),
+    ("member.lookup.", "member"),
+    ("schema.inspect.", "schema"),
+    ("sql.execute.", "sql"),
+)
+
+
+def _tool_result_facts(trace: TraceProjection) -> tuple[dict[str, object], ...]:
+    """从公开 Tool/Capability terminal event 派生 bounded 结果摘要。"""
+
+    # 先建立 operation_id 到 Tool 名称的映射，避免把内部 capability operation 当成一次新 Tool。
+    tool_names: dict[str, str] = {}
+    for item in trace.timeline:
+        if item.operation not in {"tool.call.started", "tool.call.completed", "tool.call.failed"}:
+            continue
+        tool_name = item.payload.get("tool_name")
+        if isinstance(tool_name, str) and tool_name:
+            tool_names[item.operation_id] = tool_name
+
+    facts: list[dict[str, object]] = []
+    for item in trace.timeline:
+        # started 事件只代表开始，不足以说明结果，Evaluation 只记录 terminal observation。
+        if item.phase not in {"completed", "failed", "skipped"}:
+            continue
+        category = next(
+            (
+                category_name
+                for prefix, category_name in _TOOL_RESULT_OPERATION_CATEGORIES
+                if item.operation.startswith(prefix)
+            ),
+            None,
+        )
+        if category is None:
+            continue
+        # Retrieval 的内部 payload 没有重复写 Tool 名称，沿 parent operation 回到公开 Tool event。
+        tool_name_value = item.payload.get("tool_name")
+        tool_name = (
+            tool_name_value
+            if isinstance(tool_name_value, str) and tool_name_value
+            else tool_names.get(item.parent_operation_id or "")
+        )
+        if tool_name is None:
+            # 没有公开 Tool parent 的内部 event 不属于 Agent-facing behavior projection。
+            continue
+        status = item.outcome if item.outcome is not None else ("error" if item.phase != "completed" else "ok")
+        fact: dict[str, object] = {
+            "tool_name": tool_name,
+            "category": category,
+            "operation": item.operation,
+            "status": status,
+        }
+        # 只复制稳定的计数、完整性、coverage 和 scope 摘要，不保存消息正文、SQL 或候选正文。
+        for field_name in (
+            "returned_messages",
+            "returned_rows",
+            "returned_candidates",
+            "returned_tables",
+            "candidate_count",
+            "partial",
+            "truncated",
+            "coverage",
+            "scope_enforcement",
+            "result_bound",
+            "sql_rewritten",
+            "error_code",
+        ):
+            value = item.payload.get(field_name)
+            if value is not None:
+                fact[field_name] = value
+        facts.append(fact)
+    return tuple(facts)
+
+
+def _finalization_measurements(
+    result: QueryResult | None,
+    trace: TraceProjection | None,
+) -> dict[str, object]:
+    """汇总当前 Run 的 Evidence/Citation/Finalizer 状态，不把成功等同于答案质量。"""
+
+    evidence_count: int | None = None
+    citation_count: int | None = None
+    citation_state = "not_available"
+    finalization_state = "not_available"
+    if trace is not None:
+        for item in trace.timeline:
+            if item.operation == "evidence.prepare.completed":
+                value = item.payload.get("evidence_count")
+                if isinstance(value, int) and not isinstance(value, bool):
+                    evidence_count = value
+            elif item.operation == "citation.validation.completed":
+                value = item.payload.get("binding_count")
+                if isinstance(value, int) and not isinstance(value, bool):
+                    citation_count = value
+                unresolved = item.payload.get("unresolved_count")
+                citation_state = "passed" if unresolved == 0 else "failed"
+            elif item.operation == "citation.validation.failed":
+                citation_state = "failed"
+            elif item.operation == "answer.finalization.completed":
+                finalization_state = "completed"
+            elif item.operation == "answer.finalization.failed":
+                finalization_state = "failed"
+            elif item.operation == "answer.finalization.skipped":
+                finalization_state = "skipped"
+
+    # Trace 缺失时只用当前 QueryResult 的已验证 artifact 补充计数，不补造 Trace 状态。
+    if result is not None and isinstance(result.answer_artifact, AnswerArtifact):
+        if evidence_count is None:
+            evidence_count = len(result.answer_artifact.evidence_items)
+        if citation_count is None:
+            citation_count = len(result.answer_artifact.citation_bindings)
+    if result is not None:
+        if result.finalization_error is not None:
+            citation_state = "failed"
+            finalization_state = "failed"
+        elif result.is_successful:
+            citation_state = "passed"
+            finalization_state = "completed"
+
+    return {
+        "evidence_count": evidence_count,
+        "citation_count": citation_count,
+        "citation_state": citation_state,
+        "finalization_state": finalization_state,
+    }
 
 
 def _structured_sql_measurements(trace: TraceProjection) -> dict[str, object]:
