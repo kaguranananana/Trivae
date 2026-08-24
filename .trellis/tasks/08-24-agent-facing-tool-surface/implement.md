@@ -97,4 +97,4 @@
 - [x] 汇总 tool sequence、unnecessary calls、success/failure category、Evidence/Citation、
   latency、usage、rounds；不把 provisional evidence 写成确定结论。
 - [x] 完整 tests、ruff、mypy、compileall、Trellis validation 可复核，interview-defense 更新。
-- [ ] working tree clean，提交 task bookkeeping，不 push、不 amend。
+- [x] working tree clean，提交 task bookkeeping，不 push、不 amend。
