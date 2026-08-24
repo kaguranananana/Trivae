@@ -493,13 +493,16 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
 
         if operator not in ("<", ">", "<=", ">="):
             raise ValueError(f"Unsupported order boundary operator: {operator}")
+        # 只有最后一个排序字段使用调用方的包含/不包含比较符。
+        # timestamp、missing_seq、seq 是更高优先级字段，必须永远使用严格方向。
+        prefix_operator = ">" if operator in (">", ">=") else "<"
         missing_expression = f"CASE WHEN {alias}.seq IS NULL THEN 1 ELSE 0 END"
         seq_expression = f"COALESCE({alias}.seq, 0)"
         boundary = f"""
         (
-            {alias}.timestamp {operator} ?
-            OR ({alias}.timestamp = ? AND {missing_expression} {operator} ?)
-            OR ({alias}.timestamp = ? AND {missing_expression} = ? AND {seq_expression} {operator} ?)
+            {alias}.timestamp {prefix_operator} ?
+            OR ({alias}.timestamp = ? AND {missing_expression} {prefix_operator} ?)
+            OR ({alias}.timestamp = ? AND {missing_expression} = ? AND {seq_expression} {prefix_operator} ?)
             OR (
                 {alias}.timestamp = ? AND {missing_expression} = ? AND {seq_expression} = ?
                 AND {alias}.internal_message_id {operator} ?

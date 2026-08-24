@@ -1,6 +1,6 @@
 # Database Guidelines
 
-> 状态：**M1 SQLite Canonical Store、M2 read/FTS5 derived boundary 已实现；Semantic/Vector 等后续存储仍 Pending**
+> 状态：**M1 SQLite Canonical Store、M2 read/FTS5 derived boundary、Semantic v1 derived index 已实现；跨环境 migration/deployment 仍 Pending**
 > Stage 1.4 已确认第一版 persistent store 使用 SQLite；本节同时记录 M1 canonical、M2 read/FTS5 derived 和 M3 读取边界的实际实现契约。
 
 ---
@@ -124,6 +124,70 @@ write_variant_when_projection_differs(incoming)
 
 - `search_messages` 是本轮最小 Tool registry 名称；Capability 继承 trusted session/time scope、验证 bound，再调用 Retrieval Core 的 lexical + automatic context expansion。
 - Tool envelope 只投影 `ok`/`partial`/`error`、`meta.truncated`、typed error 和 Retrieval Result；Tool 不执行 SQL、构造 FTS expression 或实现 context merge/order/trim。
+
+## Semantic v1 Derived Index 与 Canonical Range Contract
+
+### 1. Scope / Trigger
+
+- Trigger：Semantic Retrieval 使用独立 sqlite-vec derived database、Time-aware Parent + Small Child 和 canonical range recovery；真实 Qwen rebuild 暴露了排序边界必须与 canonical ordering 完全一致的 Failure Case。
+- Scope：`SQLiteCanonicalReadRepository` 的 range read、Semantic Index identity/status、dense candidate recovery；不改变 Canonical Message source of truth，也不提供 lexical fallback。
+
+### 2. Signatures
+
+- `SQLiteCanonicalReadRepository.iter_semantic_messages(batch_size: int) -> Iterator[MessageProjection]`
+- `SQLiteCanonicalReadRepository.read_message_range(session_id: str, start_message_id: str, end_message_id: str, limit: int) -> tuple[MessageProjection, ...]`
+- `SemanticRetrieval.search(query: SemanticQuery) -> SemanticRetrievalResult`
+- `SemanticIndexStore.state() -> SemanticIndexState | None`
+
+### 3. Contracts
+
+- Derived identity 必须包含 `database_identity`、provider/model、dimension、pooling、normalization、query instruction、chunker version/config；不得保存或序列化 API key、Authorization、cache path 等 secret。
+- Canonical range 的排序 tuple 固定为 `timestamp ASC`、present/missing `seq`、`internal_message_id`；range 两端 inclusive，`limit` 必须为正整数。
+- 生成 lexicographic SQL boundary 时，只有最后的 `internal_message_id` 使用调用方的 `<`/`<=`/`>`/`>=`；更高优先级字段永远使用严格方向，避免同 timestamp/seq 的前序消息越界进入 range。
+- Semantic index 缺失、identity mismatch、canonical count drift、building/failed/empty 状态必须显式返回 unavailable/stale；检索不得改写成 lexical success。
+- Chunk/vector row 只保存 bounded acquisition metadata；最终结果和 citation 必须从 canonical repository 恢复 `MessageProjection`。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 处理 | 可观察结果 |
+| --- | --- | --- |
+| `limit` 非正整数或 boundary operator 非法 | 立即拒绝 | `ValueError`，不执行查询 |
+| start/end message 不存在 | 拒绝 range recovery | `RetrievalError`，保留缺失边界信息 |
+| start 排序位置晚于 end | 拒绝反向 range | `RetrievalError`，不返回部分伪结果 |
+| start/end 与前序消息共享 timestamp/seq | 按完整排序 tuple 截取 | 只有 ID 位于 inclusive range 的消息返回 |
+| identity mismatch 或 canonical count drift | 不查询旧 derived rows | `SemanticIndexStale`，要求显式 rebuild |
+| index building/failed/empty | 不加载 query embedding | `SemanticIndexUnavailable`，保留原始状态/错误 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：`m1`/`m2` 共享 timestamp 与 seq，range `m2..m3` 只返回 `m2,m3`；重开进程后同一 identity 可继续读取。
+- Base：range 中间字段严格比较、最终 ID 字段使用 inclusive operator；bounded `limit` 截断由结果 coverage/partial 显式表达。
+- Bad：所有 tuple 字段都使用 `>=`/`<=`，把 `m1` 带入 `m2..m3`；或 index stale 时静默调用 `search_messages`。
+
+### 6. Tests Required
+
+- `tests/test_sqlite_read.py`：同 timestamp/seq 的 boundary regression，断言 exact internal ID sequence、inclusive 两端和不包含前序消息。
+- `tests/test_semantic_retrieval.py`：identity/stale/unavailable 状态、dimension/norm contract、canonical recovery、filters/top-k/coverage 与无 lexical fallback。
+- 真实校验：metadata/vector/state counts 一致、sample norm/range recovery、reopen persistence、query-instruction identity stale probe；失败必须保留具体 origin stage。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```sql
+timestamp >= ? OR (timestamp = ? AND seq >= ?) OR (... AND internal_message_id >= ?)
+```
+
+这会让排序 tuple 的前缀字段也包含边界，导致同 timestamp/seq 的前序消息越过 range 起点。
+
+#### Correct
+
+```text
+# 高优先级排序字段严格前进，只有最后 ID 字段保留包含语义。
+timestamp > ? OR (timestamp = ? AND seq > ?) OR (... AND internal_message_id >= ?)
+```
+
+该规则与 `ORDER BY` 的 lexicographic 语义一致，并由同序消息回归测试固定下来。
 
 ## M5b Conversation Store Contract
 

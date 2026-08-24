@@ -29,18 +29,18 @@
 
 ## Acceptance Criteria
 
-- [ ] 聚焦测试覆盖 chunking、semantic void、provider contract、identity/stale、sqlite-vec build/rebuild、filters/top-k/coverage、scope/tool errors、Trace attribution 与 current-run citation provenance。
-- [ ] `TrivaeApplication.rebuild_semantic_index()` 能通过注入 provider 重建独立 index；同一 identity 可重复重建，identity 变化不会继续使用旧 index。
-- [ ] 真实 Agent Runtime 可见并调用 `semantic_search`，Tool Result 可进入现有 finalizer；失败时不执行 lexical fallback。
-- [ ] semantic candidate 能恢复为 canonical `MessageProjection`，Evidence/Citation 不暴露 chunk/vector 作为最终 source。
-- [ ] baseline/candidate evaluation variant 显式记录 available tools、retrieval configuration 与 semantic index identity。
-- [ ] 运行 `pytest -q`、`ruff check src tests`、`mypy src`、`git diff --check`；失败先修实现根因并记录。
-- [ ] validation.md 明确记录真实 smoke 是否完成、测试事实、已知限制与 Pending Evaluation，不把未完成项写成完成。
-- [ ] 全量真实 Qwen rebuild 完成并验证 index identity、1024 dimensions、状态、row consistency、canonical recovery、reopen persistence 与 stale detection；或记录不可规避的外部 blocker。
-- [ ] 生成 local-only blind annotation、sealed retrieval metadata、完整 LLM-assisted provisional labels、逐条 confidence 与 audit queue。
-- [ ] 在同一 Snapshot 上完成 lexical/semantic paired metrics；所有质量指标显式标记 `llm_assisted_provisional`，并区分 pooled-candidate Recall 与 corpus Recall。
-- [ ] 单元测试覆盖 perfect/partial/miss/duplicate/rank/no-relevant/unknown/partial annotation/invalid snapshot/paired comparison。
-- [ ] 最终测试、lint、type check、compileall、Trellis validation 通过；任务归档、分支 push、working tree clean。
+- [x] 聚焦测试覆盖 chunking、semantic void、provider contract、identity/stale、sqlite-vec build/rebuild、filters/top-k/coverage、scope/tool errors、Trace attribution 与 current-run citation provenance。
+- [x] `TrivaeApplication.rebuild_semantic_index()` 能通过注入 provider 重建独立 index；同一 identity 可重复重建，identity 变化不会继续使用旧 index。
+- [x] 真实 Agent Runtime 可见并调用 `semantic_search`，Tool Result 可进入现有 finalizer；失败时不执行 lexical fallback。
+- [x] semantic candidate 能恢复为 canonical `MessageProjection`，Evidence/Citation 不暴露 chunk/vector 作为最终 source。
+- [x] baseline/candidate evaluation variant 显式记录 available tools、retrieval configuration 与 semantic index identity。
+- [x] 运行 `pytest -q`、`ruff check src tests`、`mypy src`、`git diff --check`；失败先修实现根因并记录。
+- [x] validation.md 明确记录真实 smoke 是否完成、测试事实、已知限制与 Pending Evaluation，不把未完成项写成完成。
+- [x] 全量真实 Qwen rebuild 完成并验证 index identity、1024 dimensions、状态、row consistency、canonical recovery、reopen persistence 与 stale detection；或记录不可规避的外部 blocker。
+- [x] 生成 local-only blind annotation、sealed retrieval metadata、完整 LLM-assisted provisional labels、逐条 confidence 与 audit queue。
+- [x] 在同一 Snapshot 上完成 lexical/semantic paired metrics；所有质量指标显式标记 `llm_assisted_provisional`，并区分 pooled-candidate Recall 与 corpus Recall。
+- [x] 单元测试覆盖 perfect/partial/miss/duplicate/rank/no-relevant/unknown/partial annotation/invalid snapshot/paired comparison。
+- [x] 最终测试、lint、type check、compileall、Trellis validation 通过；任务归档、分支 push、working tree clean。
 
 ## Notes
 

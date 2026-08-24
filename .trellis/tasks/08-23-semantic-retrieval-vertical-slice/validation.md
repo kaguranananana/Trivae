@@ -149,24 +149,56 @@ provisional labels 升级为 `human_verified` 时，前者会拒绝 verified 条
 statuses；`human` 则要求全部条目均为 `human_verified`。测试覆盖 partial upgrade 与禁止
 把 mixed set 冒充 fully human verified。
 
+### Canonical range boundary was not lexicographic
+
+真实 semantic packet 首次运行在一个同 `timestamp`、同 `seq` 的 QQ 消息边界失败；原
+`read_message_range()` 在比较高优先级排序字段时错误复用了最终字段的包含比较符，可能把
+range 起点之前的同序消息带入。修复后高优先级字段始终使用严格方向，只有最后的
+`internal_message_id` 使用 `<`/`<=`/`>`/`>=` 的调用方语义；新增同 timestamp/seq 的
+SQLite regression，随后 12-query packet 重新生成成功。没有通过截断、跳过或 lexical
+fallback 掩盖这个数据层错误。
+
 ## Full real-data Qwen rebuild
 
-当前最终 full run 正在同一 Snapshot 上执行；完成后在此记录 authoritative message/
-eligible/void/parent/chunk/vector counts、batch count、model/embed/write/total wall time、
-throughput、RSS/MPS best effort、index size、status 与完整 identity。任务归档前不会把
-`building` 写成 completed。
+最终 full run 已在同一 Snapshot 上完成，且没有修改 Canonical Store：
+
+| fact | measured value |
+| --- | ---: |
+| canonical / indexed messages | 473,236 / 473,236 |
+| eligible / semantic-void messages | 391,549 / 81,687 |
+| Parent count | 14,552 |
+| Child / vector count | 54,267 / 54,267 |
+| skipped void-only chunks | 5,109 |
+| embedding batch size / count | 8 / 6,863 |
+| provider model load | 12.665 s |
+| embedding time | 13,222.604 s |
+| SQLite metadata/vector write time | 19.812 s |
+| builder elapsed | 13,313.366 s |
+| end-to-end CLI wall time (`/usr/bin/time -l`) | 13,317.45 s |
+| throughput | 4.076 chunks/s; 35.546 messages/s |
+| maximum RSS | 847,446,016 bytes (808.2 MiB) |
+| peak macOS footprint | 6,235,211,288 bytes (5.81 GiB) |
+| derived semantic index size | 313,704,448 bytes (299.2 MiB) |
+| final state | `completed`, `last_error=null` |
+
+最终 identity 为 `Qwen/Qwen3-Embedding-0.6B / 1024 / last_token / normalized`、固定
+retrieval instruction、`trivae-semantic-chunker-v1` 及完整 chunker config；configured 与
+persisted identity 完全一致。最终 run 未使用其他模型、降维、reranker、RRF、Hybrid 或
+lexical fallback。
 
 ## Integrity validation after rebuild
 
-成功后执行并记录：
+最终 CLI integrity report 与后续独立进程校验均通过：
 
 - `status == completed`，configured/persisted identity exact match；
 - canonical/indexed message watermark 为 473,236，dimension 为 1024；
-- metadata rows、vec0 rows、state chunk count 一致，无 missing/orphan vector；
-- bounded sample norm deviation 与 canonical first/last range recovery；
+- metadata rows、vec0 rows、state chunk count 均为 54,267，无 missing/orphan vector；
+- CLI sample 16 的最大 norm deviation 为 `5.077e-09`，后续 sample 64 为 `6.503e-09`；
+- canonical range recovery 为 16/16，后续独立 sample 64 为 64/64，invalid range 为 0；
 - 中文、英文、中英混合、短/长、emoji/Unicode、URL、code/technical、repeated/
-  near-duplicate 的分层 canonical recovery；
-- 新进程 reopen/status/search 与 identity mismatch stale detection。
+  near-duplicate 九类分层 canonical recovery 全部 selected/recovered；
+- 新进程 reopen 状态为 `completed`，semantic smoke 成功返回 1 个 hit（partial 仅因
+  bounded dense pool）；query instruction 改动的 identity probe 正确报告 `stale`。
 
 ## Blind annotation and paired Evaluation
 
@@ -182,12 +214,16 @@ lexical-only control 和 semantic-only candidate，合并后按
 - `sealed-metadata.json`：检索方法、rank、score、index/variant provenance 与 diagnostics；
 - `annotations.json`：每个 blind ID 的 label、confidence、notes 和 verification status；
 - `audit-queue.json`：低 confidence、uncertain、partial、方法分歧和指标高影响项；
-- `metrics.json`：不含聊天正文的 paired report。
+- `evaluation/reports/semantic-vs-lexical-provisional-v1.json`：不含聊天正文的 paired
+  report（安全统计报告进入 Git；local packet/annotation artifact 继续 gitignored）。
 
 真实 OpenAI-compatible provider smoke 已成功返回严格 JSON；安全 identity 为
 `opencode-go:deepseek-v4-flash:retrieval-relevance-v1`。所有自动标签被 contract 强制为
 `llm_assisted_provisional`，`ground_truth_claim=false`，不得升级为 `human_verified`。
-最终 annotation/label/confidence/audit counts 与 paired metrics 在 full index 完成后记录。
+最终 packet 有 12 queries、173 个 canonical candidates；173/173 annotations 完整且无
+重复，label counts 为 relevant=50、partially_relevant=17、not_relevant=106、uncertain=0。
+confidence 为 min=0.5、mean=0.854971、max=1.0；audit queue 为 117 条，priority 为
+high=22、medium=69、low=26。没有任何 `human_verified` 条目。
 
 ## Metric interpretation
 
@@ -199,6 +235,13 @@ lexical-only control 和 semantic-only candidate，合并后按
 - corpus Recall 永远 unavailable，原因是 reference 不具备 corpus-exhaustive annotation；
 - LLM 标签产生的数字全部是 provisional metrics，不是 human ground truth，也不作为
   production gate。
+
+本轮 paired report 的 aggregate snapshot（均明确为 `llm_assisted_provisional`，只用于
+后续人工抽查和假设生成）为：Precision@8 lexical=0.2396、semantic=0.2813；pooled-
+candidate Recall@8 lexical=0.3474、semantic=0.6526；MRR lexical=0.4348、semantic=0.6212；
+Top-8 hit lexical=0.6364、semantic=0.9091；partial relevant coverage lexical=0.3646、
+semantic=0.6354。该 candidate pool 不是 corpus-exhaustive reference，corpus Recall 保持
+`unavailable`，不能把这些数字升级为 human ground truth 或生产质量结论。
 
 ## Default Agent exposure and deferred decisions
 

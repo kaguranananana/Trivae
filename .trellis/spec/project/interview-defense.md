@@ -160,7 +160,7 @@ M5a 的事实来源集中在归档的 [task PRD](../../tasks/archive/2026-08/08-
 - 为什么 Retrieval Candidate 不等于 Final Evidence：Retrieval 只提供 bounded candidate / structured result，Agent final synthesis 组织 question-specific finding，validator 只验证结构、locator、scope 和可信 hydration。
 - 为什么不引入 Evidence Agent / Judge：Stage 1.8 ownership 与当前实现都把 semantic entailment 留给 M7 Evaluation；M5 没有第二套 Agent Loop。
 - 为什么 invalid citation 不 silent fallback：finalizer 通过 `finalization_error` 阻止正式 `final_answer`，不会删 binding、换来源或 retry；对应 bad cases 在 `tests/test_evidence.py`。
-- 当前限制：M5b 已完成第一版 Conversation / Assistant Message durable persistence；Trace backend 与 semantic vertical slice 已落地，但 Qwen semantic quality、chunk/ANN bounds calibration 仍待 real-run evidence。
+- 当前限制：M5b 已完成第一版 Conversation / Assistant Message durable persistence；Trace backend 与 semantic vertical slice 已落地。Qwen 已完成真实 Snapshot baseline 与 LLM-assisted provisional paired evaluation，但 human-verified quality、corpus-exhaustive reference、chunk/ANN 长期 bounds calibration 仍待后续证据。
 
 ## Semantic Retrieval Vertical Slice 事实索引
 
@@ -169,7 +169,7 @@ M5a 的事实来源集中在归档的 [task PRD](../../tasks/archive/2026-08/08-
 - 为什么 query instruction 不能加到 document：`SentenceTransformerEmbeddingProvider` 分离 `embed_documents()` 与 `embed_query()`，只有 query 进入 `Instruct: ...\nQuery: ...`；dimension、normalized、pooling、instruction 与 chunker config 都进入 readable index identity。
 - 为什么 chunk 不能直接引用：semantic candidate 的 chunk/parent/range 只用于 acquisition provenance；`ToolResultRecord` 只保存恢复后的 canonical `MessageProjection`，Finalizer 的 `MessageSource` 指向 message identity。
 - 如何区分失败：未构建/构建中/failed 是 unavailable，identity 或 canonical count 漂移是 stale，partial/truncated 是结果完整性状态；Semantic Tool 不把这些状态改写成 lexical success。
-- 当前未宣称的事实：官方 `sentence-transformers` provider 已在本地加载 `Qwen/Qwen3-Embedding-0.6B`，并在 3-message synthetic fixture 上完成 1024-d normalized ANN smoke；这只能证明 provider/index 主链可运行，不能推出真实聊天数据上的 Recall、Precision、质量提升或生产 latency。全量 canonical Qwen rebuild 与人工 Finding annotation 仍待校准。
+- 当前未宣称的事实：官方 `sentence-transformers` provider 已在本地对 473,236 条 canonical messages 完成 `Qwen/Qwen3-Embedding-0.6B`、1024-d normalized full rebuild，且 12-query/173-candidate report 已生成；这些 annotation 与 Recall/Precision/MRR/Top-k 数字全部是 `llm_assisted_provisional`，`ground_truth_claim=false`，不能推出 human ground truth、corpus Recall、质量提升或生产 SLA。下一步是人工抽查 audit queue，并在 verified labels 后重跑 metrics。
 
 - Real-run failure evidence：Qwen3 的 bfloat16 Normalize 输出在 Python float projection 中观察到约 `1.002`–`1.003` 的范数；provider 在官方 encode 后做确定性 float normalization，再以严格阈值校验并写入 vec0。放宽 normalized 校验不是可接受修复；对应 regression 在 `tests/test_semantic_retrieval.py`。
 

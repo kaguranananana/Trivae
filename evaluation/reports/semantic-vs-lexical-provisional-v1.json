@@ -1,0 +1,4321 @@
+{
+  "aggregate": {
+    "lexical": [
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": null,
+        "macro_value": 0.4348484848484848,
+        "name": "mrr",
+        "scope": "retrieved_ranking",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 8,
+        "k": null,
+        "macro_value": 0.3645833333333333,
+        "name": "partial_relevant_coverage",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_partially_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 1,
+        "macro_value": 0.3333333333333333,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 3,
+        "macro_value": 0.25,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 5,
+        "macro_value": 0.26666666666666666,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 8,
+        "macro_value": 0.23958333333333334,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 1,
+        "macro_value": 0.08376623376623377,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 3,
+        "macro_value": 0.1603896103896104,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 5,
+        "macro_value": 0.2551948051948052,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 8,
+        "macro_value": 0.3474025974025974,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": null,
+        "macro_value": 0.3474025974025974,
+        "name": "relevant_message_coverage",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 1,
+        "macro_value": 0.36363636363636365,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 3,
+        "macro_value": 0.45454545454545453,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 5,
+        "macro_value": 0.6363636363636364,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 8,
+        "macro_value": 0.6363636363636364,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      }
+    ],
+    "semantic": [
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": null,
+        "macro_value": 0.6212121212121212,
+        "name": "mrr",
+        "scope": "retrieved_ranking",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 8,
+        "k": null,
+        "macro_value": 0.6354166666666666,
+        "name": "partial_relevant_coverage",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_partially_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 1,
+        "macro_value": 0.4166666666666667,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 3,
+        "macro_value": 0.3333333333333333,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 5,
+        "macro_value": 0.2833333333333334,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "available",
+        "evaluable_queries": 12,
+        "k": 8,
+        "macro_value": 0.28125,
+        "name": "precision_at_k",
+        "scope": "retrieved_top_k",
+        "total_queries": 12,
+        "unavailable_reasons": []
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 1,
+        "macro_value": 0.1595238095238095,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 3,
+        "macro_value": 0.30086580086580084,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 5,
+        "macro_value": 0.3835497835497836,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 8,
+        "macro_value": 0.6525974025974026,
+        "name": "recall_at_k",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": null,
+        "macro_value": 0.6525974025974026,
+        "name": "relevant_message_coverage",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 1,
+        "macro_value": 0.45454545454545453,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 3,
+        "macro_value": 0.7272727272727273,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 5,
+        "macro_value": 0.7272727272727273,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      },
+      {
+        "availability": "partial",
+        "evaluable_queries": 11,
+        "k": 8,
+        "macro_value": 0.9090909090909091,
+        "name": "top_k_hit_success",
+        "scope": "merged_candidate_pool",
+        "total_queries": 12,
+        "unavailable_reasons": [
+          "no_relevant_candidate_in_annotated_pool"
+        ]
+      }
+    ]
+  },
+  "annotation_provenance": {
+    "annotation_count": 173,
+    "annotator_identity": "opencode-go:deepseek-v4-flash:retrieval-relevance-v1",
+    "annotator_type": "llm_assisted",
+    "confidence": {
+      "maximum": 1.0,
+      "mean": 0.8549710982658959,
+      "minimum": 0.5
+    },
+    "label_counts": {
+      "not_relevant": 106,
+      "partially_relevant": 17,
+      "relevant": 50,
+      "uncertain": 0
+    },
+    "rubric_version": "retrieval-relevance-v1",
+    "verification_counts": {
+      "human_verified": 0,
+      "llm_assisted_provisional": 173
+    }
+  },
+  "corpus_recall": {
+    "availability": "unavailable",
+    "reason": "reference is not corpus-exhaustive"
+  },
+  "created_at": "2026-08-24T01:06:52.318+00:00",
+  "ground_truth_claim": false,
+  "lexical_variant_id": "lexical-only-retrieval-control-v1",
+  "metric_status": "llm_assisted_provisional",
+  "queries": [
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 0,
+      "pool_complete": true,
+      "query_id": "literal-langgraph",
+      "query_types": [
+        "literal_keyword",
+        "technical_term"
+      ],
+      "relevant_candidate_count": 14,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 3298.0673339916393,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.07142857142857142
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.21428571428571427
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.35714285714285715
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5714285714285714
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5714285714285714
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 18503.128332988126,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.07142857142857142
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.6666666666666666
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.14285714285714285
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.8
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.2857142857142857
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.75
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.42857142857142855
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.42857142857142855
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 3,
+      "pool_complete": true,
+      "query_id": "literal-deepseek",
+      "query_types": [
+        "literal_keyword",
+        "lexical_easy"
+      ],
+      "relevant_candidate_count": 10,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2380.924375000177,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.1
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.3
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.75
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.6
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.6
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.6666666666666666
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2011.360540986061,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.1
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.3
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.8
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.3333333333333333
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 1,
+      "pool_complete": true,
+      "query_id": "paraphrase-agent-framework",
+      "query_types": [
+        "paraphrase",
+        "synonym",
+        "chinese_natural_language"
+      ],
+      "relevant_candidate_count": 2,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2636.0568339878228,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2536.2251670158003,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 12,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 0,
+      "pool_complete": true,
+      "query_id": "local-model-memory",
+      "query_types": [
+        "chinese_natural_language",
+        "paraphrase",
+        "technical_term"
+      ],
+      "relevant_candidate_count": 2,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1085.6896250043064,
+            "partial": false,
+            "retrieved_unique_candidates": 4,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.125
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1883.3341670106165,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.125
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.16666666666666666
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 0,
+      "pool_complete": true,
+      "query_id": "rag-retrieval-problems",
+      "query_types": [
+        "technical_term",
+        "semantic_synthesis"
+      ],
+      "relevant_candidate_count": 3,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1202.6572079921607,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2326.3218750071246,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.6666666666666666
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.375
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 1,
+      "pool_complete": true,
+      "query_id": "github-tool-recommendation",
+      "query_types": [
+        "github_repository",
+        "tool_recommendation"
+      ],
+      "relevant_candidate_count": 5,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1771.2504579976667,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1727.1527500124648,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.375
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.6
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.6
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 9,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 1,
+      "pool_complete": true,
+      "query_id": "time-bounded-internship",
+      "query_types": [
+        "time_bounded",
+        "chinese_natural_language"
+      ],
+      "relevant_candidate_count": 4,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1222.6740409969352,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 324.66549999662675,
+            "partial": false,
+            "retrieved_unique_candidates": 1,
+            "truncated": false
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 8,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 0,
+      "pool_complete": true,
+      "query_id": "synthetic-no-result",
+      "query_types": [
+        "no_result",
+        "synthetic_negative"
+      ],
+      "relevant_candidate_count": 0,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 152.61254098732024,
+            "partial": false,
+            "retrieved_unique_candidates": 0,
+            "truncated": false
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "mrr",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2533.4885000193026,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "unavailable",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "mrr",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": "no_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            },
+            {
+              "availability": "unavailable",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": "no_partially_relevant_candidate_in_annotated_pool",
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": null
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 3,
+      "pool_complete": true,
+      "query_id": "broad-learning-topic",
+      "query_types": [
+        "broad_ambiguous",
+        "chinese_natural_language"
+      ],
+      "relevant_candidate_count": 1,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1232.273624977097,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2358.584041998256,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.125
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 1,
+      "pool_complete": true,
+      "query_id": "nearby-link-evaluation",
+      "query_types": [
+        "nearby_context",
+        "github_repository"
+      ],
+      "relevant_candidate_count": 2,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2482.429374998901,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.125
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2343.3709999953862,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.125
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.16666666666666666
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 4,
+      "pool_complete": true,
+      "query_id": "database-selection",
+      "query_types": [
+        "technical_term",
+        "paraphrase",
+        "mixed_language"
+      ],
+      "relevant_candidate_count": 3,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1971.76416698494,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.25
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1614.5206250075717,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.3333333333333333
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.6666666666666666
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.375
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.75
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    },
+    {
+      "annotated_candidate_count": 16,
+      "diagnostic_query": true,
+      "partially_relevant_candidate_count": 3,
+      "pool_complete": true,
+      "query_id": "interview-experience",
+      "query_types": [
+        "chinese_natural_language",
+        "experience_summary"
+      ],
+      "relevant_candidate_count": 4,
+      "strategies": {
+        "lexical": {
+          "diagnostics": {
+            "coverage_status": "complete",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 1530.7481250201818,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.125
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 0.2
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.0
+            }
+          ]
+        },
+        "semantic": {
+          "diagnostics": {
+            "coverage_status": "partial",
+            "duplicate_candidate_count": 0,
+            "latency_ms": 2532.040499994764,
+            "partial": true,
+            "retrieved_unique_candidates": 8,
+            "truncated": true
+          },
+          "metrics": [
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.25
+            },
+            {
+              "availability": "available",
+              "k": 1,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.6666666666666666
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 3,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.4
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.5
+            },
+            {
+              "availability": "available",
+              "k": 5,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "precision_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_top_k",
+              "value": 0.375
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "recall_at_k",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.75
+            },
+            {
+              "availability": "available",
+              "k": 8,
+              "name": "top_k_hit_success",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "mrr",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "retrieved_ranking",
+              "value": 1.0
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "relevant_message_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 0.75
+            },
+            {
+              "availability": "available",
+              "k": null,
+              "name": "partial_relevant_coverage",
+              "reason": null,
+              "reference_status": "llm_assisted_provisional",
+              "scope": "merged_candidate_pool",
+              "value": 1.0
+            }
+          ]
+        }
+      },
+      "unresolved_candidate_count": 0
+    }
+  ],
+  "query_set_id": "semantic-vs-lexical-provisional",
+  "query_set_version": 1,
+  "recall_scope": "merged lexical+semantic candidate pool at the configured depth",
+  "reference_status": "llm_assisted_provisional",
+  "report_id": "retrieval-metrics:semantic-vs-lexical-provisional:v1",
+  "retrieval_diagnostics": [
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 3298.0673339916393,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "literal-langgraph",
+      "semantic_expanded_message_count": 94,
+      "semantic_latency_ms": 18503.128332988126,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 2380.924375000177,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "literal-deepseek",
+      "semantic_expanded_message_count": 95,
+      "semantic_latency_ms": 2011.360540986061,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 2636.0568339878228,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "paraphrase-agent-framework",
+      "semantic_expanded_message_count": 99,
+      "semantic_latency_ms": 2536.2251670158003,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 1085.6896250043064,
+      "lexical_partial": false,
+      "lexical_result_count": 4,
+      "lexical_truncated": true,
+      "lexical_unique_count": 4,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "local-model-memory",
+      "semantic_expanded_message_count": 103,
+      "semantic_latency_ms": 1883.3341670106165,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 1202.6572079921607,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "rag-retrieval-problems",
+      "semantic_expanded_message_count": 107,
+      "semantic_latency_ms": 2326.3218750071246,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 1771.2504579976667,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "github-tool-recommendation",
+      "semantic_expanded_message_count": 105,
+      "semantic_latency_ms": 1727.1527500124648,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 1222.6740409969352,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "time-bounded-internship",
+      "semantic_expanded_message_count": 14,
+      "semantic_latency_ms": 324.66549999662675,
+      "semantic_partial": false,
+      "semantic_result_count": 1,
+      "semantic_truncated": false,
+      "semantic_unique_count": 1
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 0,
+      "lexical_latency_ms": 152.61254098732024,
+      "lexical_partial": false,
+      "lexical_result_count": 0,
+      "lexical_truncated": false,
+      "lexical_unique_count": 0,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "synthetic-no-result",
+      "semantic_expanded_message_count": 108,
+      "semantic_latency_ms": 2533.4885000193026,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 1232.273624977097,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "broad-learning-topic",
+      "semantic_expanded_message_count": 110,
+      "semantic_latency_ms": 2358.584041998256,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 2482.429374998901,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "nearby-link-evaluation",
+      "semantic_expanded_message_count": 128,
+      "semantic_latency_ms": 2343.3709999953862,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 1971.76416698494,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "database-selection",
+      "semantic_expanded_message_count": 92,
+      "semantic_latency_ms": 1614.5206250075717,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    },
+    {
+      "diagnostic_only": true,
+      "lexical_expanded_message_count": 8,
+      "lexical_latency_ms": 1530.7481250201818,
+      "lexical_partial": true,
+      "lexical_result_count": 8,
+      "lexical_truncated": true,
+      "lexical_unique_count": 8,
+      "mean_rank_displacement": null,
+      "overlap_count": 0,
+      "query_id": "interview-experience",
+      "semantic_expanded_message_count": 112,
+      "semantic_latency_ms": 2532.040499994764,
+      "semantic_partial": true,
+      "semantic_result_count": 8,
+      "semantic_truncated": true,
+      "semantic_unique_count": 8
+    }
+  ],
+  "schema_version": "retrieval-annotation-v1",
+  "semantic_variant_id": "semantic-only-retrieval-candidate-v1",
+  "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+  "warning": "These are LLM-assisted provisional metrics, not human ground truth."
+}
