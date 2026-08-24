@@ -51,9 +51,14 @@ class SearchMessagesSDKToolAdapter:
             # canonical lexical tool 只提供选择提示；实际是否继续 semantic 由 Agent 自主判断。
             description = (
                 "Search Trivae messages with exact lexical matching and a bounded local context window. "
-                "Prefer this for repository names, URLs, code, error messages, nicknames, exact phrases, "
-                "or other precise terms. Use semantic_search when the user's wording is a paraphrase or "
-                "conceptual description. keyword must be exactly one non-empty string. "
+                "Normally call this first for repository names, URLs, code, error messages, nicknames, "
+                "exact phrases, or other precise terms. For a paraphrase or conceptual description "
+                "without a precise term, normally call semantic_search first instead. Do not call both "
+                "just to hedge; do not repeat this tool with the same or nearly identical arguments "
+                "after no hits, and do not use translation, synonym, punctuation, or near-duplicate "
+                "queries as multi-query expansion. Use the other tool only when the first result is "
+                "weak or insufficient. "
+                "keyword must be exactly one non-empty string. "
                 "Omit optional filters, or use null; do not send empty arrays. "
                 "limit must be a positive integer within the current trusted result limit. "
                 "context_before and context_after must be non-negative integers. "
@@ -251,8 +256,13 @@ class SemanticSearchSDKToolAdapter:
 
         description = (
             "Search Trivae conversation meaning with the local semantic embedding index. "
-            "Use this when the user's wording differs from the wording in the chat. "
-            "Use lexical_search for exact names, codes, or phrases. "
+            "Normally call this first when the user's wording differs from the wording in the chat, "
+            "including paraphrases, conceptual descriptions, or vague memories without a precise term. "
+            "For exact names, codes, or phrases, normally call lexical_search first instead. Do not call "
+            "both just to hedge; do not repeat this tool with the same or nearly identical arguments "
+            "after no hits, and do not use translation, synonym, punctuation, or near-duplicate "
+            "queries as multi-query expansion. Use the other tool only when the first result is weak "
+            "or insufficient. "
             "Omit optional filters, or use null; do not send empty arrays. "
             "The semantic index must be explicitly built and may report partial coverage."
         )

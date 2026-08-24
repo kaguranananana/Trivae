@@ -47,9 +47,12 @@
   answer、error/empty/stale。
 - [x] Evaluation 产出可复核的行为记录；不夸大 provisional evidence。
 - [x] 记录发现的 Failure Case 及根因分类；修复并回归验证。
-- [ ] Checkpoint A commit：`feat: default dual retrieval agent surface`。
+- [x] Checkpoint A commit：`da405dc feat: default dual retrieval agent surface`；随后以独立修复
+  commit 收敛真实 Provider smoke contract、semantic transport bound 和 Agent selection guidance。
 
 ## Stage B checklist — Context and Member Tools
+
+> 当前按用户指令暂停 Stage B；以下条目保持未实现、未验证，直到 Checkpoint A 的后续决策。
 
 ### Implementation
 

@@ -7,7 +7,8 @@ import asyncio
 import inspect
 import json
 import uuid
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, field, replace
 from time import perf_counter
 from typing import Any, Literal, cast
@@ -60,22 +61,96 @@ _DEFAULT_MAX_OUTPUT_TOKENS = 16384
 _DEFAULT_COMPLETION_MAX_TOKENS = 2048
 # 真实 smoke 证明 OpenCode Go 的 Chat Completions 不兼容 tools + JSON mode 组合。
 _PROVIDERS_WITHOUT_TOOL_JSON_MODE = frozenset({"opencode-go"})
+_JSON_REPAIR_OBSERVER: ContextVar[Callable[[], None] | None] = ContextVar(
+    "trivae_json_repair_observer",
+    default=None,
+)
 
 
 class _OpenCodeGoChatCompletionsModel(OpenAIChatCompletionsModel):
-    """只在 OpenCode Go 的 tool turn 中移除不兼容的 response_format。"""
+    """处理 OpenCode Go 的 tool-turn JSON mode 限制，并保持 finalizer 可验证。"""
 
     async def get_response(self, *args: Any, **kwargs: Any) -> Any:
-        """保留 SDK response path，只调整 provider 已验证不兼容的请求组合。"""
+        """保留 SDK response path，必要时用无工具回合完成一次 JSON finalization。"""
 
         adjusted_args, adjusted_kwargs = self._adjust_model_call(args, kwargs)
-        return await super().get_response(*adjusted_args, **adjusted_kwargs)
+        response = await super().get_response(*adjusted_args, **adjusted_kwargs)
+        if not _response_needs_json_repair(
+            response,
+            _tools_from_model_call(adjusted_args, adjusted_kwargs),
+        ):
+            return response
 
-    def stream_response(self, *args: Any, **kwargs: Any) -> Any:
-        """保持 SDK streaming generator，只投影同一份动态 settings。"""
+        # 真实 Failure Case 表明普通 tool turn 可能返回 prose/Markdown；这里不是静默解析，
+        # 而是在同一 provider、同一 Runtime、同一 model-visible input 上显式完成一次 JSON 回合。
+        observer = _JSON_REPAIR_OBSERVER.get()
+        if observer is not None:
+            observer()
+        no_tools_args, no_tools_kwargs = _replace_model_call_tools(args, kwargs, [])
+        return await super().get_response(*no_tools_args, **no_tools_kwargs)
+
+    def stream_response(self, *args: Any, **kwargs: Any) -> AsyncIterator[Any]:
+        """保持 SDK streaming generator，并对无工具最终文本做一次有界 JSON 回合。"""
 
         adjusted_args, adjusted_kwargs = self._adjust_model_call(args, kwargs)
-        return super().stream_response(*adjusted_args, **adjusted_kwargs)
+        return self._stream_with_json_repair(
+            args,
+            kwargs,
+            adjusted_args,
+            adjusted_kwargs,
+        )
+
+    async def _stream_with_json_repair(
+        self,
+        original_args: tuple[Any, ...],
+        original_kwargs: dict[str, Any],
+        adjusted_args: tuple[Any, ...],
+        adjusted_kwargs: dict[str, Any],
+    ) -> AsyncIterator[Any]:
+        """只在最终响应不是 JSON object 时重发无工具请求，避免吞掉真实 provider 错误。"""
+
+        buffered_events: list[Any] = []
+        saw_tool_call = False
+        async for event in super().stream_response(*adjusted_args, **adjusted_kwargs):
+            buffered_events.append(event)
+            # 一旦观察到 function call，就把本轮事件正常交给 SDK；该回合仍需保留工具。
+            if _stream_event_has_tool_call(event):
+                saw_tool_call = True
+                for buffered_event in buffered_events:
+                    yield buffered_event
+                buffered_events.clear()
+
+            if _stream_event_type(event) != "response.completed":
+                continue
+            response = _stream_event_response(event)
+            if not saw_tool_call and _response_needs_json_repair(
+                response,
+                _tools_from_model_call(adjusted_args, adjusted_kwargs),
+            ):
+                # 不把第一次不合约的文本交给 Runner；只记录一次公开的 compatibility observation。
+                observer = _JSON_REPAIR_OBSERVER.get()
+                if observer is not None:
+                    observer()
+                no_tools_args, no_tools_kwargs = _replace_model_call_tools(
+                    original_args,
+                    original_kwargs,
+                    [],
+                )
+                async for repaired_event in super().stream_response(
+                    *no_tools_args,
+                    **no_tools_kwargs,
+                ):
+                    yield repaired_event
+                return
+
+            for buffered_event in buffered_events:
+                yield buffered_event
+            return
+
+        # SDK 正常情况下总会发送 response.completed；若 Provider 违反该约定，
+        # 不猜测结果，保留已经观察到的事件并让 Runner 继续暴露真实 stream failure。
+        for buffered_event in buffered_events:
+            yield buffered_event
 
     @staticmethod
     def _adjust_model_call(
@@ -109,6 +184,118 @@ class _OpenCodeGoChatCompletionsModel(OpenAIChatCompletionsModel):
         elif len(adjusted_args) > settings_index:
             adjusted_args[settings_index] = adjusted_settings
         return tuple(adjusted_args), adjusted_kwargs
+
+
+def _tools_from_model_call(
+    args: tuple[Any, ...],
+    kwargs: Mapping[str, Any],
+) -> list[Any]:
+    """读取 SDK model call 的工具列表，不修改调用方传入的对象。"""
+
+    tools = kwargs.get("tools")
+    if tools is None and len(args) > 3:
+        tools = args[3]
+    return tools if isinstance(tools, list) else []
+
+
+def _replace_model_call_tools(
+    args: tuple[Any, ...],
+    kwargs: Mapping[str, Any],
+    tools: list[Any],
+) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    """只替换 SDK call 的 tools 参数，保留原始 JSON mode 和其他设置。"""
+
+    adjusted_args = list(args)
+    adjusted_kwargs = dict(kwargs)
+    if "tools" in adjusted_kwargs:
+        adjusted_kwargs["tools"] = tools
+    elif len(adjusted_args) > 3:
+        adjusted_args[3] = tools
+    else:
+        adjusted_kwargs["tools"] = tools
+    return tuple(adjusted_args), adjusted_kwargs
+
+
+def _stream_event_type(event: Any) -> str | None:
+    """读取 Chat Completions 转换后的公开 event type。"""
+
+    event_type = getattr(event, "type", None)
+    if isinstance(event_type, str):
+        return event_type
+    data = getattr(event, "data", None)
+    data_type = getattr(data, "type", None)
+    return data_type if isinstance(data_type, str) else None
+
+
+def _stream_event_response(event: Any) -> Any:
+    """从 response.completed event 读取公开 response，不保留 SDK 对象。"""
+
+    response = getattr(event, "response", None)
+    if response is not None:
+        return response
+    data = getattr(event, "data", None)
+    return getattr(data, "response", None)
+
+
+def _stream_event_has_tool_call(event: Any) -> bool:
+    """识别公开 function call event，避免把正常工具回合误判为最终文本。"""
+
+    if _stream_event_type(event) not in {
+        "response.output_item.added",
+        "response.output_item.done",
+    }:
+        return False
+    item = getattr(event, "item", None)
+    if item is None:
+        data = getattr(event, "data", None)
+        item = getattr(data, "item", None)
+    return _item_type(item) in _MODEL_ACTION_ITEM_TYPES
+
+
+def _response_text(response: Any) -> str | None:
+    """提取 assistant 公开文本，供 JSON object 形状判断，不做业务解析。"""
+
+    if response is None:
+        return None
+    projected = _project_model_output(getattr(response, "output", ()))
+    if projected is None:
+        return None
+    parts: list[str] = []
+    for item in projected:
+        content = item.get("content")
+        if isinstance(content, str):
+            parts.append(content)
+            continue
+        if not isinstance(content, (list, tuple)):
+            continue
+        for block in content:
+            if isinstance(block, Mapping) and isinstance(block.get("text"), str):
+                parts.append(block["text"])
+    text = "".join(parts).strip()
+    return text or None
+
+
+def _response_needs_json_repair(response: Any, tools: list[Any]) -> bool:
+    """仅当有工具且最终响应不是 JSON object 时触发一次显式 finalization。"""
+
+    if not tools or _response_has_tool_call(response):
+        return False
+    text = _response_text(response)
+    if text is None:
+        return True
+    try:
+        return not isinstance(json.loads(text), Mapping)
+    except (TypeError, ValueError):
+        return True
+
+
+def _response_has_tool_call(response: Any) -> bool:
+    """检查已完成 response 的公开 output item 类型。"""
+
+    output = getattr(response, "output", ())
+    if not isinstance(output, (list, tuple)):
+        return False
+    return any(_item_type(item) in _MODEL_ACTION_ITEM_TYPES for item in output)
 
 
 @dataclass
@@ -611,6 +798,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         context: RuntimeContext | None = None
         streamed_result: Any | None = None
         abort_task: asyncio.Task[None] | None = None
+        repair_observer_token: Token[Callable[[], None] | None] | None = None
 
         yield self._event(state, "run_started")
         if self._abort_is_set(abort_event):
@@ -624,6 +812,27 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             agent = self._build_agent(request, context, state)
             # RunConfig 与全局 tracing 设置同时显式关闭，保证本地运行不依赖 tracing key。
             set_tracing_disabled(True)
+
+            def observe_json_repair() -> None:
+                """把 Provider compatibility repair 投影为公开 model observation。"""
+
+                state.pending.append(
+                    _PendingEvent(
+                        "model_output",
+                        tool_round=state.tool_rounds + 1,
+                        observable_output=(
+                            {
+                                "type": "provider_compatibility",
+                                "action": "json_finalization_repaired",
+                                "reason": "non_json_final_output_after_tool_turn",
+                                "tools_removed_for_finalization": True,
+                            },
+                        ),
+                    )
+                )
+
+            # ContextVar 避免 Application 复用同一个 Runtime 时，不同 Query 之间串联 observer。
+            repair_observer_token = _JSON_REPAIR_OBSERVER.set(observe_json_repair)
             streamed_result = Runner.run_streamed(
                 agent,
                 cast(Any, self._build_input(request)),
@@ -778,6 +987,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             )
             yield self._event(state, "failed", result=result)
         finally:
+            if repair_observer_token is not None:
+                _JSON_REPAIR_OBSERVER.reset(repair_observer_token)
             if abort_task is not None:
                 abort_task.cancel()
                 await asyncio.gather(abort_task, return_exceptions=True)

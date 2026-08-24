@@ -4,7 +4,9 @@ import asyncio
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
+from agents.model_settings import ModelSettings as SDKModelSettings
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
 
@@ -22,6 +24,8 @@ from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContract
 from trivae.query.runtime.openai_adapter import (
     OpenAIAgentsRuntimeAdapter,
     _OpenCodeGoChatCompletionsModel,
+    _replace_model_call_tools,
+    _response_needs_json_repair,
     _RuntimeHooks,
 )
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
@@ -310,6 +314,116 @@ class RuntimeAdapterTests(unittest.TestCase):
         )
         self.assertEqual(agent.model_settings.max_tokens, 16384)
         asyncio.run(runtime.aclose())
+
+    def test_opencode_go_finalization_repair_only_targets_non_json_tool_turn(self) -> None:
+        """验证 Provider 修复只处理已观测的非 JSON 最终文本，不改变正常工具结果。"""
+
+        invalid_response = SimpleNamespace(
+            output=[
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "说明文字\\n```json\\n{}\\n```"}],
+                }
+            ]
+        )
+        valid_response = SimpleNamespace(
+            output=[
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": '{"content_blocks": []}'}],
+                }
+            ]
+        )
+        tool_response = SimpleNamespace(
+            output=[{"type": "function_call", "name": "lexical_search", "arguments": "{}"}]
+        )
+
+        self.assertTrue(_response_needs_json_repair(invalid_response, [object()]))
+        self.assertFalse(_response_needs_json_repair(valid_response, [object()]))
+        self.assertFalse(_response_needs_json_repair(tool_response, [object()]))
+        self.assertFalse(_response_needs_json_repair(invalid_response, []))
+
+    def test_opencode_go_repair_call_removes_tools_but_keeps_json_mode(self) -> None:
+        """验证有界 finalization 只移除 tools，并保留原始 JSON response_format。"""
+
+        settings = SDKModelSettings(extra_args={"response_format": {"type": "json_object"}})
+        args, kwargs = _replace_model_call_tools(
+            ("system", [], settings, ["tool"]),
+            {},
+            [],
+        )
+
+        self.assertEqual(args[3], [])
+        self.assertEqual(args[2].extra_args, {"response_format": {"type": "json_object"}})
+        self.assertEqual(kwargs, {})
+
+    def test_opencode_go_stream_repair_replays_only_without_tools(self) -> None:
+        """验证 stream repair 丢弃不合约文本，并只把无工具 JSON 回合交给 Runner。"""
+
+        invalid = SimpleNamespace(
+            type="response.completed",
+            response=SimpleNamespace(
+                output=[
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content":[{"type": "output_text", "text": "prose"}],
+                    }
+                ]
+            ),
+        )
+        valid = SimpleNamespace(
+            type="response.completed",
+            response=SimpleNamespace(
+                output=[
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content":[{"type": "output_text", "text": '{"content_blocks": []}'}],
+                    }
+                ]
+            ),
+        )
+        calls: list[list[object]] = []
+
+        async def fake_stream(self, *args, **kwargs):
+            tools = kwargs.get("tools")
+            if tools is None and len(args) > 3:
+                tools = args[3]
+            calls.append([] if tools is None else list(tools))
+            yield invalid if len(calls) == 1 else valid
+
+        model = object.__new__(_OpenCodeGoChatCompletionsModel)
+        settings = SDKModelSettings(extra_args={"response_format": {"type": "json_object"}})
+        with patch.object(OpenAIChatCompletionsModel, "stream_response", fake_stream):
+            events = asyncio.run(
+                self._collect_model_stream(
+                    model,
+                    settings,
+                )
+            )
+
+        self.assertEqual(calls, [["tool"], []])
+        self.assertEqual(events, [valid])
+
+    @staticmethod
+    async def _collect_model_stream(model, settings):
+        """消费测试模型的公开 stream event。"""
+
+        return [
+            event
+            async for event in model.stream_response(
+                "system",
+                [],
+                settings,
+                ["tool"],
+                None,
+                [],
+                None,
+            )
+        ]
 
     def test_final_synthesis_prompt_requests_compact_artifact(self) -> None:
         self.assertIn("Keep the JSON artifact compact", SYSTEM_PROMPT)

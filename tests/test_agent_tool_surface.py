@@ -62,11 +62,23 @@ class AgentToolSurfaceTests(unittest.TestCase):
 
         self.assertEqual(set(tools), {"lexical_search", "semantic_search"})
         self.assertIn("exact lexical matching", tools["lexical_search"].description)
+        self.assertIn("Normally call this first", tools["lexical_search"].description)
+        self.assertIn("Do not call both just to hedge", tools["lexical_search"].description)
+        self.assertIn("after no hits", tools["lexical_search"].description)
+        self.assertIn("multi-query expansion", tools["lexical_search"].description)
         self.assertIn("semantic_search", tools["lexical_search"].description)
         self.assertIn("wording differs", tools["semantic_search"].description)
+        self.assertIn("Normally call this first", tools["semantic_search"].description)
+        self.assertIn("Do not call both just to hedge", tools["semantic_search"].description)
+        self.assertIn("after no hits", tools["semantic_search"].description)
+        self.assertIn("multi-query expansion", tools["semantic_search"].description)
         self.assertIn("lexical_search", tools["semantic_search"].description)
         self.assertIn("lexical_search", SYSTEM_PROMPT)
         self.assertIn("semantic_search", SYSTEM_PROMPT)
+        self.assertIn("Normally make lexical_search the first retrieval call", SYSTEM_PROMPT)
+        self.assertIn("Do not call the other", SYSTEM_PROMPT)
+        self.assertIn("Do not repeat the same retrieval tool", SYSTEM_PROMPT)
+        self.assertIn("multi-query expansion loop", SYSTEM_PROMPT)
         self.assertIn("do not silently", SYSTEM_PROMPT)
 
     def test_agent_can_continue_from_lexical_to_semantic_in_one_runtime(self) -> None:

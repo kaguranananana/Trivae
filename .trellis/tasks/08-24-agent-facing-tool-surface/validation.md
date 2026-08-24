@@ -2,6 +2,8 @@
 
 ## 1. Problem / Motivation
 
+本记录当前只覆盖 Checkpoint A；按最新开发指令，Stage B/C 保持冻结，不在本轮继续扩展。
+
 Stage A 将正常 Application `QueryRequest` 的 Agent-visible retrieval surface 从旧的
 `search_messages` 默认入口切换为 `lexical_search` + `semantic_search`。旧入口仍保留，
 但只作为明确的 compatibility boundary。目标是让模型在精确词面和语义表达不同的查询之间
@@ -39,49 +41,66 @@ Stage A 将正常 Application `QueryRequest` 的 Agent-visible retrieval surface
   `await application.aclose()`。
 - Validation: 修正后的四个真实 Provider smoke 均完成并正常释放临时 snapshot。
 
-### FC-A2 — Semantic-first run ended with provider transport error
+### FC-A2 — OpenCode Go tool turn produced an invalid final artifact
 
 - Type: `real failure`。
-- Scenario: semantic-dominant paraphrase query；Agent 首先选择 `semantic_search`，随后又
-  调用 `lexical_search`。
-- Observed failure: 两个 Tool call 都返回；Trace 的 `runtime.run` 最终以
-  `RUNTIME_ERROR` 终止，`diagnostic_type=SSLError`，没有 silent lexical fallback。
-- Root cause: 当前 Provider 请求链路出现 SSL transport error；Trace 能定位 origin/observed
-  stage 都是 Runtime，但没有进一步的 upstream certificate/endpoint 证据，因此不把它误判
-  为 Retrieval 或 Tool Contract failure。
-- Current handling: 保持 terminal error，向 Query caller 暴露 `RUNTIME_ERROR`；不增加 retry、
-  fallback 或 provider-specific patch。
-- Validation: `trace-b414d84a0ee0460b82c7cb8b2cdae8a2` 的 runtime event 与 failure projection；
-  单元测试覆盖 semantic unavailable 的显式 `SEMANTIC_INDEX_UNAVAILABLE`。
+- Scenario: 初次 lexical/multi Provider smoke 在 Tool execution 后返回 prose/Markdown，而不是
+  Finalizer 要求的 JSON object。
+- Observed failure: citation/finalization 以 `INVALID_ANSWER_ARTIFACT` 终止；不能把未验证文本
+  当成成功回答。
+- Root cause: 真实 `opencode-go` 在携带 tools 的 Chat Completions 请求中去掉了 JSON mode，导致
+  Tool turn 后的最终文本不稳定。
+- Fix: 同一 Provider、同一输入上只做一次显式的无工具 finalization，保留原始 JSON mode；首次
+  非 JSON 文本不进入 Runner/Evidence，Trace 追加公开的
+  `provider_compatibility/json_finalization_repaired` observation。没有解析 prose、静默提交
+  preview 或无限重试。
+- Validation: 历史失败 `trace-ae73fdec9fbd4db88068c8cc77efcc97`；单元测试覆盖 repair 边界；最终
+  acceptance `trace-941878b7ff83430aa12901d33d252a79` 真实命中 repair observation 并完成
+  `answer_artifact`、Evidence/Citation。
 
-### FC-A3 — Provider router degraded and retained static route
-
-- Type: `real failure` / degradation。
-- Scenario: 四个真实 smoke case 都记录 `ROUTER_COMPLETION_TIMEOUT`。
-- Observed failure: Router Trace 标记 `degradation`，handling 为 `static_route_retained`；Query
-  仍按可观测的 static route 继续，而不是静默切换数据源。
-- Root cause: 当前 Provider router completion 超时；现有 Trace 没有给出更具体的 upstream
-  网络根因，因此只记录到 Router degradation 层。
-- Current handling: 沿用既有 Router degradation contract；本阶段不改 Router，不把这组
-  运行结果当作质量提升证据。
-- Validation: 四个 smoke trace 均可定位该 event；本地单元/集成测试保持通过。
-
-### FC-A4 — Lexical-first answer failed final artifact validation
+### FC-A3 — Semantic context expansion exceeded Tool Result transport bound
 
 - Type: `real failure`。
-- Scenario: lexical-dominant exact-term query；Agent 首先选 `lexical_search`，之后调用
-  `semantic_search`。
-- Observed failure: Retrieval Tool events 为 lexical `ok`、semantic `partial`；Runtime
-  曾产出回答文本，但 citation/finalization 以 `INVALID_ANSWER_ARTIFACT` 结束，正式
-  `answer_artifact` 和 Evidence/Citation 没有提交。
-- Root cause: Provider final output 在 Tool execution 后不是可验证的 JSON object；这是
-  Answer/Citation contract failure，不把它改写成 Retrieval success。
-- Current handling: Finalizer 显式拒绝无效 artifact；不删除 citation、不猜测 evidence、不
-  静默返回未验证文本。
-- Validation: `trace-ae73fdec9fbd4db88068c8cc77efcc97` 的 citation validation、answer
-  finalization 和 query failure events；已有 evidence regression tests 保持该边界。
+- Scenario: 真实 semantic result 的 bounded context expansion 生成超过 `ToolResultRecord` 的
+  100-item transport bound。
+- Observed failure: Tool adapter 报 `tool result items exceeds 100`，属于 Tool Result contract
+  failure，而不是 semantic index unavailable。
+- Root cause: semantic retrieval 原先把 expansion limit 放大到 `limit * 32`，在 10-hit 请求中
+  可能恢复 101 条 message。
+- Fix: 把 context expansion transport bound 收敛到现有 `ToolResultRecord` 上限 100；dense
+  candidate pool、Qwen 模型、dimension、chunking 和 semantic 参数不变，超出 coverage 仍明确
+  返回 `partial/truncated`。
+- Validation: `tests/test_semantic_retrieval.py` 锁定该 bound；最终 semantic smoke 的 Tool
+  状态为 `partial` 但 Query、Evidence/Citation 均成功。
 
-### FC-A5 — Semantic index unavailable remains explicit
+### FC-A4 — Provider transport SSL failure remains explicit
+
+- Type: `real failure`。
+- Scenario: 一次 semantic-first rerun 中，semantic 与 lexical Tool 都完成后，下一次
+  `opencode-go` 请求约 120 秒后以 `SSLError` 终止。
+- Observed failure: `trace-a45aaa44a95a4e02ba7abfbbdc8c8513` 的 `runtime.run` 为
+  `RUNTIME_ERROR`；没有 silent lexical fallback，也没有伪造 Evidence。
+- Root cause: 当前 Trace 只有 Provider transport 层证据，不能进一步证明 upstream certificate 或
+  endpoint 根因；不把它误判成 Retrieval、scope 或 Tool contract failure。
+- Current handling: 保留 terminal error，不增加自动 retry/fallback。相同 semantic case 的
+  手工复跑 `trace-9c562bb4b91946b2ac066fb5eda256fa` 成功，最终 acceptance
+  `trace-7f2a314618c04d3f9fb21c73561d3074` 也成功；因此本轮将它记录为 intermittent external
+  provider observation，而不是隐藏掉的代码成功。
+
+### FC-A5 — Agent selection briefly used same-intent query expansion
+
+- Type: `real failure` / Agent behavior diagnostic。
+- Scenario: 初版 guidance 较弱时，真实模型把同一个 semantic 意图改写成中文和英文两次调用，
+  也曾把 `sqlite-vec` 改成 `sqlite_vec` 重复 lexical search。
+- Root cause: description 只说明适用场景，没有明确首选顺序和“不要用同一路径做翻译/同义词/
+  标点变体扩展”的边界。
+- Fix: 补充首轮 selection guidance、结果足够即停止、弱结果才切换另一条 path，以及禁止
+  multi-query expansion loop；不增加 query-specific router 或 Runtime call blocker。
+- Validation: 最终 acceptance 中 semantic-dominant 首选 `semantic_search`，no-result 只调用一次
+  `lexical_search`；multi-search 的额外调用来自用户明确的复合问题，作为 cost/selection
+  observation 保留，不伪造唯一正确 sequence。
+
+### FC-A6 — Semantic index unavailable remains explicit
 
 - Type: `regression test case`。
 - Scenario: 临时空 Canonical DB 只显式 rebuild lexical index，semantic index 未 ready。
@@ -109,24 +128,24 @@ Smoke 使用当前真实 Canonical Snapshot 和已构建 semantic index 的临�
 `opencode-go` / `deepseek-v4-flash`。没有把真实聊天正文写入 Git；只保留下表的元数据和
 Trace IDs。
 
-| Case | First / actual sequence | Calls / rounds | Final state | Trace |
-| --- | --- | ---: | --- | --- |
-| lexical-dominant | `lexical_search → semantic_search` | 2 / 1 | finalization failed: `INVALID_ANSWER_ARTIFACT` | `trace-ae73fdec9fbd4db88068c8cc77efcc97` |
-| semantic-dominant | `semantic_search → lexical_search` | 2 / 1 | runtime failed: `RUNTIME_ERROR`, diagnostic `SSLError` | `trace-b414d84a0ee0460b82c7cb8b2cdae8a2` |
-| multi-search | `lexical_search → semantic_search` | 2 / 2 | completed; 2 Evidence / 2 citations | `trace-d7b3b2e60289486286bcc138423b60bb` |
-| no-result | `lexical_search → semantic_search` | 2 / 2 | completed; 0 Evidence / 0 citations | `trace-df766dd65a4d49399e67a794abfe7186` |
+| Case | First / actual sequence | Calls / rounds | Final state | Wall time | Trace |
+| --- | --- | ---: | --- | --- | --- |
+| lexical-dominant | `lexical_search → semantic_search` | 2 / 2 | completed; 1 Evidence / 1 citation | ~91s | `trace-941878b7ff83430aa12901d33d252a79` |
+| semantic-dominant | `semantic_search → lexical_search → lexical_search` | 3 / 2 | completed; 3 Evidence / 3 citations | ~60s | `trace-7f2a314618c04d3f9fb21c73561d3074` |
+| multi-search | `lexical_search → semantic_search → lexical_search → lexical_search → semantic_search` | 5 / 2 | completed; 2 Evidence / 2 citations | ~158s | `trace-b51157f7ae764b14ba9fc1e441dc0300` |
+| no-result | `lexical_search` | 1 / 1 | completed; 0 Evidence / 0 citations | ~68s | `trace-72409e145a4046beb9861323f23b1cc5` |
 
-Measured latency was approximately 26–79 seconds per case on this Provider/index run. This is a
-smoke observation, not a production SLA or a reason to change `dense_top_k`, model, dimension or
-chunking parameters. Usage/token values remain in the local smoke report only; the repository does
-not commit raw transcripts or credentials.
+The final acceptance run 的四个 `success` 均为 true，Trace 均为 `completed/complete`，没有
+`RUNTIME_ERROR` 或 finalization error。Runtime usage（按 case）为 lexical `56,294`、semantic
+`120,446`、multi `180,441`、no-result `4,820` total tokens；这些是当前 Provider/index 的
+diagnostic observation，不是 production SLA，也不是调整 `dense_top_k`、model、dimension 或
+chunking 参数的依据。真实聊天正文、raw transcript 和 credentials 不进入 Git。
 
-The Agent selected the expected first Tool for the lexical- and semantic-dominant diagnostics, but
-the observed model behavior also issued a second retrieval call in each case. Whether that second
-call is unnecessary or justified depends on result sufficiency; this catalog records it for review,
-not as a rigid unique-sequence assertion. Existing paired lexical-only vs semantic-only retrieval
-evaluation remains unchanged, and its labels remain `llm_assisted_provisional`, never
-`human_verified`.
+最终行为观察：lexical-dominant 首选 lexical，semantic-dominant 首选 semantic；弱/partial result
+后模型可能继续另一条 path，multi-search 的复合问题也可能产生更多 Tool call。Evaluation 记录
+这些实际行为和成本，不把某一条 sequence 硬编码为唯一答案。既有 paired lexical-only vs
+semantic-only retrieval evaluation 保持不变，label 仍为 `llm_assisted_provisional`，从不自动
+改成 `human_verified`。
 
 ## 6. Observability / Debugging
 
@@ -136,17 +155,20 @@ Evidence/Citation finalization and final Query outcome. It does not persist hidd
 
 The smoke traces distinguish:
 
-- selection/runtime problem: `runtime.run` failure with `diagnostic_type=SSLError`;
+- selection/runtime problem: first selected Tool、model-visible arguments 和 terminal
+  `diagnostic_type=SSLError`；成功重跑与失败 trace 可并存，不互相覆盖；
 - retrieval status: lexical `ok`, semantic `partial`, candidate/empty summaries;
-- answer contract problem: `citation.validation.failed` and `INVALID_ANSWER_ARTIFACT`;
-- Router degradation: `ROUTER_COMPLETION_TIMEOUT` with `static_route_retained`;
+- answer contract problem: `citation.validation.failed`、`INVALID_ANSWER_ARTIFACT`，以及成功的
+  `provider_compatibility/json_finalization_repaired`；
+- Router degradation: `ROUTER_COMPLETION_TIMEOUT` with `static_route_retained`，最终仍由 Trace
+  明确标记；
 - no-result: completed query with zero Evidence/Citation, rather than fabricated evidence.
 
 ## 7. Scale / Performance
 
 The smoke snapshot contains 473,236 canonical messages and a real semantic index of the same
-canonical corpus. Semantic KNN was the dominant measured cost in the observed run; exact per-query
-latency varied from roughly 26 to 79 seconds across the four Provider cases. No index/model/parameter
+canonical corpus. Semantic KNN and large model-visible Tool Results were the dominant observed costs;
+the final acceptance wall time varied from roughly 60 to 158 seconds per case. No index/model/parameter
 change is justified by this small diagnostic sample. A larger benchmark or verified Agent behavior
 dataset is required before changing retrieval bounds or adding another retrieval architecture.
 
@@ -167,10 +189,10 @@ Planner policy, answer semantic correctness or a second Evidence/Trace system.
 
 ## 9. Evolution
 
-The next evidence gate is Stage B context/member behavior, followed by Stage C structured SQL. A
-future hybrid, reranker, query rewrite or retrieval parameter change requires a reproducible Failure
-Case plus paired/Agent Evaluation evidence. A repeated Provider SSL failure needs provider transport
-diagnostics or configuration evidence before any compatibility change is considered.
+Stage B context/member behavior and Stage C structured SQL remain pending and frozen for the current
+handoff. A future hybrid, reranker, query rewrite or retrieval parameter change requires a reproducible
+Failure Case plus paired/Agent Evaluation evidence. A repeated Provider SSL failure needs provider
+transport diagnostics or configuration evidence before any further compatibility change is considered.
 
 ## 10. Interview Defense Notes
 
@@ -183,7 +205,7 @@ diagnostics or configuration evidence before any compatibility change is conside
 - Q: 如何区分选错工具、工具搜错和答案错？ 证据：visible Tool/selection events、retrieval
   status、`INVALID_ANSWER_ARTIFACT` citation/finalization events 和 FC-A2/FC-A4。
 - Q: 为什么 semantic unavailable 不 fallback？ 证据：semantic unavailable regression 和
-  Stage 1.3/1.4 failure contract；真实实现保持 explicit error。
+  Stage 1.3/1.4 failure contract；真实实现保持 explicit error（FC-A6）。
 - Q: 这轮真实运行证明了什么？ 证据：四个 Provider smoke trace；它证明了 surface、sequence、
   error attribution 和 no-result transparency 可被观测，但不证明 Agent answer quality、
   production latency SLA 或 paired retrieval 的 human-verified correctness。

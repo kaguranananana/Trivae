@@ -5,7 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from time import perf_counter
 
-from trivae.retrieval.context import ContextExpander, ContextRange
+from trivae.retrieval.context import (
+    MAX_CONTEXT_EXPANSION_MESSAGES,
+    ContextExpander,
+    ContextRange,
+)
 from trivae.retrieval.semantic.chunking import (
     DEFAULT_SEMANTIC_CHUNK_CONFIG,
     SEMANTIC_CHUNKER_VERSION,
@@ -138,7 +142,8 @@ class SemanticRetrieval:
             ranges,
             before=query.context_before,
             after=query.context_after,
-            limit=min(max(limit, limit * 32), 512),
+            # 保留 semantic 的 bounded context 语义，同时不越过 ToolResultRecord 的 item bound。
+            limit=min(max(limit, limit * 32), MAX_CONTEXT_EXPANSION_MESSAGES),
         )
         pool_exhausted = len(candidates) >= candidate_pool
         partial = state.status == "partial" or pool_exhausted or expansion.partial

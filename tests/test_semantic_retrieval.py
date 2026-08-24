@@ -13,15 +13,20 @@ from trivae.observability.collector import TraceCollector
 from trivae.observability.projection import project_trace
 from trivae.query.evidence import build_tool_result_record
 from trivae.query.runtime.openai_tools import SemanticSearchSDKToolAdapter
+from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, ContextExpansionResult
 from trivae.retrieval.semantic.chunking import SemanticChunker
 from trivae.retrieval.semantic.contracts import (
     EmbeddingModelIdentity,
+    SemanticIndexCandidate,
     SemanticIndexIdentity,
     SemanticMessage,
+    SemanticQuery,
     SemanticQueryError,
     SemanticRetrievalResult,
 )
 from trivae.retrieval.semantic.embedding import SentenceTransformerEmbeddingProvider
+from trivae.retrieval.semantic.retrieval import SemanticRetrieval
+from trivae.retrieval.structured import MessageProjection
 
 
 class _DeterministicProvider:
@@ -102,6 +107,100 @@ def _write_semantic_fixture(root: Path) -> Path:
 
 class SemanticRetrievalTests(unittest.TestCase):
     """验证 semantic vertical slice 的 deterministic contract 和失败边界。"""
+
+    def test_semantic_context_bound_matches_tool_result_bound(self) -> None:
+        """semantic context expansion 不得生成超过 ToolResultRecord 的 item 数量。"""
+
+        class RecordingContextExpander:
+            def __init__(self) -> None:
+                self.limit: int | None = None
+
+            def expand_ranges(self, ranges, before, after, limit):
+                # 只记录 Retrieval 传入的 transport bound，不重新实现 context merge。
+                self.limit = limit
+                return ContextExpansionResult((), False, False, 0)
+
+        class Repository:
+            def count_messages(self, query) -> int:
+                return 1
+
+            def read_message_range(self, session_id, start_message_id, end_message_id, limit):
+                return (
+                    MessageProjection(
+                        internal_message_id="session-1:m1",
+                        session_id="session-1",
+                        source_message_id=None,
+                        sender_user_id="u-1",
+                        sender_platform_id=None,
+                        sender_uin=None,
+                        sender_name="Alice",
+                        timestamp=1,
+                        seq=1,
+                        message_type="text",
+                        normalized_content="semantic fixture",
+                        reply_to_source_message_id=None,
+                        recalled=False,
+                        system=False,
+                        session_display="Semantic Fixture",
+                    ),
+                )
+
+        class Store:
+            def __init__(self) -> None:
+                self._state = None
+
+            def state(self):
+                return self._state
+
+            def dense_search(self, identity, query_vector, limit, **kwargs):
+                return (
+                    SemanticIndexCandidate(
+                        chunk_id="chunk-1",
+                        parent_id="parent-1",
+                        session_id="session-1",
+                        parent_start_message_id="session-1:m1",
+                        parent_end_message_id="session-1:m1",
+                        start_message_id="session-1:m1",
+                        end_message_id="session-1:m1",
+                        start_timestamp=1,
+                        end_timestamp=1,
+                        message_count=1,
+                        effective_chars=16,
+                        distance=0.1,
+                        dense_rank=1,
+                    ),
+                )
+
+        provider = _DeterministicProvider()
+        store = Store()
+        expander = RecordingContextExpander()
+        retrieval = SemanticRetrieval(
+            Repository(),
+            store,
+            provider,
+            database_identity="fixture.sqlite3",
+            context_expander=expander,
+        )
+        store._state = SimpleNamespace(
+            identity=retrieval.identity,
+            status="completed",
+            canonical_message_count=1,
+            indexed_message_count=1,
+            chunk_count=1,
+            last_error=None,
+            updated_at=1,
+        )
+
+        retrieval.search(
+            SemanticQuery(
+                query="semantic fixture",
+                limit=10,
+                context_before=2,
+                context_after=2,
+            )
+        )
+
+        self.assertEqual(expander.limit, MAX_CONTEXT_EXPANSION_MESSAGES)
 
     def test_chunker_preserves_void_range_but_excludes_void_text(self) -> None:
         """semantic void 仍参与 canonical range，embedding input 只保留有效正文。"""

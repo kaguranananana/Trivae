@@ -7,6 +7,10 @@ from typing import Protocol, Sequence
 
 from trivae.retrieval.structured import MessageHit, MessageProjection, RetrievalError, message_sort_key
 
+# ToolResultRecord 当前最多承载 100 条 message/structured item；这是 transport bound，
+# 不是 semantic candidate pool、chunking 或 embedding 参数，超出时必须由 Retrieval 显式标记 truncated。
+MAX_CONTEXT_EXPANSION_MESSAGES = 100
+
 
 class ContextReadRepository(Protocol):
     """Context Expansion 只需要同 session 的窗口读取能力。"""

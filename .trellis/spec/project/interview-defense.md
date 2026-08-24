@@ -245,8 +245,10 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
   CapabilityRegistry 仍负责 scope-aware lexical/semantic execution。Stage A 没有创建第二个
   Runtime、Query pipeline、Evidence 或 Trace 系统。
 - Selection rationale：prompt 和 Tool descriptions 对 exact URL/repo/code/error/nickname/
-  phrase 与 paraphrase/concept/vague memory 给出简短 guidance；模型仍自行选择。没有固定
-  hybrid、RRF、reranker、query rewrite 或 silent lexical fallback。
+  phrase 与 paraphrase/concept/vague memory 给出首选 guidance；模型仍自行选择，弱结果时
+  可以切换另一条 path。额外明确禁止同一意图的翻译/同义词/标点变体 multi-query expansion，
+  但不在 Runtime 中硬拦截 Agent。没有固定 hybrid、RRF、reranker、query rewrite 或 silent
+  lexical fallback。
 - Context/Evidence boundary：现有 retrieval Tool 继续返回 bounded local context；同一 Runtime
   内的第二个 retrieval call 共享 run/scope/ToolResult provenance，最终 Evidence/Citation
   仍由现有 Finalizer 验证。
@@ -255,11 +257,17 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
   `human_verified` judgment。原 paired lexical-only / semantic-only benchmark 与
   `llm_assisted_provisional` labels 保持不变。
 - Real Provider evidence：在 473,236 条 canonical messages 与已构建 semantic index 的临时
-  snapshot 上，四个 smoke case 均使模型实际看到双 retrieval surface。lexical-dominant 首选
-  lexical，semantic-dominant 首选 semantic；multi-search 完成 2 Evidence/2 citations；
-  no-result 完成但 0 Evidence/0 citations。真实运行同时暴露了 Router timeout degradation、
-  一次 Provider `SSLError`→`RUNTIME_ERROR` 和一次 invalid answer artifact；这些被记录为
-  Failure Case，不能包装成质量结论或 production SLA。
+  snapshot 上，最终四 case acceptance 全部 `completed/complete`：lexical-dominant 首选
+  lexical（2 calls / 1 Evidence / 1 citation），semantic-dominant 首选 semantic（3 calls /
+  3 Evidence / 3 citations），multi-search 为复合问题（5 calls / 2 Evidence / 2 citations），
+  no-result 只调用 lexical（1 call / 0 Evidence / 0 citations）。真实运行也暴露了 Router
+  timeout degradation、一次 Provider `SSLError`→`RUNTIME_ERROR` 和一次 invalid answer artifact；
+  前两次失败均有成功复跑或显式 compatibility repair，但仍作为 Failure Case 记录，不能包装
+  成质量结论或 production SLA。
+- Provider compatibility evidence：真实 `opencode-go` 还命中过一次
+  `provider_compatibility/json_finalization_repaired`；repair 只移除 tool 参数、保留 JSON mode，
+  不解析或提交第一次非 JSON 文本。semantic context 的 100-item transport bound 也由真实
+  `tool result items exceeds 100` Failure Case 驱动，并通过 `partial/truncated` 保持边界可见。
 - Debugging evidence：Trace 可区分 Router degradation、Tool `ok`/`partial`/error、semantic
   unavailable、retrieval empty、citation validation 和 query terminal failure，因此可以定位
   “选错工具”“工具返回弱/空结果”“Provider/runtime error”“答案 artifact 无效”不同层级。
@@ -267,8 +275,14 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
   - Q: 为什么分批增加 Tool？ Evidence: Stage A 仅增加双 retrieval surface，Evaluation
     先记录 selection/cost/evidence，再以 Stage B/C checkpoint 继续扩展，避免一次性扩大
     surface 后无法归因 selection regression。
+  - Q: 为什么 Search 已经带 bounded context 还要保留 `get_message_context`？ Evidence: Stage A
+    只验证 bounded local context；更大但仍 bounded 的 explicit deepening 属于后续 Stage B，
+    不是让 Agent 每次机械调用的隐式步骤。
+  - Q: 如何定位“选错工具”和“工具搜错”？ Evidence: Trace 先看 first model Tool action 和
+    arguments，再看 Tool `ok/partial/empty` 与 retrieval summary；Evidence/Citation/answer
+    finalization 位于更后层，不能把 Runtime/provider error 误归为 retrieval quality。
   - Q: 为什么不把 semantic unavailable 改成 lexical 结果？ Evidence: explicit semantic
-    failure test、Trace failure projection 和 Stage A validation FC-A5。
+    failure test、Trace failure projection 和 Stage A validation FC-A6。
   - Q: 什么证据会让你重新评估？ Evidence: 重复且可定位的 Provider transport failure、
     Agent selection regression 或 verified quality dataset；在此之前不改变 Qwen、dimension、
     chunking 或 dense bounds。
