@@ -484,3 +484,53 @@ Canonical 数据的同 session context，返回 `before / anchor / after` 三条
 未触发第二套 Query、Provider 或 Retrieval。该事实不证明真实 provider latency、答案质量或网络
 健康状态。真实 Canonical DB 的 metadata-only startup smoke 显示 database/semantic ready 与
 provider `not_configured`；因此没有虚构 provider Query 结果。
+
+## Context Engineering hardening 事实索引（2026-08-25）
+
+### Problem / Failure
+
+- `ToolEnvelope.to_dict()` 同时承载完整 provenance、内部 identity、检索命中和 expanded context；
+  直接作为 model context 会把 bookkeeping 噪声与语义混在一起，并让模型复制不稳定 ID。
+- 旧 final JSON 让模型提交 claim、evidence、source、binding 以及 deterministic ID；这把 source
+  hydration、去重、排序和 artifact identity 变成脆弱的 JSON 复述任务。
+- 相对时间如果由模型使用 machine now、`MIN(timestamp)` 或手工计算，会把“最近”解释成不可信的
+  时间段；没有独立 tool-result budget 时，expanded context 也可能挤掉真实 hits。
+
+这些是本轮的 regression contracts / anticipated boundary，不把未发生的 provider token overflow
+写成真实线上 Failure。
+
+### Decision / Ownership
+
+`LLM decides semantics; Host code owns deterministic bookkeeping.` `ModelAnswerCandidate` 只包含
+claim/finding/criterion/sufficiency/limitations 与短 source handles；Host 保留完整 canonical
+ToolEnvelope/ToolResultRecord，生成 artifact/evidence/citation/binding IDs，解析 current-run
+handle，校验 scope，hydrate trusted URL/value，并编译成旧 CLI/Conversation 可消费的 `AnswerArtifact`。
+
+模型 projection 有独立 `DEFAULT_TOOL_RESULT_TOKEN_BUDGET`：保留所有真实 hits，先移除非命中 context，
+再显式缩短正文；仍不满足时返回 `ToolResultProjectionError`。retrieval limit、scope max、context
+bound、projection budget 和 answer/evidence budget 不互相冒充。Code Mode、citation repair、retry、
+fallback 与 hidden CoT 不在本轮范围。
+
+### Evidence / Observability
+
+- 短 handle 只在当前 Tool Result scope 有效；缺失、歧义、跨 scope 和未知 handle 都显式失败，
+  不借用历史 Tool Result。
+- `archive_latest` 由 trusted canonical read 的 `MAX(timestamp)` 得到，Host 计算 half-open
+  absolute range，并在 query/Trace 保存 raw intent、anchor、resolved start/end。
+- Host 记录 projection estimate/truncated/omitted context；没有 provider usage 时写
+  `unavailable`，不把 estimate 或零值包装成 token measurement。
+
+### Interview defense mapping
+
+- Q：为什么不让模型复制完整 provenance？
+  Evidence：candidate parser、handle regression 和 current-run resolution；模型输入是 semantic
+  projection，Host record 才保留 full IDs，避免 JSON mover 破坏 identity。
+- Q：为什么不让模型自己计算“最近一个月”？
+  Evidence：relative-time capability tests；`archive_latest` 与 resolved half-open range 由
+  canonical read/Host 产生，machine clock 不进入 contract。
+- Q：为什么不直接把 Tool Result 截断到一个全局 token 数？
+  Evidence：独立 model projection budget；真实 hits、context omission、正文 truncation 和
+  unavailable provider usage 分开记录，超限不能静默丢命中。
+- Q：为什么不引入 Code Mode 或 fallback？
+  Evidence：当前 Tool Calling 已有 scope、Trace、Evidence hard boundary；没有 Failure Case 或
+  paired Evaluation 证明需要另一执行通道，新增 fallback 只会隐藏根因。

@@ -157,6 +157,7 @@ class LexicalQuery(ScopeFilters):
     limit: int | None = DEFAULT_RESULT_LIMIT
     context_before: int = 2
     context_after: int = 2
+    resolved_time_range: Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -168,6 +169,8 @@ class LexicalQuery(ScopeFilters):
         for name, value in (("context_before", self.context_before), ("context_after", self.context_after)):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise InvalidRetrievalQuery(f"{name} must be a non-negative integer")
+        if self.resolved_time_range is not None and not isinstance(self.resolved_time_range, Mapping):
+            raise InvalidRetrievalQuery("resolved_time_range must be a mapping or None")
 
     @property
     def terms(self) -> tuple[str, ...]:
@@ -178,13 +181,16 @@ class LexicalQuery(ScopeFilters):
     def to_dict(self) -> dict[str, object]:
         """返回 lexical filters 与 bounded context 参数。"""
 
-        return {
+        result = {
             **self.scope_dict(),
             "keyword": self.keyword,
             "limit": self.limit,
             "context_before": self.context_before,
             "context_after": self.context_after,
         }
+        if self.resolved_time_range is not None:
+            result["resolved_time_range"] = dict(self.resolved_time_range)
+        return result
 
 
 @dataclass(frozen=True)
@@ -304,6 +310,9 @@ class CanonicalReadRepository(Protocol):
 
     def count_messages(self, query: MessageQuery) -> int:
         """统计 Structured scope 的全部 canonical hits。"""
+
+    def latest_message_timestamp(self, scope: ScopeFilters) -> int | None:
+        """读取 trusted scope 内 archive latest 的 canonical timestamp。"""
 
     def read_messages(self, query: MessageQuery) -> tuple[MessageProjection, ...]:
         """读取有界且已排序的 canonical projections。"""

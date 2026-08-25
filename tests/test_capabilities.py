@@ -8,6 +8,7 @@ from trivae.capabilities import (
     CapabilityContractError,
     CapabilityRegistry,
     ExecutionScope,
+    RelativeTimeRange,
     SearchMessagesCapability,
     SearchMessagesInput,
     SearchMessagesTool,
@@ -114,6 +115,44 @@ class CapabilityContractTests(LexicalRetrievalTests):
         self.assertEqual(outside_session.error.code, "SCOPE_VIOLATION")
         self.assertEqual(outside_time.status, "error")
         self.assertEqual(outside_time.error.code, "SCOPE_VIOLATION")
+
+    def test_relative_time_is_resolved_from_archive_latest_and_traced(self) -> None:
+        """模型只提交相对 contract；Capability 根据 archive latest 写入绝对 query snapshot。"""
+
+        request = SearchMessagesInput(
+            keyword="alpha",
+            session_ids=("qq:100",),
+            limit=5,
+            context_before=0,
+            context_after=0,
+            time_range={"kind": "relative", "amount": 30, "unit": "day", "anchor": "archive_latest"},
+        )
+        result = self.capability.execute(request, ExecutionScope())
+
+        self.assertIsInstance(request.time_range, RelativeTimeRange)
+        self.assertEqual(result.query.resolved_time_range["anchor_timestamp"], 1_769_904_000_000)
+        self.assertEqual(
+            result.query.resolved_time_range["resolved_end_timestamp"],
+            1_769_904_000_001,
+        )
+        self.assertEqual(
+            result.query.resolved_time_range["resolved_start_timestamp"],
+            1_769_904_000_000 - 30 * 24 * 60 * 60 * 1_000,
+        )
+        self.assertEqual(result.query.to_dict()["resolved_time_range"]["unit"], "day")
+
+    def test_relative_time_without_archive_anchor_is_explicit_error(self) -> None:
+        request = SearchMessagesInput(
+            keyword="alpha",
+            session_ids=("qq:missing",),
+            limit=1,
+            context_before=0,
+            context_after=0,
+            time_range={"kind": "relative", "amount": 1, "unit": "day", "anchor": "archive_latest"},
+        )
+
+        with self.assertRaises(CapabilityContractError):
+            self.capability.execute(request, ExecutionScope())
 
     def test_invalid_params_and_bound_are_typed_errors(self) -> None:
         scope = ExecutionScope(allowed_session_ids=("qq:100",), max_results=3)

@@ -620,6 +620,21 @@ class TraceableAgentRuntime(AgentRuntime):
         payload["termination"] = result.termination
         payload["tool_count"] = len(result.tool_calls)
         payload["tool_rounds"] = result.tool_rounds
+        projection_estimates = [
+            call.model_result_estimated_tokens
+            for call in result.tool_calls
+            if call.model_result_estimated_tokens is not None
+        ]
+        payload["tool_result_estimated_tokens"] = (
+            0
+            if not result.tool_calls
+            else sum(projection_estimates)
+            if len(projection_estimates) == len(result.tool_calls)
+            else "unavailable"
+        )
+        payload["tool_result_projection_truncated_count"] = sum(
+            1 for call in result.tool_calls if call.model_result_truncated is True
+        )
         if result.final_answer is not None:
             payload["final_answer"] = result.final_answer
         if result.error is not None:

@@ -73,6 +73,8 @@ class ContextExpansionResult:
     partial: bool
     truncated: bool
     candidate_count: int
+    # 只记录 range/hit 核心消息；其余返回消息是可在 model projection 中省略的 context。
+    primary_message_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -193,6 +195,7 @@ class ContextExpander:
                 partial=True,
                 truncated=True,
                 candidate_count=len(ordered),
+                primary_message_ids=tuple(message.internal_message_id for message in selected),
             )
 
         if len(ordered) <= limit:
@@ -201,6 +204,7 @@ class ContextExpander:
                 partial=False,
                 truncated=False,
                 candidate_count=len(ordered),
+                primary_message_ids=tuple(message.internal_message_id for message in hit_messages),
             )
 
         # 先放入全部真实 hit，再从 context 中填充剩余空间，避免简单切片丢掉后面的命中。
@@ -212,6 +216,7 @@ class ContextExpander:
             partial=False,
             truncated=True,
             candidate_count=len(ordered),
+            primary_message_ids=tuple(message.internal_message_id for message in hit_messages),
         )
 
     def expand_ranges(
@@ -229,6 +234,8 @@ class ContextExpander:
             raise ValueError("context range expansion bounds must be non-negative and limit must be positive")
 
         messages_by_id: dict[str, MessageProjection] = {}
+        # range core 与 before/after context 必须分开标记，供 Host 做 hit-preserving trim。
+        core_ids: set[str] = set()
         for item in ranges:
             core = self.repository.read_message_range(
                 session_id=item.session_id,
@@ -243,6 +250,7 @@ class ContextExpander:
                 )
             if any(message.session_id != item.session_id for message in core):
                 raise RetrievalError(f"Semantic range crossed session boundary: {item.session_id}")
+            core_ids.update(message.internal_message_id for message in core)
             for message in core:
                 messages_by_id[message.internal_message_id] = message
 
@@ -271,18 +279,10 @@ class ContextExpander:
                 partial=False,
                 truncated=False,
                 candidate_count=len(ordered),
+                primary_message_ids=tuple(message.internal_message_id for message in ordered if message.internal_message_id in core_ids),
             )
 
         # 优先保留每个 range 的核心消息，context 超出预算时显式标记截断。
-        core_ids: set[str] = set()
-        for item in ranges:
-            core = self.repository.read_message_range(
-                item.session_id,
-                item.start_message_id,
-                item.end_message_id,
-                item.message_limit,
-            )
-            core_ids.update(message.internal_message_id for message in core)
         core_messages = tuple(message for message in ordered if message.internal_message_id in core_ids)
         if len(core_messages) >= limit:
             selected = core_messages[:limit]
@@ -294,4 +294,5 @@ class ContextExpander:
             partial=len(core_messages) > limit,
             truncated=True,
             candidate_count=len(ordered),
+            primary_message_ids=tuple(message.internal_message_id for message in selected if message.internal_message_id in core_ids),
         )

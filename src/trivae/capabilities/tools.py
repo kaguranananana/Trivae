@@ -12,6 +12,7 @@ from trivae.capabilities.contracts import (
     FindMembersInput,
     GetMessageContextInput,
     GetSchemaInput,
+    RelativeTimeRange,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -296,6 +297,8 @@ class SearchMessagesTool:
         """只投影 typed request 字段，不把 trusted scope 混入 Tool payload。"""
 
         if isinstance(request, SearchMessagesInput):
+            if request.time_range is not None and not isinstance(request.time_range, RelativeTimeRange):
+                raise RuntimeError("SearchMessagesInput time_range was not normalized")
             return {
                 "keyword": request.keyword,
                 "session_ids": request.session_ids,
@@ -306,7 +309,10 @@ class SearchMessagesTool:
                 "limit": request.limit,
                 "context_before": request.context_before,
                 "context_after": request.context_after,
+                "time_range": None if request.time_range is None else request.time_range.to_dict(),
             }
+        if request.time_range is not None and not isinstance(request.time_range, RelativeTimeRange):
+            raise RuntimeError("SemanticSearchInput time_range was not normalized")
         return {
             "query": request.query,
             "session_ids": request.session_ids,
@@ -320,6 +326,7 @@ class SearchMessagesTool:
             "context_before": request.context_before,
             "context_after": request.context_after,
             "dense_top_k": request.dense_top_k,
+            "time_range": None if request.time_range is None else request.time_range.to_dict(),
         }
 
     @staticmethod

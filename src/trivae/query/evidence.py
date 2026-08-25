@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal, Mapping, TypeAlias
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
-from trivae.config.limits import DEFAULT_RESULT_LIMIT
+from trivae.config.limits import DEFAULT_RESULT_LIMIT, DEFAULT_TOOL_RESULT_TOKEN_BUDGET
 from trivae.retrieval.context import MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
@@ -45,6 +45,8 @@ MAX_TOOL_RESULT_ITEMS = DEFAULT_RESULT_LIMIT
 MAX_VALUE_NESTING = 6
 MAX_SOURCE_URLS = 12
 MAX_SOURCE_URL_CHARS = 2_000
+MAX_MODEL_MESSAGE_CHARS = 600
+MODEL_TOKEN_CHAR_RATIO = 3
 
 _URL_PATTERN = re.compile(r"https?://[^\s<>\"'，。；：！？、]+")
 _URL_TRAILING_PUNCTUATION = ".,;:!?，。；：！？、)]}"
@@ -68,6 +70,10 @@ class AnswerFinalizationError(AnswerContractError):
 
 class SourceInspectionError(AnswerContractError):
     """来源查看无法在当前可信 scope 内完成时的显式错误。"""
+
+
+class ToolResultProjectionError(AnswerContractError):
+    """Canonical Tool Result 无法在独立模型预算内形成合法 projection。"""
 
 
 @dataclass(frozen=True)
@@ -299,7 +305,18 @@ class StructuredSource:
         )
 
 
-SourceReference: TypeAlias = MessageSource | StructuredSource
+@dataclass(frozen=True)
+class SourceHandleReference:
+    """finalization 临时使用的短 source handle，不允许直接持久化。"""
+
+    source_id: str
+
+    def __post_init__(self) -> None:
+        # handle 是模型提出的唯一输入；它不携带任何可伪造的父级 provenance。
+        object.__setattr__(self, "source_id", _text("source_id", self.source_id, max_chars=256))
+
+
+SourceReference: TypeAlias = MessageSource | StructuredSource | SourceHandleReference
 
 
 @dataclass(frozen=True)
@@ -321,6 +338,8 @@ def source_reference_key(reference: SourceReference) -> tuple[str, ...]:
             reference.session_id,
             reference.internal_message_id,
         )
+    if isinstance(reference, SourceHandleReference):
+        return ("handle", reference.source_id)
     return (
         "structured",
         reference.run_id,
@@ -385,8 +404,8 @@ class EvidenceSource:
         # relation 属于 Evidence 语义，不能复用 Retrieval 的 included/excluded 状态。
         if self.relation not in ("supports", "contradicts", "context"):
             raise AnswerContractError("relation must be supports, contradicts, or context")
-        if not isinstance(self.reference, (MessageSource, StructuredSource)):
-            raise AnswerContractError("reference must be MessageSource or StructuredSource")
+        if not isinstance(self.reference, (MessageSource, StructuredSource, SourceHandleReference)):
+            raise AnswerContractError("reference must be MessageSource, StructuredSource, or SourceHandleReference")
 
 
 @dataclass(frozen=True)
@@ -507,6 +526,63 @@ class AnswerArtifact:
 
 
 @dataclass(frozen=True)
+class ModelAnswerClaim:
+    """模型只提交一条语义 claim 及其 source handle，不生成 Artifact bookkeeping。"""
+
+    text: str
+    finding: str
+    criterion: str
+    sufficiency: EvidenceSufficiency
+    sources: tuple[tuple[str, SourceRelation], ...] = ()
+    limitations: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        # Host compiler 会按 claim 顺序生成 block/evidence ID，因此模型无需复制这些 ID。
+        object.__setattr__(self, "text", _text("claim text", self.text))
+        object.__setattr__(self, "finding", _text("claim finding", self.finding))
+        object.__setattr__(self, "criterion", _text("claim criterion", self.criterion))
+        if self.sufficiency not in ("sufficient", "partial", "insufficient"):
+            raise AnswerContractError("claim sufficiency is invalid")
+        if not isinstance(self.sources, tuple):
+            raise AnswerContractError("claim sources must be a tuple")
+        if len(self.sources) > MAX_SOURCES_PER_EVIDENCE:
+            raise AnswerContractError(f"claim sources exceeds {MAX_SOURCES_PER_EVIDENCE} items")
+        normalized_sources: list[tuple[str, SourceRelation]] = []
+        seen: set[str] = set()
+        for index, item in enumerate(self.sources):
+            if not isinstance(item, tuple) or len(item) != 2:
+                raise AnswerContractError(f"claim sources[{index}] must be a handle/relation pair")
+            source_id, relation = item
+            source_id = _text(f"claim sources[{index}].source_id", source_id, max_chars=256)
+            if relation not in ("supports", "contradicts", "context"):
+                raise AnswerContractError(f"claim sources[{index}].relation is invalid")
+            if source_id in seen:
+                raise AnswerContractError("claim sources must not contain duplicate handles")
+            seen.add(source_id)
+            normalized_sources.append((source_id, relation))
+        object.__setattr__(self, "sources", tuple(normalized_sources))
+        object.__setattr__(self, "limitations", _limitations("claim limitations", self.limitations))
+
+
+@dataclass(frozen=True)
+class ModelAnswerCandidate:
+    """final synthesis 的 semantic candidate；validated AnswerArtifact 由 Host 编译。"""
+
+    claims: tuple[ModelAnswerClaim, ...]
+    limitations: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        # claim 数量受同一 Evidence budget 约束，避免模型用大量空壳 claim 挤压 finalizer。
+        if not isinstance(self.claims, tuple) or not self.claims:
+            raise AnswerContractError("model answer candidate requires claims")
+        if len(self.claims) > MAX_CONTENT_BLOCKS:
+            raise AnswerContractError(f"model answer candidate exceeds {MAX_CONTENT_BLOCKS} claims")
+        if any(not isinstance(claim, ModelAnswerClaim) for claim in self.claims):
+            raise AnswerContractError("model answer candidate claims are invalid")
+        object.__setattr__(self, "limitations", _limitations("candidate limitations", self.limitations))
+
+
+@dataclass(frozen=True)
 class ToolMessageItem:
     """Tool Result 中一个可引用的 bounded canonical message projection。"""
 
@@ -514,6 +590,7 @@ class ToolMessageItem:
     message: MessageProjection
     content_truncated: bool = False
     urls: tuple[str, ...] = ()
+    is_hit: bool = True
 
     def __post_init__(self) -> None:
         # Tool Result 只保留有界 canonical projection；过长正文必须在建 record 时显式截断。
@@ -526,6 +603,8 @@ class ToolMessageItem:
             raise AnswerContractError("tool message content must be bounded")
         if not isinstance(self.content_truncated, bool):
             raise AnswerContractError("content_truncated must be a boolean")
+        if not isinstance(self.is_hit, bool):
+            raise AnswerContractError("is_hit must be a boolean")
         if not isinstance(self.urls, tuple):
             raise AnswerContractError("tool message urls must be a tuple")
         if len(self.urls) > MAX_SOURCE_URLS:
@@ -604,44 +683,95 @@ class ToolResultRecord:
             raise AnswerContractError("tool result structured locators must be unique")
         object.__setattr__(self, "limitations", _limitations("tool result limitations", self.limitations))
 
-    def to_model_provenance(self) -> dict[str, object]:
-        """只向模型暴露 source locator，不暴露 trusted snapshot 或 scope 对象。"""
+    @property
+    def model_scope_id(self) -> str:
+        """从 Trivae-owned tool-call ordinal 生成当前 Tool Result 的短 scope label。"""
 
+        # Runtime 生成的 identity 末段是单调 tool-call ordinal；保留末段即可避免重复父级 JSON。
+        return self.tool_call_id.rsplit("/", 1)[-1]
+
+    def message_source_handle(self, item: ToolMessageItem) -> str:
+        """为当前 Tool Result 内的 message 生成稳定、短且不跨 run 的 handle。"""
+
+        try:
+            index = self.message_items.index(item)
+        except ValueError as exc:
+            raise AnswerContractError("message item does not belong to the tool result") from exc
+        return f"m{self.model_scope_id}-{index + 1}"
+
+    def structured_source_handle(self, item: ToolStructuredItem) -> str:
+        """为当前 Tool Result 内的 structured item 生成稳定 source handle。"""
+
+        try:
+            index = self.structured_items.index(item)
+        except ValueError as exc:
+            raise AnswerContractError("structured item does not belong to the tool result") from exc
+        return f"s{self.model_scope_id}-{index + 1}"
+
+    def resolve_source_handle(
+        self,
+        source_id: str,
+    ) -> tuple[Literal["message", "structured"], ToolMessageItem | ToolStructuredItem] | None:
+        """只在当前 Tool Result scope 内解析 handle，不尝试跨 record 猜测。"""
+
+        for message_item in self.message_items:
+            if self.message_source_handle(message_item) == source_id:
+                return "message", message_item
+        for structured_item in self.structured_items:
+            if self.structured_source_handle(structured_item) == source_id:
+                return "structured", structured_item
+        return None
+
+    def message_item_by_internal_id(self, internal_message_id: str) -> ToolMessageItem:
+        """把 canonical message identity 解析为当前 record item，缺失时显式暴露 record bug。"""
+
+        for item in self.message_items:
+            if item.message.internal_message_id == internal_message_id:
+                return item
+        raise ToolResultProjectionError("message projection is missing from the canonical tool record")
+
+    def structured_item_by_locator(self, locator_kind: str, locator: str) -> ToolStructuredItem:
+        """把 structured locator 解析为当前 record item，避免模型自行拼 row identity。"""
+
+        for item in self.structured_items:
+            if item.locator_kind == locator_kind and item.locator == locator:
+                return item
+        raise ToolResultProjectionError("structured projection is missing from the canonical tool record")
+
+    def to_model_provenance(self, *, source_ids: set[str] | None = None) -> dict[str, object]:
+        """只向模型暴露短 source handle，不重复 full provenance 或 trusted snapshot。"""
+
+        # source_ids 由当前 model data projection 派生；canonical record 仍保留全部 items。
+        message_sources = []
+        for message_item in self.message_items:
+            source_id = self.message_source_handle(message_item)
+            if source_ids is None or source_id in source_ids:
+                message_sources.append({"type": "message", "source_id": source_id})
+        structured_sources = []
+        for structured_item in self.structured_items:
+            source_id = self.structured_source_handle(structured_item)
+            if source_ids is None or source_id in source_ids:
+                structured_sources.append(
+                    {
+                        "type": "structured",
+                        "source_id": source_id,
+                        "locator_kind": structured_item.locator_kind,
+                        "locator": structured_item.locator,
+                    }
+                )
         return {
-            "run_id": self.run_id,
-            "tool_call_id": self.tool_call_id,
-            "tool_result_id": self.tool_result_id,
-            "message_sources": [
-                {
-                    "type": "message",
-                    # 每个 entry 都携带完整父级 identity，避免模型从多个 Tool Result 拼接 locator。
-                    "run_id": self.run_id,
-                    "tool_call_id": self.tool_call_id,
-                    "tool_result_id": self.tool_result_id,
-                    "result_item_id": item.result_item_id,
-                    "session_id": item.message.session_id,
-                    "internal_message_id": item.message.internal_message_id,
-                }
-                for item in self.message_items
-            ],
-            "structured_sources": [
-                {
-                    "type": "structured",
-                    # structured source 同样使用自包含 locator，保持两类 provenance 的投影规则一致。
-                    "run_id": self.run_id,
-                    "tool_call_id": self.tool_call_id,
-                    "tool_result_id": self.tool_result_id,
-                    "source_id": item.source_id,
-                    "locator_kind": item.locator_kind,
-                    "locator": item.locator,
-                }
-                for item in self.structured_items
-            ],
+            "tool_result_scope": self.model_scope_id,
+            "message_sources": message_sources,
+            "structured_sources": structured_sources,
         }
 
 
-def _message_items(messages: tuple[MessageProjection, ...]) -> tuple[ToolMessageItem, ...]:
-    """按 internal message identity 去重，保留 Tool Result 中第一次出现的顺序。"""
+def _message_items(
+    messages: tuple[MessageProjection, ...],
+    *,
+    hit_ids: set[str] | None = None,
+) -> tuple[ToolMessageItem, ...]:
+    """按 internal identity 去重，并保留 hit/context 角色供模型预算 trimming 使用。"""
 
     items: list[ToolMessageItem] = []
     seen: set[str] = set()
@@ -654,9 +784,25 @@ def _message_items(messages: tuple[MessageProjection, ...]) -> tuple[ToolMessage
         if len(content) > MAX_SAFE_EXCERPT_CHARS:
             # Record 内只留可供人工复核的 bounded excerpt，并用标记保留“发生过截断”的事实。
             bounded_message = replace(message, normalized_content=content[: MAX_SAFE_EXCERPT_CHARS - 1] + "…")
-            items.append(ToolMessageItem(f"message/{message.internal_message_id}", bounded_message, True, urls))
+            items.append(
+                ToolMessageItem(
+                    f"message/{message.internal_message_id}",
+                    bounded_message,
+                    True,
+                    urls,
+                    hit_ids is None or message.internal_message_id in hit_ids,
+                )
+            )
         else:
-            items.append(ToolMessageItem(f"message/{message.internal_message_id}", message, False, urls))
+            items.append(
+                ToolMessageItem(
+                    f"message/{message.internal_message_id}",
+                    message,
+                    False,
+                    urls,
+                    hit_ids is None or message.internal_message_id in hit_ids,
+                )
+            )
     return tuple(items)
 
 
@@ -700,11 +846,12 @@ def build_tool_result_record(
     if isinstance(data, RetrievalResult):
         # hits 和 expanded context 都是当前 Tool Result 的可见候选；finalizer 仍会重新做 scope 校验。
         messages = tuple(hit.message for hit in data.hits) + data.expanded_messages
-        message_items = _message_items(messages)
+        hit_ids = {hit.message.internal_message_id for hit in data.hits}
+        message_items = _message_items(messages, hit_ids=hit_ids)
         query_snapshot = data.query.to_dict()
     elif isinstance(data, SemanticRetrievalResult):
         # semantic chunk 只作为 candidate provenance；可引用内容必须是恢复后的 canonical messages。
-        message_items = _message_items(data.expanded_messages)
+        message_items = _message_items(data.expanded_messages, hit_ids=set(data.primary_message_ids))
         query_snapshot = data.query.to_dict()
     elif isinstance(data, StructuredMessageResult):
         message_items = _message_items(data.messages)
@@ -799,6 +946,284 @@ def _sql_items(result: SQLQueryResult) -> tuple[ToolStructuredItem, ...]:
     )
 
 
+def _model_content(content: str, maximum: int = MAX_MODEL_MESSAGE_CHARS) -> tuple[str, bool]:
+    """把 canonical bounded excerpt再投影为 model budget 内的内容。"""
+
+    if len(content) <= maximum:
+        return content, False
+    return content[: maximum - 1] + "…", True
+
+
+def _model_message_projection(
+    record: ToolResultRecord,
+    item: ToolMessageItem,
+) -> tuple[dict[str, object], tuple[dict[str, object], bool, str, bool]]:
+    """生成不含内部 provenance 的消息 projection，并返回 budget trimming slot。"""
+
+    message = item.message
+    content, model_content_truncated = _model_content(message.normalized_content)
+    entry: dict[str, object] = {
+        "source_id": record.message_source_handle(item),
+        "timestamp": message.timestamp,
+        "author": message.sender_name or message.sender_user_id,
+        "content": content,
+        "session": message.session_display or message.session_id,
+        "message_type": message.message_type,
+        "urls": item.urls,
+        "content_truncated": item.content_truncated or model_content_truncated,
+        "hit": item.is_hit,
+    }
+    # slot 只存在 Host 内存中，full_content 不会随 model payload 返回。
+    return entry, (entry, item.is_hit, message.normalized_content, item.content_truncated)
+
+
+def _project_model_data(
+    data: object,
+    record: ToolResultRecord,
+) -> tuple[object, list[tuple[list[dict[str, object]], dict[str, object], bool, str, bool]]]:
+    """把 canonical envelope data 转成 slim model data，同时保留 Host trimming 索引。"""
+
+    if not isinstance(data, Mapping):
+        return data, []
+    projected = dict(data)
+    slots: list[tuple[list[dict[str, object]], dict[str, object], bool, str, bool]] = []
+
+    if projected.get("strategy") == "semantic":
+        # chunk/parent/index identity 是 Host provenance，不是模型回答语义；只保留排序和质量摘要。
+        raw_hits = projected.get("hits")
+        if isinstance(raw_hits, list):
+            projected["hits"] = [
+                {
+                    "score": hit.get("score"),
+                    "score_type": hit.get("score_type"),
+                    "dense_rank": hit.get("dense_rank"),
+                }
+                for hit in raw_hits
+                if isinstance(hit, Mapping)
+            ]
+        raw_metadata = projected.get("metadata")
+        if isinstance(raw_metadata, Mapping):
+            metadata = dict(raw_metadata)
+            raw_details = metadata.get("details")
+            if isinstance(raw_details, Mapping):
+                visible_detail_names = {
+                    "index_status",
+                    "canonical_message_count",
+                    "indexed_message_count",
+                    "indexed_chunk_count",
+                    "dense_candidate_pool",
+                    "dense_candidates_returned",
+                    "accepted_candidates",
+                    "candidate_scores",
+                    "score_type",
+                    "context_before",
+                    "context_after",
+                    "expanded_candidate_messages",
+                    "known_gaps",
+                }
+                metadata["details"] = {
+                    name: value for name, value in raw_details.items() if name in visible_detail_names
+                }
+            projected["metadata"] = metadata
+
+    raw_hits = projected.get("hits")
+    hit_message_ids: set[str] = set()
+    if isinstance(raw_hits, list):
+        projected_hits: list[dict[str, object]] = []
+        for index, raw_hit in enumerate(raw_hits):
+            if not isinstance(raw_hit, Mapping):
+                raise ToolResultProjectionError(f"canonical hit {index} is not an object")
+            hit = dict(raw_hit)
+            raw_message = hit.get("message")
+            if isinstance(raw_message, Mapping):
+                internal_id = raw_message.get("internal_message_id")
+                if not isinstance(internal_id, str) or not internal_id:
+                    raise ToolResultProjectionError(f"canonical hit {index} has no message identity")
+                item = record.message_item_by_internal_id(internal_id)
+                entry, slot = _model_message_projection(record, item)
+                hit["message"] = entry
+                hit_message_ids.add(internal_id)
+                projected_hits.append(hit)
+                slots.append((projected_hits, *slot))
+            else:
+                # semantic hit 是 range candidate，没有 message body；canonical range metadata 仍可审计。
+                projected_hits.append(hit)
+        projected["hits"] = projected_hits
+
+    def project_message_list(name: str, *, skip_hit_messages: bool = False) -> None:
+        """转换指定列表，并让 lexical hit 不在 expanded context 中重复搬运正文。"""
+
+        raw_messages = projected.get(name)
+        if not isinstance(raw_messages, list):
+            return
+        projected_messages: list[dict[str, object]] = []
+        for index, raw_message in enumerate(raw_messages):
+            if not isinstance(raw_message, Mapping):
+                raise ToolResultProjectionError(f"canonical {name}[{index}] is not an object")
+            internal_id = raw_message.get("internal_message_id")
+            if not isinstance(internal_id, str) or not internal_id:
+                raise ToolResultProjectionError(f"canonical {name}[{index}] has no message identity")
+            if skip_hit_messages and internal_id in hit_message_ids:
+                continue
+            item = record.message_item_by_internal_id(internal_id)
+            entry, slot = _model_message_projection(record, item)
+            projected_messages.append(entry)
+            slots.append((projected_messages, *slot))
+        projected[name] = projected_messages
+
+    if "expanded_messages" in projected:
+        project_message_list("expanded_messages", skip_hit_messages=bool(hit_message_ids))
+    if "messages" in projected:
+        project_message_list("messages")
+
+    raw_candidates = projected.get("candidates")
+    if isinstance(raw_candidates, list):
+        projected_candidates: list[dict[str, object]] = []
+        for index, raw_candidate in enumerate(raw_candidates):
+            if not isinstance(raw_candidate, Mapping):
+                raise ToolResultProjectionError(f"candidate {index} is not an object")
+            candidate = dict(raw_candidate)
+            structured_item = record.structured_item_by_locator("row", f"candidates[{index}]")
+            candidate["source_id"] = record.structured_source_handle(structured_item)
+            projected_candidates.append(candidate)
+        projected["candidates"] = projected_candidates
+
+    raw_tables = projected.get("tables")
+    if isinstance(raw_tables, list):
+        projected_tables: list[dict[str, object]] = []
+        for index, raw_table in enumerate(raw_tables):
+            if not isinstance(raw_table, Mapping):
+                raise ToolResultProjectionError(f"table {index} is not an object")
+            table = dict(raw_table)
+            structured_item = record.structured_item_by_locator("row", f"tables[{index}]")
+            table["source_id"] = record.structured_source_handle(structured_item)
+            projected_tables.append(table)
+        projected["tables"] = projected_tables
+
+    raw_rows = projected.get("rows")
+    if isinstance(raw_rows, list):
+        projected_rows: list[dict[str, object]] = []
+        for index, raw_row in enumerate(raw_rows):
+            if not isinstance(raw_row, Mapping):
+                raise ToolResultProjectionError(f"SQL row {index} is not an object")
+            row = dict(raw_row)
+            structured_item = record.structured_item_by_locator("row", f"rows[{index}]")
+            row["source_id"] = record.structured_source_handle(structured_item)
+            projected_rows.append(row)
+        projected["rows"] = projected_rows
+
+    return projected, slots
+
+
+def _projection_size(payload: Mapping[str, object]) -> int:
+    """以 UTF-8 byte 数估算 transport size；不把估算值冒充 provider token usage。"""
+
+    return len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+
+def _projected_source_ids(value: object) -> set[str]:
+    """收集当前 model data 中真正可见的 source handle，过滤被省略的 context locator。"""
+
+    source_ids: set[str] = set()
+    if isinstance(value, Mapping):
+        for key, nested in value.items():
+            if key == "source_id" and isinstance(nested, str):
+                source_ids.add(nested)
+            else:
+                source_ids.update(_projected_source_ids(nested))
+    elif isinstance(value, (list, tuple)):
+        for nested in value:
+            source_ids.update(_projected_source_ids(nested))
+    return source_ids
+
+
+def _set_projection_metrics(
+    payload: dict[str, object],
+    *,
+    token_budget: int,
+    truncated: bool,
+    omitted_context_messages: int,
+) -> None:
+    """写入公开 projection 预算事实，避免 Host 侧 trim 变成 hidden truncation。"""
+
+    payload["model_projection"] = {
+        "token_budget": token_budget,
+        "estimated_tokens": (_projection_size(payload) + MODEL_TOKEN_CHAR_RATIO - 1) // MODEL_TOKEN_CHAR_RATIO,
+        "truncated": truncated,
+        "omitted_context_messages": omitted_context_messages,
+    }
+
+
+def project_tool_result_for_model(
+    envelope: ToolEnvelope,
+    record: ToolResultRecord,
+    *,
+    token_budget: int = DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
+) -> dict[str, object]:
+    """保留 canonical host record，同时向模型返回独立、有界且可审计的 slim projection。"""
+
+    if isinstance(token_budget, bool) or not isinstance(token_budget, int) or token_budget <= 0:
+        raise ToolResultProjectionError("tool result token budget must be positive")
+    canonical_payload = envelope.to_dict()
+    projected_data, slots = _project_model_data(canonical_payload.get("data"), record)
+    payload: dict[str, object] = {
+        "status": canonical_payload["status"],
+        "data": projected_data,
+        "meta": canonical_payload["meta"],
+        "error": canonical_payload["error"],
+        "provenance": record.to_model_provenance(),
+    }
+    max_bytes = token_budget * MODEL_TOKEN_CHAR_RATIO
+    truncated = False
+    omitted_context_messages = 0
+
+    def fits() -> bool:
+        """每次检查都包含 projection metrics，保证公开 payload 本身不越预算。"""
+
+        # context trim 后同步缩小 model provenance；Host canonical record 不受此 projection 变化影响。
+        payload["provenance"] = record.to_model_provenance(source_ids=_projected_source_ids(payload["data"]))
+        payload.pop("model_projection", None)
+        _set_projection_metrics(
+            payload,
+            token_budget=token_budget,
+            truncated=truncated,
+            omitted_context_messages=omitted_context_messages,
+        )
+        return _projection_size(payload) <= max_bytes
+
+    if not fits():
+        # 第一阶段只删除 context；所有真实 retrieval hits 必须继续留在 model projection。
+        retained_slots: list[tuple[list[dict[str, object]], dict[str, object], bool, str, bool]] = []
+        for container, entry, is_hit, full_content, canonical_truncated in slots:
+            if is_hit:
+                retained_slots.append((container, entry, is_hit, full_content, canonical_truncated))
+                continue
+            container.remove(entry)
+            omitted_context_messages += 1
+        slots = retained_slots
+        truncated = omitted_context_messages > 0
+
+    if not fits():
+        # 第二阶段只缩短正文；source handle、timestamp、author、URL 和 hit identity 不被删除。
+        for maximum in (512, 384, 256, 192, 128, 96, 64, 32):
+            for _container, entry, _is_hit, full_content, canonical_truncated in slots:
+                content, content_truncated = _model_content(full_content, maximum)
+                entry["content"] = content
+                entry["content_truncated"] = canonical_truncated or content_truncated
+            truncated = True
+            if fits():
+                break
+        else:
+            raise ToolResultProjectionError(
+                "canonical tool result cannot fit the independent model token budget"
+            )
+
+    # fits() 已把 metrics 写入 payload；最后一次 size check 防止修改后产生隐式超限。
+    if _projection_size(payload) > max_bytes:
+        raise ToolResultProjectionError("model tool result projection exceeds its token budget")
+    return payload
+
+
 def _model_error(code: str, message: str, path: str | None = None) -> AnswerFinalizationError:
     """把 parser/contract 错误统一成不含原始模型输出的 finalization failure。"""
 
@@ -821,6 +1246,8 @@ def _parse_source(raw: object, path: str) -> SourceReference:
         raise _model_error("INVALID_SOURCE", "source must be an object", path)
     source_type = raw.get("type")
     try:
+        if source_type == "handle":
+            return SourceHandleReference(source_id=raw["source_id"])
         if source_type == "message":
             return MessageSource(
                 run_id=raw["run_id"],
@@ -944,6 +1371,123 @@ def _parse_candidate(payload: Mapping[str, Any]) -> AnswerArtifact:
         raise _model_error("INVALID_ANSWER_ARTIFACT", str(exc)) from exc
 
 
+def _parse_model_source(raw: object, path: str) -> tuple[str, SourceRelation]:
+    """解析 semantic candidate 的短 handle；relation 只表达语义，不复制 provenance。"""
+
+    source_id: object
+    if isinstance(raw, str):
+        source_id = raw
+        relation: object = "supports"
+    elif isinstance(raw, Mapping):
+        source_id = raw.get("source_id")
+        relation = raw.get("relation", "supports")
+    else:
+        raise _model_error("INVALID_SOURCE", "model source must be a handle string or object", path)
+    try:
+        normalized_source_id = _text(f"{path}.source_id", source_id, max_chars=256)
+    except AnswerContractError as exc:
+        raise _model_error("INVALID_SOURCE", str(exc), path) from exc
+    if relation not in ("supports", "contradicts", "context"):
+        raise _model_error("INVALID_SOURCE", "source relation is invalid", f"{path}.relation")
+    return normalized_source_id, relation
+
+
+def parse_model_answer_candidate(output: str) -> ModelAnswerCandidate:
+    """解析新的 semantic-only final contract，不接受 host-owned Artifact bookkeeping。"""
+
+    if not isinstance(output, str) or not output.strip():
+        raise _model_error("INVALID_FINAL_OUTPUT", "final answer must be non-empty text")
+    try:
+        decoded = json.loads(output.strip())
+    except json.JSONDecodeError as exc:
+        raise _model_error("INVALID_MODEL_CANDIDATE", "model answer candidate is not valid JSON") from exc
+    if not isinstance(decoded, Mapping):
+        raise _model_error("INVALID_MODEL_CANDIDATE", "model answer candidate must be an object")
+    claims: list[ModelAnswerClaim] = []
+    for index, raw_claim in enumerate(_payload_list(decoded, "claims")):
+        path = f"claims[{index}]"
+        if not isinstance(raw_claim, Mapping):
+            raise _model_error("INVALID_MODEL_CANDIDATE", "claim must be an object", path)
+        raw_sources = raw_claim.get("sources", [])
+        if not isinstance(raw_sources, list):
+            raise _model_error("INVALID_MODEL_CANDIDATE", "sources must be an array", f"{path}.sources")
+        sources = tuple(
+            _parse_model_source(raw_source, f"{path}.sources[{source_index}]")
+            for source_index, raw_source in enumerate(raw_sources)
+        )
+        raw_limitations = raw_claim.get("limitations", [])
+        if not isinstance(raw_limitations, list):
+            raise _model_error("INVALID_MODEL_CANDIDATE", "limitations must be an array", f"{path}.limitations")
+        try:
+            claims.append(
+                ModelAnswerClaim(
+                    text=raw_claim["text"],
+                    finding=raw_claim["finding"],
+                    criterion=raw_claim["criterion"],
+                    sufficiency=raw_claim["sufficiency"],
+                    sources=sources,
+                    limitations=tuple(raw_limitations),
+                )
+            )
+        except KeyError as exc:
+            raise _model_error("INVALID_MODEL_CANDIDATE", "claim is missing a required field", f"{path}.{exc.args[0]}") from exc
+        except (AnswerContractError, TypeError) as exc:
+            raise _model_error("INVALID_MODEL_CANDIDATE", str(exc), path) from exc
+
+    raw_limitations = decoded.get("limitations", [])
+    if not isinstance(raw_limitations, list):
+        raise _model_error("INVALID_MODEL_CANDIDATE", "limitations must be an array", "limitations")
+    try:
+        return ModelAnswerCandidate(tuple(claims), tuple(raw_limitations))
+    except (AnswerContractError, TypeError) as exc:
+        raise _model_error("INVALID_MODEL_CANDIDATE", str(exc)) from exc
+
+
+def compile_model_answer_candidate(
+    candidate: ModelAnswerCandidate,
+    *,
+    has_tool_results: bool,
+) -> AnswerArtifact:
+    """由 Host 确定性生成 block/evidence/binding identity，再交给同一 strict finalizer。"""
+
+    blocks = tuple(
+        AnswerContentBlock(f"claim-{index + 1}", claim.text)
+        for index, claim in enumerate(candidate.claims)
+    )
+    if not has_tool_results:
+        claim_limitations = tuple(limit for claim in candidate.claims for limit in claim.limitations)
+        return AnswerArtifact(
+            content_blocks=blocks,
+            limitations=tuple((*candidate.limitations, *claim_limitations)),
+        )
+
+    evidence_items: list[EvidenceItem] = []
+    bindings: list[CitationBinding] = []
+    for index, claim in enumerate(candidate.claims):
+        evidence_id = f"e{index + 1}"
+        sources = tuple(
+            EvidenceSource(relation, SourceHandleReference(source_id))
+            for source_id, relation in claim.sources
+        )
+        evidence_items.append(
+            EvidenceItem(
+                evidence_id=evidence_id,
+                finding=claim.finding,
+                criterion=claim.criterion,
+                sufficiency=claim.sufficiency,
+                sources=sources,
+                limitations=claim.limitations,
+            )
+        )
+        bindings.append(CitationBinding(f"claim-{index + 1}", (evidence_id,)))
+    return AnswerArtifact(
+        content_blocks=blocks,
+        citation_bindings=tuple(bindings),
+        evidence_items=tuple(evidence_items),
+        limitations=candidate.limitations,
+    )
+
+
 def parse_answer_output(output: str) -> AnswerArtifact:
     """解析模型 final synthesis；plain text 只能形成无 citation 的内容块。"""
 
@@ -1036,6 +1580,29 @@ def _hydrate_snapshot(
     )
 
 
+def _resolve_source_handle(
+    source_id: str,
+    records: Mapping[tuple[str, str], ToolResultRecord],
+    source_path: str,
+) -> tuple[ToolResultRecord, Literal["message", "structured"], ToolMessageItem | ToolStructuredItem]:
+    """在当前 run 的 unique Tool Result 集合内解析短 handle，拒绝缺失或歧义。"""
+
+    matches: list[tuple[ToolResultRecord, Literal["message", "structured"], ToolMessageItem | ToolStructuredItem]] = []
+    seen_records: set[int] = set()
+    for record in records.values():
+        if id(record) in seen_records:
+            continue
+        seen_records.add(id(record))
+        resolved = record.resolve_source_handle(source_id)
+        if resolved is not None:
+            matches.append((record, resolved[0], resolved[1]))
+    if not matches:
+        raise _model_error("UNRESOLVED_SOURCE_HANDLE", "source handle does not exist in the current run", source_path)
+    if len(matches) > 1:
+        raise _model_error("AMBIGUOUS_SOURCE_HANDLE", "source handle resolves to multiple tool results", source_path)
+    return matches[0]
+
+
 def _finalize_source(
     source: EvidenceSource,
     *,
@@ -1048,20 +1615,56 @@ def _finalize_source(
     """验证一个 source 的 provenance/locator/scope，并从可信 record hydrate metadata。"""
 
     reference = source.reference
+    if isinstance(reference, SourceHandleReference):
+        # 先把短 handle 映射回 full host locator，再复用原有 strict source 主链路。
+        record, source_type, item = _resolve_source_handle(reference.source_id, records, source_path)
+        if source_type == "message":
+            if not isinstance(item, ToolMessageItem):
+                raise _model_error("INVALID_PROVENANCE", "resolved message source item is invalid", source_path)
+            concrete_reference: SourceReference = MessageSource(
+                run_id=record.run_id,
+                tool_call_id=record.tool_call_id,
+                tool_result_id=record.tool_result_id,
+                result_item_id=item.result_item_id,
+                session_id=item.message.session_id,
+                internal_message_id=item.message.internal_message_id,
+            )
+        else:
+            if not isinstance(item, ToolStructuredItem):
+                raise _model_error("INVALID_PROVENANCE", "resolved structured source item is invalid", source_path)
+            concrete_reference = StructuredSource(
+                run_id=record.run_id,
+                tool_call_id=record.tool_call_id,
+                tool_result_id=record.tool_result_id,
+                locator_kind=item.locator_kind,
+                locator=item.locator,
+                source_id=item.source_id,
+            )
+        return _finalize_source(
+            EvidenceSource(source.relation, concrete_reference),
+            run_id=run_id,
+            accepted_run_ids=accepted_run_ids,
+            records=records,
+            scope=scope,
+            source_path=source_path,
+        )
     source_run_id = reference.run_id
     if source_run_id != run_id and source_run_id not in accepted_run_ids:
         raise _model_error("INVALID_PROVENANCE", "source does not belong to the current run", f"{source_path}.run_id")
-    record = records.get((reference.tool_call_id, reference.tool_result_id))
-    if record is None:
+    matched_record = records.get((reference.tool_call_id, reference.tool_result_id))
+    if matched_record is None:
         raise _model_error("INVALID_PROVENANCE", "source tool result was not obtained in the current run", source_path)
-    if record.scope_snapshot != scope_snapshot(scope):
+    if matched_record.scope_snapshot != scope_snapshot(scope):
         raise _model_error("SCOPE_VIOLATION", "source result scope does not match the current trusted scope", source_path)
 
     if isinstance(reference, MessageSource):
-        item = next((item for item in record.message_items if item.result_item_id == reference.result_item_id), None)
-        if item is None:
+        matched_message_item: ToolMessageItem | None = next(
+            (item for item in matched_record.message_items if item.result_item_id == reference.result_item_id),
+            None,
+        )
+        if matched_message_item is None:
             raise _model_error("UNRESOLVED_MESSAGE_SOURCE", "message result item does not exist", f"{source_path}.result_item_id")
-        message = item.message
+        message = matched_message_item.message
         if message.session_id != reference.session_id or message.internal_message_id != reference.internal_message_id:
             raise _model_error("MESSAGE_SOURCE_MISMATCH", "message locator does not match the tool result", source_path)
         if not _scope_allows_message(message, scope):
@@ -1072,8 +1675,8 @@ def _finalize_source(
                 reference,
                 snapshot=_hydrate_snapshot(
                     message,
-                    content_truncated=item.content_truncated,
-                    source_urls=item.urls,
+                    content_truncated=matched_message_item.content_truncated,
+                    source_urls=matched_message_item.urls,
                 ),
             ),
         )
@@ -1081,7 +1684,7 @@ def _finalize_source(
     structured_item = next(
         (
             item
-            for item in record.structured_items
+            for item in matched_record.structured_items
             if item.locator_kind == reference.locator_kind and item.locator == reference.locator
         ),
         None,
@@ -1105,8 +1708,8 @@ def _finalize_source(
         replace(
             reference,
             value_snapshot=structured_item.value_snapshot,
-            query_scope_snapshot=record.query_scope_snapshot,
-            execution_limitations=record.limitations,
+            query_scope_snapshot=matched_record.query_scope_snapshot,
+            execution_limitations=matched_record.limitations,
             source_id=structured_item.source_id,
         ),
     )
@@ -1136,6 +1739,15 @@ def validate_answer_artifact(
             "tool-backed answer must bind content blocks to evidence",
             "citation_bindings",
         )
+    if tool_results:
+        for item_index, item in enumerate(artifact.evidence_items):
+            if not item.sources:
+                # Evidence 不能只保留语义摘要而省略真实 source，避免不可审计的静默降级。
+                raise _model_error(
+                    "MISSING_EVIDENCE",
+                    "tool-backed evidence must include at least one source",
+                    f"evidence_items[{item_index}].sources",
+                )
     if not artifact.evidence_items:
         # 没有 Tool 事实的普通回答不需要 current-run provenance，但仍已经是结构化 Artifact。
         return artifact
@@ -1172,7 +1784,23 @@ def finalize_answer(
 ) -> AnswerArtifact:
     """完成“解析 → 结构校验 → provenance 校验 → trusted hydrate”的提交前流程。"""
 
-    candidate = parse_answer_output(output)
+    normalized_output = output.strip() if isinstance(output, str) else output
+    if isinstance(normalized_output, str) and normalized_output.startswith("{"):
+        try:
+            decoded_output = json.loads(normalized_output)
+        except json.JSONDecodeError:
+            decoded_output = None
+        if isinstance(decoded_output, Mapping) and "claims" in decoded_output:
+            # 新 contract 只解析语义字段；Host compiler 负责 Artifact identity bookkeeping。
+            candidate = compile_model_answer_candidate(
+                parse_model_answer_candidate(normalized_output),
+                has_tool_results=bool(tool_results),
+            )
+        else:
+            # 旧 full Artifact JSON 继续走原 parser，保留历史 artifact/codec 兼容性。
+            candidate = parse_answer_output(output)
+    else:
+        candidate = parse_answer_output(output)
     if tool_results and not output.strip().startswith("{"):
         # 只要本轮实际调用过工具，最终合成必须走结构化 contract；不能把 citation 丢成裸文本。
         raise _model_error(

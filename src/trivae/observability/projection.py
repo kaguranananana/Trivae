@@ -97,6 +97,8 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
     usage: dict[str, int | float] = {}
     tool_count = 0
     retrieval_count = 0
+    tool_result_estimated_tokens: int | Literal["unavailable"] = "unavailable"
+    tool_result_projection_truncated_count = 0
 
     for event in stored.events:
         if event.duration_ms is not None:
@@ -118,6 +120,15 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
             tool_count += 1
         if event.stage == "retrieval" and event.phase in {"completed", "failed"}:
             retrieval_count += 1
+        if event.operation == "runtime.run" and event.phase in {"completed", "failed", "aborted"}:
+            raw_estimated_tokens = event.payload.get("tool_result_estimated_tokens")
+            if isinstance(raw_estimated_tokens, int) and not isinstance(raw_estimated_tokens, bool):
+                tool_result_estimated_tokens = raw_estimated_tokens
+            elif raw_estimated_tokens == "unavailable":
+                tool_result_estimated_tokens = "unavailable"
+            raw_truncated_count = event.payload.get("tool_result_projection_truncated_count")
+            if isinstance(raw_truncated_count, int) and not isinstance(raw_truncated_count, bool):
+                tool_result_projection_truncated_count = raw_truncated_count
 
     total_duration_ms = _duration_between(stored.started_at, stored.terminal_at)
     if total_duration_ms is None:
@@ -131,6 +142,8 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
         usage=dict(sorted(usage.items())),
         tool_count=tool_count,
         retrieval_count=retrieval_count,
+        tool_result_estimated_tokens=tool_result_estimated_tokens,
+        tool_result_projection_truncated_count=tool_result_projection_truncated_count,
     )
 
 

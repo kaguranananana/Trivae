@@ -205,18 +205,20 @@ def _event(
     sequence: int,
     operation: str,
     *,
+    trace_id: str = "trace-fixed",
     phase: str = "observed",
     stage: str = "query",
     operation_id: str = "query",
     parent_operation_id: str | None = None,
     outcome: str | None = None,
+    payload: dict[str, object] | None = None,
 ) -> NormalizedQueryEvent:
     """构造固定时间戳 event，避免 replay 测试依赖 wall-clock。"""
 
     return NormalizedQueryEvent(
         schema_version=1,
         event_id=f"event-{sequence}",
-        trace_id="trace-fixed",
+        trace_id=trace_id,
         request_id="request-fixed",
         sequence=sequence,
         occurred_at="2026-08-23T00:00:00.000+00:00",
@@ -227,7 +229,7 @@ def _event(
         operation_id=operation_id,
         parent_operation_id=parent_operation_id,
         outcome=outcome,  # type: ignore[arg-type]
-        payload={"provider": "test-provider", "model": "test-model"},
+        payload={"provider": "test-provider", "model": "test-model"} if payload is None else payload,
     )
 
 
@@ -261,6 +263,37 @@ class ObservabilityTests(unittest.TestCase):
             with self.assertRaises(TraceStoreError):
                 reopened.append_event(_event(2, "query.duplicate"))
             reopened.close()
+
+    def test_trace_metrics_expose_tool_result_projection_budget(self) -> None:
+        """Trace 公开 Host projection estimate 与 truncation 事实，不冒充 provider usage。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteTraceStore(Path(directory) / "projection.sqlite3")
+            store.create_trace("trace-projection", "request-projection", "normal", "2026-08-23T00:00:00+00:00")
+            store.append_event(
+                _event(
+                    1,
+                    "runtime.run",
+                    trace_id="trace-projection",
+                    phase="completed",
+                    stage="runtime",
+                    operation_id="runtime",
+                    outcome="ok",
+                    payload={
+                        "provider": "test-provider",
+                        "model": "test-model",
+                        "tool_result_estimated_tokens": 1234,
+                        "tool_result_projection_truncated_count": 2,
+                    },
+                )
+            )
+            store.mark_terminal("trace-projection", "completed", "2026-08-23T00:00:01+00:00")
+
+            projection = project_trace(store.read_trace("trace-projection"))
+            self.assertEqual(projection.metrics.tool_result_estimated_tokens, 1234)
+            self.assertEqual(projection.metrics.tool_result_projection_truncated_count, 2)
+            self.assertNotIn("tool_result_estimated_tokens", projection.metrics.usage)
+            store.close()
 
     def test_capture_profiles_bound_redact_and_block_hidden_reasoning(self) -> None:
         """normal/debug 都有界，secret 和 hidden reasoning 不进入 persisted payload。"""

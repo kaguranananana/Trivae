@@ -20,7 +20,7 @@ from trivae.capabilities.contracts import (
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.limits import DEFAULT_RESULT_LIMIT
 from trivae.observability.contracts import FailureInfo
-from trivae.query.evidence import build_tool_result_record
+from trivae.query.evidence import build_tool_result_record, project_tool_result_for_model
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
 
 
@@ -32,6 +32,20 @@ def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
         data=None,
         meta={"truncated": False},
         error=ToolError(code=error.error_code, message=str(error)),
+    )
+
+
+def _model_projection_metrics(payload: dict[str, object]) -> tuple[int | None, bool | None]:
+    """读取 Host projection 的 estimate；类型不符时显式标为 unavailable。"""
+
+    metrics = payload.get("model_projection")
+    if not isinstance(metrics, dict):
+        return None, None
+    estimated_tokens = metrics.get("estimated_tokens")
+    truncated = metrics.get("truncated")
+    return (
+        estimated_tokens if isinstance(estimated_tokens, int) and not isinstance(estimated_tokens, bool) else None,
+        truncated if isinstance(truncated, bool) else None,
     )
 
 
@@ -66,8 +80,9 @@ class SearchMessagesSDKToolAdapter:
                 "keyword must be exactly one non-empty string. "
                 "Omit optional filters, or use null; do not send empty arrays. "
                 "limit must be a positive integer within the current trusted result limit. "
+                "For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. "
                 "context_before and context_after must be non-negative integers. "
-                "Use one complete provenance message source entry for each citation."
+                "Use the short source_id handle from the current Tool Result for each citation; do not copy full provenance."
             )
         else:
             # legacy 名称保留原 contract，并明确它不是正常 Agent surface 的 canonical 名称。
@@ -78,11 +93,14 @@ class SearchMessagesSDKToolAdapter:
                 "Omit optional filters, or use null; do not send empty arrays. "
                 "limit must be a positive integer within the current trusted result limit. "
                 "context_before and context_after must be non-negative integers. "
-                "Use one complete provenance message source entry for each citation."
+                "Use the short source_id handle from the current Tool Result for each citation; do not copy full provenance."
             )
         if trusted_max_results is not None:
             # 让 schema 与描述同时携带动态 bound，减少模型先生成越界 limit 再恢复的无效回合。
-            description += f" The current trusted result limit is {trusted_max_results}."
+            description += (
+                f" The current trusted result limit is {trusted_max_results}. For broad inventory or resource-list"
+                f" recall, pass limit={trusted_max_results} exactly; do not use a smaller limit such as 20 or 30."
+            )
 
         @function_tool(
             name_override=self.tool_name,
@@ -97,6 +115,7 @@ class SearchMessagesSDKToolAdapter:
             session_ids: list[str] | None = None,
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
+            time_range: dict[str, object] | None = None,
             sender_user_ids: list[str] | None = None,
             message_types: list[str] | None = None,
             limit: int = DEFAULT_RESULT_LIMIT,
@@ -110,6 +129,7 @@ class SearchMessagesSDKToolAdapter:
                 session_ids: Optional non-empty session ID array; use null when unused.
                 start_timestamp: Optional integer inclusive lower bound in milliseconds.
                 end_timestamp: Optional integer exclusive upper bound in milliseconds.
+                time_range: Optional relative range object anchored to archive_latest; Host resolves absolute timestamps.
                 sender_user_ids: Optional non-empty sender ID array; use null when unused.
                 message_types: Optional non-empty message type array; use null when unused.
                 limit: Positive result count not greater than the trusted result limit.
@@ -141,6 +161,7 @@ class SearchMessagesSDKToolAdapter:
                     session_ids=None if session_ids is None else tuple(session_ids),
                     start_timestamp=start_timestamp,
                     end_timestamp=end_timestamp,
+                    time_range=time_range,
                     sender_user_ids=None if sender_user_ids is None else tuple(sender_user_ids),
                     message_types=None if message_types is None else tuple(message_types),
                     limit=limit,
@@ -201,6 +222,8 @@ class SearchMessagesSDKToolAdapter:
                 envelope=envelope,
                 scope=runtime_context.scope,
             )
+            result_payload = project_tool_result_for_model(envelope, record)
+            model_result_estimated_tokens, model_result_truncated = _model_projection_metrics(result_payload)
             runtime_context.tool_results.append(record)
             # 这里记录一次 tool call；同一模型回合的多个调用由 Runtime hook 统一计为一轮。
             runtime_context.tool_calls.append(
@@ -211,11 +234,11 @@ class SearchMessagesSDKToolAdapter:
                     tool_call_id=tool_call_id,
                     tool_result_id=tool_result_id,
                     round=runtime_context.current_tool_round,
+                    model_result_estimated_tokens=model_result_estimated_tokens,
+                    model_result_truncated=model_result_truncated,
                 )
             )
-            # Tool Result 除既有数据外只增加安全 locator，供 final synthesis 提出可验证引用。
-            result_payload = envelope.to_dict()
-            result_payload["provenance"] = record.to_model_provenance()
+            # canonical record 留在 Runtime local；模型只收到 slim projection 和短 handle。
             return result_payload
 
         if trusted_max_results is not None:
@@ -270,9 +293,13 @@ class SemanticSearchSDKToolAdapter:
             "or insufficient. "
             "Omit optional filters, or use null; do not send empty arrays. "
             "The semantic index must be explicitly built and may report partial coverage."
+            " For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value."
         )
         if trusted_max_results is not None:
-            description += f" The current trusted result limit is {trusted_max_results}."
+            description += (
+                f" The current trusted result limit is {trusted_max_results}. For broad inventory or resource-list"
+                f" recall, pass limit={trusted_max_results} exactly; do not use a smaller limit such as 20 or 30."
+            )
 
         @function_tool(
             name_override="semantic_search",
@@ -286,6 +313,7 @@ class SemanticSearchSDKToolAdapter:
             session_ids: list[str] | None = None,
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
+            time_range: dict[str, object] | None = None,
             sender_user_ids: list[str] | None = None,
             message_types: list[str] | None = None,
             source_message_id: str | None = None,
@@ -317,6 +345,7 @@ class SemanticSearchSDKToolAdapter:
                     session_ids=None if session_ids is None else tuple(session_ids),
                     start_timestamp=start_timestamp,
                     end_timestamp=end_timestamp,
+                    time_range=time_range,
                     sender_user_ids=None if sender_user_ids is None else tuple(sender_user_ids),
                     message_types=None if message_types is None else tuple(message_types),
                     source_message_id=source_message_id,
@@ -377,6 +406,8 @@ class SemanticSearchSDKToolAdapter:
                 envelope=envelope,
                 scope=runtime_context.scope,
             )
+            result_payload = project_tool_result_for_model(envelope, record)
+            model_result_estimated_tokens, model_result_truncated = _model_projection_metrics(result_payload)
             runtime_context.tool_results.append(record)
             runtime_context.tool_calls.append(
                 RuntimeToolCall(
@@ -386,10 +417,11 @@ class SemanticSearchSDKToolAdapter:
                     tool_call_id=tool_call_id,
                     tool_result_id=tool_result_id,
                     round=runtime_context.current_tool_round,
+                    model_result_estimated_tokens=model_result_estimated_tokens,
+                    model_result_truncated=model_result_truncated,
                 )
             )
-            result_payload = envelope.to_dict()
-            result_payload["provenance"] = record.to_model_provenance()
+            # semantic candidate details 与 citation bookkeeping 分离，避免重复复制 full message provenance。
             return result_payload
 
         if trusted_max_results is not None:
@@ -450,6 +482,8 @@ def _append_runtime_tool_result(
         envelope=envelope,
         scope=runtime_context.scope,
     )
+    result_payload = project_tool_result_for_model(envelope, record)
+    model_result_estimated_tokens, model_result_truncated = _model_projection_metrics(result_payload)
     runtime_context.tool_results.append(record)
     runtime_context.tool_calls.append(
         RuntimeToolCall(
@@ -459,10 +493,10 @@ def _append_runtime_tool_result(
             tool_call_id=tool_call_id,
             tool_result_id=tool_result_id,
             round=runtime_context.current_tool_round,
+            model_result_estimated_tokens=model_result_estimated_tokens,
+            model_result_truncated=model_result_truncated,
         )
     )
-    result_payload = envelope.to_dict()
-    result_payload["provenance"] = record.to_model_provenance()
     return result_payload
 
 
@@ -473,10 +507,10 @@ class GetMessageContextSDKToolAdapter:
         self.registry = registry
 
     def as_sdk_tool(self) -> Any:
-        """创建只接受稳定 message_id 和 bounded 窗口的 Function Tool。"""
+        """创建接受 legacy message_id 或当前 Tool Result source_id 的 bounded context tool。"""
 
         description = (
-            "Recover a larger but still bounded same-conversation context around one message_id "
+            "Recover a larger but still bounded same-conversation context around one message_id or source_id "
             "returned by lexical_search or semantic_search. Call only when the search result's local "
             "context is insufficient; do not call this mechanically for every hit. It never crosses "
             "the trusted session/time scope and may return truncated=true."
@@ -490,16 +524,26 @@ class GetMessageContextSDKToolAdapter:
         )
         async def get_message_context(
             context: RunContextWrapper[RuntimeContext],
-            message_id: str,
+            message_id: str | None = None,
+            source_id: str | None = None,
             context_before: int = 8,
             context_after: int = 8,
         ) -> dict[str, object]:
-            """恢复已由 Search 结果公开的 stable message locator。"""
+            """恢复由 Search 结果公开的 source handle，兼容旧的 canonical message_id。"""
 
             runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "get_message_context")
             try:
+                if message_id is not None and source_id is not None:
+                    raise CapabilityContractError("message_id and source_id cannot both be provided")
+                resolved_message_id = (
+                    runtime_context.resolve_message_source_handle(source_id)
+                    if source_id is not None
+                    else message_id
+                )
+                if not isinstance(resolved_message_id, str):
+                    raise CapabilityContractError("message_id or source_id is required")
                 request = GetMessageContextInput(
-                    message_id=message_id,
+                    message_id=resolved_message_id,
                     context_before=context_before,
                     context_after=context_after,
                 )

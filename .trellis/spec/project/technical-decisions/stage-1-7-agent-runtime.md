@@ -1007,3 +1007,33 @@ standard    planned
 - 新技术约束证明正式 Trace 必须直接接入 SDK built-in tracing 才能取得不可替代的诊断事实，且 Stage 1.9 的 privacy / retention / export 边界评估通过。
 
 单纯因为"标准 Agent 架构通常更复杂""未来可能有 UI"或"以后可能有用"不能重新打开 Confirmed 决策。
+
+## 20. Context Engineering hardening amendment（2026-08-25）
+
+### Decision
+
+固定边界：`LLM decides semantics; Host code owns deterministic bookkeeping.` Agent Runtime 不把
+canonical Tool Result 直接复制进 model context，也不要求模型重建父级 provenance。模型只提交
+`ModelAnswerCandidate`：claim、finding、criterion、sufficiency、limitations 和当前 projection
+内的 source handles；Host 负责解析 handle、校验 current-run/scope、hydrate trusted source、生成
+Artifact/evidence/citation/binding IDs、排序去重和持久化。
+
+### Ownership and budget
+
+- Host local 保留完整 `ToolEnvelope`、`ToolResultRecord`、internal message identity、session、URL
+  和 structured locator；模型收到 slim semantic projection。旧 AnswerArtifact/Conversation codec
+  继续读取完整 canonical source，不接受 transient handle。
+- retrieval result limit、trusted scope max、context expansion bound、model Tool Result token budget
+  和 answer/evidence capacity 是独立预算；超限保留 hit、显式记录 omitted/truncated，无法满足
+  contract 时返回明确错误。
+- 相对时间只表达 `archive_latest` 意图；Capability 在 trusted scope 内读取 latest timestamp，Host
+  生成 half-open absolute range 并把 raw intent/resolved range 写入 Trace/query snapshot。模型不写
+  SQL 日期心算，也不使用 machine current time。
+- Host 的 token estimate 是 UTF-8 byte-based bounded estimate，不冒充 provider usage；provider usage
+  不存在时 Trace 使用 `unavailable`，不填零伪造测量。
+
+### Rejected scope
+
+本 amendment 不引入 Code Mode、Tool Calling 替代品、hidden CoT 输出、citation repair、retry 或
+fallback。完整 provenance 仍留在 Host/Trace/validated Artifact；只有发给模型的 projection 被压缩。
+需要改变边界必须由新的真实 Failure Case 或 paired Evaluation 触发，而不是由单个样例驱动。

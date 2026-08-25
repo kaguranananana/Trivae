@@ -489,6 +489,7 @@ class SemanticQuery(ScopeFilters):
     context_before: int = 2
     context_after: int = 2
     dense_top_k: int = 40
+    resolved_time_range: Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -506,11 +507,13 @@ class SemanticQuery(ScopeFilters):
                 raise SemanticQueryError(f"{name} must be a non-negative integer")
         if self.dense_top_k == 0:
             raise SemanticQueryError("dense_top_k must be positive")
+        if self.resolved_time_range is not None and not isinstance(self.resolved_time_range, Mapping):
+            raise SemanticQueryError("resolved_time_range must be a mapping or None")
 
     def to_dict(self) -> dict[str, object]:
         """返回 query/filter identity，供 Tool Result、Trace 和 Evaluation 使用。"""
 
-        return {
+        result = {
             **self.scope_dict(),
             "query": self.query,
             "limit": self.limit,
@@ -518,6 +521,9 @@ class SemanticQuery(ScopeFilters):
             "context_after": self.context_after,
             "dense_top_k": self.dense_top_k,
         }
+        if self.resolved_time_range is not None:
+            result["resolved_time_range"] = dict(self.resolved_time_range)
+        return result
 
 
 @dataclass(frozen=True)
@@ -552,6 +558,8 @@ class SemanticRetrievalResult:
     partial: bool
     truncated: bool
     metadata: RetrievalMetadata
+    # Host 用于区分 semantic range 核心命中与其邻近 context，不作为模型字段发送。
+    primary_message_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

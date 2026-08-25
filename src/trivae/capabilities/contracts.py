@@ -40,6 +40,114 @@ class CapabilityScopeError(CapabilityContractError):
     error_code = "SCOPE_VIOLATION"
 
 
+RelativeTimeUnit = Literal["hour", "day", "week", "month"]
+
+
+@dataclass(frozen=True)
+class RelativeTimeRange:
+    """模型只表达相对时间意图，绝对时间由 Host 根据 archive latest 计算。"""
+
+    kind: Literal["relative"]
+    amount: int
+    unit: RelativeTimeUnit
+    anchor: Literal["archive_latest"]
+
+    def __post_init__(self) -> None:
+        # kind 和 anchor 都是固定 contract，避免模型把 machine now 偷换成 archive 事实。
+        if self.kind != "relative":
+            raise CapabilityContractError("relative time kind must be relative")
+        if isinstance(self.amount, bool) or not isinstance(self.amount, int) or self.amount <= 0:
+            raise CapabilityContractError("relative time amount must be a positive integer")
+        if self.unit not in ("hour", "day", "week", "month"):
+            raise CapabilityContractError("relative time unit is invalid")
+        if self.anchor != "archive_latest":
+            raise CapabilityContractError("relative time anchor must be archive_latest")
+
+    @classmethod
+    def from_value(cls, value: object) -> RelativeTimeRange | None:
+        """把 SDK 的普通 JSON object 解析为严格的相对时间 contract。"""
+
+        if value is None:
+            return None
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, Mapping):
+            raise CapabilityContractError("time_range must be a relative time object or None")
+        try:
+            return cls(
+                kind=value["kind"],
+                amount=value["amount"],
+                unit=value["unit"],
+                anchor=value["anchor"],
+            )
+        except KeyError as exc:
+            raise CapabilityContractError(f"time_range is missing {exc.args[0]}") from exc
+        except (TypeError, ValueError) as exc:
+            raise CapabilityContractError("time_range has invalid fields") from exc
+
+    def to_dict(self) -> dict[str, object]:
+        """返回模型提出的相对 contract，不包含 Host 计算的绝对边界。"""
+
+        return {
+            "kind": self.kind,
+            "amount": self.amount,
+            "unit": self.unit,
+            "anchor": self.anchor,
+        }
+
+    def resolve(
+        self,
+        *,
+        anchor_timestamp: int,
+        scope_start: int | None,
+        scope_end: int | None,
+    ) -> ResolvedTimeRange:
+        """用 archive latest 计算半开时间区间，并把结果裁剪在 trusted scope 内。"""
+
+        durations = {
+            "hour": 60 * 60 * 1_000,
+            "day": 24 * 60 * 60 * 1_000,
+            "week": 7 * 24 * 60 * 60 * 1_000,
+            # 产品 contract 将“一个月”固定定义为 30 个 canonical day，避免时区漂移。
+            "month": 30 * 24 * 60 * 60 * 1_000,
+        }
+        start_timestamp = anchor_timestamp - self.amount * durations[self.unit]
+        if scope_start is not None:
+            start_timestamp = max(start_timestamp, scope_start)
+        # end 是 exclusive；加一毫秒让 archive latest 这条消息仍在窗口内。
+        end_timestamp = anchor_timestamp + 1
+        if scope_end is not None:
+            end_timestamp = min(end_timestamp, scope_end)
+        if start_timestamp > end_timestamp:
+            raise CapabilityContractError("resolved relative time range is empty")
+        return ResolvedTimeRange(
+            requested=self,
+            anchor_timestamp=anchor_timestamp,
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+        )
+
+
+@dataclass(frozen=True)
+class ResolvedTimeRange:
+    """可写入 Trace/query snapshot 的 Host-owned 相对时间解析结果。"""
+
+    requested: RelativeTimeRange
+    anchor_timestamp: int
+    start_timestamp: int
+    end_timestamp: int
+
+    def to_dict(self) -> dict[str, object]:
+        """同时保留原始意图和 resolved absolute boundary，便于复核。"""
+
+        return {
+            **self.requested.to_dict(),
+            "anchor_timestamp": self.anchor_timestamp,
+            "resolved_start_timestamp": self.start_timestamp,
+            "resolved_end_timestamp": self.end_timestamp,
+        }
+
+
 def _normalize_non_empty_strings(
     name: str,
     values: Sequence[str] | None,
@@ -112,6 +220,7 @@ class SearchMessagesInput:
     limit: int = DEFAULT_RESULT_LIMIT
     context_before: int = 2
     context_after: int = 2
+    time_range: RelativeTimeRange | Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.keyword, str):
@@ -122,6 +231,10 @@ class SearchMessagesInput:
         object.__setattr__(self, "message_types", _normalize_non_empty_strings("message_types", self.message_types))
         _validate_optional_timestamp("start_timestamp", self.start_timestamp)
         _validate_optional_timestamp("end_timestamp", self.end_timestamp)
+        normalized_time_range = RelativeTimeRange.from_value(self.time_range)
+        object.__setattr__(self, "time_range", normalized_time_range)
+        if normalized_time_range is not None and (self.start_timestamp is not None or self.end_timestamp is not None):
+            raise CapabilityContractError("time_range cannot be combined with absolute timestamps")
         if self.start_timestamp is not None and self.end_timestamp is not None:
             if self.start_timestamp > self.end_timestamp:
                 raise CapabilityContractError("query time scope is reversed")
@@ -148,6 +261,7 @@ class SemanticSearchInput:
     context_before: int = 2
     context_after: int = 2
     dense_top_k: int = 40
+    time_range: RelativeTimeRange | Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.query, str) or not self.query.strip():
@@ -158,6 +272,10 @@ class SemanticSearchInput:
         object.__setattr__(self, "message_types", _normalize_non_empty_strings("message_types", self.message_types))
         _validate_optional_timestamp("start_timestamp", self.start_timestamp)
         _validate_optional_timestamp("end_timestamp", self.end_timestamp)
+        normalized_time_range = RelativeTimeRange.from_value(self.time_range)
+        object.__setattr__(self, "time_range", normalized_time_range)
+        if normalized_time_range is not None and (self.start_timestamp is not None or self.end_timestamp is not None):
+            raise CapabilityContractError("time_range cannot be combined with absolute timestamps")
         if self.start_timestamp is not None and self.end_timestamp is not None:
             if self.start_timestamp > self.end_timestamp:
                 raise CapabilityContractError("query time scope is reversed")

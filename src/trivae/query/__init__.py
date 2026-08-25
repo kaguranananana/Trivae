@@ -12,9 +12,13 @@ from trivae.query.evidence import (
     FinalizationErrorInfo,
     MessageDisplaySnapshot,
     MessageSource,
+    ModelAnswerCandidate,
+    ModelAnswerClaim,
+    SourceHandleReference,
     StructuredSource,
     ToolResultRecord,
     finalize_answer,
+    parse_model_answer_candidate,
 )
 from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import Plan, PlannerFailure, PlannerInput, PlannerResult, PlanStep, SoftPlanner
@@ -32,6 +36,8 @@ __all__ = [
     "FinalizationErrorInfo",
     "MessageDisplaySnapshot",
     "MessageSource",
+    "ModelAnswerCandidate",
+    "ModelAnswerClaim",
     "Plan",
     "PlanStep",
     "PlannerFailure",
@@ -46,7 +52,9 @@ __all__ = [
     "RuleRouter",
     "SoftPlanner",
     "StructuredSource",
+    "SourceHandleReference",
     "ToolResultRecord",
     "finalize_answer",
+    "parse_model_answer_candidate",
     "ModelContextMessage",
 ]

@@ -43,6 +43,7 @@ from trivae.query.evidence import (
     AnswerArtifact,
     AnswerSourceSummary,
     MessageSource,
+    SourceHandleReference,
     SourceInspectionError,
     StructuredSource,
     answer_source_summaries,
@@ -1113,6 +1114,10 @@ def _print_source_detail(
             output_fn(f"Limitations: {', '.join(reference.execution_limitations)}")
         if verbose:
             output_fn(f"Locator: {reference.locator}")
+        return
+    if isinstance(reference, SourceHandleReference):
+        # transient handle 不应越过 finalizer；若出现则显式显示 unavailable，不猜测来源。
+        output_fn(f"Source {summary.index} unavailable: source handle was not finalized")
         return
 
     try:

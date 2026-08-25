@@ -568,6 +568,7 @@ class QueryStreamAdapter:
                     "partial",
                     "truncated",
                     "latency_ms",
+                    "query",
                 )
                 if key in payload
             }

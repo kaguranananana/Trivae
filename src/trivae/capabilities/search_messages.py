@@ -9,9 +9,14 @@ from trivae.capabilities.contracts import (
     ExecutionScope,
     SearchMessagesInput,
 )
-from trivae.capabilities.scope import effective_end, effective_sessions, effective_start
+from trivae.capabilities.scope import (
+    effective_end,
+    effective_sessions,
+    effective_start,
+    resolve_relative_time_range,
+)
 from trivae.retrieval.lexical import LexicalRetrieval
-from trivae.retrieval.structured import LexicalQuery, RetrievalResult
+from trivae.retrieval.structured import LexicalQuery, RetrievalResult, ScopeFilters
 
 
 class SearchMessagesCapability:
@@ -31,6 +36,7 @@ class SearchMessagesCapability:
             "limit",
             "context_before",
             "context_after",
+            "time_range",
         ),
     )
 
@@ -41,8 +47,27 @@ class SearchMessagesCapability:
         """继承 trusted scope；显式拒绝越权 filter，而不是静默取交集。"""
 
         scoped_sessions = effective_sessions(request, scope)
-        scoped_start = effective_start(request, scope)
-        scoped_end = effective_end(request, scope)
+        if request.time_range is None:
+            resolved_time_range = None
+            scoped_start = effective_start(request, scope)
+            scoped_end = effective_end(request, scope)
+        else:
+            # anchor 只看当前 session/trusted scope 的 archive，不受机器当前时间影响。
+            anchor_scope = ScopeFilters(
+                session_ids=scoped_sessions,
+                start_timestamp=scope.start_timestamp,
+                end_timestamp=scope.end_timestamp,
+            )
+            latest_timestamp = self.retrieval.repository.latest_message_timestamp(anchor_scope)
+            resolved_time_range = resolve_relative_time_range(
+                request,
+                scope,
+                latest_timestamp=latest_timestamp,
+            )
+            if resolved_time_range is None:
+                raise CapabilityContractError("relative time range did not resolve")
+            scoped_start = resolved_time_range.start_timestamp
+            scoped_end = resolved_time_range.end_timestamp
         if request.limit > scope.max_results:
             raise CapabilityContractError("requested limit exceeds trusted max_results")
 
@@ -56,6 +81,7 @@ class SearchMessagesCapability:
             limit=request.limit,
             context_before=request.context_before,
             context_after=request.context_after,
+            resolved_time_range=None if resolved_time_range is None else resolved_time_range.to_dict(),
         )
         return self.retrieval.search(query)
 

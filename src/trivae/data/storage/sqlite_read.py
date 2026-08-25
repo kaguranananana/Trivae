@@ -721,6 +721,19 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             raise RetrievalError("Structured count returned no scalar row")
         return int(row["total"])
 
+    def latest_message_timestamp(self, scope: ScopeFilters) -> int | None:
+        """只在 trusted scope 内求 archive latest，不使用 machine current time。"""
+
+        where_sql, parameters = _where_clause(scope)
+        row = self._connection.execute(
+            f"SELECT MAX(m.timestamp) AS latest_timestamp FROM messages AS m WHERE {where_sql}",
+            parameters,
+        ).fetchone()
+        if row is None:
+            raise RetrievalError("Archive latest query returned no scalar row")
+        value = row["latest_timestamp"]
+        return None if value is None else int(value)
+
     def read_messages(self, query: MessageQuery) -> tuple[MessageProjection, ...]:
         """读取限定列，并使用显式 NULL seq ordering 和 bounded LIMIT。"""
 

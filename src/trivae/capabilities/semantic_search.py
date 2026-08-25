@@ -8,9 +8,15 @@ from trivae.capabilities.contracts import (
     ExecutionScope,
     SemanticSearchInput,
 )
-from trivae.capabilities.scope import effective_end, effective_sessions, effective_start
+from trivae.capabilities.scope import (
+    effective_end,
+    effective_sessions,
+    effective_start,
+    resolve_relative_time_range,
+)
 from trivae.retrieval.semantic.contracts import SemanticQuery, SemanticRetrievalResult
 from trivae.retrieval.semantic.retrieval import SemanticRetrieval
+from trivae.retrieval.structured import ScopeFilters
 
 
 class SemanticSearchCapability:
@@ -36,6 +42,7 @@ class SemanticSearchCapability:
             "context_before",
             "context_after",
             "dense_top_k",
+            "time_range",
         ),
     )
 
@@ -47,11 +54,33 @@ class SemanticSearchCapability:
 
         if request.limit > scope.max_results:
             raise CapabilityContractError("requested limit exceeds trusted max_results")
+        scoped_sessions = effective_sessions(request, scope)
+        if request.time_range is None:
+            resolved_time_range = None
+            scoped_start = effective_start(request, scope)
+            scoped_end = effective_end(request, scope)
+        else:
+            # semantic 与 lexical 共享相同的 archive latest 解析规则，避免两套时间语义。
+            anchor_scope = ScopeFilters(
+                session_ids=scoped_sessions,
+                start_timestamp=scope.start_timestamp,
+                end_timestamp=scope.end_timestamp,
+            )
+            latest_timestamp = self.retrieval.repository.latest_message_timestamp(anchor_scope)
+            resolved_time_range = resolve_relative_time_range(
+                request,
+                scope,
+                latest_timestamp=latest_timestamp,
+            )
+            if resolved_time_range is None:
+                raise CapabilityContractError("relative time range did not resolve")
+            scoped_start = resolved_time_range.start_timestamp
+            scoped_end = resolved_time_range.end_timestamp
         query = SemanticQuery(
             query=request.query,
-            session_ids=effective_sessions(request, scope),
-            start_timestamp=effective_start(request, scope),
-            end_timestamp=effective_end(request, scope),
+            session_ids=scoped_sessions,
+            start_timestamp=scoped_start,
+            end_timestamp=scoped_end,
             sender_user_ids=request.sender_user_ids,
             message_types=request.message_types,
             source_message_id=request.source_message_id,
@@ -60,5 +89,6 @@ class SemanticSearchCapability:
             context_before=request.context_before,
             context_after=request.context_after,
             dense_top_k=request.dense_top_k,
+            resolved_time_range=None if resolved_time_range is None else resolved_time_range.to_dict(),
         )
         return self.retrieval.search(query)

@@ -208,8 +208,11 @@ _print_source_block(source_summaries, output_fn=output_fn, verbose=verbose)
   时才请求局部上下文。
 - 最终答案必须包含具体 URL（若 trusted message 有 URL）、claim→evidence→source 关系、sufficiency
   和 limitations；群聊提及与价值验证必须分开表达。
-- 宽清单以有限代表性 URL 加剩余数量呈现，`evidence_items`、`citation_bindings` 和 JSON 闭合优先；
-  不因追求穷举而提交无证据的半截答案。
+- 宽清单以有限代表性 URL 加剩余数量呈现；模型先闭合 `claims`，Host 再生成
+  `evidence_items`/`citation_bindings`，不因追求穷举而提交无证据的半截答案。
+- 模型只提交当前 Tool Result projection 的短 source handle；Host 保存完整 ToolEnvelope、解析
+  archive-relative 时间、生成 artifact/evidence/binding ID，并在 finalized Artifact 中保留 trusted
+  URL/value。CLI 不让模型正文或本地当前时间成为 metadata authority。
 
 ### 3. Validation & Error Matrix
 

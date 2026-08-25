@@ -155,3 +155,88 @@ scope 或 evidence 容量不一致，因此统一抽出 `DEFAULT_RESULT_LIMIT=10
 - Normal/Debug capture 仍不保存 hidden CoT；最终答案和 Evidence 只有 validated boundary 后才可
   作为业务事实；
 - Evidence/URL 是 AnswerArtifact 的纯 projection，不重新读取数据库，不创建第二条查询链。
+
+## 6. Context Engineering hardening addendum（2026-08-25）
+
+本轮固定一条更窄的职责原则：**LLM 负责语义判断，Host code 负责确定性记账。**
+“记账”包括 source identity、block/evidence/binding identity、URL 去重、结果排序、scope
+校验、相对时间落点和 canonical value hydration；这些字段不是模型应该反复抄写的内容。
+
+### 6.1 JSON mover audit
+
+| 位置 | 当前搬运 | 分类 | 处理决定 |
+| --- | --- | --- | --- |
+| `query/runtime/openai_tools.py` 的 lexical/semantic/tool result return | `ToolEnvelope.to_dict()` 把完整 message projection、hit/context 和父级 provenance 原样送回模型 | C：语义内容与确定性 identity 混合 | 保留 `ToolEnvelope.to_dict()` 作为 host/API canonical projection；新增独立 slim model projection，只给消息正文、时间、作者、必要检索 metadata 与短 source handle |
+| `query/evidence.py:ToolResultRecord.to_model_provenance` | 每个 source entry 重复 `run_id/tool_call_id/tool_result_id/session_id/internal_message_id` | B：确定性 provenance 记账 | 改成 current run/tool-result scope 内的短 handle；full identity 只留在 `ToolResultRecord`，finalizer 通过 handle 解析 |
+| `query/evidence.py:_parse_candidate` | 模型生成 `block_id/evidence_id/content_block_id/evidence_ids` | B：artifact identity 和引用绑定 | 增加 `ModelAnswerCandidate`；模型只提交 claim/finding/criterion/sufficiency/limitations/source handles；Host 按顺序生成 block/evidence/binding ID |
+| `query/evidence.py:_finalize_source` | 模型提交完整 message/structured locator，Host 再校验 | C：locator 语义选择与 identity 校验混合 | 保留旧完整 artifact codec 和显式 locator 兼容路径；新候选只允许短 handle，解析失败显式报错，不猜测或丢 citation |
+| `capabilities/search_messages.py`、`capabilities/semantic_search.py` | 模型/Prompt 先用 SQL 求 `MAX(timestamp)` 并复制绝对时间 | C：时间语义意图与绝对时间计算混合 | 增加 `RelativeTimeRange` contract；模型提交相对意图，Host 从当前 trusted scope 内的 archive latest 求锚点并写入 resolved query snapshot |
+| `data/storage/sqlite_read.py` | Retrieval SQL、排序、limit 和 context expansion | B：数据边界与排序 | 继续由 Host 持有；增加只读 latest timestamp 聚合，不让模型看内部 SQL 计算细节 |
+| `retrieval/context.py` | 命中与邻居合并、limit 后保留 hit | B：结果集合 bookkeeping | 保持现有“先保留 hit、再补 context”语义；新增回归证明 context trimming 不会丢 hit |
+| `query/evidence.py:extract_urls`、`ToolResultRecord` | trusted message 中 URL 提取、去重、bounded | B：canonical source normalization | 保持 Host 提取和排序；模型正文中的 URL 不进入 trusted Sources |
+| `conversation/serialization.py` | 已验证 AnswerArtifact 的持久化 union codec | B：历史数据 codec | 不把 transient `ModelAnswerCandidate` 持久化；旧 full source artifact 继续可读写 |
+| `query/runtime/streaming.py`、CLI renderer | provider delta、thinking/provisional 文本的可见性 | A/C：语义正文由模型产生，可见性由 Host 决定 | 保持当前不展示 hidden CoT、Tool turn provisional 文本的边界；本轮不扩大 Trace 中的 reasoning 内容 |
+
+明确不改：不引入 Code Mode，不删除 Tool Calling，不把 full provenance 从 Trace/Artifact 删除，
+不把 Host 生成的事实塞回模型输出要求，不增加 citation repair/retry/fallback，也不把所有
+`limit=100` 粗暴改成更大的一个值。`requested_result_limit`、trusted scope、retrieval hard
+cap、context expansion、model Tool Result token budget、answer/evidence budget 分开记录。
+
+### 6.2 新的 model-facing / host-facing boundary
+
+模型候选的主 contract 为：
+
+```json
+{
+  "claims": [
+    {
+      "text": "语义上的回答句子",
+      "finding": "该句要表达的事实",
+      "criterion": "判断充分性的语义标准",
+      "sufficiency": "sufficient",
+      "sources": ["m1-1"],
+      "limitations": []
+    }
+  ],
+  "limitations": []
+}
+```
+
+`sources` 中的 handle 只在当前 Run 的 Tool Result scope 内有效。Host 根据当前 record
+解析它们，生成 `claim-*`、`e*` 和 citation binding，并把真实 `run_id/tool_call_id/
+tool_result_id/result_item_id/session_id/internal_message_id` 写入最终 validated Artifact。
+未解析、越 scope 或出现歧义时 finalizer 失败并带具体 path；绝不静默删除 source。
+
+相对时间的模型 contract 为 `{kind: "relative", amount, unit, anchor: "archive_latest"}`。
+Host 在当前 scope 内查询 archive latest，按固定毫秒语义求绝对半开区间，并在 Trace、query
+snapshot 和 Tool Result record 中保存原始 contract 与 resolved start/end。模型不能自行复制
+timestamp；若 scope 内不存在 anchor，显式返回 capability error。
+
+### 6.3 预算与指标
+
+Canonical Retrieval 仍保留完整 bounded hits；model projection 另有独立 token budget，超限时
+优先保留 hit、显式标注省略的邻居/内容截断，无法满足 contract 时显式失败。验证记录至少
+区分 requested limit、trusted max、retrieval returned/total/partial/truncated、model
+projection budget（当前默认 16,000；100-hit lexical worst-case 实测约 15.6k），以及现有 runtime usage；provider 未提供 tool-result token 数时标记
+unavailable，不以估算值冒充真实 token usage。
+
+Trace projection 额外公开 Host-side `tool_result_estimated_tokens` 和
+`tool_result_projection_truncated_count`；前者是独立 projection 的 bounded estimate，不并入
+provider `usage`，也不冒充 provider 原始 tool-result token。缺少完整 estimate 时固定显示
+`unavailable`。
+
+### 6.4 Validation and real smoke evidence
+
+- 语义 projection 回归证明 40 条扩展消息在超预算时保留 2 条 range-core hit，省略 38 条邻近
+  context，并把 `truncated`/省略数写入 model projection；semantic chunk/parent/index identity
+  不进入 model payload。
+- 质量门：`pytest -q` 为 311 passed；`ruff check src tests`、`mypy src`、`python -m compileall
+  src`、`git diff --check` 与 Trellis validation 均通过。
+- 真实 scope `一群开心快乐的小奶龙` 的资源查询 Trace `trace-0f20c501badd495f8cc9064439ae6327`
+  为 completed，GitHub lexical 31/31，partial/truncated 均为 false，Evidence 1、Sources/URL
+  可见、citation unresolved 为 0。
+- 新增三条真实问题 smoke：Agent 学习资料 Trace `trace-0b2409b0c5104cf78b57004ac949b8be`、
+  taste-skill Trace `trace-621002d125374e90910c2b8283927698`、DeepSeek Trace
+  `trace-c0b77d168967490babe7130402050bbf` 均完成且 unresolved 为 0；Agent 学习资料查询中
+  semantic index 标记 partial/truncated，但 GitHub lexical 路径完整返回 31/31，最终回答保留
+  semantic 覆盖限制，没有伪称所有语义结果完整。

@@ -257,6 +257,9 @@ class TraceMetrics:
     usage: Mapping[str, int | float]
     tool_count: int
     retrieval_count: int
+    # Tool Result token 仅在 Host projection 可估算时提供；provider 原始 usage 仍单独记录。
+    tool_result_estimated_tokens: int | Literal["unavailable"] = "unavailable"
+    tool_result_projection_truncated_count: int = 0
 
 
 @dataclass(frozen=True)

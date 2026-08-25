@@ -38,7 +38,8 @@ class GetMessageContextCapability:
             "local context is insufficient; do not call mechanically for every hit."
         ),
         bounded=True,
-        input_fields=("message_id", "context_before", "context_after"),
+        # SDK adapter 可把当前 Tool Result 的 source_id 解析成同一个 canonical message_id。
+        input_fields=("message_id", "source_id", "context_before", "context_after"),
     )
 
     def __init__(

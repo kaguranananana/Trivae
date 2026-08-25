@@ -19,6 +19,7 @@ from trivae.query.evidence import (
     EvidenceSource,
     MessageDisplaySnapshot,
     MessageSource,
+    SourceReference,
     StructuredSource,
 )
 
@@ -92,7 +93,7 @@ def _snapshot_to_dict(snapshot: MessageDisplaySnapshot | None) -> dict[str, obje
     }
 
 
-def _reference_to_dict(reference: MessageSource | StructuredSource) -> dict[str, object]:
+def _reference_to_dict(reference: SourceReference) -> dict[str, object]:
     """用 discriminator 保留 Message/Structured source 的 union 语义。"""
 
     if isinstance(reference, MessageSource):
@@ -123,7 +124,8 @@ def _reference_to_dict(reference: MessageSource | StructuredSource) -> dict[str,
             "execution_limitations": list(reference.execution_limitations),
             "source_id": reference.source_id,
         }
-    raise ConversationCodecError("source reference must be MessageSource or StructuredSource")
+    # transient SourceHandleReference 不能进入持久化边界；只有 validated full source 才可 replay。
+    raise ConversationCodecError("source reference must be a validated MessageSource or StructuredSource")
 
 
 def _artifact_to_dict(artifact: AnswerArtifact) -> dict[str, object]:

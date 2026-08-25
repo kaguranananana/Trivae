@@ -186,6 +186,7 @@ class SemanticRetrieval:
                     "known_gaps": ("ann_candidate_pool",) if pool_exhausted else (),
                 },
             ),
+            primary_message_ids=expansion.primary_message_ids,
         )
 
     def _read_candidate_messages(self, candidate: SemanticIndexCandidate) -> tuple[MessageProjection, ...]:

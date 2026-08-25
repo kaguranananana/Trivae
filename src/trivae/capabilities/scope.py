@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from trivae.capabilities.contracts import (
+    CapabilityContractError,
     CapabilityScopeError,
     ExecutionScope,
     FindMembersInput,
+    RelativeTimeRange,
+    ResolvedTimeRange,
     SearchMessagesInput,
     SemanticSearchInput,
 )
@@ -53,6 +56,32 @@ def effective_end(request: CapabilitySearchInput, scope: ExecutionScope) -> int 
     if scope.end_timestamp is not None and (end is None or end > scope.end_timestamp):
         raise CapabilityScopeError("requested end timestamp is outside trusted scope")
     return end
+
+
+def resolve_relative_time_range(
+    request: CapabilitySearchInput,
+    scope: ExecutionScope,
+    *,
+    latest_timestamp: int | None,
+) -> ResolvedTimeRange | None:
+    """把模型相对时间意图解析成当前 trusted scope 内的绝对区间。"""
+
+    if request.time_range is None:
+        return None
+    if latest_timestamp is None:
+        raise CapabilityContractError("relative time anchor archive_latest is unavailable in the trusted scope")
+    time_range = request.time_range
+    if not isinstance(time_range, RelativeTimeRange):
+        raise CapabilityContractError("relative time range was not normalized")
+    if scope.start_timestamp is not None and latest_timestamp < scope.start_timestamp:
+        raise CapabilityScopeError("archive latest is outside trusted start timestamp")
+    if scope.end_timestamp is not None and latest_timestamp >= scope.end_timestamp:
+        raise CapabilityScopeError("archive latest is outside trusted end timestamp")
+    return time_range.resolve(
+        anchor_timestamp=latest_timestamp,
+        scope_start=scope.start_timestamp,
+        scope_end=scope.end_timestamp,
+    )
 
 
 def effective_member_sessions(request: FindMembersInput, scope: ExecutionScope) -> tuple[str, ...] | None:

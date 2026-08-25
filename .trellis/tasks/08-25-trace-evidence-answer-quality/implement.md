@@ -73,3 +73,67 @@ Sources。
 - A：只回滚 structured candidate/source identity 与 prompt/finalizer 诊断，不改变已持久化 Artifact。
 - B：只回滚 URL/Evidence CLI projection；Message/Structured source identity 和 strict Finalizer 保留。
 - C：只回滚 public process display；Trace、Runtime 和 Answer Artifact contract 保留。
+
+## Checkpoint F — Agent Harness / Context Engineering hardening
+
+### 设计边界
+
+- [x] 先完成 JSON mover audit；模型保留语义字段，Host 接管确定性 identity、URL、scope、
+  相对时间和结果 bookkeeping。
+- [x] 保留旧 `AnswerArtifact` serialization 和显式 full source locator codec；新
+  `ModelAnswerCandidate` 只在当前 finalization 内存中存在。
+- [x] source handle 只在当前 Run/Tool Result scope 有效；不做跨 run 猜测、source repair 或
+  静默 citation drop。
+
+### 实现顺序
+
+1. 在 Evidence 层新增 source handle、候选答案和 Host compiler/finalizer path。
+2. 让 Tool Result 走 canonical host record + slim model projection；加独立 model token budget，
+   当前默认 16,000，且 trimming 先保护真实 hit。
+3. 增加 Host-owned relative time contract、archive latest 聚合和 resolved query snapshot。
+4. 更新 prompt、Agent Runtime/Evidence/Context Engineering contract 与 interview defense。
+5. 添加 JSON mover、source scope、relative time、hit preservation、旧 codec regression。
+
+### Checkpoint F 验证
+
+- [x] `pytest -q`：311 passed。
+- [x] `ruff check src tests`：通过。
+- [x] `mypy src`：通过。
+- [x] `python -m compileall src`：通过。
+- [x] `git diff --check`：通过。
+- [x] Trellis validation、CLI smoke 和三条新增真实问题 smoke；provider 原始 tool-result token
+  未直接提供，Trace 同时记录 Host projection estimate 与 unavailable 边界。
+
+### Checkpoint F smoke metrics
+
+| Case | Trace | terminal | model turns / tool calls | retrieval partial / truncated | citation unresolved | 备注 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 31-hit GitHub/resources | `trace-0f20c501badd495f8cc9064439ae6327` | completed | 2 / 2 | 0 / 0 | 0 | lexical 31/31；Evidence 1 |
+| Agent 学习资料 | `trace-0b2409b0c5104cf78b57004ac949b8be` | completed | 2 / 2 | 1 / 1 | 0 | semantic partial；GitHub lexical 31/31 |
+| taste-skill | `trace-621002d125374e90910c2b8283927698` | completed | 2 / 2 | 0 / 0 | 0 | context 解释与使用边界保留 |
+| DeepSeek | `trace-c0b77d168967490babe7130402050bbf` | completed | 2 / 2 | 0 / 0 | 0 | relative range 已进入 query/Trace |
+
+provider `usage` 可从 Trace 读取；provider 原始 tool-result token 没有独立上报，因此该指标
+不伪造为真实 usage。当前 Trace projection 已提供 Host-side estimate 和 projection
+truncation count。
+
+### Checkpoint F before/after observation
+
+同一数据库 snapshot、同一语义问题的历史成功 Trace `trace-b5f6b74d8abe4f779078f1e1791a7d1e`
+与本轮 `trace-0f20c501badd495f8cc9064439ae6327` 可作方向性对照，但不是严格控制变量的
+benchmark（模型决定的 tool sequence 与 query 文本空格略有差异）：
+
+| 指标 | Before | After |
+| --- | ---: | ---: |
+| terminal | completed | completed |
+| tool calls / retrievals | 4 / 4 | 2 / 2 |
+| provider input tokens | 51,341 | 24,546 |
+| provider output tokens | 5,695 | 2,064 |
+| provider total tokens | 57,036 | 26,610 |
+| wall-clock latency | 269,636 ms | 174,492 ms |
+| retrieval partial / truncated | 0 / 0 | 0 / 0 |
+| citation unresolved | 0 | 0 |
+| tool-result token metric | unavailable | Host estimate 14,396；projection truncation 0 |
+
+这些数值说明本轮 boundary 变更在该重跑上减少了模型回合和 provider usage，但不宣称固定
+收益百分比；provider 原始 tool-result token 的 Before 值仍是 unavailable。

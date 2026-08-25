@@ -84,6 +84,9 @@ class RuntimeToolCall:
     round: int | None = None
     # M5 provenance 扩展放在原有字段之后，保留 M4 positional projection 的顺序。
     tool_result_id: str | None = None
+    # model projection 只记录 Host 的 bounded estimate；provider 原始 tool-result token 可能 unavailable。
+    model_result_estimated_tokens: int | None = None
+    model_result_truncated: bool | None = None
 
     @property
     def tool_round(self) -> int | None:
@@ -145,6 +148,27 @@ class RuntimeContext:
         local_id = f"{identity_prefix}/tool-call/{self._next_tool_call_number}"
         self.current_tool_call_id = local_id
         return local_id
+
+    def resolve_message_source_handle(self, source_id: str) -> str:
+        """将模型 source handle 解析为 context tool 所需的 canonical message ID。"""
+
+        matches: list[str] = []
+        for record in self.tool_results:
+            resolved = record.resolve_source_handle(source_id)
+            if resolved is None:
+                continue
+            if resolved[0] != "message":
+                raise AgentRuntimeContractError("source handle does not identify a message")
+            message = getattr(resolved[1], "message", None)
+            internal_message_id = getattr(message, "internal_message_id", None)
+            if not isinstance(internal_message_id, str) or not internal_message_id:
+                raise AgentRuntimeContractError("source handle resolved to an invalid message projection")
+            matches.append(internal_message_id)
+        if not matches:
+            raise AgentRuntimeContractError("source handle does not identify a current message")
+        if len(matches) > 1:
+            raise AgentRuntimeContractError("source handle identifies multiple current messages")
+        return matches[0]
 
 
 @dataclass(frozen=True)

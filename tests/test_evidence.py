@@ -25,6 +25,9 @@ from trivae.query.evidence import (
     EvidenceSource,
     MessageDisplaySnapshot,
     MessageSource,
+    ModelAnswerCandidate,
+    ModelAnswerClaim,
+    SourceHandleReference,
     StructuredSource,
     ToolMessageItem,
     ToolResultRecord,
@@ -32,6 +35,8 @@ from trivae.query.evidence import (
     build_tool_result_record,
     extract_urls,
     finalize_answer,
+    parse_model_answer_candidate,
+    project_tool_result_for_model,
     scope_snapshot,
     validate_answer_artifact,
 )
@@ -40,6 +45,7 @@ from trivae.query.planner import SoftPlanner
 from trivae.query.router import RuleRouter
 from trivae.query.runtime.contracts import RuntimeResult
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+from trivae.retrieval.semantic.contracts import SemanticHit, SemanticQuery, SemanticRetrievalResult
 from trivae.retrieval.structured import (
     Coverage,
     LexicalQuery,
@@ -141,35 +147,28 @@ def _artifact(source: MessageSource | StructuredSource, *, sufficiency: str = "s
 class EvidenceContractTests(unittest.TestCase):
     """验证 Evidence/Citation domain contract 的 good/base/bad cases。"""
 
-    def test_model_provenance_entries_are_self_contained(self) -> None:
-        """模型每次选择一个 source entry 即可获得完整 current-run locator。"""
+    def test_model_provenance_entries_use_short_handles(self) -> None:
+        """模型只拿到短 handle；full current-run locator 继续留在 Host record。"""
 
         record = _record()
         provenance = record.to_model_provenance()
 
         message_source = provenance["message_sources"][0]
-        self.assertEqual(
-            {
-                "run_id": message_source["run_id"],
-                "tool_call_id": message_source["tool_call_id"],
-                "tool_result_id": message_source["tool_result_id"],
-            },
-            {
-                "run_id": record.run_id,
-                "tool_call_id": record.tool_call_id,
-                "tool_result_id": record.tool_result_id,
-            },
-        )
-        self.assertEqual(message_source["result_item_id"], "message/qq:100:m1")
-        self.assertEqual(message_source["session_id"], "qq:100")
-        self.assertEqual(message_source["internal_message_id"], "qq:100:m1")
+        self.assertEqual(provenance["tool_result_scope"], "1")
+        self.assertEqual(message_source, {"type": "message", "source_id": "m1-1"})
 
         structured_source = provenance["structured_sources"][0]
-        self.assertEqual(structured_source["run_id"], record.run_id)
-        self.assertEqual(structured_source["tool_call_id"], record.tool_call_id)
-        self.assertEqual(structured_source["tool_result_id"], record.tool_result_id)
-        self.assertEqual(structured_source["source_id"], "aggregate:total_count")
-        self.assertNotIn("value_snapshot", structured_source)
+        self.assertEqual(
+            structured_source,
+            {
+                "type": "structured",
+                "source_id": "s1-1",
+                "locator_kind": "aggregate",
+                "locator": "total_count",
+            },
+        )
+        self.assertNotIn("run_id", provenance)
+        self.assertNotIn("internal_message_id", message_source)
 
     def test_identity_only_structured_source_hydrates_exact_tool_value(self) -> None:
         """模型只引用 source identity 时，Finalizer 仍从 current Tool Result 取可信值。"""
@@ -217,6 +216,90 @@ class EvidenceContractTests(unittest.TestCase):
         self.assertEqual(reference.value_snapshot, 182)
         self.assertEqual(reference.source_id, "aggregate:total_count")
 
+    def test_model_candidate_host_generates_artifact_identity_and_resolves_message_handle(self) -> None:
+        """模型只表达 claim/handle，Host 生成 Artifact IDs 并 hydrate 完整消息来源。"""
+
+        record = _record()
+        output = json.dumps(
+            {
+                "claims": [
+                    {
+                        "text": "当前结果包含该消息。",
+                        "finding": "canonical message is present",
+                        "criterion": "the source handle resolves in the current result",
+                        "sufficiency": "sufficient",
+                        "sources": ["m1-1"],
+                        "limitations": [],
+                    }
+                ],
+                "limitations": [],
+            },
+            ensure_ascii=False,
+        )
+
+        parsed = parse_model_answer_candidate(output)
+        self.assertIsInstance(parsed, ModelAnswerCandidate)
+        self.assertIsInstance(parsed.claims[0], ModelAnswerClaim)
+        finalized = finalize_answer(
+            output,
+            run_id=record.run_id,
+            tool_results=(record,),
+            scope=ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100),
+        )
+
+        self.assertEqual(finalized.content_blocks[0].block_id, "claim-1")
+        self.assertEqual(finalized.evidence_items[0].evidence_id, "e1")
+        reference = finalized.evidence_items[0].sources[0].reference
+        self.assertNotIsInstance(reference, SourceHandleReference)
+        self.assertIsInstance(reference, MessageSource)
+        assert isinstance(reference, MessageSource)
+        self.assertEqual(reference.tool_result_id, record.tool_result_id)
+        self.assertEqual(reference.internal_message_id, "qq:100:m1")
+        self.assertIsNotNone(reference.snapshot)
+
+    def test_model_candidate_unknown_handle_fails_with_source_path(self) -> None:
+        """未知 handle 必须显式失败，不能被 Host 删除或猜测成另一条来源。"""
+
+        record = _record()
+        output = json.dumps(
+            {
+                "claims": [
+                    {
+                        "text": "unsupported",
+                        "finding": "missing source",
+                        "criterion": "source must be current",
+                        "sufficiency": "insufficient",
+                        "sources": ["m99-1"],
+                        "limitations": [],
+                    }
+                ],
+                "limitations": [],
+            }
+        )
+
+        with self.assertRaises(AnswerFinalizationError) as context:
+            finalize_answer(
+                output,
+                run_id=record.run_id,
+                tool_results=(record,),
+                scope=ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100),
+            )
+        self.assertEqual(context.exception.code, "UNRESOLVED_SOURCE_HANDLE")
+        self.assertEqual(context.exception.path, "evidence_items[0].sources[0].source")
+
+    def test_model_tool_projection_does_not_copy_full_message_provenance(self) -> None:
+        """Tool Result model projection保留语义字段和 handle，但不搬运内部 IDs。"""
+
+        record = _record()
+        envelope = ToolEnvelope("ok", None, {}, None)
+        projected = project_tool_result_for_model(envelope, record, token_budget=8_000)
+        serialized = json.dumps(projected, ensure_ascii=False)
+
+        self.assertEqual(projected["provenance"]["message_sources"], [])
+        self.assertNotIn("internal_message_id", serialized)
+        self.assertNotIn(record.tool_call_id, serialized)
+        self.assertIn("model_projection", projected)
+
     def test_expanded_messages_receive_current_run_provenance(self) -> None:
         """命中消息和 bounded context 都必须成为可验证的 source entry。"""
 
@@ -244,10 +327,90 @@ class EvidenceContractTests(unittest.TestCase):
             scope=ExecutionScope(),
         )
 
-        source_ids = {
-            source["result_item_id"] for source in record.to_model_provenance()["message_sources"]
-        }
-        self.assertEqual(source_ids, {"message/qq:100:hit", "message/qq:100:context"})
+        source_ids = {source["source_id"] for source in record.to_model_provenance()["message_sources"]}
+        self.assertEqual(source_ids, {"m1-1", "m1-2"})
+
+        projected = project_tool_result_for_model(ToolEnvelope("ok", retrieval, {}, None), record)
+        serialized = json.dumps(projected, ensure_ascii=False)
+        hit_message = projected["data"]["hits"][0]["message"]
+        context_message = projected["data"]["expanded_messages"][0]
+        self.assertEqual(hit_message["source_id"], "m1-1")
+        self.assertEqual(context_message["source_id"], "m1-2")
+        self.assertNotIn("internal_message_id", serialized)
+        self.assertNotIn("run-expanded/tool-call/1", serialized)
+
+    def test_semantic_projection_preserves_core_and_omits_context(self) -> None:
+        """semantic range 核心是命中，邻近消息只能作为可省略 context。"""
+
+        messages = tuple(
+            _message(
+                internal_message_id=f"qq:100:semantic-{index}",
+                timestamp=1_000 + index,
+                content=f"semantic message {index} " + ("with enough context to exercise trimming " * 24),
+            )
+            for index in range(40)
+        )
+        semantic = SemanticRetrievalResult(
+            query=SemanticQuery(query="meaning", limit=1),
+            filters={},
+            strategy="semantic",
+            hits=(
+                SemanticHit(
+                    chunk_id="chunk-id-1",
+                    parent_id="parent-id-1",
+                    session_id="qq:100",
+                    parent_start_message_id=messages[0].internal_message_id,
+                    parent_end_message_id=messages[1].internal_message_id,
+                    start_message_id=messages[0].internal_message_id,
+                    end_message_id=messages[1].internal_message_id,
+                    score=0.91,
+                    score_type="cosine_similarity",
+                    dense_rank=1,
+                    index_identity="index-identity-must-stay-host-side",
+                ),
+            ),
+            expanded_messages=messages,
+            total_hits=1,
+            returned_messages=len(messages),
+            coverage=Coverage("complete", "canonical_plus_semantic_index"),
+            partial=False,
+            truncated=False,
+            metadata=RetrievalMetadata(
+                filters={},
+                ordering="cosine distance ASC",
+                latency_ms=0.0,
+                details={
+                    "index_identity": "index-identity-must-stay-host-side",
+                    "candidate_chunk_ids": ["chunk-id-1"],
+                    "candidate_parent_ids": ["parent-id-1"],
+                    "candidate_scores": [0.91],
+                },
+            ),
+            primary_message_ids=tuple(message.internal_message_id for message in messages[:2]),
+        )
+        envelope = ToolEnvelope("ok", semantic, {}, None)
+        record = build_tool_result_record(
+            run_id="run-semantic",
+            tool_call_id="run-semantic/tool-call/1",
+            tool_result_id="run-semantic/tool-call/1/result",
+            tool_name="semantic_search",
+            envelope=envelope,
+            scope=ExecutionScope(),
+        )
+
+        projected = project_tool_result_for_model(envelope, record, token_budget=8_000)
+        serialized = json.dumps(projected, ensure_ascii=False)
+        projected_messages = projected["data"]["expanded_messages"]
+
+        self.assertEqual(len(projected_messages), 2)
+        self.assertEqual([item["hit"] for item in projected_messages], [True, True])
+        self.assertEqual(projected["model_projection"]["omitted_context_messages"], 38)
+        self.assertTrue(projected["model_projection"]["truncated"])
+        self.assertEqual(len(projected["provenance"]["message_sources"]), 2)
+        self.assertNotIn("m1-40", {item["source_id"] for item in projected["provenance"]["message_sources"]})
+        self.assertNotIn("internal_message_id", serialized)
+        self.assertNotIn("chunk-id-1", serialized)
+        self.assertNotIn("index-identity-must-stay-host-side", serialized)
 
     def test_mixed_tool_result_locator_remains_unresolved(self) -> None:
         """不同 Tool Result 的父级 identity 与 message item 不得被拼成合法引用。"""

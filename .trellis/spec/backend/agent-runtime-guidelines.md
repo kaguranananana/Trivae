@@ -344,27 +344,40 @@ class QueryStreamAdapter:
     def handle_normalized_event(self, event: NormalizedQueryEvent) -> None: ...
 ```
 
-Structured model source 的最小提交字段为 `run_id`、`tool_call_id`、`tool_result_id`、
-`source_id`、`locator_kind`、`locator`；`value_snapshot` 由 current Tool Result hydrate。
-`MessageDisplaySnapshot.urls` 是 bounded trusted URL tuple；CLI 只消费 finalized Artifact。
+新的 model source 最小提交字段是当前 Tool Result projection 返回的短 `source_id` handle；
+handle 只在当前 Run/Tool Result scope 有效。Host record 才保留 `run_id`、`tool_call_id`、
+`tool_result_id`、`result_item_id`、`session_id`、`internal_message_id`，Finalizer 解析 handle
+后写入 validated Artifact。旧 Artifact 的完整 source locator 仍可显式读取和校验，不能把旧
+字段猜测成新 handle。`MessageDisplaySnapshot.urls` 是 bounded trusted URL tuple；CLI 只消费
+finalized Artifact。
 
 ### 3. Contracts
 
-- `ToolStructuredItem.source_id == f"{locator_kind}:{locator}"`，只作为 current Tool Result
-  内的短 identity alias；Finalizer 仍用完整 provenance 和 locator 定位 canonical item。
-- 模型可以省略 structured `value_snapshot`；如果显式提供，必须与 trusted value 严格相等，
-  不一致返回 `STRUCTURED_VALUE_MISMATCH`，错误 path 为
-  `evidence_items[i].sources[j].source.value_snapshot`。
-- Tool-backed answer 必须同时有非空 `evidence_items` 和 `citation_bindings`；否则返回
-  `MISSING_EVIDENCE`，不生成 validated Artifact、不 commit Conversation。
+- `ToolStructuredItem.source_id == f"{locator_kind}:{locator}"` 仍是 structured item 的
+  canonical locator identity；对模型另生成 `s<tool-call-ordinal>-<item-index>` 短 handle，避免
+  每条 source 重复父级 provenance。Finalizer 只在 current run 的 Tool Result record 内解析 handle。
+- 模型可以只提交 structured source handle；如果显式提供 `value_snapshot`，必须与 trusted value
+  严格相等，不一致返回 `STRUCTURED_VALUE_MISMATCH`，错误 path 为 candidate source path。
+- Tool-backed candidate 的 finding 必须有非空 source handles；Host 编译出的 Artifact 必须同时有
+  非空 `evidence_items` 和 `citation_bindings`，否则返回 `MISSING_EVIDENCE`，不生成 validated
+  Artifact、不 commit Conversation。
 - message URL 必须在 excerpt 截断前从 canonical content 提取，并受 `MAX_SOURCE_URLS` 与
   `MAX_SOURCE_URL_CHARS` 限制；模型正文中自行抄写的 URL 不是 trusted Source URL。
 - QueryStreamAdapter 暂存当前 model turn 的 content delta；如果该 turn 发起 Tool，则在
   `turn_completed` 丢弃中间说明；只有无 Tool 的最终 turn 才投影为 `answer.delta`。
 - provider 字段名不能证明可见性：`reasoning_text` 与 `reasoning_summary_text` 不进入 CLI；
   OpenCode Go 的 DeepSeek V4 Flash 使用 `reasoning.effort="low"`，为必须闭合的 JSON 留预算。
-- 相对 30 天窗口使用 scoped SQL 的 `MAX(timestamp) - 2592000000`，并由 SQL `datetime()` 返回
-  UTC 字符串；禁止用 `MIN(timestamp)` 充当窗口起点或手工心算日期。
+- 相对时间只提交 `{kind: "relative", amount, unit, anchor: "archive_latest"}`；Capability 在
+  trusted scope 内用 read-only `MAX(timestamp)` 求 archive latest，Host 计算半开 absolute range
+  并把原始意图、anchor、resolved start/end 写入 query snapshot/Trace。禁止模型用 SQL 计算并复制
+  timestamp，禁止使用 machine current time、`MIN(timestamp)` 或手工心算日期。
+- `ToolEnvelope.to_dict()` 是 host/API canonical projection，不直接作为 model context。Runtime
+  通过独立 slim projection 向模型发送语义正文、时间、作者、必要 metadata 和短 handle；model
+  projection 有独立 `DEFAULT_TOOL_RESULT_TOKEN_BUDGET`，超限先省略 context、再显式标记正文截断，
+  永远保留真实 hit，无法满足 contract 时显式失败。
+- `AnswerArtifact` 与 `ModelAnswerCandidate` 分离。模型提交 claim/finding/criterion/
+  sufficiency/limitations/source handles；Host 确定性生成 block ID、evidence ID、citation binding、
+  source dedupe/order 和 trusted URL/value。validated Artifact 之前不得提交 Conversation。
 
 ### 4. Validation & Error Matrix
 
@@ -373,7 +386,11 @@ Structured model source 的最小提交字段为 `run_id`、`tool_call_id`、`to
 | structured source identity/locator 不在当前 Tool Result | `UNRESOLVED_STRUCTURED_SOURCE` / `STRUCTURED_SOURCE_ID_MISMATCH`，带 source path |
 | structured explicit value 不一致 | `STRUCTURED_VALUE_MISMATCH`，不替换模型值、不删除 citation |
 | source run/result scope 不匹配 | 原有 `INVALID_PROVENANCE` / `SCOPE_VIOLATION`，不 hydrate |
+| source handle 缺失、跨 scope 或歧义 | `UNRESOLVED_SOURCE_HANDLE` / `AMBIGUOUS_SOURCE_HANDLE`，带 claim evidence source path |
 | Tool Result 存在但 Artifact 无 Evidence/binding | `MISSING_EVIDENCE`，不提交答案 |
+| Tool-backed candidate 有 finding 但没有 source handle | `MISSING_EVIDENCE`，不静默生成无依据 Artifact |
+| model projection 超出独立 token budget | context/正文 trimming facts 显式返回；仍无法满足时 `ToolResultProjectionError` |
+| relative anchor 不在 trusted archive | Capability contract error，保留失败 owner，不使用 machine now |
 | message source 正文超长 | excerpt bounded，但 URL 从完整 canonical content 提取 |
 | Tool turn 产生 provider prose | 不发 `answer.delta`；保留真实 Tool/Retrieval normalized facts |
 | provider reasoning summary 到达 | 只消费生命周期顺序；终端不渲染 reasoning 文本 |
@@ -381,13 +398,14 @@ Structured model source 的最小提交字段为 `run_id`、`tool_call_id`、`to
 
 ### 5. Good / Base / Bad Cases
 
-- Good：模型提交 `source_id="aggregate:total_count"` 与 locator，Finalizer 从 current Tool Result
-  hydrate 数值 182，最终 Sources 显示 structured value 和 scope limitation。
+- Good：模型提交 `source_id="s1-1"`，Finalizer 在当前 Tool Result 内解析 structured item，hydrate
+  数值 182，最终 Sources 显示 canonical locator/value 和 scope limitation。
 - Base：消息 excerpt 只保留 1,000 字符，但 URL 位于后半段；Sources 仍显示该 URL，旧 Artifact
   缺少 `urls` 字段时按空 tuple 读取。
 - Bad：复制一整行 SQL row 的 value，因字段顺序/类型漂移失败后自动替换为 Tool Result 的值。
 - Bad：把 `reasoning_summary_text` 当成用户可见 CoT，或把 Tool turn 的“我去搜索”当成正式 Answer。
-- Bad：Tool-backed JSON 返回空 Evidence，或用 `MIN(timestamp)` 把相对窗口扩成整段会话。
+- Bad：Tool-backed JSON 返回没有 source handle 的 Evidence，或让模型复制 full provenance/大型
+  row；也不能用 `MIN(timestamp)` 或 machine now 把相对窗口扩成不可信时间段。
 
 ### 6. Tests Required
 
@@ -420,17 +438,19 @@ Structured model source 的最小提交字段为 `run_id`、`tool_call_id`、`to
 
 ```json
 {
-  "source": {
-    "type": "structured",
-    "source_id": "aggregate:total_count",
-    "locator_kind": "aggregate",
-    "locator": "total_count"
-  }
+  "claims": [{
+    "text": "共有 182 条。",
+    "finding": "current result contains the aggregate",
+    "criterion": "short handle resolves in the current Tool Result",
+    "sufficiency": "sufficient",
+    "sources": ["s1-1"],
+    "limitations": []
+  }]
 }
 ```
 
-应用层严格验证 provenance/locator/scope，再从 current Tool Result hydrate exact value；CLI
-从 validated Artifact 投影 claim→evidence→source，不读取 SQLite 或重新检索。
+应用层严格解析 handle 并验证 locator/scope，再从 current Tool Result hydrate exact value；Host
+生成 Artifact 的 claim→evidence→source bookkeeping，CLI 不读取 SQLite 或重新检索。
 
 ## 10. Bounded retrieval result contract（2026-08-25）
 
@@ -454,8 +474,8 @@ Structured model source 的最小提交字段为 `run_id`、`tool_call_id`、`to
   局部上下文只为解释特定命中而开启，不能让邻近消息消耗清单命中预算。
 - 无界检索不属于默认行为：超出 100 的数据必须通过显式更高 scope/config 设计，而不是删除上限或
   静默放宽当前 contract。
-- Tool-backed final JSON 必须先闭合 `evidence_items`、`citation_bindings` 和 JSON 结构，再列有限
-  代表性 URL；长资源清单不得挤掉可验证证据。
+- Tool-backed model JSON 必须先闭合 `claims` 和 JSON 结构，再列有限代表性 URL；Host 随后生成
+  `evidence_items`/`citation_bindings`，长资源清单不得挤掉可验证证据。
 
 ### 3. Validation & Error Matrix
 
@@ -496,3 +516,27 @@ DEFAULT_RESULT_LIMIT = 100
 
 这条 contract 固化“完整命中优先、结果有界、截断可审计”的检索行为；它不把数据库全量内容直接
 送入模型，也不使用无依据的 fallback 或静默降级。
+
+## 11. Context Engineering / semantic vs bookkeeping boundary（2026-08-25）
+
+### Principle
+
+`LLM decides semantics; Host code owns deterministic bookkeeping.` 模型可以判断 claim、finding、
+criterion、sufficiency、source relation 和 limitation；它不负责复制父级 Tool identity、生成
+artifact IDs、排序/去重 URL、计算 archive-relative timestamp、决定 scope，或把多条 Tool Result
+拼成一个 provenance locator。
+
+### Host-owned records
+
+- canonical `ToolEnvelope` 和 `ToolResultRecord` 留在 Runtime local；模型只收到 slim projection。
+- message/structured handle 是 current scope 的短索引；最终 full provenance 只在 validated Artifact
+  和 Trace 需要时保留，旧 serialization codec 不被新 transient candidate 污染。
+- `requested result limit`、trusted `max_results`、retrieval hard cap、context expansion bound、
+  model Tool Result token budget、answer/evidence budget 是不同预算，任何一层超限都要显式暴露。
+- Host projection 记录 `estimated_tokens` 只是 bounded byte-based estimate；provider input/tool-result/
+  output token 没有返回时写 `unavailable`，不能把 estimate 冒充 provider usage。
+
+### Explicit non-decisions
+
+本轮不引入 Code Mode、不删除 Tool Calling、不公开 hidden CoT、不新增 retry/fallback/citation
+repair，不把完整 provenance 删除出 Trace/Artifact，也不为了让样例通过而增加 query-specific 分支。
