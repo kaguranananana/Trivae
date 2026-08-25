@@ -705,3 +705,24 @@ Implemented CLI-only automatic .env loading for chat with explicit --env-file su
 ### Status
 
 [OK] **Completed**
+
+
+## Session 32: Agent Harness context hardening
+
+**Date**: 2026-08-25
+**Task**: Agent Harness context hardening
+**Branch**: `main`
+
+### Summary
+
+Completed source handles, host-owned ModelAnswerCandidate compilation, archive-relative time ranges, slim hit-preserving Tool Result projections with a measured 16k budget, Trace budget metrics, and documentation/interview defense. Added regressions and validated 311 tests plus ruff, mypy, compileall, diff check, CLI help, and Trellis validation. Real provider smoke passed for the 31-hit resource query and Agent-learning, taste-skill, and DeepSeek cases with unresolved citations at zero; semantic partial coverage remains explicit.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c054fc5` | (see git log) |
+
+### Status
+
+[OK] **Completed**
