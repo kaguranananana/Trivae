@@ -174,8 +174,8 @@ class ProviderDeltaNormalizationTests(unittest.TestCase):
             self._event("response.output_text.delta", '{"content_blocks"')
         )
 
-        self.assertEqual(summary, ("thinking", "分析问题"))
-        self.assertEqual(reasoning, ("thinking", "继续分析"))
+        self.assertEqual(summary, ("thinking_summary", "分析问题"))
+        self.assertIsNone(reasoning)
         self.assertEqual(answer, ("content", '{"content_blocks"'))
 
     def test_provider_without_or_empty_reasoning_is_ignored(self) -> None:
@@ -311,6 +311,7 @@ class QueryStreamProjectionTests(unittest.TestCase):
         self.assertEqual([event.sequence for event in events], list(range(1, 8)))
         self.assertEqual(events[2].result_summary["expanded_count"], 5)
         self.assertEqual(events[5].error_code, "TOOL_FAILED")
+        self.assertEqual(events[6].thinking_visibility, "public_summary")
 
     def test_trace_store_failure_still_notifies_same_normalized_event(self) -> None:
         observed: list[NormalizedQueryEvent] = []
@@ -366,6 +367,41 @@ class QueryStreamProjectionTests(unittest.TestCase):
             self.assertIn("answer.finalization.completed", operations)
             self.assertIn("answer.commit.completed", operations)
             application.close()
+
+    def test_tool_turn_provisional_text_is_not_projected_as_answer(self) -> None:
+        """Tool 前的模型说明不冒充答案，只有无 Tool 的最终 turn 才进入 live answer。"""
+
+        events: list[QueryStreamEvent] = []
+        adapter = QueryStreamAdapter(events.append)
+        adapter.handle_runtime_event(RuntimeEvent("turn_started", "test", "model", 1))
+        adapter.handle_runtime_event(
+            RuntimeEvent(
+                "content_delta",
+                "test",
+                "model",
+                2,
+                text='{"content_blocks":[{"block_id":"draft","text":"先查一下"}]}',
+            )
+        )
+        adapter.handle_runtime_event(RuntimeEvent("tool_started", "test", "model", 3))
+        adapter.handle_runtime_event(RuntimeEvent("turn_completed", "test", "model", 4))
+
+        adapter.handle_runtime_event(RuntimeEvent("turn_started", "test", "model", 5))
+        adapter.handle_runtime_event(
+            RuntimeEvent(
+                "content_delta",
+                "test",
+                "model",
+                6,
+                text='{"content_blocks":[{"block_id":"final","text":"正式答案"}]}',
+            )
+        )
+        adapter.handle_runtime_event(RuntimeEvent("turn_completed", "test", "model", 7))
+
+        self.assertEqual(
+            [event.content for event in events if event.type == "answer.delta"],
+            ["正式答案"],
+        )
 
     def test_run_only_authoritative_answer_is_not_truncated_by_normal_trace_capture(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

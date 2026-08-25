@@ -65,6 +65,9 @@ _DEFAULT_MAX_OUTPUT_TOKENS = 16384
 _DEFAULT_COMPLETION_MAX_TOKENS = 2048
 # 真实 smoke 证明 OpenCode Go 的 Chat Completions 不兼容 tools + JSON mode 组合。
 _PROVIDERS_WITHOUT_TOOL_JSON_MODE = frozenset({"opencode-go"})
+# DeepSeek V4 Flash 默认开启 high thinking；reasoning token 与最终 JSON 共用
+# max_output_tokens，真实长证据查询会在 JSON 闭合前耗尽 provider 输出预算。
+_LOW_REASONING_MODELS = frozenset({"deepseek-v4-flash"})
 _JSON_REPAIR_OBSERVER: ContextVar[Callable[[], None] | None] = ContextVar(
     "trivae_json_repair_observer",
     default=None,
@@ -871,8 +874,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 stream_delta = self._stream_delta(sdk_event)
                 if stream_delta is not None:
                     delta_type, delta = stream_delta
-                    if delta_type == "thinking":
-                        # 只有 provider/SDK 实际返回非空 reasoning delta 才开启 Thinking 段。
+                    if delta_type == "thinking_summary":
+                        # 只有 provider/SDK 实际返回公开 summary delta 才开启 Process 段。
                         state.thinking_active = True
                         yield self._event(state, "thinking_delta", text=delta)
                     else:
@@ -1073,6 +1076,15 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 )
             return "".join(parts)
 
+        # 只对已验证支持 low effort 的 OpenCode Go DeepSeek V4 Flash 降低内部推理预算；
+        # 这样保留模型的思考能力，同时把 token 预算留给必须闭合的 Answer Artifact JSON。
+        reasoning = (
+            {"effort": "low"}
+            if self._provider_name == "opencode-go"
+            and self._model_name.lower() in _LOW_REASONING_MODELS
+            else None
+        )
+
         return Agent(
             name="Trivae Agent",
             instructions=instructions,
@@ -1081,6 +1093,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             model_settings=SDKModelSettings(
                 # JSON Output 需要显式预算；否则 provider 默认边界可能在 JSON 中间结束。
                 max_tokens=self.max_output_tokens,
+                reasoning=reasoning,
                 extra_args={"response_format": _FINAL_SYNTHESIS_RESPONSE_FORMAT},
             ),
             tools=tools,
@@ -1095,19 +1108,16 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         return items
 
     @staticmethod
-    def _stream_delta(event: Any) -> tuple[Literal["thinking", "content"], str] | None:
-        """把 SDK public delta 归一化为 provider-neutral reasoning/content。"""
+    def _stream_delta(event: Any) -> tuple[Literal["thinking_summary", "content"], str] | None:
+        """只把公开 reasoning summary 和 answer text 归一化，过滤 hidden reasoning text。"""
 
         data = getattr(event, "data", None)
         event_type = getattr(data, "type", None)
         if event_type == "response.output_text.delta":
-            delta_type: Literal["thinking", "content"] = "content"
-        elif event_type in {
-            "response.reasoning_summary_text.delta",
-            "response.reasoning_text.delta",
-        }:
-            # Provider reasoning 已由 SDK 转成 public Responses event；这里不读取 provider 字段。
-            delta_type = "thinking"
+            delta_type: Literal["thinking_summary", "content"] = "content"
+        elif event_type == "response.reasoning_summary_text.delta":
+            # 只有 provider 明确给出的 summary 才进入公开过程摘要；reasoning_text 属于 hidden boundary。
+            delta_type = "thinking_summary"
         else:
             return None
         delta = getattr(data, "delta", None)
@@ -1120,10 +1130,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         """识别 SDK public reasoning done，不依赖 provider-specific response 字段。"""
 
         data = getattr(event, "data", None)
-        return getattr(data, "type", None) in {
-            "response.reasoning_summary_text.done",
-            "response.reasoning_text.done",
-        }
+        return getattr(data, "type", None) == "response.reasoning_summary_text.done"
 
     @staticmethod
     def _drain_pending(state: _RunState) -> list[_PendingEvent]:

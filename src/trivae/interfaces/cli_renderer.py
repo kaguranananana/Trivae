@@ -32,6 +32,10 @@ _ERROR_LABELS = {
     "MESSAGE_NOT_FOUND": "The cited message is no longer available in the selected scope.",
     "SQL_READ_ONLY_VIOLATION": "The structured query was rejected because it is not read-only.",
     "SQL_SCOPE_VIOLATION": "The structured query attempted to leave the selected scope.",
+    "STRUCTURED_VALUE_MISMATCH": "The answer cited a structured value that was not returned by the tool; the answer was not saved.",
+    "STRUCTURED_SOURCE_ID_MISMATCH": "The answer cited an unknown structured source; the answer was not saved.",
+    "UNRESOLVED_STRUCTURED_SOURCE": "The cited structured source was not found in the tool result; the answer was not saved.",
+    "MISSING_EVIDENCE": "The tool-backed answer did not include claim evidence; the answer was not saved.",
 }
 
 
@@ -114,9 +118,9 @@ class CliEventRenderer:
         self._stream.flush()
 
     def _render_thinking_delta(self, event: QueryStreamEvent) -> None:
-        """不渲染 CoT；仍消费同一事件流以保证 Answer 段顺序不变。"""
+        """消费 reasoning stream 以保持顺序，但不把 provider 推理文本投影到终端。"""
 
-        # reasoning delta 不能进入用户终端，避免把内部思维过程伪装成产品输出。
+        # provider 字段名不能证明内容是安全摘要；真实 smoke 已证明 summary 也可能是长内部推理。
         return
 
     def _render_answer_delta(self, event: QueryStreamEvent) -> None:

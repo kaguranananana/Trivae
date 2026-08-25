@@ -312,3 +312,187 @@ model = OpenAIChatCompletionsModel(model=settings.model_name, openai_client=clie
 这条 contract 固化的架构原则是：Trivae Agent Runtime 依赖模型协议能力，而不依赖
 具体模型厂商；支持 OpenAI-compatible Chat Completions 的 Provider 通过配置和
 Runtime Adapter 接入，差异不得泄漏到业务层。
+
+## 9. Evidence-backed finalization and provider process boundary（2026-08-25）
+
+### 1. Scope / Trigger
+
+- Trigger：真实 Trace 暴露 structured citation 复制大型 `value_snapshot` 易失败、答案缺少
+  URL/Evidence、provider `reasoning_summary_text` 可能仍是 hidden scratchpad，以及最终 JSON 在
+  推理预算耗尽时未闭合的问题。
+- Scope：`query/evidence.py`、`query/runtime/prompt.py`、`query/runtime/openai_adapter.py`、
+  `query/streaming.py`、`observability/collector.py` 与 CLI projection。
+- Boundary：不放宽 current-run provenance、scope、locator 或 explicit value equality；不公开
+  hidden CoT，不新增 retry、citation repair 或第二套检索链。
+
+### 2. Signatures
+
+```python
+def validate_answer_artifact(
+    artifact: AnswerArtifact,
+    *,
+    run_id: str | None,
+    tool_results: tuple[ToolResultRecord, ...],
+    scope: ExecutionScope,
+    accepted_run_ids: tuple[str, ...] = (),
+) -> AnswerArtifact: ...
+
+def extract_urls(value: object) -> tuple[str, ...]: ...
+
+class QueryStreamAdapter:
+    def handle_runtime_event(self, event: RuntimeEvent) -> None: ...
+    def handle_normalized_event(self, event: NormalizedQueryEvent) -> None: ...
+```
+
+Structured model source 的最小提交字段为 `run_id`、`tool_call_id`、`tool_result_id`、
+`source_id`、`locator_kind`、`locator`；`value_snapshot` 由 current Tool Result hydrate。
+`MessageDisplaySnapshot.urls` 是 bounded trusted URL tuple；CLI 只消费 finalized Artifact。
+
+### 3. Contracts
+
+- `ToolStructuredItem.source_id == f"{locator_kind}:{locator}"`，只作为 current Tool Result
+  内的短 identity alias；Finalizer 仍用完整 provenance 和 locator 定位 canonical item。
+- 模型可以省略 structured `value_snapshot`；如果显式提供，必须与 trusted value 严格相等，
+  不一致返回 `STRUCTURED_VALUE_MISMATCH`，错误 path 为
+  `evidence_items[i].sources[j].source.value_snapshot`。
+- Tool-backed answer 必须同时有非空 `evidence_items` 和 `citation_bindings`；否则返回
+  `MISSING_EVIDENCE`，不生成 validated Artifact、不 commit Conversation。
+- message URL 必须在 excerpt 截断前从 canonical content 提取，并受 `MAX_SOURCE_URLS` 与
+  `MAX_SOURCE_URL_CHARS` 限制；模型正文中自行抄写的 URL 不是 trusted Source URL。
+- QueryStreamAdapter 暂存当前 model turn 的 content delta；如果该 turn 发起 Tool，则在
+  `turn_completed` 丢弃中间说明；只有无 Tool 的最终 turn 才投影为 `answer.delta`。
+- provider 字段名不能证明可见性：`reasoning_text` 与 `reasoning_summary_text` 不进入 CLI；
+  OpenCode Go 的 DeepSeek V4 Flash 使用 `reasoning.effort="low"`，为必须闭合的 JSON 留预算。
+- 相对 30 天窗口使用 scoped SQL 的 `MAX(timestamp) - 2592000000`，并由 SQL `datetime()` 返回
+  UTC 字符串；禁止用 `MIN(timestamp)` 充当窗口起点或手工心算日期。
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| structured source identity/locator 不在当前 Tool Result | `UNRESOLVED_STRUCTURED_SOURCE` / `STRUCTURED_SOURCE_ID_MISMATCH`，带 source path |
+| structured explicit value 不一致 | `STRUCTURED_VALUE_MISMATCH`，不替换模型值、不删除 citation |
+| source run/result scope 不匹配 | 原有 `INVALID_PROVENANCE` / `SCOPE_VIOLATION`，不 hydrate |
+| Tool Result 存在但 Artifact 无 Evidence/binding | `MISSING_EVIDENCE`，不提交答案 |
+| message source 正文超长 | excerpt bounded，但 URL 从完整 canonical content 提取 |
+| Tool turn 产生 provider prose | 不发 `answer.delta`；保留真实 Tool/Retrieval normalized facts |
+| provider reasoning summary 到达 | 只消费生命周期顺序；终端不渲染 reasoning 文本 |
+| stream observer 在 delta 中抛错 | 显式 `aclose()` 底层 async generator，原错误继续传播 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：模型提交 `source_id="aggregate:total_count"` 与 locator，Finalizer 从 current Tool Result
+  hydrate 数值 182，最终 Sources 显示 structured value 和 scope limitation。
+- Base：消息 excerpt 只保留 1,000 字符，但 URL 位于后半段；Sources 仍显示该 URL，旧 Artifact
+  缺少 `urls` 字段时按空 tuple 读取。
+- Bad：复制一整行 SQL row 的 value，因字段顺序/类型漂移失败后自动替换为 Tool Result 的值。
+- Bad：把 `reasoning_summary_text` 当成用户可见 CoT，或把 Tool turn 的“我去搜索”当成正式 Answer。
+- Bad：Tool-backed JSON 返回空 Evidence，或用 `MIN(timestamp)` 把相对窗口扩成整段会话。
+
+### 6. Tests Required
+
+- Evidence：identity-only hydration、错误 identity/locator/value、source error path、
+  `MISSING_EVIDENCE`、trusted URL before excerpt truncation、URL dedupe、旧/new codec round-trip。
+- Streaming/Runtime：reasoning text filtering、summary 也不渲染、Tool-turn provisional suppression、
+  provider low-effort settings、observer failure 后 async generator close。
+- CLI/Application：Evidence claim binding、finding/criterion/sufficiency/limitations、trusted URL、
+  structured value/locator、失败不 commit 与 Trace terminal identity。
+- Quality：全量 `pytest -q`、`ruff check src tests`、`mypy src`、`compileall`、CLI help、Trellis
+  validation、`git diff --check`，以及 opt-in 真实 provider smoke。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```json
+{
+  "source": {
+    "type": "structured",
+    "locator": "total_count",
+    "value_snapshot": {"copied": "large row"}
+  }
+}
+```
+
+这会把模型复制格式当成来源 identity，并在大型 row/aggregate 上制造无意义的 mismatch。
+
+#### Correct
+
+```json
+{
+  "source": {
+    "type": "structured",
+    "source_id": "aggregate:total_count",
+    "locator_kind": "aggregate",
+    "locator": "total_count"
+  }
+}
+```
+
+应用层严格验证 provenance/locator/scope，再从 current Tool Result hydrate exact value；CLI
+从 validated Artifact 投影 claim→evidence→source，不读取 SQLite 或重新检索。
+
+## 10. Bounded retrieval result contract（2026-08-25）
+
+### 1. Scope / Trigger
+
+- Trigger：真实 lexical 查询在 `total_hits=31` 时因默认 `limit=20` 只返回 20 条，且相同默认值散落
+  在 Scope、Capability、Retrieval、Provider schema 和 Evidence transport。
+- Scope：`config/limits.py`、`capabilities/contracts.py`、`retrieval/structured.py`、
+  `query/runtime/openai_tools.py`、`query/evidence.py` 和资源清单 prompt。
+- Boundary：结果保持有界，不允许无界读取；显式 scope enforcement、partial/truncated 事实和错误透明
+  语义不变。
+
+### 2. Contracts
+
+- `DEFAULT_RESULT_LIMIT=100` 是 lexical 默认结果上限，并由 trusted `ExecutionScope.max_results`、
+  `SearchMessagesInput.limit`、`LexicalQuery.limit`、Provider Function Tool schema 和 Tool Result
+  Evidence capacity 共同使用。
+- 任何一层不得保留 lexical 默认 20；提高一个边界时必须同步所有承载同一结果的边界，避免 schema
+  允许值超过 Capability 或 Evidence transport 容量。
+- 宽范围仓库/Skill/资源清单使用最大可信 `limit`，并将 `context_before/context_after` 设为 0；
+  局部上下文只为解释特定命中而开启，不能让邻近消息消耗清单命中预算。
+- 无界检索不属于默认行为：超出 100 的数据必须通过显式更高 scope/config 设计，而不是删除上限或
+  静默放宽当前 contract。
+- Tool-backed final JSON 必须先闭合 `evidence_items`、`citation_bindings` 和 JSON 结构，再列有限
+  代表性 URL；长资源清单不得挤掉可验证证据。
+
+### 3. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| 默认 lexical 查询命中不超过 100 | 返回全部命中，不标记由默认 limit 导致的 truncation |
+| 命中超过 trusted limit | 保留 `total_hits`、`returned_hits` 和 `truncated/partial`，不得伪称穷尽 |
+| context expansion 超出 bounded result | 保留命中统计和截断事实；宽清单由 prompt 使用零上下文避免该成本 |
+| Provider schema 与 Capability bound 不一致 | 测试失败并修正共享常量，不添加运行时静默恢复 |
+| Tool-backed final answer 缺少 evidence/binding | `MISSING_EVIDENCE`，不生成 validated Artifact、不 commit |
+
+### 4. Tests Required
+
+- Capability：31 条 fixture 的默认 lexical 查询必须返回 31 个 hit，且没有默认 20 截断。
+- Runtime：Provider lexical schema 的 default/maximum 使用 trusted scope 的共享上限；资源清单 prompt
+  包含最大 limit、零上下文和证据优先要求。
+- Real smoke（opt-in）：Trace 的 retrieval partial/truncated 为 0，citation unresolved 为 0，终端
+  同时显示 31/31 命中、具体 URL 和 Sources。
+- Quality gates：全量 `pytest -q`、`ruff`、`mypy`、`compileall`、Trellis validation 和
+  `git diff --check`。
+
+### 5. Wrong vs Correct
+
+#### Wrong
+
+```python
+# 只提高某一个层，其他边界仍然截断或无法承载结果。
+scope.max_results = 100
+SearchMessagesInput.limit = 20
+```
+
+#### Correct
+
+```python
+# 所有 lexical 结果边界共享同一个有界默认，仍由 Scope 做最终 enforcement。
+DEFAULT_RESULT_LIMIT = 100
+```
+
+这条 contract 固化“完整命中优先、结果有界、截断可审计”的检索行为；它不把数据库全量内容直接
+送入模型，也不使用无依据的 fallback 或静默降级。

@@ -21,6 +21,15 @@ from trivae.data.model import ChatSession
 from trivae.interfaces import cli
 from trivae.observability.sqlite import TraceStoreError
 from trivae.query.contracts import QueryRequest
+from trivae.query.evidence import (
+    AnswerArtifact,
+    AnswerContentBlock,
+    CitationBinding,
+    EvidenceItem,
+    EvidenceSource,
+    MessageDisplaySnapshot,
+    MessageSource,
+)
 from trivae.query.streaming import QueryStreamEvent
 
 
@@ -36,6 +45,7 @@ class _FakeResult:
     termination: str = "completed"
     finalization_error: object | None = None
     runtime_result: object = field(default_factory=lambda: SimpleNamespace(error=None))
+    answer_artifact: AnswerArtifact | None = None
 
 
 class _FakeApplication:
@@ -402,6 +412,58 @@ class ChatCliTests(unittest.TestCase):
 
         self.assertIn("formal final answer", output)
         self.assertNotIn("raw runtime answer", output)
+
+    def test_success_answer_displays_claim_evidence_and_trusted_urls(self) -> None:
+        """答案层必须同时显示 claim 绑定、证据标准和可信消息 URL。"""
+
+        source = MessageSource(
+            run_id="run-1",
+            tool_call_id="run-1/tool-call/1",
+            tool_result_id="run-1/tool-call/1/result",
+            result_item_id="message/qq:100:m1",
+            session_id="qq:100",
+            internal_message_id="qq:100:m1",
+            snapshot=MessageDisplaySnapshot(
+                session_display="AI 群",
+                author_display="Alice",
+                timestamp_ms=1_700_000_000_000,
+                timezone="UTC",
+                excerpt="推荐 https://github.com/example/project",
+                excerpt_truncated=False,
+                source_message_id="m1",
+                urls=("https://github.com/example/project",),
+            ),
+        )
+        artifact = AnswerArtifact(
+            content_blocks=(AnswerContentBlock("claim-1", "推荐这个项目。"),),
+            citation_bindings=(CitationBinding("claim-1", ("e1",)),),
+            evidence_items=(
+                EvidenceItem(
+                    evidence_id="e1",
+                    finding="聊天消息明确出现了该项目链接。",
+                    criterion="当前消息来源包含完整 GitHub URL。",
+                    sufficiency="sufficient",
+                    sources=(EvidenceSource("supports", source),),
+                    limitations=("群聊提及不等于独立质量验证",),
+                ),
+            ),
+        )
+        application = _FakeApplication(
+            (_session("qq:100", "AI 群"),),
+            [_FakeResult("推荐这个项目。", "raw runtime answer", "conversation", "trace", True, answer_artifact=artifact)],
+        )
+        _, input_fn = _scripted_input(["1", "推荐资源", "/exit"])
+        output: list[str] = []
+
+        asyncio.run(cli._run_interactive_chat(application, input_fn=input_fn, output_fn=output.append))
+
+        rendered = "\n".join(output)
+        self.assertIn("Evidence:", rendered)
+        self.assertIn("Finding: 聊天消息明确出现了该项目链接。", rendered)
+        self.assertIn("Criterion: 当前消息来源包含完整 GitHub URL。", rendered)
+        self.assertIn("Sufficiency: sufficient", rendered)
+        self.assertIn("https://github.com/example/project", rendered)
+        self.assertIn("群聊提及不等于独立质量验证", rendered)
 
     def test_streamed_answer_is_not_printed_twice_and_verbose_selects_debug_trace(self) -> None:
         """CLI 消费实时 Answer 后只展示一次正文，verbose 同时选择可信 debug profile。"""

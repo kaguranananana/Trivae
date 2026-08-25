@@ -46,6 +46,8 @@ from trivae.query.evidence import (
     SourceInspectionError,
     StructuredSource,
     answer_source_summaries,
+    extract_urls,
+    source_reference_key,
 )
 from trivae.retrieval.semantic.contracts import (
     SemanticError,
@@ -951,9 +953,12 @@ def _print_query_result(
         output_fn("Trivae >")
         output_fn(f"Error: {_query_failure_message(result)}")
 
+    artifact = getattr(result, "answer_artifact", None)
+    if result.is_successful and isinstance(artifact, AnswerArtifact):
+        # Evidence 与 Sources 必须从同一个 validated Artifact 投影，不能重新查询或相信模型正文。
+        _print_evidence_block(artifact, source_summaries, output_fn=output_fn)
     if result.is_successful and source_summaries:
         _print_source_block(source_summaries, output_fn=output_fn, verbose=verbose)
-    artifact = getattr(result, "answer_artifact", None)
     if result.is_successful and isinstance(artifact, AnswerArtifact):
         limitations = _answer_limitations(artifact)
         if limitations:
@@ -996,8 +1001,8 @@ def _print_source_block(
             if verbose:
                 rendered += f" · {reference.internal_message_id}"
             output_fn(rendered)
-
-
+            for url in snapshot.urls:
+                output_fn(f"   URL: {url}")
             continue
         if isinstance(reference, StructuredSource):
             rendered = f"{summary.index}. {reference.locator_kind} source"
@@ -1006,6 +1011,63 @@ def _print_source_block(
             if verbose:
                 rendered += f" · {reference.locator}"
             output_fn(rendered)
+            output_fn(f"   Value: {_bounded_cli_value(reference.value_snapshot, 800)}")
+            if reference.source_id:
+                output_fn(f"   Source ID: {reference.source_id}")
+            for url in extract_urls(reference.value_snapshot):
+                output_fn(f"   URL: {url}")
+
+
+def _print_evidence_block(
+    artifact: AnswerArtifact,
+    source_summaries: tuple[AnswerSourceSummary, ...],
+    *,
+    output_fn: Callable[[str], None],
+) -> None:
+    """把 validated claim→evidence→source 关系直接投影到答案层。"""
+
+    if not artifact.evidence_items:
+        return
+    output_fn("Evidence:")
+    source_indexes = {
+        source_reference_key(summary.reference): summary.index for summary in source_summaries
+    }
+    block_by_id = {block.block_id: block for block in artifact.content_blocks}
+    evidence_by_id = {item.evidence_id: item for item in artifact.evidence_items}
+    for binding in artifact.citation_bindings:
+        block = block_by_id.get(binding.content_block_id)
+        if block is None:
+            continue
+        output_fn(f"Claim {block.block_id} → {', '.join(binding.evidence_ids)}")
+        for evidence_id in binding.evidence_ids:
+            evidence = evidence_by_id.get(evidence_id)
+            if evidence is None:
+                continue
+            output_fn(f"  Finding: {_bounded_cli_text(evidence.finding, 320)}")
+            output_fn(f"  Criterion: {_bounded_cli_text(evidence.criterion, 320)}")
+            output_fn(f"  Sufficiency: {evidence.sufficiency}")
+            indexes = [
+                str(source_indexes[source_reference_key(source.reference)])
+                for source in evidence.sources
+                if source_reference_key(source.reference) in source_indexes
+            ]
+            output_fn(f"  Sources: {', '.join(indexes) if indexes else 'none'}")
+            if evidence.limitations:
+                output_fn(f"  Limitations: {'; '.join(evidence.limitations)}")
+
+    # 没有 binding 的 Evidence 仍然是 Artifact 事实，明确显示而不是静默丢弃。
+    bound_ids = {
+        evidence_id
+        for binding in artifact.citation_bindings
+        for evidence_id in binding.evidence_ids
+    }
+    for evidence in artifact.evidence_items:
+        if evidence.evidence_id in bound_ids:
+            continue
+        output_fn(f"Evidence {evidence.evidence_id} (unbound)")
+        output_fn(f"  Finding: {_bounded_cli_text(evidence.finding, 320)}")
+        output_fn(f"  Criterion: {_bounded_cli_text(evidence.criterion, 320)}")
+        output_fn(f"  Sufficiency: {evidence.sufficiency}")
 
 
 def _answer_limitations(artifact: AnswerArtifact) -> tuple[str, ...]:

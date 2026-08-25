@@ -39,6 +39,8 @@ class QueryStreamEvent:
     sequence: int
     trace_id: str | None = None
     content: str | None = None
+    # 只有 Runtime adapter 明确标记的 provider public summary 才允许进入用户过程展示。
+    thinking_visibility: Literal["public_summary"] | None = None
     route: str | None = None
     plan: Mapping[str, object] | None = None
     tool_name: str | None = None
@@ -434,6 +436,8 @@ class QueryStreamAdapter:
         self._sequence = 0
         self._answer_parser = AnswerArtifactDeltaParser()
         self._saw_content_delta = False
+        self._turn_had_tool = False
+        self._pending_answer_fragments: list[str] = []
 
     def handle_runtime_event(self, event: RuntimeEvent) -> None:
         """投影 reasoning/content/usage；persistent Trace mapper仍独立忽略 token delta。"""
@@ -442,13 +446,28 @@ class QueryStreamAdapter:
             # 每个模型 turn 拥有独立输出文档；Tool round 的 provisional output 不能污染最终 JSON parser。
             self._answer_parser = AnswerArtifactDeltaParser()
             self._saw_content_delta = False
+            self._turn_had_tool = False
+            self._pending_answer_fragments = []
+            return
+        if event.type in {"tool_started", "tool_completed"}:
+            # 模型在发起 Tool 前可能先输出说明文字；这些不是最终答案，先标记后统一丢弃。
+            self._turn_had_tool = True
             return
         if event.type == "thinking_delta":
             if event.text:
-                self._emit("thinking.delta", content=event.text, source_sequence=event.sequence)
+                self._emit(
+                    "thinking.delta",
+                    content=event.text,
+                    thinking_visibility="public_summary",
+                    source_sequence=event.sequence,
+                )
             return
         if event.type == "thinking_completed":
-            self._emit("thinking.completed", source_sequence=event.sequence)
+            self._emit(
+                "thinking.completed",
+                thinking_visibility="public_summary",
+                source_sequence=event.sequence,
+            )
             return
         if event.type == "content_delta":
             if not event.text:
@@ -456,13 +475,29 @@ class QueryStreamAdapter:
             self._saw_content_delta = True
             content = self._answer_parser.feed(event.text)
             if content:
-                self._emit("answer.delta", content=content, source_sequence=event.sequence)
+                # 只有确认本 turn 没有 Tool 后才把正文交给 CLI；避免把模型中间叙述当成答案。
+                self._pending_answer_fragments.append(content)
+            return
+        if event.type == "turn_completed":
+            self._flush_answer_turn(event.sequence)
             return
         if event.type == "usage_update" and event.usage:
             self._emit("usage.updated", usage=dict(event.usage), source_sequence=event.sequence)
             return
         if event.type == "completed" and self._saw_content_delta:
             self._answer_parser.finish()
+            # SDK-independent injected runtimes may omit turn_completed；terminal boundary仍需 flush。
+            self._flush_answer_turn(event.sequence)
+
+    def _flush_answer_turn(self, source_sequence: int) -> None:
+        """只提交无 Tool turn 的正文；带 Tool 的模型说明保持在 provisional 边界内。"""
+
+        fragments = self._pending_answer_fragments
+        self._pending_answer_fragments = []
+        if self._turn_had_tool:
+            return
+        for fragment in fragments:
+            self._emit("answer.delta", content=fragment, source_sequence=source_sequence)
 
     def handle_normalized_event(self, event: NormalizedQueryEvent) -> None:
         """只映射已有真实业务边界；未知 operation 不产生伪造状态。"""
@@ -486,6 +521,8 @@ class QueryStreamAdapter:
         elif event.operation == "planner.failed":
             self._emit_failure("plan.failed", event, common)
         elif event.operation == "tool.call.started":
+            # normalized event 是跨 Runtime 的第二个事实来源，补记当前 turn 的 Tool 边界。
+            self._turn_had_tool = True
             request = payload.get("request")
             self._emit(
                 "tool.started",

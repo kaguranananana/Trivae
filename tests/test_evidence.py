@@ -30,6 +30,7 @@ from trivae.query.evidence import (
     ToolResultRecord,
     ToolStructuredItem,
     build_tool_result_record,
+    extract_urls,
     finalize_answer,
     scope_snapshot,
     validate_answer_artifact,
@@ -167,6 +168,54 @@ class EvidenceContractTests(unittest.TestCase):
         self.assertEqual(structured_source["run_id"], record.run_id)
         self.assertEqual(structured_source["tool_call_id"], record.tool_call_id)
         self.assertEqual(structured_source["tool_result_id"], record.tool_result_id)
+        self.assertEqual(structured_source["source_id"], "aggregate:total_count")
+        self.assertNotIn("value_snapshot", structured_source)
+
+    def test_identity_only_structured_source_hydrates_exact_tool_value(self) -> None:
+        """模型只引用 source identity 时，Finalizer 仍从 current Tool Result 取可信值。"""
+
+        record = _record()
+        payload = {
+            "content_blocks": [{"block_id": "claim-1", "text": "共有 182 条。"}],
+            "citation_bindings": [{"content_block_id": "claim-1", "evidence_ids": ["e1"]}],
+            "evidence_items": [
+                {
+                    "evidence_id": "e1",
+                    "finding": "当前结构化结果返回总数。",
+                    "criterion": "aggregate source identity 存在于当前 Tool Result。",
+                    "sufficiency": "sufficient",
+                    "sources": [
+                        {
+                            "relation": "supports",
+                            "source": {
+                                "type": "structured",
+                                "run_id": record.run_id,
+                                "tool_call_id": record.tool_call_id,
+                                "tool_result_id": record.tool_result_id,
+                                "source_id": "aggregate:total_count",
+                                "locator_kind": "aggregate",
+                                "locator": "total_count",
+                            },
+                        }
+                    ],
+                    "limitations": [],
+                }
+            ],
+            "limitations": [],
+        }
+
+        finalized = finalize_answer(
+            json.dumps(payload),
+            run_id=record.run_id,
+            tool_results=(record,),
+            scope=ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100),
+        )
+
+        reference = finalized.evidence_items[0].sources[0].reference
+        self.assertIsInstance(reference, StructuredSource)
+        assert isinstance(reference, StructuredSource)
+        self.assertEqual(reference.value_snapshot, 182)
+        self.assertEqual(reference.source_id, "aggregate:total_count")
 
     def test_expanded_messages_receive_current_run_provenance(self) -> None:
         """命中消息和 bounded context 都必须成为可验证的 source entry。"""
@@ -302,6 +351,28 @@ class EvidenceContractTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "INVALID_ANSWER_ARTIFACT")
 
+    def test_tool_backed_json_answer_requires_claim_evidence(self) -> None:
+        record = _record()
+        output = json.dumps(
+            {
+                "content_blocks": [{"block_id": "claim", "text": "工具返回了结果。"}],
+                "citation_bindings": [],
+                "evidence_items": [],
+                "limitations": [],
+            }
+        )
+
+        with self.assertRaises(AnswerFinalizationError) as raised:
+            finalize_answer(
+                output,
+                run_id=record.run_id,
+                tool_results=(record,),
+                scope=ExecutionScope(),
+            )
+
+        self.assertEqual(raised.exception.code, "MISSING_EVIDENCE")
+        self.assertEqual(raised.exception.path, "evidence_items")
+
     def test_malformed_citation_array_and_structured_value_are_rejected(self) -> None:
         malformed_binding = json.dumps(
             {
@@ -432,6 +503,25 @@ class ProvenanceValidationTests(unittest.TestCase):
         self.assertEqual(hydrated.query_scope_snapshot, self.record.query_scope_snapshot)
         self.assertNotEqual(hydrated.query_scope_snapshot, {"fake": True})
 
+        with self.assertRaises(AnswerFinalizationError) as mismatch:
+            validate_answer_artifact(
+                _artifact(
+                    StructuredSource(
+                        run_id=self.record.run_id,
+                        tool_call_id=self.record.tool_call_id,
+                        tool_result_id=self.record.tool_result_id,
+                        locator_kind="aggregate",
+                        locator="total_count",
+                        value_snapshot=183,
+                    )
+                ),
+                run_id=self.record.run_id,
+                tool_results=(self.record,),
+                scope=self.scope,
+            )
+        self.assertEqual(mismatch.exception.code, "STRUCTURED_VALUE_MISMATCH")
+        self.assertEqual(mismatch.exception.path, "evidence_items[0].sources[0].source.value_snapshot")
+
         with self.assertRaises(AnswerFinalizationError) as raised:
             validate_answer_artifact(
                 _artifact(
@@ -449,6 +539,53 @@ class ProvenanceValidationTests(unittest.TestCase):
                 scope=self.scope,
             )
         self.assertEqual(raised.exception.code, "UNRESOLVED_STRUCTURED_SOURCE")
+
+    def test_message_snapshot_keeps_trusted_urls_before_excerpt_truncation(self) -> None:
+        """URL 从完整 canonical message 提取，不能因 excerpt bound 被截掉。"""
+
+        message = _message(
+            content=(
+                "资源 https://github.com/example/project，后面有很长的上下文。"
+                + ("x" * 1_200)
+            )
+        )
+        result = StructuredMessageResult(
+            query=MessageQuery(session_ids=("qq:100",), limit=1),
+            strategy="structured",
+            messages=(message,),
+            total_hits=1,
+            returned_count=1,
+            coverage=Coverage("complete", "canonical_store"),
+            partial=False,
+            truncated=False,
+            metadata=RetrievalMetadata(filters={}, ordering="timestamp ASC", latency_ms=0.0),
+        )
+        record = build_tool_result_record(
+            run_id="run-current",
+            tool_call_id="run-current/tool-call/1",
+            tool_result_id="run-current/tool-call/1/result",
+            tool_name="retrieve_messages",
+            envelope=ToolEnvelope("ok", result, {}, None),
+            scope=self.scope,
+        )
+        validated = validate_answer_artifact(
+            _artifact(_message_source(record)),
+            run_id=record.run_id,
+            tool_results=(record,),
+            scope=self.scope,
+        )
+        reference = validated.evidence_items[0].sources[0].reference
+        self.assertIsInstance(reference, MessageSource)
+        assert isinstance(reference, MessageSource)
+        assert reference.snapshot is not None
+        self.assertEqual(reference.snapshot.urls, ("https://github.com/example/project",))
+        self.assertTrue(reference.snapshot.excerpt_truncated)
+
+    def test_extract_urls_deduplicates_and_strips_sentence_punctuation(self) -> None:
+        self.assertEqual(
+            extract_urls("https://example.com/a, https://example.com/a。 https://github.com/a/b"),
+            ("https://example.com/a", "https://github.com/a/b"),
+        )
 
     def test_tool_partial_and_evidence_sufficiency_remain_independent(self) -> None:
         partial_record = _record(scope=self.scope, status="partial")
@@ -640,6 +777,81 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
         self.assertFalse(result.is_successful)
         self.assertIsNone(result.answer_artifact)
         self.assertEqual(result.finalization_error.code, "INVALID_ANSWER_ARTIFACT")
+
+    def test_real_query_trace_keeps_structured_failure_path_and_no_commit(self) -> None:
+        """真实 Application 主链保留 citation path，并且失败不产生 answer commit。"""
+
+        scope = ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100)
+        record = _record(scope=scope)
+        payload = {
+            "content_blocks": [{"block_id": "claim-1", "text": "共有 183 条。"}],
+            "citation_bindings": [{"content_block_id": "claim-1", "evidence_ids": ["e1"]}],
+            "evidence_items": [
+                {
+                    "evidence_id": "e1",
+                    "finding": "错误结构化值。",
+                    "criterion": "用于重现真实 citation failure。",
+                    "sufficiency": "sufficient",
+                    "sources": [
+                        {
+                            "relation": "supports",
+                            "source": {
+                                "type": "structured",
+                                "run_id": record.run_id,
+                                "tool_call_id": record.tool_call_id,
+                                "tool_result_id": record.tool_result_id,
+                                "source_id": "aggregate:total_count",
+                                "locator_kind": "aggregate",
+                                "locator": "total_count",
+                                "value_snapshot": 183,
+                            },
+                        }
+                    ],
+                    "limitations": [],
+                }
+            ],
+            "limitations": [],
+        }
+
+        class InvalidStructuredCitationRuntime:
+            async def run(self, request: object) -> RuntimeResult:
+                return RuntimeResult(
+                    final_answer=json.dumps(payload),
+                    provider="test",
+                    model="test-model",
+                    termination="completed",
+                    tool_calls=(),
+                    run_id=record.run_id,
+                    tool_results=(record,),
+                )
+
+        with tempfile.TemporaryDirectory() as directory:
+            application = create_application(
+                Path(directory) / "structured-failure.sqlite3",
+                agent_runtime=InvalidStructuredCitationRuntime(),
+            )
+            try:
+                result = asyncio.run(
+                    application.query(
+                        QueryRequest("重现结构化引用失败", scope),
+                    )
+                )
+                self.assertFalse(result.is_successful)
+                self.assertIsNone(result.answer_artifact)
+                self.assertEqual(result.finalization_error.code, "STRUCTURED_VALUE_MISMATCH")
+                self.assertEqual(
+                    result.finalization_error.path,
+                    "evidence_items[0].sources[0].source.value_snapshot",
+                )
+                operations = [event.operation for event in application.read_trace(result.trace_id).timeline]
+                self.assertNotIn("answer.commit.completed", operations)
+                failed = next(event for event in application.read_trace(result.trace_id).timeline if event.operation == "citation.validation.failed")
+                self.assertEqual(
+                    failed.payload["path"],
+                    "evidence_items[0].sources[0].source.value_snapshot",
+                )
+            finally:
+                application.close()
 
 
 if __name__ == "__main__":

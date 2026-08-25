@@ -14,6 +14,7 @@ from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import ToolEnvelope, ToolError
+from trivae.config.limits import DEFAULT_RESULT_LIMIT
 from trivae.config.settings import (
     DEFAULT_DEEPSEEK_BASE_URL,
     ModelSettings,
@@ -274,6 +275,25 @@ class RuntimeAdapterTests(unittest.TestCase):
         )
         self.assertEqual(agent.model_settings.max_tokens, 16384)
 
+    def test_opencode_deepseek_flash_reserves_budget_for_final_json(self) -> None:
+        """OpenCode Go 的 DeepSeek V4 Flash 使用 low effort，避免推理耗尽答案 JSON 预算。"""
+
+        settings = load_settings(
+            {
+                "TRIVAE_MODEL_PROVIDER": "opencode-go",
+                "TRIVAE_MODEL_API_KEY": "fake-opencode-go-key",
+                "TRIVAE_MODEL_BASE_URL": "https://opencode.ai/zen/go/v1",
+                "TRIVAE_MODEL_NAME": "deepseek-v4-flash",
+            }
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, settings=settings)
+        request = AgentRunRequest("What supports alpha?", self.scope)
+        agent = runtime._build_agent(request, runtime._build_context(request), object())
+
+        self.assertIsNotNone(agent.model_settings.reasoning)
+        self.assertEqual(agent.model_settings.reasoning.effort, "low")
+        asyncio.run(runtime.aclose())
+
     def test_opencode_go_agent_does_not_combine_tools_with_json_mode(self) -> None:
         """OpenCode Go 的已验证兼容边界只在 Runtime adapter 内处理。"""
 
@@ -428,6 +448,16 @@ class RuntimeAdapterTests(unittest.TestCase):
     def test_final_synthesis_prompt_requests_compact_artifact(self) -> None:
         self.assertIn("Keep the JSON artifact compact", SYSTEM_PROMPT)
         self.assertIn("Do not repeat the same", SYSTEM_PROMPT)
+        self.assertIn('exact keyword "github.com"', SYSTEM_PROMPT)
+        self.assertIn("effective start and end", SYSTEM_PROMPT)
+        self.assertIn("never use MIN(timestamp)", SYSTEM_PROMPT)
+        self.assertIn("Copy the returned", SYSTEM_PROMPT)
+        self.assertIn("UTC datetime fields", SYSTEM_PROMPT)
+        self.assertIn("multiple categories", SYSTEM_PROMPT)
+        self.assertIn("set `limit` to the trusted maximum", SYSTEM_PROMPT)
+        self.assertIn("context_before` and `context_after` to 0", SYSTEM_PROMPT)
+        self.assertIn("at most eight representative URLs in total", SYSTEM_PROMPT)
+        self.assertIn("evidence_items, citation_bindings, and closing JSON braces", SYSTEM_PROMPT)
 
     def test_provider_completion_uses_json_mode_and_explicit_budget(self) -> None:
         """Router/Planner completion 必须走 provider JSON contract 和有界预算。"""
@@ -532,6 +562,19 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertIn("keyword must be exactly one non-empty string", tool.description)
         self.assertIn("empty arrays", tool.description)
         self.assertIn("trusted result limit", tool.description)
+
+    def test_default_search_tool_schema_uses_shared_result_limit(self) -> None:
+        """Provider 默认值必须与 Capability/Retrieval 共用同一个有界上限。"""
+
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=ScriptedModel([]))
+        request = AgentRunRequest("find all matching messages", ExecutionScope())
+        context = runtime._build_context(request)
+        agent = runtime._build_agent(request, context, object())
+
+        tool = agent.tools[0]
+        limit_schema = tool.params_json_schema["properties"]["limit"]
+        self.assertEqual(limit_schema["maximum"], DEFAULT_RESULT_LIMIT)
+        self.assertEqual(limit_schema["default"], DEFAULT_RESULT_LIMIT)
 
     def test_scripted_model_runs_tool_then_final_answer(self) -> None:
         model = ScriptedModel(

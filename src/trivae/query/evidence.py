@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass, replace
 from typing import Any, Literal, Mapping, TypeAlias
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
+from trivae.config.limits import DEFAULT_RESULT_LIMIT
 from trivae.retrieval.context import MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
@@ -38,8 +40,15 @@ MAX_FIELD_CHARS = 4_000
 MAX_ANSWER_CHARS = 20_000
 MAX_SAFE_EXCERPT_CHARS = 1_000
 MAX_DISPLAY_CHARS = 200
-MAX_TOOL_RESULT_ITEMS = 100
+# Tool provenance 必须能承载默认 lexical limit 的全部 bounded messages。
+MAX_TOOL_RESULT_ITEMS = DEFAULT_RESULT_LIMIT
 MAX_VALUE_NESTING = 6
+MAX_SOURCE_URLS = 12
+MAX_SOURCE_URL_CHARS = 2_000
+
+_URL_PATTERN = re.compile(r"https?://[^\s<>\"'，。；：！？、]+")
+_URL_TRAILING_PUNCTUATION = ".,;:!?，。；：！？、)]}"
+_MISSING_STRUCTURED_VALUE = object()
 
 
 class AnswerContractError(ValueError):
@@ -131,6 +140,43 @@ def _check_bounded_value(name: str, value: object, *, depth: int = 0) -> None:
     raise AnswerContractError(f"{name} contains an unsupported value type")
 
 
+def extract_urls(value: object) -> tuple[str, ...]:
+    """从可信 bounded projection 提取去重 URL，不把模型重新抄写的链接当作来源。"""
+
+    urls: list[str] = []
+    seen: set[str] = set()
+
+    def visit(candidate: object) -> None:
+        """递归读取普通字符串容器，并在统一入口施加数量和长度上限。"""
+
+        if len(urls) >= MAX_SOURCE_URLS:
+            return
+        if isinstance(candidate, str):
+            for match in _URL_PATTERN.findall(candidate):
+                url = match.rstrip(_URL_TRAILING_PUNCTUATION)
+                if not url or len(url) > MAX_SOURCE_URL_CHARS or url in seen:
+                    continue
+                seen.add(url)
+                urls.append(url)
+                if len(urls) >= MAX_SOURCE_URLS:
+                    return
+            return
+        if isinstance(candidate, Mapping):
+            for nested in candidate.values():
+                visit(nested)
+                if len(urls) >= MAX_SOURCE_URLS:
+                    return
+            return
+        if isinstance(candidate, (list, tuple)):
+            for nested in candidate:
+                visit(nested)
+                if len(urls) >= MAX_SOURCE_URLS:
+                    return
+
+    visit(value)
+    return tuple(urls)
+
+
 def scope_snapshot(scope: ExecutionScope) -> dict[str, object]:
     """将 trusted scope 转成可比较的普通快照，不把 scope 对象泄漏到 Answer Artifact。"""
 
@@ -153,6 +199,7 @@ class MessageDisplaySnapshot:
     excerpt: str
     excerpt_truncated: bool
     source_message_id: str | None
+    urls: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         # session display、timezone 和 excerpt 都来自 trusted projection，仍需限制长度。
@@ -168,6 +215,18 @@ class MessageDisplaySnapshot:
             self,
             "source_message_id",
             _optional_text("source_message_id", self.source_message_id, max_chars=512),
+        )
+        if not isinstance(self.urls, tuple):
+            raise AnswerContractError("urls must be a tuple")
+        if len(self.urls) > MAX_SOURCE_URLS:
+            raise AnswerContractError(f"urls exceeds {MAX_SOURCE_URLS} items")
+        object.__setattr__(
+            self,
+            "urls",
+            tuple(
+                _text(f"urls[{index}]", url, max_chars=MAX_SOURCE_URL_CHARS)
+                for index, url in enumerate(self.urls)
+            ),
         )
 
 
@@ -207,9 +266,10 @@ class StructuredSource:
     tool_result_id: str
     locator_kind: StructuredLocatorKind
     locator: str
-    value_snapshot: object
+    value_snapshot: object = _MISSING_STRUCTURED_VALUE
     query_scope_snapshot: Mapping[str, object] | None = None
     execution_limitations: tuple[str, ...] = ()
+    source_id: str | None = None
 
     def __post_init__(self) -> None:
         # locator/value 是模型提出的候选，finalizer 会按 tool result 的可信值重新 hydrate。
@@ -219,9 +279,19 @@ class StructuredSource:
             raise AnswerContractError("locator_kind must be scalar, row, field, or aggregate")
         if self.query_scope_snapshot is not None and not isinstance(self.query_scope_snapshot, Mapping):
             raise AnswerContractError("query_scope_snapshot must be a mapping")
-        _check_bounded_value("value_snapshot", self.value_snapshot)
+        if self.value_snapshot is _MISSING_STRUCTURED_VALUE:
+            # identity-only candidate 只允许在 Finalizer 读取 current Tool Result 前暂存。
+            if self.source_id is None:
+                raise AnswerContractError("structured source requires value_snapshot or source_id")
+        else:
+            _check_bounded_value("value_snapshot", self.value_snapshot)
         if self.query_scope_snapshot is not None:
             _check_bounded_value("query_scope_snapshot", self.query_scope_snapshot)
+        object.__setattr__(
+            self,
+            "source_id",
+            _optional_text("source_id", self.source_id, max_chars=512),
+        )
         object.__setattr__(
             self,
             "execution_limitations",
@@ -242,7 +312,7 @@ class AnswerSourceSummary:
     relations: tuple[SourceRelation, ...]
 
 
-def _source_identity(reference: SourceReference) -> tuple[str, ...]:
+def source_reference_key(reference: SourceReference) -> tuple[str, ...]:
     """使用 canonical locator 去重，不把正文或一次执行 provenance 当作 identity。"""
 
     if isinstance(reference, MessageSource):
@@ -273,7 +343,7 @@ def answer_source_summaries(artifact: AnswerArtifact) -> tuple[AnswerSourceSumma
     relations: list[list[SourceRelation]] = []
     for evidence in artifact.evidence_items:
         for evidence_source in evidence.sources:
-            key = _source_identity(evidence_source.reference)
+            key = source_reference_key(evidence_source.reference)
             position = positions.get(key)
             if position is None:
                 position = len(summaries)
@@ -443,6 +513,7 @@ class ToolMessageItem:
     result_item_id: str
     message: MessageProjection
     content_truncated: bool = False
+    urls: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         # Tool Result 只保留有界 canonical projection；过长正文必须在建 record 时显式截断。
@@ -455,6 +526,18 @@ class ToolMessageItem:
             raise AnswerContractError("tool message content must be bounded")
         if not isinstance(self.content_truncated, bool):
             raise AnswerContractError("content_truncated must be a boolean")
+        if not isinstance(self.urls, tuple):
+            raise AnswerContractError("tool message urls must be a tuple")
+        if len(self.urls) > MAX_SOURCE_URLS:
+            raise AnswerContractError(f"tool message urls exceeds {MAX_SOURCE_URLS} items")
+        object.__setattr__(
+            self,
+            "urls",
+            tuple(
+                _text(f"tool message urls[{index}]", url, max_chars=MAX_SOURCE_URL_CHARS)
+                for index, url in enumerate(self.urls)
+            ),
+        )
 
 
 @dataclass(frozen=True)
@@ -470,6 +553,12 @@ class ToolStructuredItem:
         if self.locator_kind not in ("scalar", "row", "field", "aggregate"):
             raise AnswerContractError("structured locator kind is invalid")
         _check_bounded_value("structured value_snapshot", self.value_snapshot)
+
+    @property
+    def source_id(self) -> str:
+        """返回当前 Tool Result 内稳定、短且可复制的 structured source identity。"""
+
+        return f"{self.locator_kind}:{self.locator}"
 
 
 @dataclass(frozen=True)
@@ -542,9 +631,9 @@ class ToolResultRecord:
                     "run_id": self.run_id,
                     "tool_call_id": self.tool_call_id,
                     "tool_result_id": self.tool_result_id,
+                    "source_id": item.source_id,
                     "locator_kind": item.locator_kind,
                     "locator": item.locator,
-                    "value_snapshot": item.value_snapshot,
                 }
                 for item in self.structured_items
             ],
@@ -561,12 +650,13 @@ def _message_items(messages: tuple[MessageProjection, ...]) -> tuple[ToolMessage
             continue
         seen.add(message.internal_message_id)
         content = message.normalized_content
+        urls = extract_urls(content)
         if len(content) > MAX_SAFE_EXCERPT_CHARS:
             # Record 内只留可供人工复核的 bounded excerpt，并用标记保留“发生过截断”的事实。
             bounded_message = replace(message, normalized_content=content[: MAX_SAFE_EXCERPT_CHARS - 1] + "…")
-            items.append(ToolMessageItem(f"message/{message.internal_message_id}", bounded_message, True))
+            items.append(ToolMessageItem(f"message/{message.internal_message_id}", bounded_message, True, urls))
         else:
-            items.append(ToolMessageItem(f"message/{message.internal_message_id}", message))
+            items.append(ToolMessageItem(f"message/{message.internal_message_id}", message, False, urls))
     return tuple(items)
 
 
@@ -741,15 +831,15 @@ def _parse_source(raw: object, path: str) -> SourceReference:
                 internal_message_id=raw["internal_message_id"],
             )
         if source_type == "structured":
-            if "value_snapshot" not in raw:
-                raise _model_error("INVALID_SOURCE", "structured source requires value_snapshot", path)
+            value_snapshot = raw.get("value_snapshot", _MISSING_STRUCTURED_VALUE)
             return StructuredSource(
                 run_id=raw["run_id"],
                 tool_call_id=raw["tool_call_id"],
                 tool_result_id=raw["tool_result_id"],
                 locator_kind=raw["locator_kind"],
                 locator=raw["locator"],
-                value_snapshot=raw["value_snapshot"],
+                value_snapshot=value_snapshot,
+                source_id=raw.get("source_id"),
             )
     except KeyError as exc:
         raise _model_error("INVALID_SOURCE", "source is missing a required locator field", f"{path}.{exc.args[0]}") from exc
@@ -918,7 +1008,12 @@ def _scope_allows_message(message: MessageProjection, scope: ExecutionScope) -> 
     return True
 
 
-def _hydrate_snapshot(message: MessageProjection, *, content_truncated: bool = False) -> MessageDisplaySnapshot:
+def _hydrate_snapshot(
+    message: MessageProjection,
+    *,
+    content_truncated: bool = False,
+    source_urls: tuple[str, ...] = (),
+) -> MessageDisplaySnapshot:
     """从 canonical projection 生成 bounded snapshot；不使用模型提供的 author/time/session。"""
 
     if not message.session_display:
@@ -937,6 +1032,7 @@ def _hydrate_snapshot(message: MessageProjection, *, content_truncated: bool = F
         excerpt=excerpt,
         excerpt_truncated=truncated,
         source_message_id=message.source_message_id,
+        urls=source_urls or extract_urls(content),
     )
 
 
@@ -947,31 +1043,39 @@ def _finalize_source(
     accepted_run_ids: tuple[str, ...],
     records: dict[tuple[str, str], ToolResultRecord],
     scope: ExecutionScope,
+    source_path: str,
 ) -> EvidenceSource:
     """验证一个 source 的 provenance/locator/scope，并从可信 record hydrate metadata。"""
 
     reference = source.reference
     source_run_id = reference.run_id
     if source_run_id != run_id and source_run_id not in accepted_run_ids:
-        raise _model_error("INVALID_PROVENANCE", "source does not belong to the current run")
+        raise _model_error("INVALID_PROVENANCE", "source does not belong to the current run", f"{source_path}.run_id")
     record = records.get((reference.tool_call_id, reference.tool_result_id))
     if record is None:
-        raise _model_error("INVALID_PROVENANCE", "source tool result was not obtained in the current run")
+        raise _model_error("INVALID_PROVENANCE", "source tool result was not obtained in the current run", source_path)
     if record.scope_snapshot != scope_snapshot(scope):
-        raise _model_error("SCOPE_VIOLATION", "source result scope does not match the current trusted scope")
+        raise _model_error("SCOPE_VIOLATION", "source result scope does not match the current trusted scope", source_path)
 
     if isinstance(reference, MessageSource):
         item = next((item for item in record.message_items if item.result_item_id == reference.result_item_id), None)
         if item is None:
-            raise _model_error("UNRESOLVED_MESSAGE_SOURCE", "message result item does not exist")
+            raise _model_error("UNRESOLVED_MESSAGE_SOURCE", "message result item does not exist", f"{source_path}.result_item_id")
         message = item.message
         if message.session_id != reference.session_id or message.internal_message_id != reference.internal_message_id:
-            raise _model_error("MESSAGE_SOURCE_MISMATCH", "message locator does not match the tool result")
+            raise _model_error("MESSAGE_SOURCE_MISMATCH", "message locator does not match the tool result", source_path)
         if not _scope_allows_message(message, scope):
-            raise _model_error("SCOPE_VIOLATION", "message source is outside the trusted execution scope")
+            raise _model_error("SCOPE_VIOLATION", "message source is outside the trusted execution scope", source_path)
         return EvidenceSource(
             source.relation,
-            replace(reference, snapshot=_hydrate_snapshot(message, content_truncated=item.content_truncated)),
+            replace(
+                reference,
+                snapshot=_hydrate_snapshot(
+                    message,
+                    content_truncated=item.content_truncated,
+                    source_urls=item.urls,
+                ),
+            ),
         )
 
     structured_item = next(
@@ -983,9 +1087,19 @@ def _finalize_source(
         None,
     )
     if structured_item is None:
-        raise _model_error("UNRESOLVED_STRUCTURED_SOURCE", "structured locator does not exist")
-    if structured_item.value_snapshot != reference.value_snapshot:
-        raise _model_error("STRUCTURED_VALUE_MISMATCH", "structured source value does not match the tool result")
+        raise _model_error("UNRESOLVED_STRUCTURED_SOURCE", "structured locator does not exist", f"{source_path}.locator")
+    if reference.source_id is not None and reference.source_id != structured_item.source_id:
+        raise _model_error(
+            "STRUCTURED_SOURCE_ID_MISMATCH",
+            "structured source identity does not match the tool result",
+            f"{source_path}.source_id",
+        )
+    if reference.value_snapshot is not _MISSING_STRUCTURED_VALUE and reference.value_snapshot != structured_item.value_snapshot:
+        raise _model_error(
+            "STRUCTURED_VALUE_MISMATCH",
+            "structured source value does not match the tool result",
+            f"{source_path}.value_snapshot",
+        )
     return EvidenceSource(
         source.relation,
         replace(
@@ -993,6 +1107,7 @@ def _finalize_source(
             value_snapshot=structured_item.value_snapshot,
             query_scope_snapshot=record.query_scope_snapshot,
             execution_limitations=record.limitations,
+            source_id=structured_item.source_id,
         ),
     )
 
@@ -1007,14 +1122,28 @@ def validate_answer_artifact(
 ) -> AnswerArtifact:
     """执行确定性 validation/hydration；不判断自然语言 claim 的语义蕴含。"""
 
+    if tool_results and not artifact.evidence_items:
+        # 本轮已经调用 Tool 时，空 Evidence 会把检索事实降级成无法复核的裸总结。
+        raise _model_error(
+            "MISSING_EVIDENCE",
+            "tool-backed answer must include evidence items",
+            "evidence_items",
+        )
+    if tool_results and not artifact.citation_bindings:
+        # 至少需要一条 claim→evidence 绑定，CLI 才能展示答案依据而不是只展示孤立来源。
+        raise _model_error(
+            "MISSING_EVIDENCE",
+            "tool-backed answer must bind content blocks to evidence",
+            "citation_bindings",
+        )
     if not artifact.evidence_items:
-        # 没有 Evidence 的普通回答不需要 current-run provenance，但仍已经是结构化 Artifact。
+        # 没有 Tool 事实的普通回答不需要 current-run provenance，但仍已经是结构化 Artifact。
         return artifact
     if run_id is None or not run_id:
         raise _model_error("INVALID_PROVENANCE", "current run identity is unavailable")
     records = _record_index(tool_results, run_id, accepted_run_ids)
     finalized_items: list[EvidenceItem] = []
-    for item in artifact.evidence_items:
+    for item_index, item in enumerate(artifact.evidence_items):
         finalized_sources = tuple(
             _finalize_source(
                 source,
@@ -1022,8 +1151,9 @@ def validate_answer_artifact(
                 accepted_run_ids=accepted_run_ids,
                 records=records,
                 scope=scope,
+                source_path=f"evidence_items[{item_index}].sources[{source_index}].source",
             )
-            for source in item.sources
+            for source_index, source in enumerate(item.sources)
         )
         finalized_items.append(replace(item, sources=finalized_sources))
     try:

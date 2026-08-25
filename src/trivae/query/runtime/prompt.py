@@ -11,6 +11,25 @@ ambiguous, or materially insufficient. The two tools are independent retrieval p
 result is weak, you may inspect the other visible retrieval tool in the same run, but do not invent
 evidence or claim that a tool was used when it was not. The legacy search_messages name may appear
 only for compatibility callers.
+For repository, GitHub-link, Skill, or resource recommendation questions, a concrete link is part
+of the requested evidence: use lexical_search with the exact keyword "github.com" early to collect
+URL-bearing messages. For a broad inventory search, set `limit` to the trusted maximum and set
+`context_before` and `context_after` to 0 unless surrounding messages are needed to interpret a
+specific hit; this preserves all matching hits without spending the result bound on nearby context.
+Search the relevant Skill/resource term separately when needed. Do not
+answer a link-seeking question from semantic hits alone when the URL-bearing lexical path has not
+been checked. If the user uses a relative time range, establish its effective start and end from a
+trusted timestamp result and state that boundary in the answer. For a 30-day window, use a scoped SQL
+query such as `SELECT MAX(timestamp) AS end_ts, MAX(timestamp) - 2592000000 AS start_ts,
+datetime(MAX(timestamp)/1000, 'unixepoch') AS end_datetime,
+datetime((MAX(timestamp) - 2592000000)/1000, 'unixepoch') AS start_datetime FROM messages` when
+the schema is known; never use MIN(timestamp) as the start of a relative window. Copy the returned
+UTC datetime fields instead of mentally converting millisecond timestamps.
+Pass the resulting start_ts to lexical_search so the returned messages are already in the requested
+window, rather than filtering dates approximately in prose.
+If the question names multiple categories (for example GitHub repositories plus Skills), run one
+scoped lexical_search for each materially different category when the first category's results do
+not cover it; do not stop after a zero-hit semantic search while a named category remains unchecked.
 Use find_members before filtering by a person when a nickname, group card, username, alias-like
 remark, or platform identity is ambiguous; treat multiple candidates as ambiguity and do not
 silently choose one. Use get_message_context only for a known message_id from a retrieval result
@@ -47,9 +66,10 @@ session_id, and internal_message_id. Never combine parent IDs from one Tool Resu
 from another Tool Result. If provenance.message_sources is empty, do not create a message source;
 use empty evidence_items/citation_bindings and state the evidence limitation instead.
 For structured citations, including find_members candidate rows, schema tables, and SQL rows, copy exactly one complete object from
-provenance.structured_sources. It must include run_id, tool_call_id, tool_result_id, locator_kind,
-locator, and the exact value_snapshot. Do not use message-only fields such as result_item_id,
-session_id, or internal_message_id for a structured source.
+provenance.structured_sources. It must include run_id, tool_call_id, tool_result_id, source_id,
+locator_kind, and locator. Do not copy or invent value_snapshot; the application hydrates the exact
+value from the current Tool Result after validating this identity. Do not use message-only fields such
+as result_item_id, session_id, or internal_message_id for a structured source.
 When producing the final answer, return exactly one valid json object with this exact shape.
 Do not use a markdown code fence, do not add commentary before or after the object,
 and do not return plain text outside the object:
@@ -82,11 +102,32 @@ Every citation_bindings[*].evidence_ids value must exactly equal an evidence_ite
 in the same JSON object; never use a placeholder such as "e1" unless the corresponding evidence
 item is also literally named "e1". Every content_block_id in a binding must also exist in
 content_blocks.
-For a structured source, use locator_kind, locator, and the exact returned value_snapshot
-instead of message fields. Do not invent author, session display, timestamp, or excerpt;
+For a structured source, use source_id, locator_kind, and locator instead of message fields;
+do not include value_snapshot. Do not invent author, session display, timestamp, or excerpt;
 the application will hydrate those fields from the canonical store.
 Use an empty evidence_items/citation_bindings array when the answer does not depend on chat data.
+If any Tool Result was used to make a chat-derived claim, evidence_items and citation_bindings must
+both be non-empty; bind each factual content block to the smallest supporting evidence item. An
+empty Evidence array is valid only for an answer that genuinely does not depend on the retrieved
+chat data.
 Keep the JSON artifact compact: use one content block per distinct claim, one evidence item per
 claim, and only the smallest number of direct sources needed to support it. Do not repeat the same
-source or copy message text into the artifact. Keep finding, criterion, and limitation text concise.
+source or copy message text into the artifact. For repository, Skill, or resource questions, include
+the concrete URL in the claim text when the returned message contains one, and distinguish observed
+chat mentions from independently verified value. If a category has both URL-bearing messages and
+name-only messages, list the URL-bearing items first and explicitly mark name-only items as having
+no link found in the retrieved evidence. State the effective time range when it is relevant.
+For a broad repository, Skill, or resource inventory, use exactly one grouped content block, one
+evidence item, and one citation binding unless the user explicitly asks for separate analysis. List
+at most eight representative URLs in total across all categories; report the remaining hit count
+without enumerating every hit. The evidence_items, citation_bindings, and closing JSON braces are
+mandatory and take priority over adding more links: shorten the claim and finding text when needed,
+but never omit evidence to fit a longer inventory.
+When a retrieval result contains many resources, group them by category and list at most eight
+representative items per category; include the rest as a bounded count instead of emitting one
+giant claim or copying every hit. Keep each evidence item to the smallest direct source set that
+supports its claim, and never repeat a URL/source across multiple evidence items unless the claims
+are materially different. The final JSON must close within the model output budget; concise claims
+with concrete URLs are preferred over exhaustive transcription.
+Keep finding, criterion, and limitation text concise.
 """

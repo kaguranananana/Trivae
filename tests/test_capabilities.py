@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from tests.test_ingestion import make_message, write_export
 from tests.test_lexical_retrieval import LexicalRetrievalTests
 from trivae.capabilities import (
     CapabilityContractError,
@@ -9,6 +12,7 @@ from trivae.capabilities import (
     SearchMessagesInput,
     SearchMessagesTool,
 )
+from trivae.data.ingestion.importer import SharedImporter
 from trivae.retrieval.structured import LexicalQuery
 
 
@@ -45,6 +49,41 @@ class CapabilityContractTests(LexicalRetrievalTests):
         self.assertEqual(envelope.meta["truncated"], direct.truncated)
         self.assertFalse(hasattr(self.tool, "connection"))
         self.assertNotIn("raw_payload_json", str(envelope.to_dict()))
+
+    def test_default_lexical_search_returns_all_31_hits(self) -> None:
+        """默认查询不能把 31 条命中硬截成 20 条。"""
+
+        export = write_export(
+            Path(self.temporary.name),
+            "limit-regression(100).json",
+            [
+                make_message(
+                    f"limit-{index}",
+                    10_000 + index,
+                    1_768_435_200_000 + index,
+                    "limit-regression marker",
+                )
+                for index in range(31)
+            ],
+            chat_name="Session A",
+            peer_uid=None,
+            version="5.5.64",
+        )
+        # 重新导入 canonical facts，并显式重建 derived lexical index。
+        SharedImporter(self.store).import_paths([export])
+        self.index.rebuild()
+
+        envelope = self.registry.invoke(
+            "search_messages",
+            SearchMessagesInput(keyword="limit-regression"),
+            ExecutionScope(),
+        )
+
+        self.assertEqual(envelope.status, "ok")
+        self.assertEqual(envelope.data.total_hits, 31)
+        self.assertEqual(len(envelope.data.hits), 31)
+        self.assertEqual(envelope.data.metadata.details["returned_hits"], 31)
+        self.assertFalse(envelope.data.partial)
 
     def test_session_and_time_scope_cannot_be_bypassed(self) -> None:
         scope = ExecutionScope(

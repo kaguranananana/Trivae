@@ -102,3 +102,148 @@ context = application.inspect_message_source(source, current_scope)
 
 这样可以保持 CLI 是薄 adapter，scope/证据/持久化 ownership 仍由 Application、Finalizer、
 Conversation Store 和独立 Feedback Store 分别负责。
+
+## 8. Answer Evidence and Process Projection（2026-08-25）
+
+### 1. Scope / Trigger
+
+- Trigger：真实用户查询需要在答案层直接看到“claim 依据、来源、URL、局限”，同时要求过程展示
+  接近 ChatLab 的可审计阶段，而不是输出 provider scratchpad。
+- Scope：`CliEventRenderer`、CLI Answer/Sources projection、`MessageDisplaySnapshot.urls` 和
+  QueryStreamAdapter 的 provisional answer 边界。
+- Boundary：CLI 不读 SQLite、不重新执行 Query、不从模型正文猜 trusted URL；Evidence ownership
+  仍归 `query/evidence.py`，CLI 只渲染 validated Artifact。
+
+### 2. Signatures
+
+```python
+def _print_evidence_block(
+    artifact: AnswerArtifact,
+    source_summaries: tuple[AnswerSourceSummary, ...],
+    *,
+    output_fn: Callable[[str], None],
+) -> None: ...
+
+def _print_source_block(
+    source_summaries: tuple[AnswerSourceSummary, ...],
+    *,
+    output_fn: Callable[[str], None],
+    verbose: bool,
+) -> None: ...
+```
+
+### 3. Contracts
+
+- 成功答案顺序为 `Answer` → `Evidence` → `Sources` → `Note: answer limitations`；Evidence 展示
+  `Claim → evidence_id`、`Finding`、`Criterion`、`Sufficiency`、source index 和 limitations。
+- Message Source 展示 trusted session/author/timestamp/excerpt，并逐条展示 canonical snapshot URL；
+  Structured Source 展示 locator/value/source_id，URL 只从 trusted value 提取。
+- normal/verbose 都不渲染任何 provider reasoning 文本；真实过程只来自 Route、Plan、Tool、
+  Retrieval、Evidence normalized facts。Tool turn 的模型说明不能标为 Answer。
+- `AnswerArtifact` 未 validated 或 Query failed 时不展示 Evidence/Sources，不产生 commit 或 feedback
+  target；错误显示 owner error 与 Trace/log identity。
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| validated Artifact 无 Evidence | 不展示空 Evidence block；Tool-backed answer 在 Finalizer 层已失败 |
+| Message snapshot 有 URL | 输出 bounded `URL:` 行，不访问 DB |
+| Structured source | 输出 `Value` / `Source ID` / URL，不能伪装成 message |
+| provider reasoning delta | 消费顺序但终端无输出 |
+| Tool turn provisional text | 不显示为 Answer；只显示真实 Action/Retrieval 行 |
+| query/finalization failure | 关闭文本段并输出短错误；不输出正式成功标志 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：`Claim claim-1 → e1` 下显示 criterion/sufficiency，Sources 1 显示实际 GitHub URL，用户可
+  用 `/source 1` 继续复核。
+- Base：partial retrieval 在 Evidence limitation 与 Note 中明确标记，不把部分列表说成穷尽结果。
+- Bad：CLI 从回答正文正则 URL、从 SQLite 二次查询补 source，或显示 `Thinking:` 加 provider reasoning。
+
+### 6. Tests Required
+
+- CLI：成功 Artifact 的 claim/evidence/source/URL/limitation 输出、friendly finalization errors、
+  no raw runtime answer fallback。
+- Renderer：reasoning summary 不渲染、Tool recovery、0-result、verbose 不含 raw JSON/trace identity。
+- Streaming：Tool-turn provisional text 不投影，最终无 Tool turn 才发 answer delta；失败不发
+  answer.completed。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+print(model_answer_text)
+print(re.findall(r"https?://...", model_answer_text))
+```
+
+#### Correct
+
+```python
+artifact = result.answer_artifact
+source_summaries = answer_source_summaries(artifact)
+_print_evidence_block(artifact, source_summaries, output_fn=output_fn)
+_print_source_block(source_summaries, output_fn=output_fn, verbose=verbose)
+```
+
+展示只接受 Finalizer 已 hydrate 的 Artifact；过程只投影真实事件，不制造“正在思考”的叙述。
+
+## 9. Resource inventory result bound（2026-08-25）
+
+### 1. Scope / Trigger
+
+- Trigger：用户真实检索命中 31 条 GitHub 链接，但旧默认只返回 20 条，答案因此无法覆盖完整命中并
+  可能把有限输出预算耗在重复链接上。
+- Scope：资源/仓库/Skill 类查询的检索默认值、宽范围上下文策略、最终答案 artifact 预算和 CLI 事实
+  展示。
+- Boundary：CLI 不自行补检索、不读取数据库、不把 100 当成无限制；只展示同一 Query 的 finalized
+  Artifact 和 normalized retrieval facts。
+
+### 2. Contracts
+
+- lexical 默认结果上限为共享 bounded `DEFAULT_RESULT_LIMIT=100`；在 100 以内的命中必须能够全部进入
+  hits，超过时必须保留 total/returned/truncated 边界。
+- 宽范围资源清单使用 `limit=trusted maximum`、`context_before=0`、`context_after=0`；解释单条命中
+  时才请求局部上下文。
+- 最终答案必须包含具体 URL（若 trusted message 有 URL）、claim→evidence→source 关系、sufficiency
+  和 limitations；群聊提及与价值验证必须分开表达。
+- 宽清单以有限代表性 URL 加剩余数量呈现，`evidence_items`、`citation_bindings` 和 JSON 闭合优先；
+  不因追求穷举而提交无证据的半截答案。
+
+### 3. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| 31 条命中、trusted limit 100、零上下文 | CLI 显示 31/31，不显示默认 20 截断 |
+| 超过 100 条命中 | Evidence/Note 明确显示 partial/truncated 和 returned/total |
+| finalizer 缺 evidence 或 citation | Query 失败，不显示 provisional answer，不创建 commit/feedback |
+| trusted source 有 URL | Sources 展示 canonical URL，不从答案正文正则补 URL |
+
+### 4. Tests Required
+
+- Capability/Runtime：31-hit regression、共享 limit schema、资源清单 prompt 的零上下文和证据优先规则。
+- CLI/Trace：真实 successful smoke 终态 completed、retrieval partial/truncated 为 0、citation unresolved
+  为 0，并显示具体 URL/Sources。
+- Quality gates：全量测试、静态检查、类型检查、Trellis validation 和 `git diff --check`。
+
+### 5. Wrong vs Correct
+
+#### Wrong
+
+```text
+31 hits / 20 returned
+```
+
+只报告 total 而没有扩大共享结果边界，用户仍无法定位其余资源。
+
+#### Correct
+
+```text
+31 hits / 31 returned
+Evidence: claim-1 → e1
+Sources: canonical message URLs
+```
+
+用户可看到完整命中统计、有限但具体的链接、来源和边界说明；默认仍保持有界，避免大库查询把模型
+上下文和输出拖垮。

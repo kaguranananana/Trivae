@@ -52,6 +52,7 @@ def _artifact() -> AnswerArtifact:
             excerpt="vector discussion",
             excerpt_truncated=False,
             source_message_id="source-m1",
+            urls=("https://github.com/example/vector",),
         ),
     )
     structured_source = StructuredSource(
@@ -63,6 +64,7 @@ def _artifact() -> AnswerArtifact:
         value_snapshot=7,
         query_scope_snapshot={"session_ids": ["qq:100"], "limit": 20},
         execution_limitations=("retrieval_truncated",),
+        source_id="aggregate:total_count",
     )
     return AnswerArtifact(
         content_blocks=(
@@ -174,9 +176,26 @@ class SQLiteConversationStoreTests(unittest.TestCase):
         self.assertEqual(restored, artifact)
         self.assertEqual(restored.answer_text, artifact.answer_text)
         self.assertEqual(restored.evidence_items[0].sources[0].reference.snapshot, artifact.evidence_items[0].sources[0].reference.snapshot)
+        self.assertEqual(
+            restored.evidence_items[0].sources[0].reference.snapshot.urls,
+            ("https://github.com/example/vector",),
+        )
         structured = restored.evidence_items[1].sources[0].reference
         self.assertIsInstance(structured, StructuredSource)
         self.assertEqual(structured.query_scope_snapshot, {"session_ids": ["qq:100"], "limit": 20})
+        self.assertEqual(structured.source_id, "aggregate:total_count")
+
+    def test_old_artifact_without_urls_remains_readable(self) -> None:
+        """URL 字段是 additive；旧的已提交 Artifact 缺少它时按空列表恢复。"""
+
+        payload = json.loads(serialize_answer_artifact(_artifact()))
+        del payload["evidence_items"][0]["sources"][0]["reference"]["snapshot"]["urls"]
+
+        restored = deserialize_answer_artifact(json.dumps(payload, ensure_ascii=False))
+
+        snapshot = restored.evidence_items[0].sources[0].reference.snapshot
+        assert snapshot is not None
+        self.assertEqual(snapshot.urls, ())
 
     def test_sqlite_commit_close_reopen_and_ordered_replay(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Iterator, Literal, Mapping, Protocol, Sequence
 
+from trivae.config.limits import DEFAULT_RESULT_LIMIT
+
 
 class RetrievalError(Exception):
     """Retrieval 层能够向上层明确投影的错误基类。"""
@@ -152,7 +154,7 @@ class LexicalQuery(ScopeFilters):
     """有界的关键词 query，默认在 Retrieval Core 内自动扩展局部上下文。"""
 
     keyword: str = ""
-    limit: int | None = 20
+    limit: int | None = DEFAULT_RESULT_LIMIT
     context_before: int = 2
     context_after: int = 2
 

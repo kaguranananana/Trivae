@@ -63,6 +63,31 @@ class CliEventRendererTests(unittest.TestCase):
         self.assertEqual(output.getvalue(), "Answer:\n直接回答\n")
         self.assertNotIn("Thinking", output.getvalue())
 
+    def test_provider_reasoning_is_not_rendered_even_when_marked_public(self) -> None:
+        """provider 的可见性标签不足以证明内容安全，终端只展示真实 Action/Plan/Evidence。"""
+
+        output = StringIO()
+        renderer = CliEventRenderer(output)
+
+        renderer.handle(
+            _event(
+                "thinking.delta",
+                1,
+                content="正在核对检索结果",
+                thinking_visibility="public_summary",
+            )
+        )
+        renderer.handle(
+            _event(
+                "thinking.completed",
+                2,
+                thinking_visibility="public_summary",
+            )
+        )
+        renderer.finish()
+
+        self.assertEqual(output.getvalue(), "")
+
     def test_retrieval_uses_only_real_structured_counts_including_zero(self) -> None:
         """0 result 必须按真实结构化统计显示，不能用漂亮文案编造数量。"""
 

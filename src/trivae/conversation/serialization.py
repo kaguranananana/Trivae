@@ -88,6 +88,7 @@ def _snapshot_to_dict(snapshot: MessageDisplaySnapshot | None) -> dict[str, obje
         "excerpt": snapshot.excerpt,
         "excerpt_truncated": snapshot.excerpt_truncated,
         "source_message_id": snapshot.source_message_id,
+        "urls": list(snapshot.urls),
     }
 
 
@@ -120,6 +121,7 @@ def _reference_to_dict(reference: MessageSource | StructuredSource) -> dict[str,
                 else _json_value("query_scope_snapshot", reference.query_scope_snapshot)
             ),
             "execution_limitations": list(reference.execution_limitations),
+            "source_id": reference.source_id,
         }
     raise ConversationCodecError("source reference must be MessageSource or StructuredSource")
 
@@ -185,6 +187,9 @@ def _parse_snapshot(value: object, path: str) -> MessageDisplaySnapshot | None:
         raise ConversationCodecError(f"{path}.timestamp_ms must be an integer")
     if not isinstance(excerpt_truncated, bool):
         raise ConversationCodecError(f"{path}.excerpt_truncated must be a boolean")
+    raw_urls = raw.get("urls", [])
+    if not isinstance(raw_urls, list):
+        raise ConversationCodecError(f"{path}.urls must be an array")
     return MessageDisplaySnapshot(
         session_display=_text(f"{path}.session_display", _required(raw, "session_display")),
         author_display=(
@@ -201,6 +206,7 @@ def _parse_snapshot(value: object, path: str) -> MessageDisplaySnapshot | None:
             if raw.get("source_message_id") is None
             else _text(f"{path}.source_message_id", raw["source_message_id"])
         ),
+        urls=tuple(_text(f"{path}.urls[{index}]", url) for index, url in enumerate(raw_urls)),
     )
 
 
@@ -234,6 +240,11 @@ def _parse_reference(value: object, path: str) -> MessageSource | StructuredSour
             execution_limitations=tuple(
                 _text(f"{path}.execution_limitations[{index}]", item)
                 for index, item in enumerate(_sequence(f"{path}.execution_limitations", _required(raw, "execution_limitations")))
+            ),
+            source_id=(
+                None
+                if raw.get("source_id") is None
+                else _text(f"{path}.source_id", raw["source_id"])
             ),
         )
     raise ConversationCodecError(f"{path}.type must be message or structured")

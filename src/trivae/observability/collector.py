@@ -436,8 +436,9 @@ class TraceableAgentRuntime(AgentRuntime):
         """逐条映射非 delta RuntimeEvent，并保留底层 terminal result。"""
 
         terminal: RuntimeResult | None = None
+        stream_iterator = stream(request)
         try:
-            async for event in stream(request):
+            async for event in stream_iterator:
                 if not isinstance(event, RuntimeEvent):
                     raise TypeError("runtime stream must yield RuntimeEvent values")
                 if self._runtime_event_observer is not None:
@@ -453,6 +454,12 @@ class TraceableAgentRuntime(AgentRuntime):
             # 先记录稳定异常类型，再原样抛出，业务层仍能看到真实根因。
             self._emit_runtime_exception(exc)
             raise
+        finally:
+            # Observer 在 delta 事件中失败时，async for 不保证立即关闭底层 async generator；
+            # 显式收口，避免 provider client 和 ContextVar cleanup 泄漏到 event loop shutdown。
+            close = getattr(stream_iterator, "aclose", None)
+            if callable(close):
+                await close()
 
     def _request_trace_context(self, request: AgentRunRequest) -> TraceOperationContext:
         """复用上游 Query operation context，否则建立 runtime root context。"""

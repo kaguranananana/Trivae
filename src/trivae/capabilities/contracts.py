@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal, Mapping, Sequence
 
+from trivae.config.limits import DEFAULT_RESULT_LIMIT
 from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
@@ -85,7 +86,7 @@ class ExecutionScope:
     allowed_session_ids: tuple[str, ...] | None = None
     start_timestamp: int | None = None
     end_timestamp: int | None = None
-    max_results: int = 20
+    max_results: int = DEFAULT_RESULT_LIMIT
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "allowed_session_ids", _normalize_scope_sessions(self.allowed_session_ids))
@@ -108,7 +109,7 @@ class SearchMessagesInput:
     end_timestamp: int | None = None
     sender_user_ids: tuple[str, ...] | None = None
     message_types: tuple[str, ...] | None = None
-    limit: int = 20
+    limit: int = DEFAULT_RESULT_LIMIT
     context_before: int = 2
     context_after: int = 2
 

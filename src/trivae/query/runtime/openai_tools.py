@@ -18,6 +18,7 @@ from trivae.capabilities.contracts import (
     ToolError,
 )
 from trivae.capabilities.registry import CapabilityRegistry
+from trivae.config.limits import DEFAULT_RESULT_LIMIT
 from trivae.observability.contracts import FailureInfo
 from trivae.query.evidence import build_tool_result_record
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
@@ -98,7 +99,7 @@ class SearchMessagesSDKToolAdapter:
             end_timestamp: int | None = None,
             sender_user_ids: list[str] | None = None,
             message_types: list[str] | None = None,
-            limit: int = 20,
+            limit: int = DEFAULT_RESULT_LIMIT,
             context_before: int = 2,
             context_after: int = 2,
         ) -> dict[str, object]:
@@ -231,7 +232,7 @@ class SearchMessagesSDKToolAdapter:
             # 只增强 provider-facing schema，不把 schema 约束当成 trusted enforcement 的替代品。
             limit_schema["minimum"] = 1
             limit_schema["maximum"] = trusted_max_results
-            limit_schema["default"] = min(20, trusted_max_results)
+            limit_schema["default"] = min(DEFAULT_RESULT_LIMIT, trusted_max_results)
 
         return search_messages
 

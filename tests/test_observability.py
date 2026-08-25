@@ -11,14 +11,14 @@ from pathlib import Path
 from trivae.bootstrap.application import create_application
 from trivae.capabilities.contracts import ExecutionScope, SearchMessagesInput
 from trivae.conversation import ConversationMessage, SQLiteConversationStore
-from trivae.observability.collector import CapturePolicy, TraceCollector
+from trivae.observability.collector import CapturePolicy, TraceableAgentRuntime, TraceCollector
 from trivae.observability.contracts import NormalizedQueryEvent, TraceContractError
 from trivae.observability.projection import project_trace
 from trivae.observability.sqlite import SQLiteTraceStore, TraceStoreError
 from trivae.query.contracts import QueryRequest
 from trivae.query.planner import PlannerFailure, PlannerResult
 from trivae.query.router import RouteDecision
-from trivae.query.runtime.contracts import RuntimeErrorInfo, RuntimeEvent, RuntimeResult
+from trivae.query.runtime.contracts import AgentRunRequest, RuntimeErrorInfo, RuntimeEvent, RuntimeResult
 
 
 class _CompletedRuntime:
@@ -120,6 +120,25 @@ class _StreamingRuntime:
             result=result,
             run_id="stream-run",
         )
+
+
+class _ClosableRuntime:
+    """用于验证 live observer 失败时 async generator 仍会显式关闭。"""
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    def stream(self, request):
+        """返回带 finally 标记的最小 runtime stream。"""
+
+        async def generate():
+            try:
+                yield RuntimeEvent("run_started", "test-provider", "test-model", 1)
+            finally:
+                # 只有 TraceableAgentRuntime 主动调用 aclose 才能在 observer 异常路径稳定执行这里。
+                self.closed = True
+
+        return generate()
 
 
 class _DegradedRouter:
@@ -344,6 +363,40 @@ class ObservabilityTests(unittest.TestCase):
             self.assertEqual(projection.metrics.usage["total_tokens"], 7)
             self.assertEqual(projection.terminal_status, "completed")
             application.close()
+
+    def test_runtime_stream_closes_when_live_observer_fails(self) -> None:
+        """observer 抛错时先关闭底层 async generator，避免 event loop shutdown 二次异常。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteTraceStore(Path(directory) / "stream-close.sqlite3")
+            collector = TraceCollector(
+                store,
+                trace_id="trace-stream-close",
+                request_id="request-stream-close",
+            )
+            runtime = _ClosableRuntime()
+
+            def fail_observer(event: RuntimeEvent) -> None:
+                raise RuntimeError("live observer failed")
+
+            traced = TraceableAgentRuntime(
+                runtime,
+                collector,
+                runtime_event_observer=fail_observer,
+            )
+            try:
+                with self.assertRaises(RuntimeError):
+                    asyncio.run(
+                        traced.run(
+                            AgentRunRequest(
+                                "close the stream",
+                                ExecutionScope(),
+                            )
+                        )
+                    )
+                self.assertTrue(runtime.closed)
+            finally:
+                store.close()
 
     def test_runtime_failure_is_attributed_and_not_committed(self) -> None:
         """Runtime failure 产生 failed terminal，Conversation 不写 assistant。"""
