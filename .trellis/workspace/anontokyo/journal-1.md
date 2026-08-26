@@ -726,3 +726,24 @@ Completed source handles, host-owned ModelAnswerCandidate compilation, archive-r
 ### Status
 
 [OK] **Completed**
+
+
+## Session 33: Retrieval budget and real answer regression
+
+**Date**: 2026-08-26
+**Task**: Retrieval budget and real answer regression
+**Branch**: `codex/retrieval-budget-quality-regression`
+
+### Summary
+
+Decoupled lexical, semantic, context, structured, and model projection budgets; added regression tests, real SQLite performance evidence, four final provider traces, and documented remaining enumeration/claim-grounding boundaries.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `163aad4` | (see git log) |
+
+### Status
+
+[OK] **Completed**

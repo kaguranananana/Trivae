@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 32
-- **Last Active**: 2026-08-25
+- **Total Sessions**: 33
+- **Last Active**: 2026-08-26
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~728 | Active |
+| `journal-1.md` | ~749 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 33 | 2026-08-26 | Retrieval budget and real answer regression | `163aad4` | `codex/retrieval-budget-quality-regression` |
 | 32 | 2026-08-25 | Agent Harness context hardening | `c054fc5` | `main` |
 | 31 | 2026-08-25 | Automatic CLI dotenv loading | `ce25244` | `codex/product-experience-hardening` |
 | 30 | 2026-08-25 | Product Experience Hardening | `56e05e6`, `85f8ea0` | `codex/product-experience-hardening` |
