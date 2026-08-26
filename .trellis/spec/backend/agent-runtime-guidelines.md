@@ -83,6 +83,10 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 | `TRIVAE_MAX_TOOL_ROUNDS` | no | Positive integer；默认 3；Trivae investigation budget |
 | `TRIVAE_MAX_OUTPUT_TOKENS` | no | Positive integer；默认 16384；final synthesis bound |
 | `TRIVAE_COMPLETION_MAX_TOKENS` | no | Positive integer；默认 2048；Router/Planner completion bound |
+| `TRIVAE_TOOL_RESULT_BUDGET_MODE` | no | `fixed` / `dynamic`；默认 `fixed` |
+| `TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS` | dynamic 可选 | 显式正整数；未提供时不从 model name 猜测 |
+| `TRIVAE_MAX_TOOL_RESULT_PERCENT` | no | 1–100 整数；默认 50；只参与 dynamic run pool |
+| `TRIVAE_MAX_TOOL_RESULT_TOKENS` | no | 正整数；默认 128000；dynamic run pool 的 absolute cap |
 
 新 `TRIVAE_MODEL_*` 字段优先于 legacy 字段；变量显式存在但为空时必须报错，不能静默
 回退。legacy-only DeepSeek 继续保留 `https://api.deepseek.com` 默认 URL，以兼容已有
@@ -91,6 +95,13 @@ smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`tri
 变量（包括显式空值）优先于文件值。dotenv 缺失的默认文件保持旧的环境变量启动语义，显式
 文件缺失或格式错误必须在 Application 创建前报错。`load_settings()` 及其 mapping 注入
 接口仍不得隐式读取工作区 credential，非 CLI 库调用不产生文件系统副作用。
+
+Tool Result projection 是独立于 retrieval 与 answer 的预算。fixed 模式继续按每次 Tool 16000
+estimated tokens；dynamic 只有在显式 `TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS` 存在时才计算
+`min(floor(context_window_tokens * percent / 100), absolute_cap)` 的 run-level pool。每次 Tool
+从同一个 Runtime run pool 预留并在 projection 后按实际 estimate 结算；dynamic context 未知时
+使用可观测的 16000 safe run pool，不为每次调用重新发放一份预算。非法配置和 pool 耗尽均显式
+失败，不通过 provider/model name 猜测、retry 或静默降级掩盖。
 
 ### Query boundary
 
@@ -120,6 +131,7 @@ smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`tri
 - `max_turns` 只作 SDK absolute backstop；撞上时 `termination == "max_turns_exceeded"`、error code `MAX_TURNS_EXCEEDED`、category `absolute_backstop`。
 - `completed` 只能在 SDK `stream_events()` 完整消费和 cleanup 后发出。abort 是 terminal intent：不启动新 model/tool work，不做 final synthesis，不发 `completed`；最终 termination 为 `aborted`。
 - M5 Tool Result 额外携带 Trivae-owned `run_id`、`tool_call_id`、`tool_result_id` 和 bounded source projections；Runtime 只传递 provenance，不选择 Evidence、不拥有 Citation State Machine。
+- Tool Result projection 的 dynamic budget 由一个 Runtime run policy 共享；Trace 必须同时保留 per-call effective/actual/remaining 与 terminal pool summary，不能把固定 retrieval limit 或一次调用上限当作累计预算。
 - 只有 `termination == "completed"` 的 RuntimeResult 才进入 QueryOrchestrator 的 Answer Finalizer；validated Answer Artifact 才能作为 Query 的正式 `final_answer`，invalid citation 显式失败。
 - Runtime 持有 model/provider client；`aclose()` 必须真实 await `model.close()` 和 `AsyncOpenAI.close()`（若存在），且幂等。Application `aclose()` 还要释放 lexical/read/store；同步 `close()` 在 running loop 中必须显式报错并要求调用 `await aclose()`。
 
@@ -156,6 +168,8 @@ smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`tri
 | Known Tool contract/retrieval error | Agent 收到 `status=error` envelope，可决定恢复 |
 | Unknown Tool/adapter exception | terminal `RUNTIME_ERROR`；不伪装 successful tool result |
 | Product tool budget exhausted | `finalizing` + tools hidden + extra final call + `completed` |
+| Dynamic Tool Result run pool exhausted | explicit `TOOL_RESULT_BUDGET_EXHAUSTED` runtime failure；不发放新的 Tool Result budget |
+| Invalid Tool Result budget configuration/accounting | explicit `TOOL_RESULT_BUDGET_ERROR`；不静默改用另一预算 |
 | SDK absolute max turns | `max_turns_exceeded` + `MAX_TURNS_EXCEEDED` + `absolute_backstop` |
 | Non-text final output | `failed` + `INVALID_FINAL_OUTPUT` |
 | Provider/network exception | `failed` + secret-safe `RUNTIME_ERROR`；无 retry/fallback |
@@ -181,7 +195,7 @@ smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`tri
 - Router：standard/planned、ambiguous injected completion、valid/invalid/unknown/exception、conservative degraded、单关键词不 over-route。
 - Planner：valid bounded、unknown filter、dedupe、oversized 5/5、malformed/structural failure、unavailable skip、guidance 不含 executable state。
 - Orchestrator：两路共享 runtime、scope identity、whitelist、router/planner degraded 仍执行、scope 不进入 model input。
-- Runtime：既有 SQLite/tool pipeline、known error recovery、unknown terminal error、multiple calls one round、budget finalization/tool invisibility、SDK backstop、invalid final、secret-safe provider failure、stream/content/tool/usage events、abort before/during/late result、completed-after-cleanup、idempotent close。
+- Runtime：既有 SQLite/tool pipeline、known error recovery、unknown terminal error、multiple calls one round、Tool Result dynamic/fixed budget accounting、budget finalization/tool invisibility、SDK backstop、invalid final、secret-safe provider failure、stream/content/tool/usage events、abort before/during/late result、completed-after-cleanup、idempotent close。
 - Application：无 provider 的 retrieval-only construction、query 进入 Orchestrator、async/sync lifecycle 和所有已创建 resources close。
 - M5 Evidence：Answer Artifact、claim binding、finding/source contract、current-run provenance、scope/locator validation、trusted message hydration、structured result resolution、invalid citation failure。
 - Static gates：`pytest -q`、`ruff check src tests`、`mypy src`、CLI help、Trellis validation、`git diff --check`；live DeepSeek smoke 只能 opt-in，不进入默认 suite。

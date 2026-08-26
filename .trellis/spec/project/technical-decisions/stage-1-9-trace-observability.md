@@ -423,6 +423,10 @@ Stage 1.9 不定义：
 
 这些属于 Stage 1.10。Operational metric 可以成为未来 Evaluation 的输入，但不能在本阶段被描述为质量证明。
 
+### Amendment：Dynamic Tool Result Budget
+
+Runtime 的 Tool Result projection 可以使用显式 context window 计算 run-level pool，但 Trace 仍只记录执行事实，不在线判断答案质量。每个 `runtime.tool.completed` 事件保留 `budget_mode`、context 来源、percent、absolute cap、run pool、调用前余额、effective budget、actual estimated tokens、调用后余额、`truncated` 以及 omitted context/hit 数；terminal runtime event 保留同一 run 的配置、最终余额和调用数。多个 Tool call 共享一个 Runtime-owned policy，unknown context 使用可观测的 fixed safe pool；pool 耗尽或 accounting contract 错误分别以稳定 runtime budget error 暴露。该 amendment 不改变 Retrieval candidate budget、canonical Evidence、Citation ownership 或 Stage 1.10 quality labels。
+
 ## 13. ChatLab Baseline 与 Trivae 边界
 
 ### 继承
