@@ -792,3 +792,24 @@ Implemented dynamic 1M context resolution with explicit per-call and run-level T
 ### Status
 
 [OK] **Completed**
+
+
+## Session 36: Real Provider paired budget evaluation
+
+**Date**: 2026-08-26
+**Task**: Real Provider paired budget evaluation
+**Branch**: `codex/dynamic-tool-result-budget-regression`
+
+### Summary
+
+在 codex/dynamic-tool-result-budget-regression 完成 fixed-16k、dynamic-run-128k 与默认 dynamic-250k 的真实 Provider paired evaluation；新增 120 秒 cell / 75 分钟总时限 runner、Trace/Evaluation 证据投影与 ReviewPacket 材料。36 个 cell 中 27 个 completed、21 个 pairwise、6 个 triad；确认 dynamic 提升 model projection 可见性但本轮不能证明最终回答质量稳定提升，250k pool 未实际绑定。full pytest 348 passed，相关 Evaluation 53 passed，项目 Ruff/Mypy/compileall 通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4b62b03` | (see git log) |
+
+### Status
+
+[OK] **Completed**

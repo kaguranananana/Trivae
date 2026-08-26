@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 35
+- **Total Sessions**: 36
 - **Last Active**: 2026-08-26
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~794 | Active |
+| `journal-1.md` | ~815 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 36 | 2026-08-26 | Real Provider paired budget evaluation | `4b62b03` | `codex/dynamic-tool-result-budget-regression` |
 | 35 | 2026-08-26 | 1M context budget and graceful finalization | `2db47ef`, `4e9b596` | `codex/dynamic-tool-result-budget-regression` |
 | 34 | 2026-08-26 | Dynamic Tool Result Budget / Quality Regression | `15364ee`, `4ba786f`, `68614dd` | `codex/dynamic-tool-result-budget-regression` |
 | 33 | 2026-08-26 | Retrieval budget and real answer regression | `163aad4` | `codex/retrieval-budget-quality-regression` |
