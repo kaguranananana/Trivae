@@ -813,3 +813,24 @@ Implemented dynamic 1M context resolution with explicit per-call and run-level T
 ### Status
 
 [OK] **Completed**
+
+
+## Session 37: Fix cross-turn member identity filtering
+
+**Date**: 2026-08-27
+**Task**: Fix cross-turn member identity filtering
+**Branch**: `main`
+
+### Summary
+
+Preserved unique validated find_members canonical user_id in replayed conversation context; clarified sender filter contract; added regression coverage.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8155ddf` | (see git log) |
+
+### Status
+
+[OK] **Completed**
