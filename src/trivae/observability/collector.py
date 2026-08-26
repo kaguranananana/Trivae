@@ -635,6 +635,9 @@ class TraceableAgentRuntime(AgentRuntime):
         payload["tool_result_projection_truncated_count"] = sum(
             1 for call in result.tool_calls if call.model_result_truncated is True
         )
+        payload["tool_result_projection_omitted_hit_messages"] = sum(
+            call.model_result_omitted_hit_messages or 0 for call in result.tool_calls
+        )
         if result.final_answer is not None:
             payload["final_answer"] = result.final_answer
         if result.error is not None:

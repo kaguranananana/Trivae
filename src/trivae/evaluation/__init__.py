@@ -28,6 +28,7 @@ from .contracts import (
     ReviewPolicy,
     scope_identity,
 )
+from .quality import FAILURE_LABELS, QUALITY_AXES
 from .retrieval_annotation import LLMRetrievalAnnotator
 from .retrieval_evaluation import (
     RETRIEVAL_PACKET_SCHEMA_VERSION,
@@ -82,9 +83,11 @@ __all__ = [
     "EvaluationStoreError",
     "EvaluationSuite",
     "FailureDiagnosis",
+    "FAILURE_LABELS",
     "JudgeAdapter",
     "LLMRetrievalAnnotator",
     "M6_FAILURE_REGRESSION_MAP",
+    "QUALITY_AXES",
     "PairedComparison",
     "ReferenceEvidence",
     "ReferenceFinding",

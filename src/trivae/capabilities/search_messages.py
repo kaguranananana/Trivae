@@ -15,6 +15,7 @@ from trivae.capabilities.scope import (
     effective_start,
     resolve_relative_time_range,
 )
+from trivae.config.limits import MAX_LEXICAL_RESULT_LIMIT
 from trivae.retrieval.lexical import LexicalRetrieval
 from trivae.retrieval.structured import LexicalQuery, RetrievalResult, ScopeFilters
 
@@ -68,8 +69,11 @@ class SearchMessagesCapability:
                 raise CapabilityContractError("relative time range did not resolve")
             scoped_start = resolved_time_range.start_timestamp
             scoped_end = resolved_time_range.end_timestamp
-        if request.limit > scope.max_results:
-            raise CapabilityContractError("requested limit exceeds trusted max_results")
+        effective_maximum = min(scope.max_results, MAX_LEXICAL_RESULT_LIMIT)
+        if request.limit > effective_maximum:
+            raise CapabilityContractError(
+                f"requested lexical limit exceeds trusted maximum {effective_maximum}"
+            )
 
         query = LexicalQuery(
             keyword=request.keyword,

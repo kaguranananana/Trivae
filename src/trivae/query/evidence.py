@@ -12,7 +12,11 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal, Mapping, TypeAlias
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
-from trivae.config.limits import DEFAULT_RESULT_LIMIT, DEFAULT_TOOL_RESULT_TOKEN_BUDGET
+from trivae.config.limits import (
+    DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
+    MAX_LEXICAL_RESULT_LIMIT,
+    MAX_STRUCTURED_RESULT_ITEMS,
+)
 from trivae.retrieval.context import MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
@@ -40,8 +44,9 @@ MAX_FIELD_CHARS = 4_000
 MAX_ANSWER_CHARS = 20_000
 MAX_SAFE_EXCERPT_CHARS = 1_000
 MAX_DISPLAY_CHARS = 200
-# Tool provenance 必须能承载默认 lexical limit 的全部 bounded messages。
-MAX_TOOL_RESULT_ITEMS = DEFAULT_RESULT_LIMIT
+# message provenance 必须能承载 lexical hard cap；structured/value provenance 继续保持独立小边界。
+MAX_TOOL_RESULT_MESSAGE_ITEMS = MAX_LEXICAL_RESULT_LIMIT
+MAX_TOOL_RESULT_STRUCTURED_ITEMS = MAX_STRUCTURED_RESULT_ITEMS
 MAX_VALUE_NESTING = 6
 MAX_SOURCE_URLS = 12
 MAX_SOURCE_URL_CHARS = 2_000
@@ -130,7 +135,7 @@ def _check_bounded_value(name: str, value: object, *, depth: int = 0) -> None:
             raise AnswerContractError(f"{name} contains oversized text")
         return
     if isinstance(value, Mapping):
-        if len(value) > MAX_TOOL_RESULT_ITEMS:
+        if len(value) > MAX_TOOL_RESULT_STRUCTURED_ITEMS:
             raise AnswerContractError(f"{name} contains too many object fields")
         for key, nested in value.items():
             if not isinstance(key, str) or len(key) > 256:
@@ -138,7 +143,7 @@ def _check_bounded_value(name: str, value: object, *, depth: int = 0) -> None:
             _check_bounded_value(f"{name}.{key}", nested, depth=depth + 1)
         return
     if isinstance(value, (list, tuple)):
-        if len(value) > MAX_TOOL_RESULT_ITEMS:
+        if len(value) > MAX_TOOL_RESULT_STRUCTURED_ITEMS:
             raise AnswerContractError(f"{name} contains too many array items")
         for index, nested in enumerate(value):
             _check_bounded_value(f"{name}[{index}]", nested, depth=depth + 1)
@@ -671,8 +676,14 @@ class ToolResultRecord:
             raise AnswerContractError("message_items must contain ToolMessageItem values")
         if any(not isinstance(item, ToolStructuredItem) for item in self.structured_items):
             raise AnswerContractError("structured_items must contain ToolStructuredItem values")
-        if len(self.message_items) + len(self.structured_items) > MAX_TOOL_RESULT_ITEMS:
-            raise AnswerContractError(f"tool result items exceeds {MAX_TOOL_RESULT_ITEMS}")
+        if len(self.message_items) > MAX_TOOL_RESULT_MESSAGE_ITEMS:
+            raise AnswerContractError(
+                f"tool result message items exceeds {MAX_TOOL_RESULT_MESSAGE_ITEMS}"
+            )
+        if len(self.structured_items) > MAX_TOOL_RESULT_STRUCTURED_ITEMS:
+            raise AnswerContractError(
+                f"tool result structured items exceeds {MAX_TOOL_RESULT_STRUCTURED_ITEMS}"
+            )
         if self.status == "error" and (self.message_items or self.structured_items):
             raise AnswerContractError("error tool results cannot contain source items")
         message_ids = [item.result_item_id for item in self.message_items]
@@ -714,11 +725,13 @@ class ToolResultRecord:
     ) -> tuple[Literal["message", "structured"], ToolMessageItem | ToolStructuredItem] | None:
         """只在当前 Tool Result scope 内解析 handle，不尝试跨 record 猜测。"""
 
-        for message_item in self.message_items:
-            if self.message_source_handle(message_item) == source_id:
+        # 直接使用 enumerate 生成 ordinal，避免每个候选再次在线性 tuple 中查 index。
+        for index, message_item in enumerate(self.message_items):
+            if f"m{self.model_scope_id}-{index + 1}" == source_id:
                 return "message", message_item
-        for structured_item in self.structured_items:
-            if self.structured_source_handle(structured_item) == source_id:
+        # structured source 也按同样的 ordinal 规则解析，保持两类 locator 的边界一致。
+        for index, structured_item in enumerate(self.structured_items):
+            if f"s{self.model_scope_id}-{index + 1}" == source_id:
                 return "structured", structured_item
         return None
 
@@ -743,13 +756,15 @@ class ToolResultRecord:
 
         # source_ids 由当前 model data projection 派生；canonical record 仍保留全部 items。
         message_sources = []
-        for message_item in self.message_items:
-            source_id = self.message_source_handle(message_item)
+        # 使用 enumerate 直接得到稳定 ordinal，避免大结果集下 O(n²) 的 tuple.index。
+        for index, _message_item in enumerate(self.message_items):
+            source_id = f"m{self.model_scope_id}-{index + 1}"
             if source_ids is None or source_id in source_ids:
                 message_sources.append({"type": "message", "source_id": source_id})
         structured_sources = []
-        for structured_item in self.structured_items:
-            source_id = self.structured_source_handle(structured_item)
+        # structured item 同样直接按位置生成 handle，保持 provenance 顺序且不扫描前缀。
+        for index, structured_item in enumerate(self.structured_items):
+            source_id = f"s{self.model_scope_id}-{index + 1}"
             if source_ids is None or source_id in source_ids:
                 structured_sources.append(
                     {
@@ -957,13 +972,14 @@ def _model_content(content: str, maximum: int = MAX_MODEL_MESSAGE_CHARS) -> tupl
 def _model_message_projection(
     record: ToolResultRecord,
     item: ToolMessageItem,
+    source_id: str,
 ) -> tuple[dict[str, object], tuple[dict[str, object], bool, str, bool]]:
     """生成不含内部 provenance 的消息 projection，并返回 budget trimming slot。"""
 
     message = item.message
     content, model_content_truncated = _model_content(message.normalized_content)
     entry: dict[str, object] = {
-        "source_id": record.message_source_handle(item),
+        "source_id": source_id,
         "timestamp": message.timestamp,
         "author": message.sender_name or message.sender_user_id,
         "content": content,
@@ -980,13 +996,24 @@ def _model_message_projection(
 def _project_model_data(
     data: object,
     record: ToolResultRecord,
-) -> tuple[object, list[tuple[list[dict[str, object]], dict[str, object], bool, str, bool]]]:
+) -> tuple[object, list[tuple[list[dict[str, object]], dict[str, object], dict[str, object], bool, str, bool]]]:
     """把 canonical envelope data 转成 slim model data，同时保留 Host trimming 索引。"""
 
     if not isinstance(data, Mapping):
         return data, []
     projected = dict(data)
-    slots: list[tuple[list[dict[str, object]], dict[str, object], bool, str, bool]] = []
+    # 先建立 canonical identity 索引；大 lexical 结果不应因逐项线性查找退化为 O(n²)。
+    message_items_by_internal_id = {
+        item.message.internal_message_id: (index, item)
+        for index, item in enumerate(record.message_items)
+    }
+    structured_items_by_locator = {
+        (item.locator_kind, item.locator): (index, item)
+        for index, item in enumerate(record.structured_items)
+    }
+    slots: list[
+        tuple[list[dict[str, object]], dict[str, object], dict[str, object], bool, str, bool]
+    ] = []
 
     if projected.get("strategy") == "semantic":
         # chunk/parent/index identity 是 Host provenance，不是模型回答语义；只保留排序和质量摘要。
@@ -1039,12 +1066,20 @@ def _project_model_data(
                 internal_id = raw_message.get("internal_message_id")
                 if not isinstance(internal_id, str) or not internal_id:
                     raise ToolResultProjectionError(f"canonical hit {index} has no message identity")
-                item = record.message_item_by_internal_id(internal_id)
-                entry, slot = _model_message_projection(record, item)
+                indexed_item = message_items_by_internal_id.get(internal_id)
+                if indexed_item is None:
+                    raise ToolResultProjectionError("message projection is missing from the canonical tool record")
+                message_index, item = indexed_item
+                entry, slot = _model_message_projection(
+                    record,
+                    item,
+                    f"m{record.model_scope_id}-{message_index + 1}",
+                )
                 hit["message"] = entry
                 hit_message_ids.add(internal_id)
                 projected_hits.append(hit)
-                slots.append((projected_hits, *slot))
+                # hit 的可编辑 message entry 与可移除的 hit wrapper 是两个不同字典。
+                slots.append((projected_hits, entry, hit, *slot[1:]))
             else:
                 # semantic hit 是 range candidate，没有 message body；canonical range metadata 仍可审计。
                 projected_hits.append(hit)
@@ -1065,10 +1100,17 @@ def _project_model_data(
                 raise ToolResultProjectionError(f"canonical {name}[{index}] has no message identity")
             if skip_hit_messages and internal_id in hit_message_ids:
                 continue
-            item = record.message_item_by_internal_id(internal_id)
-            entry, slot = _model_message_projection(record, item)
+            indexed_item = message_items_by_internal_id.get(internal_id)
+            if indexed_item is None:
+                raise ToolResultProjectionError("message projection is missing from the canonical tool record")
+            message_index, item = indexed_item
+            entry, slot = _model_message_projection(
+                record,
+                item,
+                f"m{record.model_scope_id}-{message_index + 1}",
+            )
             projected_messages.append(entry)
-            slots.append((projected_messages, *slot))
+            slots.append((projected_messages, entry, entry, *slot[1:]))
         projected[name] = projected_messages
 
     if "expanded_messages" in projected:
@@ -1083,8 +1125,11 @@ def _project_model_data(
             if not isinstance(raw_candidate, Mapping):
                 raise ToolResultProjectionError(f"candidate {index} is not an object")
             candidate = dict(raw_candidate)
-            structured_item = record.structured_item_by_locator("row", f"candidates[{index}]")
-            candidate["source_id"] = record.structured_source_handle(structured_item)
+            structured_indexed_item = structured_items_by_locator.get(("row", f"candidates[{index}]"))
+            if structured_indexed_item is None:
+                raise ToolResultProjectionError("structured projection is missing from the canonical tool record")
+            structured_index, _structured_item = structured_indexed_item
+            candidate["source_id"] = f"s{record.model_scope_id}-{structured_index + 1}"
             projected_candidates.append(candidate)
         projected["candidates"] = projected_candidates
 
@@ -1095,8 +1140,11 @@ def _project_model_data(
             if not isinstance(raw_table, Mapping):
                 raise ToolResultProjectionError(f"table {index} is not an object")
             table = dict(raw_table)
-            structured_item = record.structured_item_by_locator("row", f"tables[{index}]")
-            table["source_id"] = record.structured_source_handle(structured_item)
+            structured_indexed_item = structured_items_by_locator.get(("row", f"tables[{index}]"))
+            if structured_indexed_item is None:
+                raise ToolResultProjectionError("structured projection is missing from the canonical tool record")
+            structured_index, _structured_item = structured_indexed_item
+            table["source_id"] = f"s{record.model_scope_id}-{structured_index + 1}"
             projected_tables.append(table)
         projected["tables"] = projected_tables
 
@@ -1107,8 +1155,11 @@ def _project_model_data(
             if not isinstance(raw_row, Mapping):
                 raise ToolResultProjectionError(f"SQL row {index} is not an object")
             row = dict(raw_row)
-            structured_item = record.structured_item_by_locator("row", f"rows[{index}]")
-            row["source_id"] = record.structured_source_handle(structured_item)
+            structured_indexed_item = structured_items_by_locator.get(("row", f"rows[{index}]"))
+            if structured_indexed_item is None:
+                raise ToolResultProjectionError("structured projection is missing from the canonical tool record")
+            structured_index, _structured_item = structured_indexed_item
+            row["source_id"] = f"s{record.model_scope_id}-{structured_index + 1}"
             projected_rows.append(row)
         projected["rows"] = projected_rows
 
@@ -1143,6 +1194,7 @@ def _set_projection_metrics(
     token_budget: int,
     truncated: bool,
     omitted_context_messages: int,
+    omitted_hit_messages: int,
 ) -> None:
     """写入公开 projection 预算事实，避免 Host 侧 trim 变成 hidden truncation。"""
 
@@ -1151,6 +1203,7 @@ def _set_projection_metrics(
         "estimated_tokens": (_projection_size(payload) + MODEL_TOKEN_CHAR_RATIO - 1) // MODEL_TOKEN_CHAR_RATIO,
         "truncated": truncated,
         "omitted_context_messages": omitted_context_messages,
+        "omitted_hit_messages": omitted_hit_messages,
     }
 
 
@@ -1176,6 +1229,7 @@ def project_tool_result_for_model(
     max_bytes = token_budget * MODEL_TOKEN_CHAR_RATIO
     truncated = False
     omitted_context_messages = 0
+    omitted_hit_messages = 0
 
     def fits() -> bool:
         """每次检查都包含 projection metrics，保证公开 payload 本身不越预算。"""
@@ -1188,17 +1242,22 @@ def project_tool_result_for_model(
             token_budget=token_budget,
             truncated=truncated,
             omitted_context_messages=omitted_context_messages,
+            omitted_hit_messages=omitted_hit_messages,
         )
         return _projection_size(payload) <= max_bytes
 
     if not fits():
         # 第一阶段只删除 context；所有真实 retrieval hits 必须继续留在 model projection。
-        retained_slots: list[tuple[list[dict[str, object]], dict[str, object], bool, str, bool]] = []
-        for container, entry, is_hit, full_content, canonical_truncated in slots:
+        retained_slots: list[
+            tuple[list[dict[str, object]], dict[str, object], dict[str, object], bool, str, bool]
+        ] = []
+        for container, entry, remove_entry, is_hit, full_content, canonical_truncated in slots:
             if is_hit:
-                retained_slots.append((container, entry, is_hit, full_content, canonical_truncated))
+                retained_slots.append(
+                    (container, entry, remove_entry, is_hit, full_content, canonical_truncated)
+                )
                 continue
-            container.remove(entry)
+            container.remove(remove_entry)
             omitted_context_messages += 1
         slots = retained_slots
         truncated = omitted_context_messages > 0
@@ -1206,7 +1265,7 @@ def project_tool_result_for_model(
     if not fits():
         # 第二阶段只缩短正文；source handle、timestamp、author、URL 和 hit identity 不被删除。
         for maximum in (512, 384, 256, 192, 128, 96, 64, 32):
-            for _container, entry, _is_hit, full_content, canonical_truncated in slots:
+            for _container, entry, _remove_entry, _is_hit, full_content, canonical_truncated in slots:
                 content, content_truncated = _model_content(full_content, maximum)
                 entry["content"] = content
                 entry["content_truncated"] = canonical_truncated or content_truncated
@@ -1214,9 +1273,54 @@ def project_tool_result_for_model(
             if fits():
                 break
         else:
-            raise ToolResultProjectionError(
-                "canonical tool result cannot fit the independent model token budget"
-            )
+            # 直击仍无法容纳时，按 retrieval 稳定顺序从尾部省略 direct hit；
+            # canonical record 保留完整候选，model-visible provenance 随 payload 同步收缩。
+            hit_slots = tuple(slot for slot in slots if slot[3])
+            if not hit_slots:
+                raise ToolResultProjectionError(
+                    "canonical tool result cannot fit the independent model token budget"
+                )
+
+            # 省略数量对 payload 大小单调递减，用二分搜索避免逐条 remove + JSON 序列化退化为 O(n²)。
+            base_contents = {
+                id(container): (container, list(container))
+                for container, _entry, _remove_entry, _is_hit, _full_content, _canonical_truncated in slots
+            }
+
+            def apply_hit_omission(count: int) -> None:
+                """从当前 context-trim 基线重建列表，只移除稳定顺序尾部 hit。"""
+
+                omitted_entries = {
+                    id(slot[2])
+                    for slot in hit_slots[len(hit_slots) - count :]
+                }
+                for container, original in base_contents.values():
+                    # 通过 identity 过滤可避免 list.remove 对每个尾部 hit 重复扫描前缀。
+                    container[:] = [entry for entry in original if id(entry) not in omitted_entries]
+
+            low = 0
+            high = len(hit_slots)
+            while low < high:
+                candidate = (low + high) // 2
+                apply_hit_omission(candidate)
+                omitted_hit_messages = candidate
+                truncated = True
+                if fits():
+                    high = candidate
+                else:
+                    low = candidate + 1
+
+            apply_hit_omission(low)
+            omitted_hit_messages = low
+            truncated = True
+            slots = [slot for slot in slots if slot[3] and id(slot[2]) not in {
+                id(hit_slot[2]) for hit_slot in hit_slots[len(hit_slots) - low :]
+            }]
+            if not fits():
+                # 所有 direct hit 都移除仍不能满足最低 projection 时，必须显式报告 contract 错误。
+                raise ToolResultProjectionError(
+                    "canonical tool result cannot fit the independent model token budget"
+                )
 
     # fits() 已把 metrics 写入 payload；最后一次 size check 防止修改后产生隐式超限。
     if _projection_size(payload) > max_bytes:

@@ -534,3 +534,77 @@ fallback 与 hidden CoT 不在本轮范围。
 - Q：为什么不引入 Code Mode 或 fallback？
   Evidence：当前 Tool Calling 已有 scope、Trace、Evidence hard boundary；没有 Failure Case 或
   paired Evaluation 证明需要另一执行通道，新增 fallback 只会隐藏根因。
+
+## Retrieval Budget / Tool Result Budget 事实索引（2026-08-26）
+
+### Problem / Root Cause
+
+旧的 `DEFAULT_RESULT_LIMIT=100` 同时约束 lexical candidate、trusted umbrella、context expansion、
+Evidence message transport 和 provider schema。它曾修复 `31 hits / 20 messages / truncated`，但也把
+inventory query 的 recall 固定在 100。若把同一个常量全局改成 1000，semantic、structured/member/SQL、
+context 和 Evidence value budget 会被错误放大。根因是不同资源共享一个名字，而不是单个数字不够大。
+
+### Design Decision / Trade-off
+
+- lexical candidate：default 1000、hard cap 5000；服务“有哪些/全部/完整清单”类 broad recall。
+- semantic direct evidence：default 10、hard cap 20；`dense_top_k=40` 仍是独立 ANN candidate 参数。
+- trusted `ExecutionScope.max_results`：5000 umbrella；每个 Capability/provider 再做自身 hard cap。
+- context：最终 expanded message 100；direct hit 已填满容量时不读取邻居，有空间时最多 20 个 source hit。
+- Tool Result：canonical message 5000、structured/value 100；model-visible projection 固定 16k estimated tokens。
+
+Evidence：`config/limits.py`、各 typed query/capability、`query/runtime/openai_tools.py`、
+`query/evidence.py`、`tests/test_retrieval_budget.py` 与任务 `validation.md`。真实 archive 的
+`https` 1000 candidate retrieval median 131.7ms、projection 151.0ms；`Agent` 1000 因 20 个真实
+context source hit 为 2,215.8ms。初版 projection 的 O(n²) 尾部删除已复现并用二分省略修复，不能
+通过回退 lexical budget 隐藏实现瓶颈。
+
+### Failure Classification
+
+- Retrieval Coverage Failure：A 从 31 扩到 93 lexical hits；B 找回明确 joye URL；D 保留
+  `deepseek helan` name-only 项，但 dsh-web-ui/整合包仍未完整列出，标记 `ENUMERATION_INCOMPLETE`。
+- Claim Grounding Failure：recall 增大不能证明“提及=推荐”“测试意图=实际使用”“看过产出=个人安装”；
+  taste-skill After 明确拒绝这些推断。`citation unresolved=0` 只证明 locator/provenance 可解析，
+  不证明 claim 的事实蕴含或唯一实体计数正确。
+
+### Interview Defense Mapping
+
+- Q：为什么不能用一个 `DEFAULT_RESULT_LIMIT`？
+  Evidence：旧 `31/20` 回归、预算审计表、独立 1000/10/20/100 contracts 与 schema/Capability 双重测试。
+- Q：candidate budget 和 Tool Result token budget 有什么区别？
+  Evidence：canonical 可保留 689/1000 lexical candidates，而 model projection 仍在 16k 内，
+  显式报告 `truncated`、`omitted_hit_messages` 和 visible source handles。
+- Q：为什么 semantic Top-K 不能跟着 lexical 变大？
+  Evidence：provider schema/CAP hard cap 20、`dense_top_k=40` 保持独立；semantic recall 与
+  lexical inventory 的目标不同。
+- Q：什么证据会触发下一阶段？
+  Evidence：复现带人工实体/claim 标注的 `ENUMERATION_INCOMPLETE` 或 mention/use/review
+  entailment failure；在此之前不增加 lexical hard cap、不加四题特例、不重构 Evidence。
+
+### Executable contract
+
+1. **Scope / Trigger**：当 Retrieval candidate、Tool Result transport、context expansion 或
+   model projection 的边界发生跨层变化时，必须同时检查 Provider schema、typed Capability、
+   Retrieval Core、Evidence record、Trace 和 Evaluation。
+2. **Signatures**：`LexicalQuery.limit` 默认 1000/上限 5000；`SemanticQuery.limit` 默认 10/上限
+   20；`ExecutionScope.max_results` 是 5000 umbrella；`ToolResultRecord` message/structured
+   item 上限分别为 5000/100；model projection payload 必须含 `estimated_tokens`、`truncated`、
+   `omitted_context_messages`、`omitted_hit_messages`。
+3. **Contracts**：Provider schema 只展示 tool-specific maximum；Capability 必须再次验证
+   trusted scope；semantic `dense_top_k=40` 不等于最终 limit；Trace terminal payload 记录
+   retrieval counts、partial/truncated、projection estimate/omitted 和 provider usage。当前没有
+   context-window registry，`DEFAULT_TOOL_RESULT_TOKEN_BUDGET=16_000` 是固定边界。
+4. **Validation & Error Matrix**：lexical >5000、semantic >20、structured/member/SQL >100、
+   trusted scope >5000、context range source >20 或最小 model projection 仍超 16k 时，分别在
+   Query/Capability/Projection boundary 显式抛错；不得依赖 Prompt、silent fallback 或静默截断。
+5. **Good / Base / Bad Cases**：Good 是 lexical 1000 命中且 context=0、semantic 10/20 + dense40、
+   model projection 在 16k 内；Base 是超预算后记录 truncated/omitted 并保留 direct hit 优先；
+   Bad 是用 1000 放大 semantic/SQL、让 context 挤掉 hit、或把 `citation unresolved=0` 当作事实正确。
+6. **Tests Required**：`tests/test_retrieval_budget.py` 锁定 defaults/hard caps/schema、150 条
+   lexical、100 direct hits、20 source-hit budget、canonical >100、16k omission、Prompt safety
+   和七轴/七标签；全量 pytest、ruff、mypy 与真实 100/300/1000 archive benchmark 必须通过。
+7. **Wrong vs Correct**：
+   - Wrong：`DEFAULT_RESULT_LIMIT=1000` 被 lexical、semantic、context、structured 和 Tool Result
+     共用，或者只相信 provider JSON schema。
+   - Correct：各层使用独立常量和二次 Host enforcement；canonical 保留 bounded candidate，
+     model projection 独立 16k，超限明确 `truncated/omitted`，最终把 recall failure 与 claim
+     grounding failure 分开记录。

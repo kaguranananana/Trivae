@@ -9,6 +9,7 @@ from trivae.capabilities.contracts import (
     FindMembersInput,
 )
 from trivae.capabilities.scope import effective_member_sessions
+from trivae.config.limits import MAX_MEMBER_RESULT_LIMIT
 from trivae.retrieval.identity import FindMembersResult, MemberQuery, MemberReadRepository
 from trivae.retrieval.structured import ScopeFilters
 
@@ -37,8 +38,11 @@ class FindMembersCapability:
 
         if not isinstance(request, FindMembersInput):
             raise CapabilityContractError("find_members received an invalid request type")
-        if request.limit > scope.max_results:
-            raise CapabilityContractError("requested member limit exceeds trusted max_results")
+        effective_maximum = min(scope.max_results, MAX_MEMBER_RESULT_LIMIT)
+        if request.limit > effective_maximum:
+            raise CapabilityContractError(
+                f"requested member limit exceeds trusted maximum {effective_maximum}"
+            )
 
         effective_sessions = effective_member_sessions(request, scope)
         query = MemberQuery(

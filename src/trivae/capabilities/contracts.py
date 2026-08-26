@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal, Mapping, Sequence
 
-from trivae.config.limits import DEFAULT_RESULT_LIMIT
+from trivae.config.limits import (
+    DEFAULT_LEXICAL_RESULT_LIMIT,
+    DEFAULT_MEMBER_RESULT_LIMIT,
+    DEFAULT_SEMANTIC_RESULT_LIMIT,
+    DEFAULT_TRUSTED_RESULT_LIMIT,
+    MAX_TRUSTED_RESULT_LIMIT,
+)
 from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
@@ -194,7 +200,7 @@ class ExecutionScope:
     allowed_session_ids: tuple[str, ...] | None = None
     start_timestamp: int | None = None
     end_timestamp: int | None = None
-    max_results: int = DEFAULT_RESULT_LIMIT
+    max_results: int = DEFAULT_TRUSTED_RESULT_LIMIT
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "allowed_session_ids", _normalize_scope_sessions(self.allowed_session_ids))
@@ -205,6 +211,10 @@ class ExecutionScope:
                 raise CapabilityContractError("trusted time scope is reversed")
         if isinstance(self.max_results, bool) or not isinstance(self.max_results, int) or self.max_results <= 0:
             raise CapabilityContractError("trusted max_results must be positive")
+        if self.max_results > MAX_TRUSTED_RESULT_LIMIT:
+            raise CapabilityContractError(
+                f"trusted max_results must not exceed {MAX_TRUSTED_RESULT_LIMIT}"
+            )
 
 
 @dataclass(frozen=True)
@@ -217,7 +227,7 @@ class SearchMessagesInput:
     end_timestamp: int | None = None
     sender_user_ids: tuple[str, ...] | None = None
     message_types: tuple[str, ...] | None = None
-    limit: int = DEFAULT_RESULT_LIMIT
+    limit: int = DEFAULT_LEXICAL_RESULT_LIMIT
     context_before: int = 2
     context_after: int = 2
     time_range: RelativeTimeRange | Mapping[str, object] | None = None
@@ -257,7 +267,7 @@ class SemanticSearchInput:
     message_types: tuple[str, ...] | None = None
     source_message_id: str | None = None
     reply_to_source_message_id: str | None = None
-    limit: int = 10
+    limit: int = DEFAULT_SEMANTIC_RESULT_LIMIT
     context_before: int = 2
     context_after: int = 2
     dense_top_k: int = 40
@@ -332,7 +342,7 @@ class FindMembersInput:
 
     query: str
     session_ids: tuple[str, ...] | None = None
-    limit: int = 20
+    limit: int = DEFAULT_MEMBER_RESULT_LIMIT
 
     def __post_init__(self) -> None:
         """在 Tool contract 层规范化查询文本、session filter 和候选上限。"""

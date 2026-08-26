@@ -16,6 +16,7 @@ from .contracts import (
     EvaluationResult,
     scope_identity,
 )
+from .quality import QUALITY_AXES
 from .variant import ControlledVariant
 
 
@@ -596,13 +597,7 @@ def build_evaluation_result(
     hard_failed = any(item.severity == "hard" and item.status == "failed" for item in checks)
     status = "failed" if result is None or (result is not None and not result.is_successful) or hard_failed else "not_reviewed"
     diagnostics_failed = any(item.name == "trace_completeness" and item.status == "failed" for item in checks)
-    quality_axes = {
-        "task_finding_correctness": {"label": "not_reviewed"},
-        "evidence_completeness": {"label": "not_reviewed"},
-        "groundedness_entailment": {"label": "not_reviewed"},
-        "uncertainty_calibration": {"label": "not_reviewed"},
-        "answer_relevance": {"label": "not_reviewed"},
-    }
+    quality_axes = {axis: {"label": "not_reviewed"} for axis in QUALITY_AXES}
     diagnosability = {
         "trace_available": trace is not None,
         "trace_completeness": None if trace is None else trace.completeness,

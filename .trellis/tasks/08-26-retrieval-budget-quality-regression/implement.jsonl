@@ -1,0 +1,6 @@
+{"file":".trellis/spec/project/architecture.md","reason":"保持 Retrieval、Capability、Runtime、Evidence 与 Trace 的分层 contract。"}
+{"file":".trellis/spec/backend/agent-runtime-guidelines.md","reason":"约束 trusted scope、Tool Result projection、错误透明与 Provider/Host 边界。"}
+{"file":".trellis/spec/backend/product-experience-guidelines.md","reason":"约束 broad inventory guidance、partial/truncated 用户表达和可读日期。"}
+{"file":".trellis/tasks/08-26-retrieval-budget-quality-regression/design.md","reason":"执行已批准的 budget 解耦、context expansion 与 projection 设计。"}
+{"file":".trellis/tasks/08-26-retrieval-budget-quality-regression/research/budget-audit.md","reason":"按现状耦合点逐层实施，避免遗漏独立限制。"}
+{"file":".trellis/tasks/08-26-retrieval-budget-quality-regression/research/chatlab-main.md","reason":"参考已验证的 ChatLab main budget 分层，不机械复制 hard cap 或动态 token 比例。"}

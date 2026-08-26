@@ -18,10 +18,18 @@ from trivae.capabilities.contracts import (
     ToolError,
 )
 from trivae.capabilities.registry import CapabilityRegistry
-from trivae.config.limits import DEFAULT_RESULT_LIMIT
+from trivae.config.limits import (
+    DEFAULT_LEXICAL_RESULT_LIMIT,
+    DEFAULT_MEMBER_RESULT_LIMIT,
+    DEFAULT_SEMANTIC_RESULT_LIMIT,
+    MAX_LEXICAL_RESULT_LIMIT,
+    MAX_MEMBER_RESULT_LIMIT,
+    MAX_SEMANTIC_RESULT_LIMIT,
+)
 from trivae.observability.contracts import FailureInfo
 from trivae.query.evidence import build_tool_result_record, project_tool_result_for_model
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
+from trivae.retrieval.sql import MAX_SQL_RESULT_ROWS
 
 
 def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
@@ -35,17 +43,19 @@ def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
     )
 
 
-def _model_projection_metrics(payload: dict[str, object]) -> tuple[int | None, bool | None]:
-    """读取 Host projection 的 estimate；类型不符时显式标为 unavailable。"""
+def _model_projection_metrics(payload: dict[str, object]) -> tuple[int | None, bool | None, int | None]:
+    """读取 Host projection 的 estimate 与省略 direct-hit 数量。"""
 
     metrics = payload.get("model_projection")
     if not isinstance(metrics, dict):
-        return None, None
+        return None, None, None
     estimated_tokens = metrics.get("estimated_tokens")
     truncated = metrics.get("truncated")
+    omitted_hits = metrics.get("omitted_hit_messages")
     return (
         estimated_tokens if isinstance(estimated_tokens, int) and not isinstance(estimated_tokens, bool) else None,
         truncated if isinstance(truncated, bool) else None,
+        omitted_hits if isinstance(omitted_hits, int) and not isinstance(omitted_hits, bool) else None,
     )
 
 
@@ -98,8 +108,8 @@ class SearchMessagesSDKToolAdapter:
         if trusted_max_results is not None:
             # 让 schema 与描述同时携带动态 bound，减少模型先生成越界 limit 再恢复的无效回合。
             description += (
-                f" The current trusted result limit is {trusted_max_results}. For broad inventory or resource-list"
-                f" recall, pass limit={trusted_max_results} exactly; do not use a smaller limit such as 20 or 30."
+                f" The current lexical result limit is {min(trusted_max_results, MAX_LEXICAL_RESULT_LIMIT)}. For broad inventory or resource-list"
+                f" recall, pass limit={min(trusted_max_results, MAX_LEXICAL_RESULT_LIMIT)} exactly; do not use a smaller limit such as 20 or 30."
             )
 
         @function_tool(
@@ -118,7 +128,7 @@ class SearchMessagesSDKToolAdapter:
             time_range: dict[str, object] | None = None,
             sender_user_ids: list[str] | None = None,
             message_types: list[str] | None = None,
-            limit: int = DEFAULT_RESULT_LIMIT,
+            limit: int = DEFAULT_LEXICAL_RESULT_LIMIT,
             context_before: int = 2,
             context_after: int = 2,
         ) -> dict[str, object]:
@@ -223,7 +233,11 @@ class SearchMessagesSDKToolAdapter:
                 scope=runtime_context.scope,
             )
             result_payload = project_tool_result_for_model(envelope, record)
-            model_result_estimated_tokens, model_result_truncated = _model_projection_metrics(result_payload)
+            (
+                model_result_estimated_tokens,
+                model_result_truncated,
+                model_result_omitted_hit_messages,
+            ) = _model_projection_metrics(result_payload)
             runtime_context.tool_results.append(record)
             # 这里记录一次 tool call；同一模型回合的多个调用由 Runtime hook 统一计为一轮。
             runtime_context.tool_calls.append(
@@ -236,6 +250,7 @@ class SearchMessagesSDKToolAdapter:
                     round=runtime_context.current_tool_round,
                     model_result_estimated_tokens=model_result_estimated_tokens,
                     model_result_truncated=model_result_truncated,
+                    model_result_omitted_hit_messages=model_result_omitted_hit_messages,
                 )
             )
             # canonical record 留在 Runtime local；模型只收到 slim projection 和短 handle。
@@ -253,9 +268,11 @@ class SearchMessagesSDKToolAdapter:
             if not isinstance(limit_schema, dict):
                 raise TypeError(f"{self.tool_name} schema did not expose limit")
             # 只增强 provider-facing schema，不把 schema 约束当成 trusted enforcement 的替代品。
+            # Provider schema 只展示 lexical 自己的 hard cap；Capability 仍会再次检查 scope。
+            effective_maximum = min(trusted_max_results, MAX_LEXICAL_RESULT_LIMIT)
             limit_schema["minimum"] = 1
-            limit_schema["maximum"] = trusted_max_results
-            limit_schema["default"] = min(DEFAULT_RESULT_LIMIT, trusted_max_results)
+            limit_schema["maximum"] = effective_maximum
+            limit_schema["default"] = min(DEFAULT_LEXICAL_RESULT_LIMIT, effective_maximum)
 
         return search_messages
 
@@ -297,8 +314,8 @@ class SemanticSearchSDKToolAdapter:
         )
         if trusted_max_results is not None:
             description += (
-                f" The current trusted result limit is {trusted_max_results}. For broad inventory or resource-list"
-                f" recall, pass limit={trusted_max_results} exactly; do not use a smaller limit such as 20 or 30."
+                f" The current semantic result limit is {min(trusted_max_results, MAX_SEMANTIC_RESULT_LIMIT)}. For broad inventory or resource-list"
+                f" recall, pass limit={min(trusted_max_results, MAX_SEMANTIC_RESULT_LIMIT)} exactly; do not use a smaller limit such as 20 or 30."
             )
 
         @function_tool(
@@ -407,7 +424,11 @@ class SemanticSearchSDKToolAdapter:
                 scope=runtime_context.scope,
             )
             result_payload = project_tool_result_for_model(envelope, record)
-            model_result_estimated_tokens, model_result_truncated = _model_projection_metrics(result_payload)
+            (
+                model_result_estimated_tokens,
+                model_result_truncated,
+                model_result_omitted_hit_messages,
+            ) = _model_projection_metrics(result_payload)
             runtime_context.tool_results.append(record)
             runtime_context.tool_calls.append(
                 RuntimeToolCall(
@@ -419,6 +440,7 @@ class SemanticSearchSDKToolAdapter:
                     round=runtime_context.current_tool_round,
                     model_result_estimated_tokens=model_result_estimated_tokens,
                     model_result_truncated=model_result_truncated,
+                    model_result_omitted_hit_messages=model_result_omitted_hit_messages,
                 )
             )
             # semantic candidate details 与 citation bookkeeping 分离，避免重复复制 full message provenance。
@@ -434,9 +456,11 @@ class SemanticSearchSDKToolAdapter:
             limit_schema = properties.get("limit")
             if not isinstance(limit_schema, dict):
                 raise TypeError("semantic_search schema did not expose limit")
+            # semantic 不继承 lexical umbrella，schema maximum 固定收紧到 20。
+            effective_maximum = min(trusted_max_results, MAX_SEMANTIC_RESULT_LIMIT)
             limit_schema["minimum"] = 1
-            limit_schema["maximum"] = trusted_max_results
-            limit_schema["default"] = min(10, trusted_max_results)
+            limit_schema["maximum"] = effective_maximum
+            limit_schema["default"] = min(DEFAULT_SEMANTIC_RESULT_LIMIT, effective_maximum)
 
         return semantic_search
 
@@ -483,7 +507,11 @@ def _append_runtime_tool_result(
         scope=runtime_context.scope,
     )
     result_payload = project_tool_result_for_model(envelope, record)
-    model_result_estimated_tokens, model_result_truncated = _model_projection_metrics(result_payload)
+    (
+        model_result_estimated_tokens,
+        model_result_truncated,
+        model_result_omitted_hit_messages,
+    ) = _model_projection_metrics(result_payload)
     runtime_context.tool_results.append(record)
     runtime_context.tool_calls.append(
         RuntimeToolCall(
@@ -495,6 +523,7 @@ def _append_runtime_tool_result(
             round=runtime_context.current_tool_round,
             model_result_estimated_tokens=model_result_estimated_tokens,
             model_result_truncated=model_result_truncated,
+            model_result_omitted_hit_messages=model_result_omitted_hit_messages,
         )
     )
     return result_payload
@@ -608,7 +637,10 @@ class FindMembersSDKToolAdapter:
                 raise ValueError("trusted_max_results must be positive when provided")
 
         # provider 省略 limit 时也必须落在当前 scope 内，不能使用静态 20 触发无意义的 contract round。
-        default_limit = 20 if trusted_max_results is None else min(20, trusted_max_results)
+        effective_maximum = MAX_MEMBER_RESULT_LIMIT if trusted_max_results is None else min(
+            trusted_max_results, MAX_MEMBER_RESULT_LIMIT
+        )
+        default_limit = min(DEFAULT_MEMBER_RESULT_LIMIT, effective_maximum)
 
         description = (
             "Find candidate members by nickname, group card, username/display name, alias-like "
@@ -617,7 +649,7 @@ class FindMembersSDKToolAdapter:
             "normal, so do not claim a unique person without resolving the ambiguity."
         )
         if trusted_max_results is not None:
-            description += f" The current trusted candidate limit is {trusted_max_results}."
+            description += f" The current member candidate limit is {min(trusted_max_results, MAX_MEMBER_RESULT_LIMIT)}."
 
         @function_tool(
             name_override="find_members",
@@ -693,8 +725,8 @@ class FindMembersSDKToolAdapter:
             if not isinstance(limit_schema, dict):
                 raise TypeError("find_members schema did not expose limit")
             limit_schema["minimum"] = 1
-            limit_schema["maximum"] = trusted_max_results
-            limit_schema["default"] = min(20, trusted_max_results)
+            limit_schema["maximum"] = effective_maximum
+            limit_schema["default"] = default_limit
 
         return find_members
 
@@ -798,7 +830,7 @@ class ExecuteSQLSDKToolAdapter:
             "is performed. Respect returned_rows and truncated in the result when citing rows."
         )
         if trusted_max_results is not None:
-            description += f" The current trusted maximum result rows is {trusted_max_results}."
+            description += f" The current SQL result row limit is {min(trusted_max_results, MAX_SQL_RESULT_ROWS)}."
 
         @function_tool(
             name_override="execute_sql",
@@ -871,6 +903,6 @@ class ExecuteSQLSDKToolAdapter:
             if not isinstance(max_rows_schema, dict):
                 raise TypeError("execute_sql schema did not expose max_rows")
             max_rows_schema["minimum"] = 1
-            max_rows_schema["maximum"] = trusted_max_results
+            max_rows_schema["maximum"] = min(trusted_max_results, MAX_SQL_RESULT_ROWS)
 
         return execute_sql

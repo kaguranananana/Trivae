@@ -99,6 +99,7 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
     retrieval_count = 0
     tool_result_estimated_tokens: int | Literal["unavailable"] = "unavailable"
     tool_result_projection_truncated_count = 0
+    tool_result_projection_omitted_hit_messages = 0
 
     for event in stored.events:
         if event.duration_ms is not None:
@@ -129,6 +130,9 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
             raw_truncated_count = event.payload.get("tool_result_projection_truncated_count")
             if isinstance(raw_truncated_count, int) and not isinstance(raw_truncated_count, bool):
                 tool_result_projection_truncated_count = raw_truncated_count
+            raw_omitted_hits = event.payload.get("tool_result_projection_omitted_hit_messages")
+            if isinstance(raw_omitted_hits, int) and not isinstance(raw_omitted_hits, bool):
+                tool_result_projection_omitted_hit_messages = raw_omitted_hits
 
     total_duration_ms = _duration_between(stored.started_at, stored.terminal_at)
     if total_duration_ms is None:
@@ -144,6 +148,7 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
         retrieval_count=retrieval_count,
         tool_result_estimated_tokens=tool_result_estimated_tokens,
         tool_result_projection_truncated_count=tool_result_projection_truncated_count,
+        tool_result_projection_omitted_hit_messages=tool_result_projection_omitted_hit_messages,
     )
 
 

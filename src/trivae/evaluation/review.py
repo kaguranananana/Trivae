@@ -22,14 +22,6 @@ from .contracts import (
 )
 from .variant import ControlledVariant, variant_diff
 
-QUALITY_AXES = (
-    "task_finding_correctness",
-    "evidence_completeness",
-    "groundedness_entailment",
-    "uncertainty_calibration",
-    "answer_relevance",
-)
-
 
 def _source_projection(reference: object, relation: ReferenceRelation) -> dict[str, object]:
     """只投影选中的 Source locator 和 bounded trusted snapshot 到 review packet。"""

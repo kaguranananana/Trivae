@@ -87,6 +87,7 @@ class RuntimeToolCall:
     # model projection 只记录 Host 的 bounded estimate；provider 原始 tool-result token 可能 unavailable。
     model_result_estimated_tokens: int | None = None
     model_result_truncated: bool | None = None
+    model_result_omitted_hit_messages: int | None = None
 
     @property
     def tool_round(self) -> int | None:

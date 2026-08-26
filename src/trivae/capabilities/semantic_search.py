@@ -14,6 +14,7 @@ from trivae.capabilities.scope import (
     effective_start,
     resolve_relative_time_range,
 )
+from trivae.config.limits import MAX_SEMANTIC_RESULT_LIMIT
 from trivae.retrieval.semantic.contracts import SemanticQuery, SemanticRetrievalResult
 from trivae.retrieval.semantic.retrieval import SemanticRetrieval
 from trivae.retrieval.structured import ScopeFilters
@@ -52,8 +53,11 @@ class SemanticSearchCapability:
     def execute(self, request: SemanticSearchInput, scope: ExecutionScope) -> SemanticRetrievalResult:
         """继承 trusted scope，并让 SemanticQuery 保留完整可追踪字段。"""
 
-        if request.limit > scope.max_results:
-            raise CapabilityContractError("requested limit exceeds trusted max_results")
+        effective_maximum = min(scope.max_results, MAX_SEMANTIC_RESULT_LIMIT)
+        if request.limit > effective_maximum:
+            raise CapabilityContractError(
+                f"requested semantic limit exceeds trusted maximum {effective_maximum}"
+            )
         scoped_sessions = effective_sessions(request, scope)
         if request.time_range is None:
             resolved_time_range = None

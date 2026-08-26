@@ -260,6 +260,7 @@ class TraceMetrics:
     # Tool Result token 仅在 Host projection 可估算时提供；provider 原始 usage 仍单独记录。
     tool_result_estimated_tokens: int | Literal["unavailable"] = "unavailable"
     tool_result_projection_truncated_count: int = 0
+    tool_result_projection_omitted_hit_messages: int = 0
 
 
 @dataclass(frozen=True)

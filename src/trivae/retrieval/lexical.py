@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from time import perf_counter
 
+from trivae.config.limits import MAX_AUTOMATIC_CONTEXT_SOURCE_HITS
 from trivae.retrieval.context import ContextExpander
 from trivae.retrieval.structured import (
     ORDERING_DESCRIPTION,
@@ -59,6 +60,8 @@ class LexicalRetrieval:
                     "expanded_candidate_messages": expansion.candidate_count,
                     "context_before": query.context_before,
                     "context_after": query.context_after,
+                    "context_source_hits": expansion.context_source_hits,
+                    "context_source_budget": MAX_AUTOMATIC_CONTEXT_SOURCE_HITS,
                 },
             ),
         )

@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"检查测试先行、真实 archive 回归、性能证据与错误透明。"}
+{"file":".trellis/spec/backend/agent-runtime-guidelines.md","reason":"检查 Provider schema、Capability enforcement、projection 与 Trace contract 未回退。"}
+{"file":".trellis/spec/project/interview-defense.md","reason":"检查最终设计取舍与 Failure Case 是否形成可复述的工程解释。"}
+{"file":".trellis/tasks/08-26-retrieval-budget-quality-regression/prd.md","reason":"逐项核对工程、真实回答、观测、分支与提交验收标准。"}
+{"file":".trellis/tasks/08-26-retrieval-budget-quality-regression/research/before-baseline.md","reason":"确保 After 指标与四条原始问题使用相同统计口径。"}
+{"file":".trellis/tasks/08-26-retrieval-budget-quality-regression/research/failure-case.md","reason":"区分 Retrieval Coverage Failure 与 Claim Grounding Failure，防止扩 scope。"}

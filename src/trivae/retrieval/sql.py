@@ -5,12 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Mapping, Protocol
 
+from trivae.config.limits import MAX_STRUCTURED_RESULT_ITEMS
 from trivae.retrieval.structured import Coverage, RetrievalError, RetrievalMetadata, ScopeFilters
 
 SQLScalar = bool | float | int | str | None
 
 # ToolResultRecord 当前最多承载 100 个 structured item；SQL row bound 与该 transport contract 对齐。
-MAX_SQL_RESULT_ROWS = 100
+MAX_SQL_RESULT_ROWS = MAX_STRUCTURED_RESULT_ITEMS
 
 
 class StructuredSQLError(RetrievalError):
@@ -58,6 +59,8 @@ class SQLQuery:
         object.__setattr__(self, "sql", self.sql.strip())
         if isinstance(self.max_rows, bool) or not isinstance(self.max_rows, int) or self.max_rows <= 0:
             raise ValueError("sql max_rows must be positive")
+        if self.max_rows > MAX_SQL_RESULT_ROWS:
+            raise ValueError(f"sql max_rows must not exceed {MAX_SQL_RESULT_ROWS}")
 
     def to_dict(self) -> dict[str, object]:
         """返回可进入 Tool Result metadata 的 query snapshot。"""

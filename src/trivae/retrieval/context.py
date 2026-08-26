@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Protocol, Sequence
 
+from trivae.config.limits import MAX_AUTOMATIC_CONTEXT_SOURCE_HITS, MAX_STRUCTURED_RESULT_ITEMS
 from trivae.retrieval.structured import (
     Coverage,
     MessageHit,
@@ -15,9 +16,9 @@ from trivae.retrieval.structured import (
     message_sort_key,
 )
 
-# ToolResultRecord 当前最多承载 100 条 message/structured item；这是 transport bound，
-# 不是 semantic candidate pool、chunking 或 embedding 参数，超出时必须由 Retrieval 显式标记 truncated。
-MAX_CONTEXT_EXPANSION_MESSAGES = 100
+# context expansion 的最终消息窗口保持独立的 structured transport bound；
+# 它不是 lexical candidate pool、semantic Top-K 或 embedding 参数。
+MAX_CONTEXT_EXPANSION_MESSAGES = MAX_STRUCTURED_RESULT_ITEMS
 
 
 class ContextReadRepository(Protocol):
@@ -75,6 +76,9 @@ class ContextExpansionResult:
     candidate_count: int
     # 只记录 range/hit 核心消息；其余返回消息是可在 model projection 中省略的 context。
     primary_message_ids: tuple[str, ...] = ()
+    # 记录自动读取邻居的 direct-hit 数量，便于 Trace 解释 expansion 成本与边界。
+    context_source_hits: int = 0
+    context_source_budget: int = MAX_AUTOMATIC_CONTEXT_SOURCE_HITS
 
 
 @dataclass(frozen=True)
@@ -153,7 +157,13 @@ class ContextExpander:
         }
         hit_ids = set(messages_by_id)
 
-        for hit in hits:
+        # direct hit 已填满容量时，邻居不会进入结果，因此完全跳过无收益读取。
+        source_hits = (
+            ()
+            if (before == 0 and after == 0) or len(hits) >= limit
+            else hits[:MAX_AUTOMATIC_CONTEXT_SOURCE_HITS]
+        )
+        for hit in source_hits:
             if before == 0 and after == 0:
                 continue
             if scope is None:
@@ -196,15 +206,18 @@ class ContextExpander:
                 truncated=True,
                 candidate_count=len(ordered),
                 primary_message_ids=tuple(message.internal_message_id for message in selected),
+                context_source_hits=len(source_hits),
             )
 
         if len(ordered) <= limit:
             return ContextExpansionResult(
                 messages=ordered,
                 partial=False,
-                truncated=False,
+                # direct hit 已占满容量时，requested neighbor 被明确省略，保留 truncation 事实。
+                truncated=bool((before or after) and not source_hits),
                 candidate_count=len(ordered),
                 primary_message_ids=tuple(message.internal_message_id for message in hit_messages),
+                context_source_hits=len(source_hits),
             )
 
         # 先放入全部真实 hit，再从 context 中填充剩余空间，避免简单切片丢掉后面的命中。
@@ -217,6 +230,7 @@ class ContextExpander:
             truncated=True,
             candidate_count=len(ordered),
             primary_message_ids=tuple(message.internal_message_id for message in hit_messages),
+            context_source_hits=len(source_hits),
         )
 
     def expand_ranges(
@@ -232,6 +246,10 @@ class ContextExpander:
             return ContextExpansionResult(messages=(), partial=False, truncated=False, candidate_count=0)
         if before < 0 or after < 0 or limit <= 0:
             raise ValueError("context range expansion bounds must be non-negative and limit must be positive")
+        if len(ranges) > MAX_AUTOMATIC_CONTEXT_SOURCE_HITS:
+            raise RetrievalError(
+                f"semantic context source hits must not exceed {MAX_AUTOMATIC_CONTEXT_SOURCE_HITS}"
+            )
 
         messages_by_id: dict[str, MessageProjection] = {}
         # range core 与 before/after context 必须分开标记，供 Host 做 hit-preserving trim。
@@ -280,6 +298,7 @@ class ContextExpander:
                 truncated=False,
                 candidate_count=len(ordered),
                 primary_message_ids=tuple(message.internal_message_id for message in ordered if message.internal_message_id in core_ids),
+                context_source_hits=len(ranges),
             )
 
         # 优先保留每个 range 的核心消息，context 超出预算时显式标记截断。
@@ -295,4 +314,5 @@ class ContextExpander:
             truncated=True,
             candidate_count=len(ordered),
             primary_message_ids=tuple(message.internal_message_id for message in selected if message.internal_message_id in core_ids),
+            context_source_hits=len(ranges),
         )

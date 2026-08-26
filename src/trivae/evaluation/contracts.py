@@ -16,6 +16,8 @@ from typing import Any, Literal, Mapping, Sequence, cast
 from trivae.capabilities.contracts import ExecutionScope
 from trivae.query.evidence import scope_snapshot
 
+from .quality import QUALITY_AXES
+
 
 class EvaluationContractError(ValueError):
     """Evaluation 输入或持久化对象违反公开契约。"""
@@ -507,13 +509,7 @@ class ReviewPolicy:
 
     rubric_version: str = "m7-v1"
     reviewer_types: tuple[ReviewType, ...] = ("human",)
-    quality_axes: tuple[str, ...] = (
-        "task_finding_correctness",
-        "evidence_completeness",
-        "groundedness_entailment",
-        "uncertainty_calibration",
-        "answer_relevance",
-    )
+    quality_axes: tuple[str, ...] = QUALITY_AXES
     blind_pairwise: bool = True
     human_adjudication_on_disagreement: bool = True
 

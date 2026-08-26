@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from trivae.config.limits import MAX_MEMBER_RESULT_LIMIT
 from trivae.retrieval.structured import Coverage, RetrievalMetadata, ScopeFilters
 
 MemberMatchField = Literal[
@@ -35,6 +36,8 @@ class MemberQuery:
         object.__setattr__(self, "query", self.query.strip())
         if not isinstance(self.limit, int) or isinstance(self.limit, bool) or self.limit <= 0:
             raise ValueError("member query limit must be positive")
+        if self.limit > MAX_MEMBER_RESULT_LIMIT:
+            raise ValueError(f"member query limit must not exceed {MAX_MEMBER_RESULT_LIMIT}")
 
     def to_dict(self) -> dict[str, object]:
         """返回不含数据库对象的查询快照。"""

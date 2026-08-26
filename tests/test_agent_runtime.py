@@ -14,7 +14,7 @@ from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import ToolEnvelope, ToolError
-from trivae.config.limits import DEFAULT_RESULT_LIMIT
+from trivae.config.limits import DEFAULT_LEXICAL_RESULT_LIMIT
 from trivae.config.settings import (
     DEFAULT_DEEPSEEK_BASE_URL,
     ModelSettings,
@@ -452,15 +452,15 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertIn("effective start and end", SYSTEM_PROMPT)
         self.assertIn('"anchor":"archive_latest"', SYSTEM_PROMPT)
         self.assertIn("never use SQL to calculate", SYSTEM_PROMPT)
-        self.assertIn("MUST set `limit` to the trusted maximum", SYSTEM_PROMPT)
+        self.assertIn("MUST set `limit` to the lexical maximum", SYSTEM_PROMPT)
         self.assertIn("never choose a smaller convenience limit such as 20 or 30", SYSTEM_PROMPT)
-        self.assertIn("every lexical_search or\nsemantic_search call that contributes to that list MUST pass", SYSTEM_PROMPT)
-        self.assertIn("(100 in the default CLI scope)", SYSTEM_PROMPT)
+        self.assertIn("Lexical calls that contribute to", SYSTEM_PROMPT)
+        self.assertIn("semantic maximum", SYSTEM_PROMPT)
         self.assertIn("use the lexical result's returned/total metadata", SYSTEM_PROMPT)
         self.assertIn("short `source_id` handle", SYSTEM_PROMPT)
         self.assertIn("Do not generate block IDs", SYSTEM_PROMPT)
         self.assertIn("multiple categories", SYSTEM_PROMPT)
-        self.assertIn("set `limit` to the trusted maximum", SYSTEM_PROMPT)
+        self.assertIn("Semantic calls keep their own small", SYSTEM_PROMPT)
         self.assertIn("context_before` and\n`context_after` to 0", SYSTEM_PROMPT)
         self.assertIn("at most eight representative URLs in\ntotal", SYSTEM_PROMPT)
         self.assertIn("`sources` array for every claim MUST contain no more than 20 handles", SYSTEM_PROMPT)
@@ -571,8 +571,8 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertIn("empty arrays", tool.description)
         self.assertIn("trusted result limit", tool.description)
 
-    def test_default_search_tool_schema_uses_shared_result_limit(self) -> None:
-        """Provider 默认值必须与 Capability/Retrieval 共用同一个有界上限。"""
+    def test_default_search_tool_schema_uses_lexical_budget(self) -> None:
+        """Provider 默认 schema 只暴露 lexical candidate budget。"""
 
         runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=ScriptedModel([]))
         request = AgentRunRequest("find all matching messages", ExecutionScope())
@@ -581,8 +581,8 @@ class RuntimeAdapterTests(unittest.TestCase):
 
         tool = agent.tools[0]
         limit_schema = tool.params_json_schema["properties"]["limit"]
-        self.assertEqual(limit_schema["maximum"], DEFAULT_RESULT_LIMIT)
-        self.assertEqual(limit_schema["default"], DEFAULT_RESULT_LIMIT)
+        self.assertEqual(limit_schema["maximum"], 5000)
+        self.assertEqual(limit_schema["default"], DEFAULT_LEXICAL_RESULT_LIMIT)
 
     def test_scripted_model_runs_tool_then_final_answer(self) -> None:
         model = ScriptedModel(

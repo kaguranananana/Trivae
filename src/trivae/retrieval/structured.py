@@ -6,7 +6,12 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Iterator, Literal, Mapping, Protocol, Sequence
 
-from trivae.config.limits import DEFAULT_RESULT_LIMIT
+from trivae.config.limits import (
+    DEFAULT_LEXICAL_RESULT_LIMIT,
+    DEFAULT_STRUCTURED_RESULT_LIMIT,
+    MAX_LEXICAL_RESULT_LIMIT,
+    MAX_STRUCTURED_RESULT_ITEMS,
+)
 
 
 class RetrievalError(Exception):
@@ -120,11 +125,15 @@ class ScopeFilters:
 class MessageQuery(ScopeFilters):
     """有界的 Structured message query。"""
 
-    limit: int | None = 100
+    limit: int | None = DEFAULT_STRUCTURED_RESULT_LIMIT
 
     def __post_init__(self) -> None:
         super().__post_init__()
         _validate_limit("limit", self.limit)
+        if self.limit is not None and self.limit > MAX_STRUCTURED_RESULT_ITEMS:
+            raise InvalidRetrievalQuery(
+                f"structured message limit must not exceed {MAX_STRUCTURED_RESULT_ITEMS}"
+            )
 
     def to_dict(self) -> dict[str, object]:
         """保留 query scope 和 limit，供结果 metadata 与测试复核。"""
@@ -154,7 +163,7 @@ class LexicalQuery(ScopeFilters):
     """有界的关键词 query，默认在 Retrieval Core 内自动扩展局部上下文。"""
 
     keyword: str = ""
-    limit: int | None = DEFAULT_RESULT_LIMIT
+    limit: int | None = DEFAULT_LEXICAL_RESULT_LIMIT
     context_before: int = 2
     context_after: int = 2
     resolved_time_range: Mapping[str, object] | None = None
@@ -166,6 +175,10 @@ class LexicalQuery(ScopeFilters):
             raise InvalidRetrievalQuery("keyword must be non-empty")
         object.__setattr__(self, "keyword", normalized_keyword)
         _validate_limit("limit", self.limit)
+        if self.limit is not None and self.limit > MAX_LEXICAL_RESULT_LIMIT:
+            raise InvalidRetrievalQuery(
+                f"lexical limit must not exceed {MAX_LEXICAL_RESULT_LIMIT}"
+            )
         for name, value in (("context_before", self.context_before), ("context_after", self.context_after)):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise InvalidRetrievalQuery(f"{name} must be a non-negative integer")

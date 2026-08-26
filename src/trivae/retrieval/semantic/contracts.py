@@ -11,6 +11,7 @@ import json
 from dataclasses import dataclass
 from typing import Literal, Mapping, Protocol, Sequence
 
+from trivae.config.limits import MAX_SEMANTIC_RESULT_LIMIT
 from trivae.retrieval.structured import Coverage, MessageProjection, RetrievalMetadata, ScopeFilters
 
 
@@ -498,6 +499,10 @@ class SemanticQuery(ScopeFilters):
         object.__setattr__(self, "query", self.query.strip())
         if self.limit is None or isinstance(self.limit, bool) or not isinstance(self.limit, int) or self.limit <= 0:
             raise SemanticQueryError("semantic limit must be a positive bounded integer")
+        if self.limit > MAX_SEMANTIC_RESULT_LIMIT:
+            raise SemanticQueryError(
+                f"semantic limit must not exceed {MAX_SEMANTIC_RESULT_LIMIT}"
+            )
         for name, value in (
             ("context_before", self.context_before),
             ("context_after", self.context_after),
