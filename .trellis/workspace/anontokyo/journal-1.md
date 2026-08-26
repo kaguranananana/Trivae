@@ -834,3 +834,27 @@ Preserved unique validated find_members canonical user_id in replayed conversati
 ### Status
 
 [OK] **Completed**
+
+## 2026-08-27 · Textual TUI projection（08-27-tui-chat-projection）
+
+### What happened
+
+- 在 `QueryStreamEvent` 之上新增 `interfaces/tui/`：`TuiProjectionEngine` 纯 reducer + widgets
+  （紧凑单行 Task Row、Plan/Answer/Error 块、两阶段「执行过程」折叠组）+ `TrivaeChatApp`
+  （picker → chat 回路、Ctrl+C 单轮中断、inline 模式保留 scrollback）。
+- `trivae chat` 默认 TUI；`--plain` 与非 TTY 自动回退原 stdout renderer；plain 路径与既有测试零改动。
+- 关键决策：thinking 只投影真实时长元数据不渲染 reasoning 文本；retrieval.completed 合并进
+  running tool 行；manually_expanded 优先于自动折叠；failed 块冻结后保持展开。
+- 踩坑记录：首个 answer.delta 必须同时产出 block_created+answer_appended 两个 change，
+  否则 widget 未挂载就收到更新；Textual Collapsible 内部包容器，测试遍历要用 walk_children。
+
+### Validation
+
+- pytest 370 passed / ruff clean / mypy clean（88 files）。
+- 真实 DeepSeek smoke ×5：简单 5.76s(2步)、单工具 63.97s(3步，retrieval 已合并)、
+  多工具含失败 46s(7步)、15 步 76s、provider 偶发 query.failed 正确收敛；
+  SVG 截图取证。数据在 task validation.md。
+
+### Status
+
+[OK] **Completed**

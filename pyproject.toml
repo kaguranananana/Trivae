@@ -8,6 +8,8 @@ dependencies = [
     "openai-agents==0.22.0",
     # semantic index 使用 sqlite-vec；sentence-transformers 放在可选 extra，避免检索-only 启动下载模型。
     "sqlite-vec>=0.1.9,<0.2",
+    # 默认 `trivae chat` 使用 Textual TUI；--plain 与非 TTY 回退到 stdout renderer。
+    "textual>=1,<2",
 ]
 
 [project.optional-dependencies]

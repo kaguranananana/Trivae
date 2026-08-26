@@ -608,3 +608,40 @@ context source hit 为 2,215.8ms。初版 projection 的 O(n²) 尾部删除已�
    - Correct：各层使用独立常量和二次 Host enforcement；canonical 保留 bounded candidate，
      model projection 独立 16k，超限明确 `truncated/omitted`，最终把 recall failure 与 claim
      grounding failure 分开记录。
+
+## Textual TUI projection 事实索引（2026-08-27）
+
+- Problem / root cause：上一阶段的 stdout streaming 解决了「实时可见」，但 `Route:/Plan:/Action:/✓`
+  平铺让用户分不清思考/计划/工具/回答边界，长 run 十几行过程淹没最终答案，且无回看/折叠能力。
+  根因是 presentation 层只有一个线性 Renderer，而不是事件链路缺事实。
+- Why projection layer：新增 `TuiProjectionEngine`（纯 reducer：QueryStreamEvent → 最小
+  state diff）后，Textual 只是「快照渲染器」。Runtime 不知道 Textual、TUI 不重跑 Agent/不订阅
+  SDK；同一个 Query 只执行一次，plain renderer 与 TUI 消费同一事实源。面试可讲清这层为什么
+  不是"第二套状态机"——它没有 Agent 语义，只有 UI 呈现语义（status/title/metrics/expanded）。
+- Two-phase segments（来自 ChatLab `buildProcessSegments`）：运行中按 timeline 逐块出现；
+  terminal 后把 route/thinking/plan/tool/retrieval 冻结成单行「执行过程 · N 步 · 总时长」折叠组，
+  answer/error 留在外层。终端版差异：不照搬 web 的 CSS disclosure，用 focus + Enter/Space +
+  click 三通道等价交互（Textual widget 原生能力）。
+- Compact tool rows（Beautiful UI Task Rows 参考）：完成后工具默认严格单行
+  `✓ 名称 · hits/msgs chips · duration`，详情（参数/结果摘要/partial-truncated ⚠）只在展开出现；
+  progressive disclosure 以两级实现而非大块 Collapsible 默认铺开。设计张力点：早期需求写过
+  "running tool 自动展开"，最终以「collapsed 行内联错误码 + 展开态完整 code/message」折中，
+  保持纵向空间最少化。
+- Tool identity & aggregation：start/complete 用 `tool_call_id` 关联同一 block，乱序完成不影响
+  正确行；`retrieval.completed` 在存在 running tool 时 deterministic 合并进该行 metrics，
+  消除 ChatLab 式重复 Retrieval 卡片——真实 smoke #2 验证事件链 4 个 retrieval 相关事件只呈现 1 行。
+- CoT boundary 守住：thinking block 只投影真实事件的时长/状态元数据，reasoning 文本一律不入
+  UI state（连 engine 都不存）；与 spec「provider 字段名不能证明可见性」一致，fake public_summary
+  测试断言文本不泄漏。
+- Streaming state management：answer delta 累积进同一 AnswerBlock，Markdown 以最新全文重建渲染；
+  authoritative `answer.completed` 整体替换 preview 防 finalizer 漂移；compose 未完成时更新降级为
+  登记文本（真实缺陷修复：首个 delta 同时产出 created+appended 两个 change 才能保证挂载顺序）。
+- Failure UX：Ctrl+C → cancel worker → engine.finalize_interrupted 生成中断 error row；
+  query.failed/provider 失败由事件驱动 error row + 组默认展开；两种路径都恢复输入焦点。
+  真实 smoke 里 provider 偶发失败被完整承接（历史保留、✓/✗ 同屏）。
+- Textual vs Rich Live 取舍：Rich Live 是单刷新区，无组件树/focus/键鼠/Pilot 测试；用它做可折叠
+  多块交互等于手写半个框架并违反"不做 ANSI 手术"约束。Textual 换来 message pump、focus 系统、
+  Collapsible/Markdown 与确定性 headless 测试。
+- Measured evidence：370 tests / ruff / mypy 全绿；4 类真实 DeepSeek run
+  （5.76s 简单、63.97s 单工具、46s 多工具含失败、76s 15 步）全程有 UI 反馈且无静默期；
+  SVG 截图取证三层结构 You > / 折叠组 / 回答。

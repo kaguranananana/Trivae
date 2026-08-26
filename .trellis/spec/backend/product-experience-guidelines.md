@@ -250,3 +250,63 @@ Sources: canonical message URLs
 
 用户可看到完整命中统计、有限但具体的链接、来源和边界说明；默认仍保持有界，避免大库查询把模型
 上下文和输出拖垮。
+
+## 9. Textual TUI projection contract（2026-08-27）
+
+### 1. Scope / Trigger
+
+- Scope：`interfaces/tui/`（models/widgets/app）、`cli.py` chat 入口的 `--plain` 与 isatty fallback。
+- Trigger：修改 TUI block 生命周期、事件投影规则、Tool/Retrieval 聚合、折叠策略或
+  `QueryStreamEvent` 消费方式时必读。
+
+### 2. Contracts
+
+- 分层：`Runtime → QueryStreamEvent → TuiProjectionEngine（纯 reducer）→ Textual widgets`。
+  Runtime / QueryStreamEvent / plain Renderer 均不知道 Textual；TUI 不订阅 SDK、不重跑 Agent、
+  不建第二套事件状态机。
+- Tool identity：start/complete/failed 以 `tool_call_id` 关联同一 block；同一 tool name 多次调用
+  互不影响；缺 start 的完成事实按独立块诚实出现，不伪造关联。
+- Retrieval 聚合：存在 running tool 时，`retrieval.completed` 的 counts/partial/truncated 合并进该
+  tool block 的 metrics（deterministic UI 合并，不改 Retrieval 领域语义）；无 running tool 才独立成行。
+- Thinking：仓库约定 reasoning 文本不进入终端；thinking block 只投影真实事件的时长/状态，
+  单行不可展开；禁止根据间隔/工具名编造思考内容。
+- 两阶段聚合：运行中 blocks 按事件顺序逐块出现；query terminal 后 process kinds
+  （route/thinking/plan/tool/retrieval）冻结为单行 `执行过程 · N 步 · 总时长` 折叠组；
+  answer 与 error 留在外层。失败/中断终态的组默认展开。
+- 折叠策略优先级：用户手动开合（`manually_expanded`）> 自动策略 > 默认。failed 块自动展开；
+  answer 永远展开。
+- 输入回路：run 进行中 Input disabled；Ctrl+C 取消当前 query worker 并渲染中断 error row；
+  终态后 re-enable + focus 回输入框。`--plain` 或非 TTY 自动回退 stdout renderer，plain 测试零改动。
+- 长内容边界：详情区条目 ≤20、字段 ≤800 chars（超限追加省略提示）；`partial/truncated`
+  以 ⚠ chips 显示在 collapsed 行，不得隐藏完整性信息。
+
+### 3. Tests Required
+
+- Projection reducer：全事件类型 state 变换、tool identity 乱序、answer delta 累积与 authoritative
+  替换、retrieval 合并/独立两分支、collapse 分组与默认展开条件、手动展开持久化、轮外事件忽略。
+- Pilot 应用测试：Enter/Space 切换、输入提交→streaming→折叠→输入恢复完整回路、Ctrl+C 中断恢复、多轮累积。
+- Plain 回归零改动。
+
+### 4. Wrong vs Correct
+
+#### Wrong
+
+```python
+# TUI 直接订阅 SDK event 并自行维护 Agent 状态机
+if sdk_event.type == "response.done":
+    self.agent_state = "done"   # 第二套状态机；与 Runtime 事实漂移
+```
+
+#### Correct
+
+```python
+changes = engine.apply(query_stream_event)  # 只消费已有事实的最小 diff
+for change in changes:
+    apply_to_widget(change)                 # widget 只渲染快照
+```
+
+### 5. Measured baseline（真实 DeepSeek smoke，2026-08-27）
+
+简单问题 5.76s（2 步）；单工具 63.97s（3 步，retrieval 已并入 tool 行）；
+多工具含失败 46s（7 步）；15 步大链路 76s 无静默期；provider 偶发 query.failed 正确收敛到 error row +
+输入恢复。数据存于对应 task `validation.md`。

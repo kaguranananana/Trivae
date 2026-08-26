@@ -99,7 +99,12 @@ def build_parser() -> argparse.ArgumentParser:
     chat_parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Show detailed route, plan, tool, retrieval, usage, and normalized event metadata",
+        help="Show detailed route, plan, tool, retrieval, usage, and normalized event metadata (plain mode only)",
+    )
+    chat_parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="Use the streaming stdout renderer instead of the interactive Textual TUI",
     )
     chat_parser.add_argument(
         "--env-file",
@@ -1433,6 +1438,32 @@ async def _run_interactive_chat(
         )
 
 
+def _run_tui_chat(application: TrivaeApplication, *, verbose: bool) -> int:
+    """以 Textual TUI 运行交互 chat；Runtime 仍由 Application 唯一执行。"""
+
+    # 局部 import 保持 plain 路径不加载 Textual。
+    from trivae.interfaces.tui.app import TrivaeChatApp
+
+    sessions = application.list_sessions()
+    if not sessions:
+        print("No chats found in the Canonical Store.")
+        return 1
+    readiness_lines: list[str] = []
+    readiness_reader = getattr(application, "readiness", None)
+    if callable(readiness_reader):
+        _print_readiness(readiness_reader(), output_fn=readiness_lines.append)
+    readiness_summary = " · ".join(readiness_lines) if readiness_lines else "Readiness unavailable"
+    tui_app = TrivaeChatApp(
+        application,
+        sessions=sessions,
+        readiness_summary=readiness_summary,
+        verbose=verbose,
+    )
+    # inline 模式：退出后历史保留在终端 scrollback，不进 alternate screen。
+    tui_app.run(inline=True)
+    return 0
+
+
 def _run_chat_command(args: argparse.Namespace) -> int:
     """创建正式 Application 并运行 chat；已分类错误可读，未知错误继续暴露。"""
 
@@ -1441,7 +1472,10 @@ def _run_chat_command(args: argparse.Namespace) -> int:
         load_environment_file(args.env_file)
         # Application 统一拥有 Store、Provider、Conversation 和 Trace lifecycle。
         with create_application(args.database) as application:
-            return asyncio.run(_run_interactive_chat(application, verbose=args.verbose))
+            use_plain = args.plain or not sys.stdout.isatty()
+            if use_plain:
+                return asyncio.run(_run_interactive_chat(application, verbose=args.verbose))
+            return _run_tui_chat(application, verbose=args.verbose)
     except (EOFError, KeyboardInterrupt):
         # Ctrl+D/Ctrl+C 即使发生在 Query 等待期间，也只做短退出提示。
         print("Bye.")
