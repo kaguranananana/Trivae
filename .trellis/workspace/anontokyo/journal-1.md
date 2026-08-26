@@ -747,3 +747,26 @@ Decoupled lexical, semantic, context, structured, and model projection budgets; 
 ### Status
 
 [OK] **Completed**
+
+
+## Session 34: Dynamic Tool Result Budget / Quality Regression
+
+**Date**: 2026-08-26
+**Task**: Dynamic Tool Result Budget / Quality Regression
+**Branch**: `codex/dynamic-tool-result-budget-regression`
+
+### Summary
+
+Implemented explicit fixed/dynamic Tool Result budgets, shared per-run accounting, settings, Trace and evaluation facts; added regression tests, deterministic benchmarks, real four-case fixed/dynamic A/B evidence, and archived the completed Trellis task.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `15364ee` | (see git log) |
+| `4ba786f` | (see git log) |
+| `68614dd` | (see git log) |
+
+### Status
+
+[OK] **Completed**

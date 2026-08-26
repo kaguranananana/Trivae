@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 33
+- **Total Sessions**: 34
 - **Last Active**: 2026-08-26
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~749 | Active |
+| `journal-1.md` | ~772 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 34 | 2026-08-26 | Dynamic Tool Result Budget / Quality Regression | `15364ee`, `4ba786f`, `68614dd` | `codex/dynamic-tool-result-budget-regression` |
 | 33 | 2026-08-26 | Retrieval budget and real answer regression | `163aad4` | `codex/retrieval-budget-quality-regression` |
 | 32 | 2026-08-25 | Agent Harness context hardening | `c054fc5` | `main` |
 | 31 | 2026-08-25 | Automatic CLI dotenv loading | `ce25244` | `codex/product-experience-hardening` |
