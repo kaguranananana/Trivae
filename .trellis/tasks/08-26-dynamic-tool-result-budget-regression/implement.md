@@ -38,7 +38,7 @@
 - [x] If available, run the four exact historical prompts with at least three fixed and three dynamic runs per case; preserve Trace IDs and compare quality/cost separately。
 - [x] If unavailable, record the exact blocked condition and do not invent A/B results。
 - [x] Run pytest, ruff, mypy, compileall, CLI help, Trellis validation and diff check; fix implementation root causes first。
-- [ ] Write validation/interview evidence, commit implementation, and report final branch/commit without merging or force-pushing。
+- [x] Write validation/interview evidence, commit implementation, and report final branch/commit without merging or force-pushing。
 
 ## Files expected to change
 
