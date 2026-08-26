@@ -28,6 +28,7 @@ from trivae.config.limits import (
 )
 from trivae.observability.contracts import FailureInfo
 from trivae.query.evidence import build_tool_result_record, project_tool_result_for_model
+from trivae.query.runtime.budget import ToolResultBudgetCall
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
 from trivae.retrieval.sql import MAX_SQL_RESULT_ROWS
 
@@ -43,18 +44,24 @@ def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
     )
 
 
-def _model_projection_metrics(payload: dict[str, object]) -> tuple[int | None, bool | None, int | None]:
-    """读取 Host projection 的 estimate 与省略 direct-hit 数量。"""
+def _model_projection_metrics(
+    payload: dict[str, object],
+) -> tuple[int | None, bool | None, int | None, int | None]:
+    """读取 Host projection 的 estimate、context omission 和 direct-hit omission。"""
 
     metrics = payload.get("model_projection")
     if not isinstance(metrics, dict):
-        return None, None, None
+        return None, None, None, None
     estimated_tokens = metrics.get("estimated_tokens")
     truncated = metrics.get("truncated")
+    omitted_context = metrics.get("omitted_context_messages")
     omitted_hits = metrics.get("omitted_hit_messages")
     return (
         estimated_tokens if isinstance(estimated_tokens, int) and not isinstance(estimated_tokens, bool) else None,
         truncated if isinstance(truncated, bool) else None,
+        omitted_context
+        if isinstance(omitted_context, int) and not isinstance(omitted_context, bool)
+        else None,
         omitted_hits if isinstance(omitted_hits, int) and not isinstance(omitted_hits, bool) else None,
     )
 
@@ -147,22 +154,10 @@ class SearchMessagesSDKToolAdapter:
                 context_after: Non-negative number of messages after each hit.
             """
 
-            runtime_context = context.context
-            # SDK 版本可能把 call id 放在 wrapper 或 typed local context 上，二者都只投影为安全字符串。
-            provider_tool_call_id = getattr(context, "tool_call_id", None)
-            if not isinstance(provider_tool_call_id, str):
-                provider_tool_call_id = None
-            # SDK ID 只用于 local mapping；正式 contract 使用由 Runtime 分配的 Trivae ID。
-            tool_call_id = runtime_context.resolve_tool_call_id(provider_tool_call_id)
-            trace_context = runtime_context.trace_context
-            if trace_context is not None:
-                child = getattr(trace_context, "child", None)
-                if not callable(child):
-                    raise TypeError("runtime trace_context must provide child()")
-                trace_context = child(f"tool:{tool_call_id}")
-            if self.tool_name not in runtime_context.available_capabilities:
-                # 工具不可见时仍被调用属于 Runtime invariant，不能伪装成普通结果。
-                raise RuntimeError(f"{self.tool_name} was invoked outside the allowed capability set")
+            runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
+                context,
+                self.tool_name,
+            )
 
             try:
                 # 只把模型可控的搜索字段转换为既有业务 input；scope 不从模型参数读取。
@@ -221,40 +216,14 @@ class SearchMessagesSDKToolAdapter:
                     )
                     raise
 
-            error_code = envelope.error.code if envelope.error is not None else None
-            # 一个已知 ToolEnvelope 一定对应一个 Trivae-owned Tool Result identity。
-            tool_result_id = f"{tool_call_id}/result"
-            record = build_tool_result_record(
-                run_id=runtime_context.run_id,
-                tool_call_id=tool_call_id,
-                tool_result_id=tool_result_id,
-                tool_name=self.tool_name,
-                envelope=envelope,
-                scope=runtime_context.scope,
-            )
-            result_payload = project_tool_result_for_model(envelope, record)
-            (
-                model_result_estimated_tokens,
-                model_result_truncated,
-                model_result_omitted_hit_messages,
-            ) = _model_projection_metrics(result_payload)
-            runtime_context.tool_results.append(record)
             # 这里记录一次 tool call；同一模型回合的多个调用由 Runtime hook 统一计为一轮。
-            runtime_context.tool_calls.append(
-                RuntimeToolCall(
-                    self.tool_name,
-                    envelope.status,
-                    error_code,
-                    tool_call_id=tool_call_id,
-                    tool_result_id=tool_result_id,
-                    round=runtime_context.current_tool_round,
-                    model_result_estimated_tokens=model_result_estimated_tokens,
-                    model_result_truncated=model_result_truncated,
-                    model_result_omitted_hit_messages=model_result_omitted_hit_messages,
-                )
+            return _append_runtime_tool_result(
+                runtime_context,
+                self.tool_name,
+                tool_call_id,
+                envelope,
+                budget_call,
             )
-            # canonical record 留在 Runtime local；模型只收到 slim projection 和短 handle。
-            return result_payload
 
         if trusted_max_results is not None:
             # SDK 0.22 使用该 JSON Schema 给 provider 描述参数边界；业务层仍会再次校验实际输入。
@@ -342,19 +311,10 @@ class SemanticSearchSDKToolAdapter:
         ) -> dict[str, object]:
             """将模型字段投影为 SemanticSearchInput，scope 仍由 RuntimeContext 注入。"""
 
-            runtime_context = context.context
-            provider_tool_call_id = getattr(context, "tool_call_id", None)
-            if not isinstance(provider_tool_call_id, str):
-                provider_tool_call_id = None
-            tool_call_id = runtime_context.resolve_tool_call_id(provider_tool_call_id)
-            trace_context = runtime_context.trace_context
-            if trace_context is not None:
-                child = getattr(trace_context, "child", None)
-                if not callable(child):
-                    raise TypeError("runtime trace_context must provide child()")
-                trace_context = child(f"tool:{tool_call_id}")
-            if "semantic_search" not in runtime_context.available_capabilities:
-                raise RuntimeError("semantic_search was invoked outside the allowed capability set")
+            runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
+                context,
+                "semantic_search",
+            )
 
             try:
                 request = SemanticSearchInput(
@@ -413,38 +373,14 @@ class SemanticSearchSDKToolAdapter:
                     )
                     raise
 
-            error_code = envelope.error.code if envelope.error is not None else None
-            tool_result_id = f"{tool_call_id}/result"
-            record = build_tool_result_record(
-                run_id=runtime_context.run_id,
-                tool_call_id=tool_call_id,
-                tool_result_id=tool_result_id,
-                tool_name="semantic_search",
-                envelope=envelope,
-                scope=runtime_context.scope,
-            )
-            result_payload = project_tool_result_for_model(envelope, record)
-            (
-                model_result_estimated_tokens,
-                model_result_truncated,
-                model_result_omitted_hit_messages,
-            ) = _model_projection_metrics(result_payload)
-            runtime_context.tool_results.append(record)
-            runtime_context.tool_calls.append(
-                RuntimeToolCall(
-                    "semantic_search",
-                    envelope.status,
-                    error_code,
-                    tool_call_id=tool_call_id,
-                    tool_result_id=tool_result_id,
-                    round=runtime_context.current_tool_round,
-                    model_result_estimated_tokens=model_result_estimated_tokens,
-                    model_result_truncated=model_result_truncated,
-                    model_result_omitted_hit_messages=model_result_omitted_hit_messages,
-                )
-            )
             # semantic candidate details 与 citation bookkeeping 分离，避免重复复制 full message provenance。
-            return result_payload
+            return _append_runtime_tool_result(
+                runtime_context,
+                "semantic_search",
+                tool_call_id,
+                envelope,
+                budget_call,
+            )
 
         if trusted_max_results is not None:
             schema = getattr(semantic_search, "params_json_schema", None)
@@ -468,7 +404,7 @@ class SemanticSearchSDKToolAdapter:
 def _tool_runtime_context(
     context: RunContextWrapper[RuntimeContext],
     tool_name: str,
-) -> tuple[RuntimeContext, str, object | None]:
+) -> tuple[RuntimeContext, str, object | None, ToolResultBudgetCall]:
     """统一解析 Runtime local context、Trivae Tool ID 和 Trace child。"""
 
     runtime_context = context.context
@@ -485,7 +421,9 @@ def _tool_runtime_context(
     if tool_name not in runtime_context.available_capabilities:
         # Tool 不可见时属于 Runtime invariant failure，不能返回普通 Agent 可恢复结果。
         raise RuntimeError(f"{tool_name} was invoked outside the allowed capability set")
-    return runtime_context, tool_call_id, trace_context
+    # 预留发生在 capability invoke 前，确保同一 run 的并发/连续 Tool 调用不会重置共享池。
+    budget_call = runtime_context.tool_result_budget_policy.begin_call()
+    return runtime_context, tool_call_id, trace_context, budget_call
 
 
 def _append_runtime_tool_result(
@@ -493,6 +431,7 @@ def _append_runtime_tool_result(
     tool_name: str,
     tool_call_id: str,
     envelope: ToolEnvelope,
+    budget_call: ToolResultBudgetCall,
 ) -> dict[str, object]:
     """把同一 Tool Result 同时写入 Evidence provenance 和 Runtime action projection。"""
 
@@ -506,12 +445,31 @@ def _append_runtime_tool_result(
         envelope=envelope,
         scope=runtime_context.scope,
     )
-    result_payload = project_tool_result_for_model(envelope, record)
+    result_payload = project_tool_result_for_model(
+        envelope,
+        record,
+        token_budget=budget_call.effective_budget,
+    )
     (
         model_result_estimated_tokens,
         model_result_truncated,
+        model_result_omitted_context_messages,
         model_result_omitted_hit_messages,
     ) = _model_projection_metrics(result_payload)
+    if (
+        model_result_estimated_tokens is None
+        or model_result_truncated is None
+        or model_result_omitted_context_messages is None
+        or model_result_omitted_hit_messages is None
+    ):
+        raise RuntimeError("model projection did not expose complete budget metrics")
+    budget_snapshot = runtime_context.tool_result_budget_policy.complete_call(
+        budget_call,
+        projected_estimated_tokens=model_result_estimated_tokens,
+        truncated=model_result_truncated,
+        omitted_context_messages=model_result_omitted_context_messages,
+        omitted_hit_messages=model_result_omitted_hit_messages,
+    )
     runtime_context.tool_results.append(record)
     runtime_context.tool_calls.append(
         RuntimeToolCall(
@@ -523,7 +481,9 @@ def _append_runtime_tool_result(
             round=runtime_context.current_tool_round,
             model_result_estimated_tokens=model_result_estimated_tokens,
             model_result_truncated=model_result_truncated,
+            model_result_omitted_context_messages=model_result_omitted_context_messages,
             model_result_omitted_hit_messages=model_result_omitted_hit_messages,
+            tool_result_budget=budget_snapshot,
         )
     )
     return result_payload
@@ -560,7 +520,10 @@ class GetMessageContextSDKToolAdapter:
         ) -> dict[str, object]:
             """恢复由 Search 结果公开的 source handle，兼容旧的 canonical message_id。"""
 
-            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "get_message_context")
+            runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
+                context,
+                "get_message_context",
+            )
             try:
                 if message_id is not None and source_id is not None:
                     raise CapabilityContractError("message_id and source_id cannot both be provided")
@@ -616,7 +579,13 @@ class GetMessageContextSDKToolAdapter:
                         )
                     )
                     raise
-            return _append_runtime_tool_result(runtime_context, "get_message_context", tool_call_id, envelope)
+            return _append_runtime_tool_result(
+                runtime_context,
+                "get_message_context",
+                tool_call_id,
+                envelope,
+                budget_call,
+            )
 
         return get_message_context
 
@@ -665,7 +634,10 @@ class FindMembersSDKToolAdapter:
         ) -> dict[str, object]:
             """只将模型身份查询字段转换成 FindMembersInput。"""
 
-            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "find_members")
+            runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
+                context,
+                "find_members",
+            )
             try:
                 request = FindMembersInput(
                     query=query,
@@ -712,7 +684,13 @@ class FindMembersSDKToolAdapter:
                         )
                     )
                     raise
-            return _append_runtime_tool_result(runtime_context, "find_members", tool_call_id, envelope)
+            return _append_runtime_tool_result(
+                runtime_context,
+                "find_members",
+                tool_call_id,
+                envelope,
+                budget_call,
+            )
 
         if trusted_max_results is not None:
             schema = getattr(find_members, "params_json_schema", None)
@@ -756,7 +734,10 @@ class GetSchemaSDKToolAdapter:
         async def get_schema(context: RunContextWrapper[RuntimeContext]) -> dict[str, object]:
             """读取 schema；模型不能通过参数选择未公开的表或列。"""
 
-            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "get_schema")
+            runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
+                context,
+                "get_schema",
+            )
             try:
                 request = GetSchemaInput()
             except CapabilityContractError as exc:
@@ -800,7 +781,13 @@ class GetSchemaSDKToolAdapter:
                         )
                     )
                     raise
-            return _append_runtime_tool_result(runtime_context, "get_schema", tool_call_id, envelope)
+            return _append_runtime_tool_result(
+                runtime_context,
+                "get_schema",
+                tool_call_id,
+                envelope,
+                budget_call,
+            )
 
         return get_schema
 
@@ -845,7 +832,10 @@ class ExecuteSQLSDKToolAdapter:
         ) -> dict[str, object]:
             """执行一条模型 SQL；scope 不从 SQL 文本或模型参数读取。"""
 
-            runtime_context, tool_call_id, trace_context = _tool_runtime_context(context, "execute_sql")
+            runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
+                context,
+                "execute_sql",
+            )
             try:
                 request = ExecuteSQLInput(sql=sql, max_rows=max_rows)
             except CapabilityContractError as exc:
@@ -889,7 +879,13 @@ class ExecuteSQLSDKToolAdapter:
                         )
                     )
                     raise
-            return _append_runtime_tool_result(runtime_context, "execute_sql", tool_call_id, envelope)
+            return _append_runtime_tool_result(
+                runtime_context,
+                "execute_sql",
+                tool_call_id,
+                envelope,
+                budget_call,
+            )
 
         if trusted_max_results is not None:
             # Provider schema 只是减少无效调用；Capability 仍使用 trusted scope 再次判断上限。

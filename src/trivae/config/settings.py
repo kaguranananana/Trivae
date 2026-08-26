@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, cast
+
+from trivae.config.limits import (
+    DEFAULT_MAX_TOOL_RESULT_PERCENT,
+    DEFAULT_MAX_TOOL_RESULT_TOKENS,
+    ToolResultBudgetMode,
+)
 
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 _DEFAULT_PROVIDER = "deepseek"
@@ -31,6 +37,10 @@ class ModelSettings:
     max_tool_rounds: int = _DEFAULT_MAX_TOOL_ROUNDS
     max_output_tokens: int = _DEFAULT_MAX_OUTPUT_TOKENS
     completion_max_tokens: int = _DEFAULT_COMPLETION_MAX_TOKENS
+    tool_result_budget_mode: ToolResultBudgetMode = "fixed"
+    model_context_window_tokens: int | None = None
+    max_tool_result_percent: int = DEFAULT_MAX_TOOL_RESULT_PERCENT
+    max_tool_result_tokens: int = DEFAULT_MAX_TOOL_RESULT_TOKENS
 
     def __repr__(self) -> str:
         """调试时只显示密钥存在性，绝不显示密钥正文。"""
@@ -42,7 +52,11 @@ class ModelSettings:
             f"model_name={self.model_name!r}, max_turns={self.max_turns!r}, "
             f"max_tool_rounds={self.max_tool_rounds!r}, "
             f"max_output_tokens={self.max_output_tokens!r}, "
-            f"completion_max_tokens={self.completion_max_tokens!r})"
+            f"completion_max_tokens={self.completion_max_tokens!r}, "
+            f"tool_result_budget_mode={self.tool_result_budget_mode!r}, "
+            f"model_context_window_tokens={self.model_context_window_tokens!r}, "
+            f"max_tool_result_percent={self.max_tool_result_percent!r}, "
+            f"max_tool_result_tokens={self.max_tool_result_tokens!r})"
         )
 
     def to_safe_dict(self) -> dict[str, object]:
@@ -57,6 +71,10 @@ class ModelSettings:
             "max_tool_rounds": self.max_tool_rounds,
             "max_output_tokens": self.max_output_tokens,
             "completion_max_tokens": self.completion_max_tokens,
+            "tool_result_budget_mode": self.tool_result_budget_mode,
+            "model_context_window_tokens": self.model_context_window_tokens,
+            "max_tool_result_percent": self.max_tool_result_percent,
+            "max_tool_result_tokens": self.max_tool_result_tokens,
         }
 
 
@@ -109,6 +127,17 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
         "TRIVAE_COMPLETION_MAX_TOKENS",
         _DEFAULT_COMPLETION_MAX_TOKENS,
     )
+    tool_result_budget_mode = _budget_mode(values)
+    model_context_window_tokens = _optional_positive_integer(
+        values,
+        "TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS",
+    )
+    max_tool_result_percent = _bounded_percentage(values)
+    max_tool_result_tokens = _positive_integer(
+        values,
+        "TRIVAE_MAX_TOOL_RESULT_TOKENS",
+        DEFAULT_MAX_TOOL_RESULT_TOKENS,
+    )
 
     return ModelSettings(
         api_key=api_key,
@@ -119,6 +148,10 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
         max_tool_rounds=max_tool_rounds,
         max_output_tokens=max_output_tokens,
         completion_max_tokens=completion_max_tokens,
+        tool_result_budget_mode=tool_result_budget_mode,
+        model_context_window_tokens=model_context_window_tokens,
+        max_tool_result_percent=max_tool_result_percent,
+        max_tool_result_tokens=max_tool_result_tokens,
     )
 
 
@@ -165,4 +198,46 @@ def _positive_integer(values: Mapping[str, str], name: str, default: int) -> int
     # 保留正数和规范十进制表示，避免不同文本产生相同但不可追踪的配置。
     if value <= 0 or raw != str(value):
         raise SettingsError(f"{name} must be a positive integer")
+    return value
+
+
+def _optional_positive_integer(values: Mapping[str, str], name: str) -> int | None:
+    """读取可选的显式 context window；缺失表示 context 未经验证。"""
+
+    if name not in values:
+        return None
+    raw = values[name].strip()
+    if not raw:
+        raise SettingsError(f"{name} must not be empty when provided")
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise SettingsError(f"{name} must be a positive integer") from exc
+    if value <= 0 or raw != str(value):
+        raise SettingsError(f"{name} must be a positive integer")
+    return value
+
+
+def _budget_mode(values: Mapping[str, str]) -> ToolResultBudgetMode:
+    """读取严格的 fixed/dynamic 模式，不接受未知模式的静默降级。"""
+
+    raw = values.get("TRIVAE_TOOL_RESULT_BUDGET_MODE", "fixed").strip().lower()
+    if raw not in {"fixed", "dynamic"}:
+        raise SettingsError("TRIVAE_TOOL_RESULT_BUDGET_MODE must be fixed or dynamic")
+    return cast(ToolResultBudgetMode, raw)
+
+
+def _bounded_percentage(values: Mapping[str, str]) -> int:
+    """读取 dynamic pool 百分比，确保公式输入在可解释范围内。"""
+
+    raw = values.get(
+        "TRIVAE_MAX_TOOL_RESULT_PERCENT",
+        str(DEFAULT_MAX_TOOL_RESULT_PERCENT),
+    ).strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise SettingsError("TRIVAE_MAX_TOOL_RESULT_PERCENT must be an integer from 1 to 100") from exc
+    if value < 1 or value > 100 or raw != str(value):
+        raise SettingsError("TRIVAE_MAX_TOOL_RESULT_PERCENT must be an integer from 1 to 100")
     return value

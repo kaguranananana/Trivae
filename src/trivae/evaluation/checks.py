@@ -128,6 +128,7 @@ def operational_measurements(
     """从 Runtime/Trace 派生运行事实，保持与回答质量分轴。"""
 
     tool_result_facts = () if trace is None else _tool_result_facts(trace)
+    tool_result_budget = _tool_result_budget_measurements(result, trace)
     measurements: dict[str, object] = {
         "termination": None if result is None else result.termination,
         "tool_calls": None if result is None else result.runtime_result.tool_count,
@@ -146,6 +147,7 @@ def operational_measurements(
         "structured_sql": None if trace is None else _structured_sql_measurements(trace),
         # 综合诊断需要按公开 Tool 保留 bounded 结果事实，而不是把原始 Trace 复制进 Evaluation。
         "tool_result_facts": tool_result_facts,
+        "tool_result_budget": tool_result_budget,
         # 这是公开 action sequence 的 observation；preferred tool 仍由诊断 Case 和人工/模型 Review 分开判断。
         "agent_tool_behavior": agent_tool_behavior_projection(result),
     }
@@ -254,6 +256,31 @@ def _tool_result_facts(trace: TraceProjection) -> tuple[dict[str, object], ...]:
                 fact[field_name] = value
         facts.append(fact)
     return tuple(facts)
+
+
+def _tool_result_budget_measurements(
+    result: QueryResult | None,
+    trace: TraceProjection | None,
+) -> tuple[dict[str, object], ...]:
+    """保留每次 Tool projection 的预算事实，不把它转换成质量判断。"""
+
+    measurements: list[dict[str, object]] = []
+    if result is not None:
+        for call in result.runtime_result.tool_calls:
+            if call.tool_result_budget is not None:
+                measurements.append(call.tool_result_budget.to_dict())
+    if measurements:
+        return tuple(measurements)
+    if trace is None:
+        return ()
+    # Trace 是缺少 QueryResult 时的事实来源；只读取 runtime tool completed 的小型快照。
+    for item in trace.timeline:
+        if item.operation != "runtime.tool.completed":
+            continue
+        snapshot = item.payload.get("tool_result_budget")
+        if isinstance(snapshot, Mapping):
+            measurements.append(dict(snapshot))
+    return tuple(measurements)
 
 
 def _finalization_measurements(

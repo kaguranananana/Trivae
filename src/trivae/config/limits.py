@@ -1,5 +1,9 @@
 """Trivae 各层独立的有界预算。"""
 
+from typing import Literal
+
+ToolResultBudgetMode = Literal["fixed", "dynamic"]
+
 # lexical candidate 服务 inventory/broad recall；hard cap 仍阻止无界 FTS 读取。
 DEFAULT_LEXICAL_RESULT_LIMIT = 1_000
 MAX_LEXICAL_RESULT_LIMIT = 5_000
@@ -24,3 +28,7 @@ MAX_AUTOMATIC_CONTEXT_SOURCE_HITS = 20
 # Tool Result 的模型投影有独立 token 预算，不等同于任何 Retrieval candidate 数量上限。
 # 16k 对 32k/64k/128k context 分别约占 50%/25%/12.5%，当前 Runtime 尚无可靠动态 context registry。
 DEFAULT_TOOL_RESULT_TOKEN_BUDGET = 16_000
+
+# 动态 Tool Result 预算只在收到显式 context window 时启用；百分比和绝对上限不影响 Retrieval budget。
+DEFAULT_MAX_TOOL_RESULT_PERCENT = 50
+DEFAULT_MAX_TOOL_RESULT_TOKENS = 128_000

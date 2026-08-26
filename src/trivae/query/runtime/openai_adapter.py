@@ -21,6 +21,11 @@ from openai import AsyncOpenAI
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
+from trivae.query.runtime.budget import (
+    ToolResultBudgetConfig,
+    ToolResultBudgetError,
+    ToolResultBudgetExhausted,
+)
 from trivae.query.runtime.contracts import (
     AgentRunRequest,
     AgentRuntime,
@@ -699,9 +704,11 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         self.capability_registry = capability_registry
         self._provider_client: AsyncOpenAI | None = None
         self._closed = False
+        runtime_settings = settings
         if model is None:
             # 只有显式创建真实 runtime 时才读取密钥并创建外部 client。
             resolved_settings = settings or load_settings()
+            runtime_settings = resolved_settings
             self._model, self._provider_client = self._build_openai_compatible_model(resolved_settings)
             self._provider_name = resolved_settings.provider
             self._model_name = resolved_settings.model_name
@@ -726,6 +733,24 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 if settings is not None
                 else _DEFAULT_COMPLETION_MAX_TOKENS
             )
+
+        # 预算配置只来自显式 settings；注入模型未提供 settings 时保留 fixed baseline。
+        self._tool_result_budget_config = ToolResultBudgetConfig(
+            mode=(runtime_settings.tool_result_budget_mode if runtime_settings is not None else "fixed"),
+            context_window_tokens=(
+                runtime_settings.model_context_window_tokens if runtime_settings is not None else None
+            ),
+            max_tool_result_percent=(
+                runtime_settings.max_tool_result_percent
+                if runtime_settings is not None
+                else ToolResultBudgetConfig().max_tool_result_percent
+            ),
+            max_tool_result_tokens=(
+                runtime_settings.max_tool_result_tokens
+                if runtime_settings is not None
+                else ToolResultBudgetConfig().max_tool_result_tokens
+            ),
+        )
 
         self.max_turns = configured_max_turns if max_turns is None else max_turns
         self.max_tool_rounds = (
@@ -972,6 +997,30 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 usage=self._project_usage(streamed_result),
             )
             yield self._event(state, "failed", result=result)
+        except ToolResultBudgetExhausted as exc:
+            # dynamic pool 耗尽是预算契约错误，使用稳定 code 暴露根因，不把异常正文送给 provider。
+            result = self._failed_result(
+                context,
+                state,
+                "TOOL_RESULT_BUDGET_EXHAUSTED",
+                "dynamic Tool Result run budget exhausted",
+                category="budget",
+                diagnostic_type=type(exc).__name__,
+                usage=self._project_usage(streamed_result),
+            )
+            yield self._event(state, "failed", result=result)
+        except ToolResultBudgetError as exc:
+            # 配置/结算契约错误必须与普通 provider runtime failure 区分，便于 Trace 定位。
+            result = self._failed_result(
+                context,
+                state,
+                "TOOL_RESULT_BUDGET_ERROR",
+                "Tool Result budget contract failed",
+                category="budget",
+                diagnostic_type=type(exc).__name__,
+                usage=self._project_usage(streamed_result),
+            )
+            yield self._event(state, "failed", result=result)
         except Exception as exc:
             if state.aborted:
                 result = self._aborted_result(
@@ -1022,6 +1071,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             available_capabilities=request.available_capabilities,
             abort_event=abort_event,
             trace_context=request.trace_context,
+            tool_result_budget_policy=self._tool_result_budget_config.new_policy(),
         )
 
     def _build_agent(self, request: AgentRunRequest, context: RuntimeContext, state: _RunState) -> Any:

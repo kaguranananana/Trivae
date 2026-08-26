@@ -8,6 +8,7 @@ from typing import AsyncIterator, Literal, Mapping, Protocol
 from trivae.capabilities.contracts import ExecutionScope
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.query.evidence import ToolResultRecord
+from trivae.query.runtime.budget import ToolResultBudgetConfig, ToolResultBudgetPolicy, ToolResultBudgetSnapshot
 
 
 class AgentRuntimeContractError(ValueError):
@@ -88,6 +89,8 @@ class RuntimeToolCall:
     model_result_estimated_tokens: int | None = None
     model_result_truncated: bool | None = None
     model_result_omitted_hit_messages: int | None = None
+    model_result_omitted_context_messages: int | None = None
+    tool_result_budget: ToolResultBudgetSnapshot | None = None
 
     @property
     def tool_round(self) -> int | None:
@@ -117,6 +120,10 @@ class RuntimeContext:
     current_tool_call_id: str | None = None
     # observability operation context 只存在进程内，Tool adapter 可选地消费它。
     trace_context: object | None = None
+    # 每次 RuntimeContext 都拥有独立账本；直接构造 context 的旧 caller 仍得到 fixed 16k contract。
+    tool_result_budget_policy: ToolResultBudgetPolicy = field(
+        default_factory=lambda: ToolResultBudgetConfig().new_policy()
+    )
     # provider call ID 只存在 adapter local context，用于把 SDK hook 对回 Trivae-owned identity。
     _provider_tool_call_ids: dict[str, str] = field(default_factory=dict, repr=False)
     _next_tool_call_number: int = field(default=0, repr=False)

@@ -493,6 +493,9 @@ class TraceableAgentRuntime(AgentRuntime):
             payload["tool_status"] = event.tool_call.status
             if event.tool_call.error_code is not None:
                 payload["tool_error_code"] = event.tool_call.error_code
+            if event.tool_call.tool_result_budget is not None:
+                # 每个 completed Tool 都保留自己的预算快照，便于解释累计 pool 的归因。
+                payload["tool_result_budget"] = event.tool_call.tool_result_budget.to_dict()
         if event.usage is not None:
             payload["usage"] = dict(event.usage)
         if event.model_visible_context is not None:
@@ -638,6 +641,28 @@ class TraceableAgentRuntime(AgentRuntime):
         payload["tool_result_projection_omitted_hit_messages"] = sum(
             call.model_result_omitted_hit_messages or 0 for call in result.tool_calls
         )
+        payload["tool_result_projection_omitted_context_messages"] = sum(
+            call.model_result_omitted_context_messages or 0 for call in result.tool_calls
+        )
+        budget_snapshots = [
+            call.tool_result_budget
+            for call in result.tool_calls
+            if call.tool_result_budget is not None
+        ]
+        if budget_snapshots:
+            # 同一 Runtime run 的配置一致；terminal 额外保存首个配置和最后余额，具体调用仍在 timeline。
+            first_budget = budget_snapshots[0]
+            last_budget = budget_snapshots[-1]
+            payload["budget_mode"] = first_budget.budget_mode
+            payload["context_window_tokens"] = first_budget.context_window_tokens
+            payload["context_window_source"] = first_budget.context_window_source
+            payload["max_tool_result_percent"] = first_budget.max_tool_result_percent
+            payload["absolute_tool_result_cap"] = first_budget.absolute_tool_result_cap
+            payload["run_tool_evidence_budget"] = first_budget.run_tool_evidence_budget
+            payload["remaining_tool_evidence_budget"] = (
+                last_budget.remaining_tool_evidence_budget_after_call
+            )
+            payload["tool_result_budget_call_count"] = len(budget_snapshots)
         if result.final_answer is not None:
             payload["final_answer"] = result.final_answer
         if result.error is not None:
