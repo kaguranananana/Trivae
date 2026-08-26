@@ -770,3 +770,25 @@ Implemented explicit fixed/dynamic Tool Result budgets, shared per-run accountin
 ### Status
 
 [OK] **Completed**
+
+
+## Session 35: 1M context budget and graceful finalization
+
+**Date**: 2026-08-26
+**Task**: 1M context budget and graceful finalization
+**Branch**: `codex/dynamic-tool-result-budget-regression`
+
+### Summary
+
+Implemented dynamic 1M context resolution with explicit per-call and run-level Tool Evidence budgets, verified registry precedence, shared run accounting, atomic settlement, and new Trace/Evaluation fields. Added bounded graceful finalization that preserves readable answers for local citation/schema issues while keeping trusted provenance, scope, empty-answer, and runtime failures explicit. Added PRD/design/implementation/bug audit/benchmark/real A-B-C report; 36 real cells were recorded with 32 harness timeouts, 3 completed valid samples, and 1 runtime failure. Final gates: 348 pytest passed, Ruff, Mypy, compileall, CLI help, Trellis validation, and diff check passed.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2db47ef` | (see git log) |
+| `4e9b596` | (see git log) |
+
+### Status
+
+[OK] **Completed**
