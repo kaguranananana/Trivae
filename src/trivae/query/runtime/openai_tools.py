@@ -94,6 +94,8 @@ class SearchMessagesSDKToolAdapter:
                 "after no hits, and do not use translation, synonym, punctuation, or near-duplicate "
                 "queries as multi-query expansion. Use the other tool only when the first result is "
                 "weak or insufficient. "
+                "When filtering by a person, sender_user_ids must contain the canonical user_id from "
+                "find_members, never a QQ number/UIN, nickname, group card, or display name. "
                 "keyword must be exactly one non-empty string. "
                 "Omit optional filters, or use null; do not send empty arrays. "
                 "limit must be a positive integer within the current trusted result limit. "
@@ -106,6 +108,8 @@ class SearchMessagesSDKToolAdapter:
             description = (
                 "Legacy compatibility entry point for exact lexical search in Trivae messages, "
                 "with a bounded local context window. Prefer lexical_search for the normal Agent surface. "
+                "When filtering by a person, sender_user_ids must contain the canonical user_id from "
+                "find_members, never a QQ number/UIN, nickname, group card, or display name. "
                 "keyword must be exactly one non-empty string. "
                 "Omit optional filters, or use null; do not send empty arrays. "
                 "limit must be a positive integer within the current trusted result limit. "
@@ -147,7 +151,7 @@ class SearchMessagesSDKToolAdapter:
                 start_timestamp: Optional integer inclusive lower bound in milliseconds.
                 end_timestamp: Optional integer exclusive upper bound in milliseconds.
                 time_range: Optional relative range object anchored to archive_latest; Host resolves absolute timestamps.
-                sender_user_ids: Optional non-empty sender ID array; use null when unused.
+                sender_user_ids: Optional non-empty canonical user_id array from find_members; use null when unused. Never pass a QQ number/UIN, nickname, group card, or display name.
                 message_types: Optional non-empty message type array; use null when unused.
                 limit: Positive result count not greater than the trusted result limit.
                 context_before: Non-negative number of messages before each hit.
@@ -277,6 +281,8 @@ class SemanticSearchSDKToolAdapter:
             "after no hits, and do not use translation, synonym, punctuation, or near-duplicate "
             "queries as multi-query expansion. Use the other tool only when the first result is weak "
             "or insufficient. "
+            "When filtering by a person, sender_user_ids must contain the canonical user_id from "
+            "find_members, never a QQ number/UIN, nickname, group card, or display name. "
             "Omit optional filters, or use null; do not send empty arrays. "
             "The semantic index must be explicitly built and may report partial coverage."
             " For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value."
@@ -615,7 +621,8 @@ class FindMembersSDKToolAdapter:
             "Find candidate members by nickname, group card, username/display name, alias-like "
             "remark, platform user ID, or UIN. Use before filtering retrieval by a person when the "
             "identity is unclear. Return candidates and matching reasons; multiple candidates are "
-            "normal, so do not claim a unique person without resolving the ambiguity."
+            "normal, so do not claim a unique person without resolving the ambiguity. Use the "
+            "returned candidate's canonical user_id for sender_user_ids; never pass its UIN or display name."
         )
         if trusted_max_results is not None:
             description += f" The current member candidate limit is {min(trusted_max_results, MAX_MEMBER_RESULT_LIMIT)}."
@@ -813,8 +820,10 @@ class ExecuteSQLSDKToolAdapter:
             "structured questions. Call get_schema first when table or column names are uncertain. "
             "The trusted session/time scope is enforced by the tool and cannot be expanded by SQL WHERE. "
             "Do not add a LIMIT just for safety; max_rows is bounded by the tool. Writes, DDL, ATTACH, "
-            "PRAGMA, internal tables, and scope escape are rejected. No query rewrite or retrieval fallback "
-            "is performed. Respect returned_rows and truncated in the result when citing rows."
+            "PRAGMA, internal tables, and scope escape are rejected. For sender statistics, filter "
+            "messages.sender_user_id by canonical users.user_id; a QQ UIN belongs to users.platform_uin "
+            "and must be resolved through users rather than compared directly to messages.sender_user_id. "
+            "No query rewrite or retrieval fallback is performed. Respect returned_rows and truncated in the result when citing rows."
         )
         if trusted_max_results is not None:
             description += f" The current SQL result row limit is {min(trusted_max_results, MAX_SQL_RESULT_ROWS)}."

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from trivae.capabilities.contracts import ExecutionScope
-from trivae.query.evidence import AnswerArtifact
+from trivae.query.evidence import AnswerArtifact, StructuredSource
 from trivae.query.runtime.contracts import ModelContextMessage
 
 ConversationRole = Literal["user", "assistant"]
@@ -38,6 +39,93 @@ def _required_text(name: str, value: object) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ConversationError(f"{name} must be a non-empty string")
     return value.strip()
+
+
+def _optional_snapshot_text(value: object) -> str | None:
+    """读取成员身份快照中的可选文本字段，避免把无效值带入下一轮上下文。"""
+
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def _historical_member_identity_context(artifact: AnswerArtifact) -> tuple[str, ...]:
+    """从已验证的 find_members 行提取可复用身份，但不复用旧 Evidence locator。"""
+
+    identities: dict[str, dict[str, str | None]] = {}
+    for evidence_item in artifact.evidence_items:
+        # 一个 finding 可能绑定多个来源，因此必须遍历每个 EvidenceSource。
+        for evidence_source in evidence_item.sources:
+            reference = evidence_source.reference
+            # 只有 find_members 的 candidates[N] structured row 承载成员身份。
+            if not isinstance(reference, StructuredSource):
+                continue
+            if reference.locator_kind != "row" or not reference.locator.startswith("candidates["):
+                continue
+            snapshot = reference.value_snapshot
+            # Finalizer 保存的是 bounded mapping；其他 structured 值不是身份候选。
+            if not isinstance(snapshot, Mapping):
+                continue
+            if not isinstance(snapshot.get("memberships"), list) or not isinstance(snapshot.get("matches"), list):
+                continue
+
+            user_id_value = snapshot.get("user_id")
+            platform_value = snapshot.get("platform")
+            platform_user_id_value = snapshot.get("platform_user_id")
+            # Canonical user_id、platform 和 platform_user_id 缺一不可，避免拼出不完整身份。
+            if (
+                not isinstance(user_id_value, str)
+                or not user_id_value.strip()
+                or not isinstance(platform_value, str)
+                or not platform_value.strip()
+                or not isinstance(platform_user_id_value, str)
+                or not platform_user_id_value.strip()
+            ):
+                continue
+
+            user_id = user_id_value.strip()
+            # 同一个 UserIdentity 只保留一份，避免历史答案中的重复 citation 放大上下文。
+            identities.setdefault(
+                user_id,
+                {
+                    "platform": platform_value.strip(),
+                    "platform_user_id": platform_user_id_value.strip(),
+                    "platform_uin": _optional_snapshot_text(snapshot.get("platform_uin")),
+                    "display_name": _optional_snapshot_text(snapshot.get("display_name")),
+                    "nickname": _optional_snapshot_text(snapshot.get("nickname")),
+                    "remark": _optional_snapshot_text(snapshot.get("remark")),
+                },
+            )
+
+    if not identities:
+        # 没有成员候选时不额外制造上下文；当前回答仍按原有历史语义回放。
+        return ()
+    if len(identities) > 1:
+        # 多个候选不能由 Host 替模型猜一个，必须让下一轮重新确认语义指代。
+        return (
+            "Historical member identity context is ambiguous: a previous member lookup returned "
+            "multiple canonical candidates. Call find_members again before applying a sender filter; "
+            "do not choose a candidate silently.",
+        )
+
+    user_id, fields = next(iter(identities.items()))
+    identity_fields = [
+        f"user_id={user_id}",
+        f"platform={fields['platform']}",
+        f"platform_user_id={fields['platform_user_id']}",
+    ]
+    # UIN/昵称只作为确认指代的别名展示，真正过滤仍必须使用 user_id。
+    for field_name in ("platform_uin", "display_name", "nickname", "remark"):
+        field_value = fields[field_name]
+        if field_value is not None:
+            identity_fields.append(f"{field_name}={field_value}")
+    return (
+        "Historical member identity context (identity bookkeeping only; not fresh evidence):",
+        "A previous find_members result resolved the referenced member to this canonical identity:",
+        f"- {'; '.join(identity_fields)}",
+        "For sender filters, pass the exact user_id above to sender_user_ids. "
+        "Never pass platform_uin/QQ number, nickname, group card, or display name as sender_user_ids.",
+    )
 
 
 @dataclass(frozen=True)
@@ -99,6 +187,8 @@ class ConversationMessage:
                     lines.append(f"  limitations={'; '.join(item.limitations)}")
         if artifact.limitations:
             lines.append(f"Historical answer limitations: {'; '.join(artifact.limitations)}")
+        # 只回放已验证的 canonical 身份字段，不回放旧 Tool Result 的 source locator。
+        lines.extend(_historical_member_identity_context(artifact))
         return ModelContextMessage(role="assistant", content="\n".join(lines))
 
 

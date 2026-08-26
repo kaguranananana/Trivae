@@ -382,6 +382,20 @@ Runner
 
 ChatLab 也是同样做法：自己维护 AI Conversation History，进入 `PiAgentCore` 前执行 `Persisted Chat History → history adapter → Pi Agent Messages`，并把历史中的 Tool Call / Tool Result 恢复成结构化消息，而不是把所有内容 flatten 成纯文本。Trivae 继承该语义。
 
+### 跨轮次成员身份连续性
+
+Conversation Context Compiler 对已完成 Assistant Artifact 的回放必须保留成员身份的可复用信息，
+否则上一轮 `find_members` 已经确认的对象会在下一轮退化为 QQ UIN、昵称等显示别名，进而被误传给
+`sender_user_ids` 或 `messages.sender_user_id`。
+
+- `find_members.candidates[].user_id` 是成员过滤使用的 Canonical ID；`platform_uin`、昵称、群名片和显示名只是匹配别名。
+- 历史 Artifact 只有在包含唯一 `candidates[N]` structured row 时，才可向下一轮提供该候选的 `user_id` 及必要别名；这段内容属于 identity bookkeeping，不是本轮 fresh evidence。
+- 历史候选不唯一时，Context Compiler 不得替模型选择成员，必须明确要求下一轮重新调用 `find_members`。
+- 回放身份字段不得携带旧 Tool Result 的 source locator；新一轮需要引用证据时仍必须取得当前 Run 的 Tool Result。
+
+这个边界同时适用于 retrieval 的 `sender_user_ids` 和 SQL 的 `messages.sender_user_id`；SQL 需要按 UIN
+查找时，应通过 `users.platform_uin` 得到 `users.user_id`，不能直接比较两个不同语义的字段。
+
 ### SDK / Provider 状态边界
 
 不仅 SDK `Session` 不能成为 source of truth，SDK / Provider 提供的 `conversation_id`、`previous_response_id` 或其他 server-managed conversation state 也只能作为可替换的传输优化或关联标识：

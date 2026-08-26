@@ -97,6 +97,42 @@ def _artifact() -> AnswerArtifact:
     )
 
 
+def _member_artifact() -> AnswerArtifact:
+    """构造上一轮 find_members 已确认单一成员的持久化 Artifact。"""
+
+    member_source = StructuredSource(
+        run_id="run-member",
+        tool_call_id="run-member/tool-call/1",
+        tool_result_id="run-member/tool-result/1",
+        locator_kind="row",
+        locator="candidates[0]",
+        value_snapshot={
+            "user_id": "qq:uid:u_1ydqFBvSr5sBw7Q1X5bwcw",
+            "platform": "qq",
+            "platform_user_id": "u_1ydqFBvSr5sBw7Q1X5bwcw",
+            "platform_uin": "2867277364",
+            "display_name": "👻",
+            "nickname": "👻",
+            "remark": None,
+            "memberships": [{"session_id": "qq:1040412855"}],
+            "matches": [{"field": "platform_uin", "value": "2867277364"}],
+        },
+    )
+    return AnswerArtifact(
+        content_blocks=(AnswerContentBlock("member-claim", "已确认该成员。"),),
+        citation_bindings=(CitationBinding("member-claim", ("member-evidence",)),),
+        evidence_items=(
+            EvidenceItem(
+                evidence_id="member-evidence",
+                finding="成员身份已由 find_members 确认。",
+                criterion="当前 Tool Result 返回了唯一的 canonical member row。",
+                sufficiency="sufficient",
+                sources=(EvidenceSource("context", member_source),),
+            ),
+        ),
+    )
+
+
 def _tool_record(scope: ExecutionScope, run_id: str, message_id: str) -> ToolResultRecord:
     """构造本轮可被 Finalizer 信任的 message Tool Result projection。"""
 
@@ -214,6 +250,24 @@ class SQLiteConversationStoreTests(unittest.TestCase):
         self.assertEqual(restored.messages[0].content, "第一轮问题")
         self.assertEqual(restored.messages[1].answer_artifact, _artifact())
         self.assertEqual(committed.messages, restored.messages)
+
+    def test_replayed_member_identity_uses_canonical_id_without_old_locator(self) -> None:
+        """跨轮次回放 find_members 结果时保留 user_id，避免下一轮把 UIN 当主键。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "conversation.sqlite3"
+            store = SQLiteConversationStore(database_path)
+            conversation = store.create_conversation()
+            store.commit_turn(conversation.conversation_id, "查询这个成员", _member_artifact())
+            restored = store.get_conversation(conversation.conversation_id)
+            store.close()
+
+        context = restored.to_model_context()[1]
+        self.assertIn("user_id=qq:uid:u_1ydqFBvSr5sBw7Q1X5bwcw", context.content)
+        self.assertIn("platform_uin=2867277364", context.content)
+        self.assertIn("pass the exact user_id above to sender_user_ids", context.content)
+        self.assertNotIn("run-member/tool-result/1", context.content)
+        self.assertNotIn("candidates[0]", context.content)
 
     def test_transaction_failure_rolls_back_user_and_assistant_together(self) -> None:
         class FailingAssistantStore(SQLiteConversationStore):

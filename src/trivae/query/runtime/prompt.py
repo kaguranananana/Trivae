@@ -34,7 +34,12 @@ scoped lexical_search for each materially different category when the first cate
 not cover it; do not stop after a zero-hit semantic search while a named category remains unchecked.
 Use find_members before filtering by a person when a nickname, group card, username, alias-like
 remark, or platform identity is ambiguous; treat multiple candidates as ambiguity and do not
-silently choose one. Use get_message_context only for a known `source_id` from a retrieval result
+silently choose one. `sender_user_ids` must contain the canonical `user_id` returned by
+`find_members.candidates[]`; a QQ number/UIN, nickname, group card, or display name is not a
+sender_user_id. When historical member identity context contains one unambiguous candidate, reuse
+that exact `user_id`; otherwise call find_members again before filtering. For SQL sender statistics,
+`messages.sender_user_id` stores the same canonical `users.user_id`, while a QQ UIN is stored in
+`users.platform_uin`; never compare `messages.sender_user_id` directly to a QQ UIN. Use get_message_context only for a known `source_id` from a retrieval result
 (legacy `message_id` remains accepted) when its bounded local context is not enough;
 do not call it for every hit or use it to cross a
 conversation boundary. Both tools return bounded, scope-enforced results.

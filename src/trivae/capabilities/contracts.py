@@ -219,7 +219,7 @@ class ExecutionScope:
 
 @dataclass(frozen=True)
 class SearchMessagesInput:
-    """search_messages 的输入字段；scope enforcement 不由普通参数自行完成。"""
+    """search_messages 的输入字段；sender_user_ids 必须是 canonical users.user_id。"""
 
     keyword: str
     session_ids: tuple[str, ...] | None = None
@@ -257,7 +257,7 @@ class SearchMessagesInput:
 
 @dataclass(frozen=True)
 class SemanticSearchInput:
-    """semantic_search 的独立输入；不复用 keyword，避免工具策略参数化。"""
+    """semantic_search 的独立输入；sender_user_ids 必须是 canonical users.user_id。"""
 
     query: str
     session_ids: tuple[str, ...] | None = None

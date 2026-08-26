@@ -72,7 +72,7 @@ def _validate_limit(name: str, value: int | None) -> None:
 
 @dataclass(frozen=True)
 class ScopeFilters:
-    """Structured 与 Lexical 共用的 canonical scope 过滤字段。"""
+    """Structured 与 Lexical 共用的 canonical scope 过滤字段。sender_user_ids 是 UserIdentity ID。"""
 
     session_ids: tuple[str, ...] | None = None
     start_timestamp: int | None = None
