@@ -380,3 +380,25 @@ dynamic run pool 256k（可引用 historical 64k），并同步报告 visible ev
 latency、provider usage/成本可得性和 graceful/fatal completion。只有 Retriever 找到、Canonical 保留、
 不同预算可见性和最终答案使用情况都被 Trace/Case evidence 支持时，才能把收益归因给 budget；否则归类为
 retrieval、enumeration 或 evidence consumption 问题。
+
+## 23. Real Provider paired calibration amendment（2026-08-26）
+
+本轮真实校准把第三个 variant 固定为当前默认 dynamic run pool，而不是继续比较一个显式
+`256k` override：`fixed-16k`、`dynamic-run-128k`、`dynamic-default-250k`。相同 4 个 prompt、
+3 次 repetition 和 Provider 条件共计划 36 个 cell；每个 cell 120 秒，整个实验 4500 秒。Timeout、
+Provider runtime failure 和 completed 必须分开记录，前两者不能进入回答质量分母，也不能被转写成
+finalization degraded。
+
+2026-08-26 的 `1m-paired-v2` 真实运行完成 27 个 sample，另有 7 个 cell timeout、2 个 Provider
+`SSLError` runtime failure；得到 21 个 pairwise completed comparison 和 6 个完整 triad。fixed
+样本发生 3/10 次 model projection truncation，dynamic-128 与 default-250 均为 0；但 dynamic
+run pool 在 completed sample 中都没有绑定，且 Retrieval 多次保持 partial/truncated。因 4 个真实
+Case 尚无 exhaustive Reference Findings，本轮只能结论为“证据可见性 operationally 改善，最终枚举/证据
+覆盖质量尚未证明稳定提升”，不能把 projection、latency 或 token 均值直接称为用户回答质量。
+
+Evaluation report 必须同时提供：Retriever hits/returned、Canonical/model-visible projection、
+omission/truncation、Tool calls/rounds、latency/usage、citation/finalization、Trace ID、timeout/
+runtime failure inventory，以及 paired ReviewPacket 的人工可复核材料。没有 exhaustive Reference
+时，enumeration completeness 与 obvious final-answer omission 保持 `unknown`；evidence coverage
+可以记录 `partial`，但不能伪造自动分数。`dynamic-default-250k` 在本轮保持为有上限的 headroom，
+是否继续产生质量收益必须由实际绑定 run pool 的多-call压力 Case 重新校准。

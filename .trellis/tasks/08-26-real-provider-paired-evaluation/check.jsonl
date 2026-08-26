@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Check that timeout/runtime failure samples are excluded from quality denominators and that manual quality judgments remain evidence-backed."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Check that cell timeout, experiment deadline, provider runtime failure, and completed results are explicit and not silently converted into success."}
+{"file":".trellis/spec/project/interview-defense.md","reason":"Check that the final report explains the experimental controls, Trace evidence, limitations, and next-step recommendation."}
