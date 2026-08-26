@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from time import perf_counter
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Literal
 
 from trivae.observability.contracts import FailureInfo
 from trivae.query.contracts import QueryDiagnostic, QueryRequest, QueryResult
-from trivae.query.evidence import AnswerFinalizationError, FinalizationErrorInfo, finalize_answer
+from trivae.query.evidence import FinalizationErrorInfo, finalize_answer_gracefully
 from trivae.query.planner import Planner, PlannerResult, render_plan_guidance
 from trivae.query.router import RouteDecision, Router
 from trivae.query.runtime.contracts import AgentRuntime
@@ -346,28 +346,28 @@ class QueryOrchestrator:
                 parent_operation_id=query_operation_id,
                 payload={"run_id": runtime_result.run_id},
             )
-        try:
-            # Finalizer 只读取同一个 RuntimeResult 携带的 current-run provenance。
-            answer_artifact = finalize_answer(
-                runtime_result.final_answer or "",
-                run_id=runtime_result.run_id,
-                tool_results=runtime_result.tool_results,
-                scope=request.scope,
-                # M5 旧输出把 request_id 嵌入 tool locator；M6 保持 fresh run_id，
-                # 仅在调用者明确提供同一 request_id 时映射旧 locator 前缀。
-                accepted_run_ids=() if request.request_id is None else (request.request_id,),
-            )
-        except AnswerFinalizationError as exc:
-            # citation 错误显式暴露；不删除 binding、不自动替换 source、不重试模型。
+        # Finalizer 只读取同一个 RuntimeResult 携带的 current-run provenance。
+        finalization = finalize_answer_gracefully(
+            runtime_result.final_answer or "",
+            run_id=runtime_result.run_id,
+            tool_results=runtime_result.tool_results,
+            scope=request.scope,
+            # M5 旧输出把 request_id 嵌入 tool locator；M6 保持 fresh run_id，
+            # 仅在调用者明确提供同一 request_id 时映射旧 locator 前缀。
+            accepted_run_ids=() if request.request_id is None else (request.request_id,),
+        )
+        if finalization.error is not None:
+            # graceful wrapper 已经把可恢复问题与 fatal 问题区分；fatal 仍显式返回 caller。
+            error = finalization.error
             if trace is not None:
                 failure = FailureInfo(
-                    error_code=exc.code,
+                    error_code=error.code,
                     origin_stage="citation",
                     observed_stage="answer",
                     category="validation",
                     handling="returned_to_caller",
                     cause_operation_id="citation.validation",
-                    diagnostic_reference=exc.path,
+                    diagnostic_reference=error.path,
                 )
                 trace.emit(
                     stage="citation",
@@ -376,7 +376,12 @@ class QueryOrchestrator:
                     operation_id="citation.validation",
                     parent_operation_id="evidence.prepare",
                     outcome="error",
-                    payload={"error_code": exc.code, "path": exc.path},
+                    payload={
+                        "finalization_status": "failed",
+                        "error_code": error.code,
+                        "path": error.path,
+                        **finalization.diagnostics.to_dict(),
+                    },
                     failure=failure,
                 )
                 trace.emit(
@@ -386,15 +391,20 @@ class QueryOrchestrator:
                     operation_id=finalization_operation_id,
                     parent_operation_id=query_operation_id,
                     outcome="error",
-                    payload={"error_code": exc.code, "path": exc.path},
+                    payload={
+                        "finalization_status": "failed",
+                        "error_code": error.code,
+                        "path": error.path,
+                        **finalization.diagnostics.to_dict(),
+                    },
                     failure=FailureInfo(
-                        error_code=exc.code,
+                        error_code=error.code,
                         origin_stage="citation",
                         observed_stage="answer",
                         category="validation",
                         handling="returned_to_caller",
                         cause_operation_id="citation.validation",
-                        diagnostic_reference=exc.path,
+                        diagnostic_reference=error.path,
                     ),
                 )
             return QueryResult(
@@ -402,8 +412,18 @@ class QueryOrchestrator:
                 route_decision=decision,
                 plan=plan,
                 diagnostics=tuple(diagnostics),
-                finalization_error=FinalizationErrorInfo(exc.code, exc.message, exc.path),
+                finalization_error=FinalizationErrorInfo(error.code, error.message, error.path),
+                finalization_status="failed",
+                finalization_diagnostics=finalization.diagnostics,
             )
+        answer_artifact = finalization.artifact
+        if answer_artifact is None:
+            # FinalizationResult 的 invariant 已保证不会发生；若发生必须暴露实现错误。
+            raise RuntimeError("successful finalization is missing its answer artifact")
+        finalization_diagnostics = finalization.diagnostics
+        finalization_outcome: Literal["ok", "partial"] = (
+            "partial" if finalization_diagnostics.status == "degraded" else "ok"
+        )
         if trace is not None:
             selected_sources: list[str] = []
             for evidence_item in answer_artifact.evidence_items:
@@ -420,12 +440,17 @@ class QueryOrchestrator:
                 phase="completed",
                 operation_id="evidence.prepare",
                 parent_operation_id=query_operation_id,
-                outcome="ok",
+                outcome=finalization_outcome,
                 payload={
                     "evidence_count": len(answer_artifact.evidence_items),
                     "selected_source_count": len(selected_sources),
                     "selected_source_ids": selected_sources,
                     "limitations": answer_artifact.limitations,
+                    "finalization_status": finalization_diagnostics.status,
+                    "user_answer_preserved": finalization_diagnostics.user_answer_preserved,
+                    "dropped_field_count": finalization_diagnostics.dropped_field_count,
+                    "dropped_citation_count": finalization_diagnostics.dropped_citation_count,
+                    "normalization_count": finalization_diagnostics.normalization_count,
                 },
             )
             trace.emit(
@@ -434,10 +459,12 @@ class QueryOrchestrator:
                 phase="completed",
                 operation_id="citation.validation",
                 parent_operation_id="evidence.prepare",
-                outcome="ok",
+                outcome=finalization_outcome,
                 payload={
                     "binding_count": len(answer_artifact.citation_bindings),
-                    "unresolved_count": 0,
+                    "unresolved_count": finalization_diagnostics.dropped_citation_count,
+                    "validated_citation_count": finalization_diagnostics.validated_citation_count,
+                    "finalization_status": finalization_diagnostics.status,
                 },
             )
             trace.emit(
@@ -446,10 +473,20 @@ class QueryOrchestrator:
                 phase="completed",
                 operation_id=finalization_operation_id,
                 parent_operation_id=query_operation_id,
-                outcome="ok",
+                outcome=finalization_outcome,
                 payload={
                     "answer_length": len(answer_artifact.answer_text),
                     "limitation_count": len(answer_artifact.limitations),
+                    "finalization_status": finalization_diagnostics.status,
+                    "user_answer_preserved": finalization_diagnostics.user_answer_preserved,
+                    "error_code": finalization_diagnostics.error_code,
+                    "error_path": finalization_diagnostics.error_path,
+                    "degradation_codes": finalization_diagnostics.degradation_codes,
+                    "dropped_field_count": finalization_diagnostics.dropped_field_count,
+                    "dropped_field_paths": finalization_diagnostics.dropped_field_paths,
+                    "dropped_citation_count": finalization_diagnostics.dropped_citation_count,
+                    "normalization_count": finalization_diagnostics.normalization_count,
+                    "validated_citation_count": finalization_diagnostics.validated_citation_count,
                     # 这是通过 finalization 校验后的 Debug execution snapshot；业务事实仍由 AnswerArtifact/Conversation Store 持有。
                     "answer_text": answer_artifact.answer_text,
                 },
@@ -460,6 +497,8 @@ class QueryOrchestrator:
             plan=plan,
             diagnostics=tuple(diagnostics),
             answer_artifact=answer_artifact,
+            finalization_status=finalization_diagnostics.status,
+            finalization_diagnostics=finalization_diagnostics,
         )
 
     def _planner_diagnostic(self, result: PlannerResult) -> QueryDiagnostic:

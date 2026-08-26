@@ -39,7 +39,13 @@ from trivae.evaluation.checks import (
 )
 from trivae.observability.contracts import TraceMetrics, TraceProjection, TraceTimelineItem
 from trivae.query.contracts import ExecutionOverride, QueryRequest, QueryResult
-from trivae.query.evidence import FinalizationErrorInfo, ToolResultRecord
+from trivae.query.evidence import (
+    AnswerArtifact,
+    AnswerContentBlock,
+    FinalizationDiagnostics,
+    FinalizationErrorInfo,
+    ToolResultRecord,
+)
 from trivae.query.planner import Plan, PlannerResult, PlanStep
 from trivae.query.router import RouteDecision
 from trivae.query.runtime.contracts import RuntimeResult, RuntimeToolCall
@@ -602,6 +608,49 @@ class EvaluationRunnerTests(unittest.TestCase):
         citation_check = next(check for check in checks if check.name == "citation_provenance")
         self.assertEqual(citation_check.status, "failed")
         self.assertEqual(citation_check.severity, "hard")
+
+    def test_degraded_artifact_is_deliverable_but_not_grounded_pass(self) -> None:
+        """Evaluation 区分可交付性与 citation grounded quality，不把 degraded 当作通过。"""
+
+        case = _case()
+        result = QueryResult(
+            runtime_result=RuntimeResult(
+                final_answer="可读答案",
+                provider="test-provider",
+                model="test-model",
+                termination="completed",
+                tool_calls=(),
+            ),
+            route_decision=RouteDecision("standard_execution", 1.0, "rule", "test"),
+            answer_artifact=AnswerArtifact((AnswerContentBlock("answer", "可读答案"),)),
+            finalization_status="degraded",
+            finalization_diagnostics=FinalizationDiagnostics(
+                status="degraded",
+                user_answer_preserved=True,
+                error_code="INVALID_MODEL_CANDIDATE",
+                error_path="limitations",
+                degradation_codes=("limitations_normalized",),
+                normalization_count=1,
+            ),
+            trace_id="trace:degraded",
+        )
+
+        checks = run_deterministic_checks(
+            case=case,
+            snapshot=case.dataset_snapshot,
+            variant=_variant(),
+            request=QueryRequest(case.query, case.data_access_scope, request_id="request:degraded"),
+            result=result,
+            trace=_trace("trace:degraded", "completed"),
+        )
+        finalization_check = next(check for check in checks if check.name == "finalization_state")
+        citation_check = next(check for check in checks if check.name == "citation_provenance")
+        self.assertEqual(finalization_check.status, "degraded")
+        self.assertEqual(citation_check.status, "degraded")
+        self.assertEqual(citation_check.severity, "diagnostic")
+        measurements = operational_measurements(result, None)
+        self.assertEqual(measurements["finalization_status"], "degraded")
+        self.assertEqual(measurements["normalization_count"], 1)
 
 
 class ApplicationEvaluationTests(unittest.TestCase):

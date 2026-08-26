@@ -448,7 +448,7 @@ def _append_runtime_tool_result(
     result_payload = project_tool_result_for_model(
         envelope,
         record,
-        token_budget=budget_call.effective_budget,
+        token_budget=budget_call.effective_per_call_budget,
     )
     (
         model_result_estimated_tokens,
@@ -465,7 +465,7 @@ def _append_runtime_tool_result(
         raise RuntimeError("model projection did not expose complete budget metrics")
     budget_snapshot = runtime_context.tool_result_budget_policy.complete_call(
         budget_call,
-        projected_estimated_tokens=model_result_estimated_tokens,
+        projected_tool_result_tokens=model_result_estimated_tokens,
         truncated=model_result_truncated,
         omitted_context_messages=model_result_omitted_context_messages,
         omitted_hit_messages=model_result_omitted_hit_messages,

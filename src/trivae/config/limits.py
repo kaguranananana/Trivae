@@ -26,9 +26,11 @@ MAX_MEMBER_RESULT_LIMIT = MAX_STRUCTURED_RESULT_ITEMS
 MAX_AUTOMATIC_CONTEXT_SOURCE_HITS = 20
 
 # Tool Result 的模型投影有独立 token 预算，不等同于任何 Retrieval candidate 数量上限。
-# 16k 对 32k/64k/128k context 分别约占 50%/25%/12.5%，当前 Runtime 尚无可靠动态 context registry。
+# 未知 context 时 per-call 和 run-level 都回到这个 16k 安全边界。
 DEFAULT_TOOL_RESULT_TOKEN_BUDGET = 16_000
 
-# 动态 Tool Result 预算只在收到显式 context window 时启用；百分比和绝对上限不影响 Retrieval budget。
-DEFAULT_MAX_TOOL_RESULT_PERCENT = 50
-DEFAULT_MAX_TOOL_RESULT_TOKENS = 128_000
+# 单次 Tool Result 的 ceiling 与一次 Run 的累计 Evidence pool 分开配置。
+DEFAULT_PER_CALL_TOOL_RESULT_PERCENT = 50
+DEFAULT_PER_CALL_TOOL_RESULT_CAP = 128_000
+DEFAULT_RUN_TOOL_EVIDENCE_PERCENT = 25
+DEFAULT_RUN_TOOL_EVIDENCE_CAP = 256_000

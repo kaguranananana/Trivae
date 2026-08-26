@@ -44,3 +44,19 @@ Provider structured completion 的最终输出边界没有被 Variant/Settings �
 - `tests/test_agent_runtime.py` 检查 settings、JSON mode 和两个 provider budget 的 request projection。
 - `tests/test_evidence.py::RuntimeEvidenceIntegrationTests::test_orchestrator_keeps_malformed_json_as_finalization_failure` 确保非法 JSON 仍返回 `INVALID_ANSWER_ARTIFACT`。
 - `evaluation/regressions/m7-provider-output-contract.json` 记录 failure identity、owner、回归命令和真实验证边界。
+
+## Follow-up resolution: graceful finalization（2026-08-26）
+
+上面的 M7 记录保留为历史事实：严格 `finalize_answer()` 仍会把 malformed JSON、跨 run provenance
+和可信 scope/canonical 边界错误报告为 failure。本轮没有把这些错误改写为成功，也没有增加二次 LLM
+repair。
+
+新增的 Application-facing `finalize_answer_gracefully()` 只对已经存在的可读答案执行 bounded
+deterministic recovery：`limitations` 字符串可规范化为单元素数组；局部 invalid/unresolved citation
+可丢弃并记录 `degraded`；全部 citation 失效时仍不生成 fake binding。Trace/Evaluation 保留 strict
+error code/path、丢弃数量和 normalization facts，Conversation 只提交有 Artifact 的 valid/degraded
+结果。空答案、不可读输出和 trusted provenance/scope failure 仍不提交。
+
+对应回归：`tests/test_evidence.py` 覆盖 legal、limitations normalization、缺失 metadata、单个/全部
+invalid citation、empty answer、trusted provenance failure 与 secret-safe diagnostics；
+`tests/test_conversation.py` 验证 degraded answer 可提交而 runtime failure 不可提交。

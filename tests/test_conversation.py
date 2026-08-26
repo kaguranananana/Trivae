@@ -306,7 +306,7 @@ class ApplicationConversationBoundaryTests(unittest.TestCase):
         self.assertIn("Historical assistant answer", runtime.requests[1].model_context[1].content)
         self.assertNotIn("run-1/tool-result/1", runtime.requests[1].model_context[1].content)
 
-    def test_finalization_failure_and_runtime_failure_do_not_commit_assistant(self) -> None:
+    def test_degraded_finalization_commits_answer_but_runtime_failure_does_not(self) -> None:
         scope = ExecutionScope(allowed_session_ids=("qq:100",), max_results=5)
         finalization_failure = RuntimeResult(
             final_answer="plain text after tool execution",
@@ -335,9 +335,13 @@ class ApplicationConversationBoundaryTests(unittest.TestCase):
             second_conversation = application.read_conversation(second.conversation_id or "")
             application.close()
 
-        self.assertFalse(first.is_successful)
-        self.assertEqual(first.finalization_error.code, "INVALID_ANSWER_ARTIFACT")
-        self.assertEqual(first_conversation.messages, ())
+        # 可读正文的局部 finalization failure 会保留答案并以 degraded artifact 提交。
+        self.assertTrue(first.is_successful)
+        self.assertTrue(first.is_degraded)
+        self.assertEqual(first.finalization_status, "degraded")
+        self.assertIsNone(first.finalization_error)
+        self.assertEqual([message.role for message in first_conversation.messages], ["user", "assistant"])
+        self.assertEqual(first_conversation.messages[1].content, "plain text after tool execution")
         self.assertFalse(second.is_successful)
         self.assertEqual(second.termination, "failed")
         self.assertEqual(second_conversation.messages, ())

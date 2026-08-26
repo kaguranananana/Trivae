@@ -752,8 +752,17 @@ class TrivaeApplication:
                     operation="query.completed",
                     phase="completed",
                     operation_id="query",
-                    outcome="ok",
-                    payload={"conversation_id": conversation.conversation_id},
+                    outcome="partial" if result.is_degraded else "ok",
+                    payload={
+                        "conversation_id": conversation.conversation_id,
+                        "execution_status": result.execution_status,
+                        "finalization_status": result.finalization_status,
+                        "finalization_diagnostics": (
+                            None
+                            if result.finalization_diagnostics is None
+                            else result.finalization_diagnostics.to_dict()
+                        ),
+                    },
                 )
                 terminal_emitted = True
             else:

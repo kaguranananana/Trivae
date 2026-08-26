@@ -30,7 +30,9 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
     tool_behavior = agent_tool_behavior_projection(result)
     return {
         "termination": result.termination,
+        "execution_status": result.execution_status,
         "is_successful": result.is_successful,
+        "finalization_status": result.finalization_status,
         "route": result.route_decision.route,
         "route_source": result.route_decision.source,
         "route_degraded": result.route_decision.degraded,
@@ -68,6 +70,11 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
             "code": result.finalization_error.code,
             "path": result.finalization_error.path,
         },
+        "finalization_diagnostics": (
+            None
+            if result.finalization_diagnostics is None
+            else result.finalization_diagnostics.to_dict()
+        ),
         "answer_artifact_present": isinstance(result.answer_artifact, AnswerArtifact),
         "conversation_id": result.conversation_id,
         "trace_id": result.trace_id,
@@ -293,26 +300,67 @@ def _finalization_measurements(
     citation_count: int | None = None
     citation_state = "not_available"
     finalization_state = "not_available"
+    finalization_status = "not_available"
+    user_answer_preserved: bool | None = None
+    dropped_field_count = 0
+    dropped_citation_count = 0
+    normalization_count = 0
+    validated_citation_count = 0
     if trace is not None:
         for item in trace.timeline:
             if item.operation == "evidence.prepare.completed":
                 value = item.payload.get("evidence_count")
                 if isinstance(value, int) and not isinstance(value, bool):
                     evidence_count = value
+                status = item.payload.get("finalization_status")
+                if isinstance(status, str):
+                    finalization_status = status
             elif item.operation == "citation.validation.completed":
                 value = item.payload.get("binding_count")
                 if isinstance(value, int) and not isinstance(value, bool):
                     citation_count = value
                 unresolved = item.payload.get("unresolved_count")
-                citation_state = "passed" if unresolved == 0 else "failed"
+                status = item.payload.get("finalization_status")
+                if isinstance(status, str):
+                    finalization_status = status
+                validated = item.payload.get("validated_citation_count")
+                if isinstance(validated, int) and not isinstance(validated, bool):
+                    validated_citation_count = validated
+                citation_state = (
+                    "degraded"
+                    if status == "degraded" or unresolved not in (0, None)
+                    else "passed"
+                )
             elif item.operation == "citation.validation.failed":
                 citation_state = "failed"
             elif item.operation == "answer.finalization.completed":
+                raw_finalization_status = item.payload.get("finalization_status", "valid")
+                finalization_status = (
+                    raw_finalization_status if isinstance(raw_finalization_status, str) else "valid"
+                )
+                # finalization_state 保留 completed/failed/skipped 的 operational lifecycle；
+                # valid/degraded 的产品语义单独由 finalization_status 承载。
                 finalization_state = "completed"
+                preserved = item.payload.get("user_answer_preserved")
+                if isinstance(preserved, bool):
+                    user_answer_preserved = preserved
+                for name in ("dropped_field_count", "dropped_citation_count", "normalization_count", "validated_citation_count"):
+                    value = item.payload.get(name)
+                    if isinstance(value, int) and not isinstance(value, bool):
+                        if name == "dropped_field_count":
+                            dropped_field_count = value
+                        elif name == "dropped_citation_count":
+                            dropped_citation_count = value
+                        elif name == "normalization_count":
+                            normalization_count = value
+                        else:
+                            validated_citation_count = value
             elif item.operation == "answer.finalization.failed":
                 finalization_state = "failed"
+                finalization_status = "failed"
             elif item.operation == "answer.finalization.skipped":
                 finalization_state = "skipped"
+                finalization_status = "skipped"
 
     # Trace 缺失时只用当前 QueryResult 的已验证 artifact 补充计数，不补造 Trace 状态。
     if result is not None and isinstance(result.answer_artifact, AnswerArtifact):
@@ -324,15 +372,30 @@ def _finalization_measurements(
         if result.finalization_error is not None:
             citation_state = "failed"
             finalization_state = "failed"
+            finalization_status = "failed"
         elif result.is_successful:
-            citation_state = "passed"
+            finalization_status = result.finalization_status
             finalization_state = "completed"
+            citation_state = "degraded" if result.is_degraded else "passed"
+            if result.finalization_diagnostics is not None:
+                diagnostics = result.finalization_diagnostics
+                user_answer_preserved = diagnostics.user_answer_preserved
+                dropped_field_count = diagnostics.dropped_field_count
+                dropped_citation_count = diagnostics.dropped_citation_count
+                normalization_count = diagnostics.normalization_count
+                validated_citation_count = diagnostics.validated_citation_count
 
     return {
         "evidence_count": evidence_count,
         "citation_count": citation_count,
         "citation_state": citation_state,
         "finalization_state": finalization_state,
+        "finalization_status": finalization_status,
+        "user_answer_preserved": user_answer_preserved,
+        "dropped_field_count": dropped_field_count,
+        "dropped_citation_count": dropped_citation_count,
+        "normalization_count": normalization_count,
+        "validated_citation_count": validated_citation_count,
     }
 
 
@@ -485,7 +548,11 @@ def run_deterministic_checks(
             checks.append(_check("answer_artifact_contract", "passed", "hard", "Answer Artifact passed the production contract"))
         else:
             checks.append(_check("answer_artifact_contract", "failed", "hard", "Successful QueryResult has no Answer Artifact"))
-        if result.finalization_error is None:
+        if result.finalization_status == "degraded":
+            # degraded Artifact 可交付但不能被质量检查误认为已完成 grounded citation。
+            checks.append(_check("finalization_state", "degraded", "diagnostic", "Production Finalizer delivered a degraded Artifact"))
+            checks.append(_check("citation_provenance", "degraded", "diagnostic", "Citation provenance was partially dropped or normalized"))
+        elif result.finalization_error is None:
             checks.append(_check("finalization_state", "passed", "hard", "Production Finalizer completed"))
             checks.append(_check("citation_provenance", "passed", "hard", "Production citation/provenance validation completed"))
         else:

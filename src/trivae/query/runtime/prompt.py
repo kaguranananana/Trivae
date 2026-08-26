@@ -79,7 +79,9 @@ not concatenate or invent handles, and do not copy run/tool/result/internal IDs.
 citations, including find_members candidate rows, schema tables, and SQL rows, use the returned
 structured `source_id` handle. Do not copy or invent `value_snapshot`; Host code resolves the exact
 value from the current Tool Result. If a source handle is missing or unresolved, keep the claim
-unverified and let finalization fail explicitly; never drop the citation silently.
+unverified. Host finalization may drop only that invalid local citation and mark the answer
+degraded; trusted provenance or scope violations still fail explicitly. Never invent a replacement
+citation or hide the degradation from Trace.
 When producing the final answer, return exactly one valid json object with this exact shape.
 Do not use a markdown code fence, do not add commentary before or after the object,
 and do not return plain text outside the object:

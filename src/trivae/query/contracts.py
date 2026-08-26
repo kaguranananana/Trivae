@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING, Literal, Mapping
 
 from trivae.capabilities.contracts import ExecutionScope
 from trivae.observability.contracts import TraceProfile
-from trivae.query.evidence import AnswerArtifact, FinalizationErrorInfo
+from trivae.query.evidence import (
+    AnswerArtifact,
+    FinalizationDiagnostics,
+    FinalizationErrorInfo,
+    FinalizationStatus,
+)
 from trivae.query.runtime.contracts import AgentRunRequest, ModelContextMessage, RuntimeResult
 
 if TYPE_CHECKING:
@@ -174,15 +179,17 @@ class QueryResult:
     route_decision: "RouteDecision"
     plan: "Plan | None" = None
     diagnostics: tuple[QueryDiagnostic, ...] = ()
-    # 只有 finalizer 成功后该字段才非空，形成 M5 的 validated commit boundary。
+    # valid/degraded 都拥有可提交 Artifact；failed 仍保持 None，形成清晰 commit boundary。
     answer_artifact: AnswerArtifact | None = None
     finalization_error: FinalizationErrorInfo | None = None
+    finalization_status: FinalizationStatus = "valid"
+    finalization_diagnostics: FinalizationDiagnostics | None = None
     conversation_id: str | None = None
     trace_id: str | None = None
 
     @property
     def final_answer(self) -> str | None:
-        """只返回已经通过 finalization 的回答文本。"""
+        """只返回已经形成 valid/degraded Artifact 的回答文本。"""
 
         return None if self.answer_artifact is None else self.answer_artifact.answer_text
 
@@ -194,13 +201,30 @@ class QueryResult:
 
     @property
     def is_successful(self) -> bool:
-        """只有 Runtime completed 且 Answer Artifact 已验证才算 Query 成功。"""
+        """Runtime completed 且存在可提交 Artifact 时成功；degraded 仍是可交付结果。"""
 
         return (
             self.runtime_result.termination == "completed"
             and self.answer_artifact is not None
             and self.finalization_error is None
+            and self.finalization_status in {"valid", "degraded"}
         )
+
+    @property
+    def is_degraded(self) -> bool:
+        """标记答案是否交付但有局部最终化信息被丢弃或规范化。"""
+
+        return self.finalization_status == "degraded"
+
+    @property
+    def execution_status(self) -> Literal["completed", "completed_degraded", "failed", "aborted"]:
+        """提供给 Application/CLI/Evaluation 的统一终态，不把 degraded 混成 failure。"""
+
+        if self.runtime_result.termination == "aborted":
+            return "aborted"
+        if not self.is_successful:
+            return "failed"
+        return "completed_degraded" if self.is_degraded else "completed"
 
     @property
     def termination(self) -> str:

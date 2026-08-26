@@ -688,3 +688,19 @@ live CLI 仍从 `QueryStreamAdapter` 接收同一次 Query 的 normalized facts�
 CoT。Trace Store 不是实时队列，`/status`、`/source`、`/history`、`/resume` 和 feedback 不轮询
 Trace Store。unknown exception 由 logging 保留 root cause，CLI 只投影 bounded diagnostic；Trace
 identity 仍可用于后续 `trace` 查看。
+
+## 22. 1M budget 与 graceful finalization observability amendment（2026-08-26）
+
+Trace 现在把三类事实分开保存：
+
+- context：`context_window_tokens` 与 `context_window_source`（`explicit_config`、
+  `verified_model_registry`、`fallback`；fixed 为 `not_used`）；
+- per-call/run budget：per-call ceiling/effective budget/actual projection estimate，以及 run pool、
+  remaining before/after、`truncated`、omitted hit/context；
+- finalization：`finalization_status`、`user_answer_preserved`、稳定 error code/path、degradation codes、
+  dropped field/citation、normalization 和 validated citation counts。
+
+`query.completed` 的 `outcome=partial` 表示 completed/degraded：答案已通过 bounded Artifact boundary
+并可 commit，但不等于 citation 或自然语言质量通过。真正 failed 的 finalization 仍写
+`citation.validation.failed`、`answer.finalization.failed` 和 `query.failed`，并且不产生 Assistant
+commit。Trace payload 只含上述 bounded projection，不复制 raw provider output、secret 或 hidden CoT。

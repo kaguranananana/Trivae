@@ -660,6 +660,17 @@ class QueryStreamAdapter:
             "parse_stage",
             "failure_detail_code",
             "diagnostic",
+            # finalization 诊断沿用 normalized payload，避免 CLI 直接解析 raw event。
+            "finalization_status",
+            "user_answer_preserved",
+            "error_code",
+            "error_path",
+            "degradation_codes",
+            "dropped_field_count",
+            "dropped_field_paths",
+            "dropped_citation_count",
+            "normalization_count",
+            "validated_citation_count",
         ):
             if key in event.payload:
                 metadata[key] = event.payload[key]

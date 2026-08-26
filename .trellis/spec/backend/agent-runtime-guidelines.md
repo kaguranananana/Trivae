@@ -83,10 +83,13 @@ class AgentRuntimeStreaming(AgentRuntime, Protocol):
 | `TRIVAE_MAX_TOOL_ROUNDS` | no | Positive integer；默认 3；Trivae investigation budget |
 | `TRIVAE_MAX_OUTPUT_TOKENS` | no | Positive integer；默认 16384；final synthesis bound |
 | `TRIVAE_COMPLETION_MAX_TOKENS` | no | Positive integer；默认 2048；Router/Planner completion bound |
-| `TRIVAE_TOOL_RESULT_BUDGET_MODE` | no | `fixed` / `dynamic`；默认 `fixed` |
+| `TRIVAE_TOOL_RESULT_BUDGET_MODE` | no | `fixed` / `dynamic`；默认 `dynamic` |
 | `TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS` | dynamic 可选 | 显式正整数；未提供时不从 model name 猜测 |
-| `TRIVAE_MAX_TOOL_RESULT_PERCENT` | no | 1–100 整数；默认 50；只参与 dynamic run pool |
-| `TRIVAE_MAX_TOOL_RESULT_TOKENS` | no | 正整数；默认 128000；dynamic run pool 的 absolute cap |
+| `TRIVAE_PER_CALL_TOOL_RESULT_PERCENT` | no | 1–100 整数；默认 50；只参与 per-call ceiling |
+| `TRIVAE_PER_CALL_TOOL_RESULT_CAP` | no | 正整数；默认 128000；per-call absolute cap |
+| `TRIVAE_RUN_TOOL_EVIDENCE_PERCENT` | no | 1–100 整数；默认 25；只参与 run-level pool |
+| `TRIVAE_RUN_TOOL_EVIDENCE_CAP` | no | 正整数；默认 256000；run-level absolute cap |
+| `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET` | dynamic 可选 | 已解析 context 下的实验/校准 pool override |
 
 新 `TRIVAE_MODEL_*` 字段优先于 legacy 字段；变量显式存在但为空时必须报错，不能静默
 回退。legacy-only DeepSeek 继续保留 `https://api.deepseek.com` 默认 URL，以兼容已有
@@ -97,11 +100,12 @@ smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`tri
 接口仍不得隐式读取工作区 credential，非 CLI 库调用不产生文件系统副作用。
 
 Tool Result projection 是独立于 retrieval 与 answer 的预算。fixed 模式继续按每次 Tool 16000
-estimated tokens；dynamic 只有在显式 `TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS` 存在时才计算
-`min(floor(context_window_tokens * percent / 100), absolute_cap)` 的 run-level pool。每次 Tool
-从同一个 Runtime run pool 预留并在 projection 后按实际 estimate 结算；dynamic context 未知时
-使用可观测的 16000 safe run pool，不为每次调用重新发放一份预算。非法配置和 pool 耗尽均显式
-失败，不通过 provider/model name 猜测、retry 或静默降级掩盖。
+estimated tokens；dynamic 按 explicit context → verified model registry → 16k fallback 解析 context。
+per-call ceiling 使用 `min(floor(context_window_tokens * 50 / 100), 128000)`，run-level pool 使用独立的
+`min(floor(context_window_tokens * 25 / 100), 256000)`。每次 Tool 从同一个 Runtime run pool 预留并在
+projection 后按实际 estimate 结算；dynamic context 未知时 per-call 和 shared run pool 都是 16000，
+不为每次调用重新发放一份预算。非法配置和 pool 耗尽均显式失败，不通过 provider/model name 猜测、retry
+或静默降级掩盖。
 
 ### Query boundary
 
@@ -132,7 +136,7 @@ estimated tokens；dynamic 只有在显式 `TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS` 
 - `completed` 只能在 SDK `stream_events()` 完整消费和 cleanup 后发出。abort 是 terminal intent：不启动新 model/tool work，不做 final synthesis，不发 `completed`；最终 termination 为 `aborted`。
 - M5 Tool Result 额外携带 Trivae-owned `run_id`、`tool_call_id`、`tool_result_id` 和 bounded source projections；Runtime 只传递 provenance，不选择 Evidence、不拥有 Citation State Machine。
 - Tool Result projection 的 dynamic budget 由一个 Runtime run policy 共享；Trace 必须同时保留 per-call effective/actual/remaining 与 terminal pool summary，不能把固定 retrieval limit 或一次调用上限当作累计预算。
-- 只有 `termination == "completed"` 的 RuntimeResult 才进入 QueryOrchestrator 的 Answer Finalizer；validated Answer Artifact 才能作为 Query 的正式 `final_answer`，invalid citation 显式失败。
+- 只有 `termination == "completed"` 的 RuntimeResult 才进入 QueryOrchestrator 的 Answer Finalizer；valid/degraded Answer Artifact 才能作为 Query 的正式 `final_answer`，trusted provenance/scope/canonical failure 仍显式失败。
 - Runtime 持有 model/provider client；`aclose()` 必须真实 await `model.close()` 和 `AsyncOpenAI.close()`（若存在），且幂等。Application `aclose()` 还要释放 lexical/read/store；同步 `close()` 在 running loop 中必须显式报错并要求调用 `await aclose()`。
 
 ### Error projection
@@ -174,7 +178,8 @@ estimated tokens；dynamic 只有在显式 `TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS` 
 | Non-text final output | `failed` + `INVALID_FINAL_OUTPUT` |
 | Provider/network exception | `failed` + secret-safe `RUNTIME_ERROR`；无 retry/fallback |
 | User abort before/during run | `aborted`；无 final synthesis、无 completed，等待 SDK cleanup |
-| Invalid / unresolved citation after completed runtime | Query 返回 `finalization_error`；不返回 validated answer、不删除 binding、不自动修复 |
+| Local invalid citation/metadata after completed runtime | 保留可读答案，丢弃局部 citation/字段并返回 `degraded`；不伪造 binding |
+| Trusted provenance/scope/canonical citation failure | Query 返回 `finalization_error`；不返回 Artifact、不自动修复 |
 | Closed runtime/application reused | 显式 lifecycle error；不得静默重建 provider/resource |
 | Provider 没有/返回空 reasoning | 不产生 Thinking；Tool、Answer 与 terminal event 正常继续 |
 | Provider stream 在 answer delta 后失败 | 关闭开放文本段、显示 normalized failure；不产生 answer.completed，不提交 Conversation |
@@ -554,3 +559,26 @@ artifact IDs、排序/去重 URL、计算 archive-relative timestamp、决定 sc
 
 本轮不引入 Code Mode、不删除 Tool Calling、不公开 hidden CoT、不新增 retry/fallback/citation
 repair，不把完整 provenance 删除出 Trace/Artifact，也不为了让样例通过而增加 query-specific 分支。
+
+## 12. 1M context 与分离式 Tool Evidence budget（2026-08-26）
+
+### Contract
+
+- `opencode-go / deepseek-v4-flash` 的 verified context window 为 `1_000_000` tokens；解析优先级是
+  explicit `TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS`、verified model registry、unknown fallback。Runtime
+  不允许按 model name 散落猜测。
+- `TRIVAE_TOOL_RESULT_BUDGET_MODE` 默认是 `dynamic`；显式 `fixed` 继续作为 regression/debug/evaluation
+  baseline，并保持单次 `16_000` tokens。
+- 单次 Tool Result ceiling 与整个 Run 的 Evidence pool 是两个独立参数：per-call 默认
+  `min(floor(context * 50%), 128000)`，run-level 默认候选 `min(floor(context * 25%), 256000)`；
+  `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET` 只用于明确的实验 candidate。1M、128k、run pool candidate
+  不能互相改名或互相代替。
+- unknown dynamic context 的 per-call 和 shared run pool 都是 `16_000`；每次调用从同一 policy 账本
+  reserve/settle，不能让每个 Tool 重置一份 fallback。
+
+### Runtime / Trace boundary
+
+`ToolResultBudgetSnapshot` 必须同时保存 context source、per-call ceiling/effective budget、run pool、
+remaining before/after、actual projected estimate、truncated 和 omitted hit/context。`128000` 是单次
+Tool 的 safety ceiling，不代表整个 Run 只能累计 `128000`；Run-level candidate 必须通过 synthetic
+和 real paired evidence 校准后再决定默认值。

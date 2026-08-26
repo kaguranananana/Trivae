@@ -19,6 +19,7 @@ from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
 
 from trivae.capabilities.registry import CapabilityRegistry
+from trivae.config.model_capabilities import resolve_context_window
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
 from trivae.query.runtime.budget import (
@@ -734,21 +735,51 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 else _DEFAULT_COMPLETION_MAX_TOKENS
             )
 
-        # 预算配置只来自显式 settings；注入模型未提供 settings 时保留 fixed baseline。
+        # 统一在 adapter 这一处解析 context，避免 Runtime 各处按 model name 写特判。
+        configured_mode = (
+            runtime_settings.tool_result_budget_mode if runtime_settings is not None else "dynamic"
+        )
+        if configured_mode == "fixed":
+            # fixed 是显式回归基线，不消费 context，也不把 registry 能力伪装进 Trace。
+            context_resolution = None
+        else:
+            context_resolution = resolve_context_window(
+                explicit_context_window_tokens=(
+                    runtime_settings.model_context_window_tokens if runtime_settings is not None else None
+                ),
+                provider=self._provider_name,
+                model_name=self._model_name,
+            )
         self._tool_result_budget_config = ToolResultBudgetConfig(
-            mode=(runtime_settings.tool_result_budget_mode if runtime_settings is not None else "fixed"),
+            mode=configured_mode,
             context_window_tokens=(
-                runtime_settings.model_context_window_tokens if runtime_settings is not None else None
+                None if context_resolution is None else context_resolution.context_window_tokens
             ),
-            max_tool_result_percent=(
-                runtime_settings.max_tool_result_percent
-                if runtime_settings is not None
-                else ToolResultBudgetConfig().max_tool_result_percent
+            context_window_source=(
+                "not_used" if context_resolution is None else context_resolution.source
             ),
-            max_tool_result_tokens=(
-                runtime_settings.max_tool_result_tokens
+            per_call_tool_result_percent=(
+                runtime_settings.per_call_tool_result_percent
                 if runtime_settings is not None
-                else ToolResultBudgetConfig().max_tool_result_tokens
+                else ToolResultBudgetConfig().per_call_tool_result_percent
+            ),
+            per_call_tool_result_cap=(
+                runtime_settings.per_call_tool_result_cap
+                if runtime_settings is not None
+                else ToolResultBudgetConfig().per_call_tool_result_cap
+            ),
+            run_tool_evidence_percent=(
+                runtime_settings.run_tool_evidence_percent
+                if runtime_settings is not None
+                else ToolResultBudgetConfig().run_tool_evidence_percent
+            ),
+            run_tool_evidence_cap=(
+                runtime_settings.run_tool_evidence_cap
+                if runtime_settings is not None
+                else ToolResultBudgetConfig().run_tool_evidence_cap
+            ),
+            run_tool_evidence_budget_override=(
+                runtime_settings.run_tool_evidence_budget if runtime_settings is not None else None
             ),
         )
 

@@ -35,6 +35,7 @@ from trivae.query.evidence import (
     build_tool_result_record,
     extract_urls,
     finalize_answer,
+    finalize_answer_gracefully,
     parse_model_answer_candidate,
     project_tool_result_for_model,
     scope_snapshot,
@@ -552,6 +553,173 @@ class EvidenceContractTests(unittest.TestCase):
             ToolStructuredItem("scalar", "value", object())
 
 
+class GracefulFinalizationTests(unittest.TestCase):
+    """验证 strict contract 发现问题后，用户侧仍能获得安全的 bounded 结果。"""
+
+    def setUp(self) -> None:
+        self.scope = ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100)
+        self.record = _record(scope=self.scope)
+
+    def _candidate(self, *, sources: list[str] | None = None, **claim_fields: object) -> str:
+        """构造 semantic candidate；测试只改变一个最终化故障变量。"""
+
+        claim: dict[str, object] = {
+            "text": "当前答案保留了可读结论。",
+            "finding": "当前 Tool Result 中存在匹配事实。",
+            "criterion": "source handle 可以在本轮 Tool Result 中解析。",
+            "sufficiency": "sufficient",
+            "sources": ["m1-1"] if sources is None else sources,
+            "limitations": [],
+        }
+        claim.update(claim_fields)
+        return json.dumps({"claims": [claim], "limitations": []}, ensure_ascii=False)
+
+    def test_legal_candidate_remains_valid(self) -> None:
+        result = finalize_answer_gracefully(
+            self._candidate(),
+            run_id=self.record.run_id,
+            tool_results=(self.record,),
+            scope=self.scope,
+        )
+
+        self.assertEqual(result.diagnostics.status, "valid")
+        self.assertIsNotNone(result.artifact)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.diagnostics.validated_citation_count, 1)
+
+    def test_string_limitations_are_deterministically_normalized(self) -> None:
+        payload = json.loads(self._candidate())
+        payload["limitations"] = "部分内容证据有限"
+
+        result = finalize_answer_gracefully(
+            json.dumps(payload, ensure_ascii=False),
+            run_id=self.record.run_id,
+            tool_results=(self.record,),
+            scope=self.scope,
+        )
+
+        self.assertEqual(result.diagnostics.status, "degraded")
+        self.assertEqual(result.artifact.limitations, ("部分内容证据有限",))
+        self.assertEqual(result.diagnostics.normalization_count, 1)
+        self.assertEqual(result.diagnostics.validated_citation_count, 1)
+        self.assertEqual(result.artifact.answer_text, "当前答案保留了可读结论。")
+
+    def test_missing_optional_evidence_metadata_preserves_answer_without_fake_citation(self) -> None:
+        result = finalize_answer_gracefully(
+            self._candidate(finding=None, criterion=None, sufficiency=None),  # type: ignore[arg-type]
+            run_id=self.record.run_id,
+            tool_results=(self.record,),
+            scope=self.scope,
+        )
+
+        self.assertEqual(result.diagnostics.status, "degraded")
+        self.assertEqual(result.artifact.answer_text, "当前答案保留了可读结论。")
+        self.assertEqual(result.artifact.evidence_items, ())
+        self.assertEqual(result.artifact.citation_bindings, ())
+        self.assertEqual(result.diagnostics.dropped_citation_count, 1)
+
+    def test_one_invalid_citation_is_dropped_while_valid_citation_survives(self) -> None:
+        result = finalize_answer_gracefully(
+            self._candidate(sources=["m1-1", "m99-1"]),
+            run_id=self.record.run_id,
+            tool_results=(self.record,),
+            scope=self.scope,
+        )
+
+        self.assertEqual(result.diagnostics.status, "degraded")
+        self.assertEqual(result.diagnostics.dropped_citation_count, 1)
+        self.assertEqual(result.diagnostics.validated_citation_count, 1)
+        self.assertEqual(len(result.artifact.citation_bindings), 1)
+        self.assertEqual(len(result.artifact.evidence_items[0].sources), 1)
+        self.assertIsInstance(result.artifact.evidence_items[0].sources[0].reference, MessageSource)
+
+    def test_all_invalid_citations_keep_answer_but_do_not_look_grounded(self) -> None:
+        result = finalize_answer_gracefully(
+            self._candidate(sources=["m99-1"]),
+            run_id=self.record.run_id,
+            tool_results=(self.record,),
+            scope=self.scope,
+        )
+
+        self.assertEqual(result.diagnostics.status, "degraded")
+        self.assertEqual(result.artifact.answer_text, "当前答案保留了可读结论。")
+        self.assertEqual(result.artifact.citation_bindings, ())
+        self.assertEqual(result.artifact.evidence_items, ())
+        self.assertEqual(result.diagnostics.dropped_citation_count, 1)
+        self.assertEqual(result.diagnostics.validated_citation_count, 0)
+
+    def test_empty_answer_is_still_fatal(self) -> None:
+        result = finalize_answer_gracefully(
+            "",
+            run_id=self.record.run_id,
+            tool_results=(self.record,),
+            scope=self.scope,
+        )
+
+        self.assertEqual(result.diagnostics.status, "failed")
+        self.assertEqual(result.error.code, "INVALID_FINAL_OUTPUT")
+        self.assertIsNone(result.artifact)
+
+    def test_trusted_provenance_failure_is_not_downgraded(self) -> None:
+        payload = {
+            "content_blocks": [{"block_id": "claim-1", "text": "可信边界失败。"}],
+            "citation_bindings": [{"content_block_id": "claim-1", "evidence_ids": ["e1"]}],
+            "evidence_items": [
+                {
+                    "evidence_id": "e1",
+                    "finding": "旧 run source",
+                    "criterion": "必须属于当前 run",
+                    "sufficiency": "sufficient",
+                    "sources": [
+                        {
+                            "relation": "supports",
+                            "source": {
+                                "type": "message",
+                                "run_id": "run-old",
+                                "tool_call_id": self.record.tool_call_id,
+                                "tool_result_id": self.record.tool_result_id,
+                                "result_item_id": "message/qq:100:m1",
+                                "session_id": "qq:100",
+                                "internal_message_id": "qq:100:m1",
+                            },
+                        }
+                    ],
+                }
+            ],
+            "limitations": [],
+        }
+
+        result = finalize_answer_gracefully(
+            json.dumps(payload),
+            run_id=self.record.run_id,
+            tool_results=(self.record,),
+            scope=self.scope,
+        )
+
+        self.assertEqual(result.diagnostics.status, "failed")
+        self.assertEqual(result.error.code, "INVALID_PROVENANCE")
+        self.assertIsNone(result.artifact)
+
+    def test_diagnostics_do_not_copy_invalid_payload_or_unknown_optional_fields(self) -> None:
+        secret = "provider-secret-must-not-be-recorded"
+        payload = {
+            "answer": "可读但限制字段损坏。",
+            "limitations": {"secret": secret},
+            "provider_raw_payload": secret,
+        }
+
+        result = finalize_answer_gracefully(
+            json.dumps(payload),
+            run_id=None,
+            tool_results=(),
+            scope=ExecutionScope(),
+        )
+
+        self.assertEqual(result.diagnostics.status, "degraded")
+        self.assertNotIn(secret, json.dumps(result.diagnostics.to_dict(), ensure_ascii=False))
+        self.assertEqual(result.artifact.answer_text, "可读但限制字段损坏。")
+
+
 class ProvenanceValidationTests(unittest.TestCase):
     """验证 current-run provenance、scope、locator 与 trusted hydration。"""
 
@@ -869,7 +1037,7 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
             finally:
                 application.close()
 
-    def test_orchestrator_exposes_finalization_failure_without_success_artifact(self) -> None:
+    def test_orchestrator_exposes_degraded_plain_answer_without_fake_artifact_evidence(self) -> None:
         record = _record()
 
         class InvalidCitationRuntime:
@@ -899,10 +1067,12 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
                 )
             )
         )
-        self.assertIsNone(result.answer_artifact)
-        self.assertIsNone(result.final_answer)
+        self.assertIsNotNone(result.answer_artifact)
+        self.assertEqual(result.final_answer, "plain answer after a tool call")
         self.assertEqual(result.runtime_answer, "plain answer after a tool call")
-        self.assertEqual(result.finalization_error.code, "INVALID_ANSWER_ARTIFACT")
+        self.assertIsNone(result.finalization_error)
+        self.assertEqual(result.finalization_status, "degraded")
+        self.assertEqual(result.finalization_diagnostics.dropped_citation_count, 0)
 
     def test_orchestrator_keeps_malformed_json_as_finalization_failure(self) -> None:
         """Provider 非法 JSON 不能被 Evaluation 或 Finalizer 修补成成功。"""
@@ -941,8 +1111,8 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
         self.assertIsNone(result.answer_artifact)
         self.assertEqual(result.finalization_error.code, "INVALID_ANSWER_ARTIFACT")
 
-    def test_real_query_trace_keeps_structured_failure_path_and_no_commit(self) -> None:
-        """真实 Application 主链保留 citation path，并且失败不产生 answer commit。"""
+    def test_real_query_trace_keeps_structured_failure_path_and_degrades_without_commit_failure(self) -> None:
+        """真实 Application 主链保留 citation path，并且只丢弃不匹配的结构化 citation。"""
 
         scope = ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100)
         record = _record(scope=scope)
@@ -999,19 +1169,20 @@ class RuntimeEvidenceIntegrationTests(unittest.TestCase):
                         QueryRequest("重现结构化引用失败", scope),
                     )
                 )
-                self.assertFalse(result.is_successful)
-                self.assertIsNone(result.answer_artifact)
-                self.assertEqual(result.finalization_error.code, "STRUCTURED_VALUE_MISMATCH")
+                self.assertTrue(result.is_successful)
+                self.assertIsNotNone(result.answer_artifact)
+                self.assertEqual(result.finalization_status, "degraded")
+                self.assertIsNone(result.finalization_error)
                 self.assertEqual(
-                    result.finalization_error.path,
+                    result.finalization_diagnostics.error_path,
                     "evidence_items[0].sources[0].source.value_snapshot",
                 )
                 operations = [event.operation for event in application.read_trace(result.trace_id).timeline]
-                self.assertNotIn("answer.commit.completed", operations)
-                failed = next(event for event in application.read_trace(result.trace_id).timeline if event.operation == "citation.validation.failed")
+                self.assertIn("answer.commit.completed", operations)
+                failed = next(event for event in application.read_trace(result.trace_id).timeline if event.operation == "citation.validation.completed")
                 self.assertEqual(
-                    failed.payload["path"],
-                    "evidence_items[0].sources[0].source.value_snapshot",
+                    failed.payload["finalization_status"],
+                    "degraded",
                 )
             finally:
                 application.close()

@@ -366,3 +366,17 @@ Evaluation Artifact 是独立选择和治理的数据，不因评测需要永久
 只有以下证据可以重开本 ADR：真实 workload 证明 Case Bundle 无法承载重要评测；数据治理禁止固定 Snapshot 且没有可重建替代；大规模人工复核证明 Reference 模型不可接受；经过人工校准的自动 Judge 在明确场景稳定且显著降低成本；新需求要求在线 audit-grade quality gate；或实现证明 paired comparison / 多次 Run 无法在可接受成本下提供决策价值。
 
 “常见框架有一个总分”“ChatLab 使用某个默认值”或“先定阈值看起来更完整”不构成 Reopen Reason。
+
+## 22. Graceful delivery 与 budget calibration amendment（2026-08-26）
+
+Evaluation 必须同时记录 execution delivery 和 answer quality：`completed_degraded`/`degraded`
+表示用户拿到了 bounded Answer Artifact，但不表示 citation grounded、claim entailment 或
+enumeration completeness 通过。`finalization_status`、`dropped_citation_count`、
+`normalization_count` 和 `validated_citation_count` 属于 operational/delivery facts；quality axes
+继续由 Case Finding、Reference provenance 和 blind review 判断。
+
+1M context 的 synthetic/real budget comparison 固定比较 fixed 16k、dynamic run pool 128k 和
+dynamic run pool 256k（可引用 historical 64k），并同步报告 visible evidence、omission、truncation、
+latency、provider usage/成本可得性和 graceful/fatal completion。只有 Retriever 找到、Canonical 保留、
+不同预算可见性和最终答案使用情况都被 Trace/Case evidence 支持时，才能把收益归因给 budget；否则归类为
+retrieval、enumeration 或 evidence consumption 问题。

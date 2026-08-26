@@ -9,10 +9,13 @@ from agents.testing import ModelStep, ScriptedModel, assistant_message, function
 
 from trivae.capabilities import CapabilityRegistry, ExecutionScope, ToolEnvelope
 from trivae.config.limits import (
-    DEFAULT_MAX_TOOL_RESULT_PERCENT,
-    DEFAULT_MAX_TOOL_RESULT_TOKENS,
+    DEFAULT_PER_CALL_TOOL_RESULT_CAP,
+    DEFAULT_PER_CALL_TOOL_RESULT_PERCENT,
+    DEFAULT_RUN_TOOL_EVIDENCE_CAP,
+    DEFAULT_RUN_TOOL_EVIDENCE_PERCENT,
     DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
 )
+from trivae.config.model_capabilities import resolve_context_window
 from trivae.config.settings import ModelSettings, SettingsError, load_settings
 from trivae.evaluation.checks import operational_measurements
 from trivae.observability.collector import TraceableAgentRuntime, TraceCollector
@@ -89,78 +92,115 @@ class ToolResultBudgetPolicyTests(unittest.TestCase):
     """覆盖公式、来源、累计扣减和 fixed compatibility。"""
 
     def test_dynamic_pool_formula_and_absolute_cap(self) -> None:
-        expected = {
+        expected_run = {
+            32_000: 8_000,
+            64_000: 16_000,
+            128_000: 32_000,
+            256_000: 64_000,
+            1_000_000: 250_000,
+        }
+        expected_per_call = {
             32_000: 16_000,
             64_000: 32_000,
             128_000: 64_000,
-            256_000: DEFAULT_MAX_TOOL_RESULT_TOKENS,
+            256_000: DEFAULT_PER_CALL_TOOL_RESULT_CAP,
+            1_000_000: DEFAULT_PER_CALL_TOOL_RESULT_CAP,
         }
-        for context_window, run_budget in expected.items():
+        for context_window, run_budget in expected_run.items():
             with self.subTest(context_window=context_window):
                 config = ToolResultBudgetConfig(
                     mode="dynamic",
                     context_window_tokens=context_window,
                 )
                 self.assertEqual(config.run_tool_evidence_budget, run_budget)
+                self.assertEqual(config.per_call_ceiling, expected_per_call[context_window])
                 self.assertEqual(config.context_window_source, "explicit_config")
-                self.assertEqual(config.budget_resolution, "configured")
+                self.assertEqual(config.budget_resolution, "dynamic_configured")
+
+    def test_explicit_run_pool_is_independent_from_per_call_ceiling(self) -> None:
+        for run_pool in (128_000, 256_000):
+            with self.subTest(run_pool=run_pool):
+                config = ToolResultBudgetConfig(
+                    mode="dynamic",
+                    context_window_tokens=1_000_000,
+                    run_tool_evidence_budget_override=run_pool,
+                )
+                self.assertEqual(config.per_call_ceiling, DEFAULT_PER_CALL_TOOL_RESULT_CAP)
+                self.assertEqual(config.run_tool_evidence_budget, run_pool)
+
+    def test_context_resolution_uses_verified_registry_before_fallback(self) -> None:
+        verified = resolve_context_window(
+            explicit_context_window_tokens=None,
+            provider="opencode-go",
+            model_name="deepseek-v4-flash",
+        )
+        self.assertEqual(verified.context_window_tokens, 1_000_000)
+        self.assertEqual(verified.source, "verified_model_registry")
+
+        explicit = resolve_context_window(
+            explicit_context_window_tokens=128_000,
+            provider="opencode-go",
+            model_name="deepseek-v4-flash",
+        )
+        self.assertEqual(explicit.context_window_tokens, 128_000)
+        self.assertEqual(explicit.source, "explicit_config")
 
     def test_unknown_dynamic_context_uses_safe_fixed_run_pool(self) -> None:
         config = ToolResultBudgetConfig(mode="dynamic")
         self.assertIsNone(config.context_window_tokens)
         self.assertEqual(config.context_window_source, "fallback")
-        self.assertEqual(config.budget_resolution, "fallback_fixed")
+        self.assertEqual(config.budget_resolution, "dynamic_fallback")
         self.assertEqual(config.run_tool_evidence_budget, DEFAULT_TOOL_RESULT_TOKEN_BUDGET)
         self.assertEqual(config.per_call_ceiling, DEFAULT_TOOL_RESULT_TOKEN_BUDGET)
 
         reservation = config.new_policy().begin_call()
-        self.assertEqual(reservation.effective_budget, DEFAULT_TOOL_RESULT_TOKEN_BUDGET)
+        self.assertEqual(reservation.effective_per_call_budget, DEFAULT_TOOL_RESULT_TOKEN_BUDGET)
 
     def test_fixed_mode_preserves_previous_per_call_budget(self) -> None:
-        policy = ToolResultBudgetConfig().new_policy()
+        policy = ToolResultBudgetConfig(mode="fixed").new_policy()
         first = policy.begin_call()
         snapshot = policy.complete_call(
             first,
-            projected_estimated_tokens=123,
+            projected_tool_result_tokens=123,
             truncated=False,
             omitted_context_messages=0,
             omitted_hit_messages=0,
         )
 
         self.assertEqual(snapshot.budget_mode, "fixed")
-        self.assertEqual(snapshot.effective_tool_result_budget, DEFAULT_TOOL_RESULT_TOKEN_BUDGET)
+        self.assertEqual(snapshot.effective_per_call_tool_result_budget, DEFAULT_TOOL_RESULT_TOKEN_BUDGET)
         self.assertIsNone(snapshot.run_tool_evidence_budget)
-        self.assertIsNone(snapshot.remaining_tool_evidence_budget_before_call)
-        self.assertIsNone(snapshot.remaining_tool_evidence_budget_after_call)
+        self.assertIsNone(snapshot.remaining_run_tool_evidence_budget_before_call)
+        self.assertIsNone(snapshot.remaining_run_tool_evidence_budget_after_call)
         self.assertEqual(snapshot.context_window_source, "not_used")
 
     def test_dynamic_pool_accounts_actual_projection_not_reserved_ceiling(self) -> None:
         policy = ToolResultBudgetConfig(mode="dynamic", context_window_tokens=64_000).new_policy()
         first = policy.begin_call()
-        self.assertEqual(first.remaining_before, 32_000)
-        self.assertEqual(first.effective_budget, 32_000)
+        self.assertEqual(first.remaining_run_tool_evidence_budget_before, 16_000)
+        self.assertEqual(first.effective_per_call_budget, 16_000)
         first_snapshot = policy.complete_call(
             first,
-            projected_estimated_tokens=4_000,
+            projected_tool_result_tokens=4_000,
             truncated=True,
             omitted_context_messages=7,
             omitted_hit_messages=11,
         )
-        self.assertEqual(first_snapshot.remaining_tool_evidence_budget_after_call, 28_000)
+        self.assertEqual(first_snapshot.remaining_run_tool_evidence_budget_after_call, 12_000)
 
         second = policy.begin_call()
-        self.assertEqual(second.remaining_before, 28_000)
-        self.assertEqual(second.effective_budget, 28_000)
+        self.assertEqual(second.remaining_run_tool_evidence_budget_before, 12_000)
+        self.assertEqual(second.effective_per_call_budget, 12_000)
         second_snapshot = policy.complete_call(
             second,
-            projected_estimated_tokens=6_000,
+            projected_tool_result_tokens=6_000,
             truncated=False,
             omitted_context_messages=0,
             omitted_hit_messages=0,
         )
-        self.assertEqual(second_snapshot.remaining_tool_evidence_budget_after_call, 22_000)
+        self.assertEqual(second_snapshot.remaining_run_tool_evidence_budget_after_call, 6_000)
         self.assertEqual(
-            first_snapshot.projected_estimated_tokens + second_snapshot.projected_estimated_tokens,
+            first_snapshot.projected_tool_result_tokens + second_snapshot.projected_tool_result_tokens,
             10_000,
         )
 
@@ -171,7 +211,7 @@ class ToolResultBudgetPolicyTests(unittest.TestCase):
             policy.begin_call()
         policy.complete_call(
             first,
-            projected_estimated_tokens=16_000,
+            projected_tool_result_tokens=8_000,
             truncated=False,
             omitted_context_messages=0,
             omitted_hit_messages=0,
@@ -185,11 +225,20 @@ class ToolResultBudgetPolicyTests(unittest.TestCase):
         with self.assertRaises(ToolResultBudgetError):
             policy.complete_call(
                 reservation,
-                projected_estimated_tokens=16_001,
+                projected_tool_result_tokens=8_001,
                 truncated=False,
                 omitted_context_messages=0,
                 omitted_hit_messages=0,
             )
+        # 非法结算不能吞掉 reservation；修正输入后同一调用仍可原子完成。
+        snapshot = policy.complete_call(
+            reservation,
+            projected_tool_result_tokens=8_000,
+            truncated=False,
+            omitted_context_messages=0,
+            omitted_hit_messages=0,
+        )
+        self.assertEqual(snapshot.remaining_run_tool_evidence_budget_after_call, 0)
 
 
 class ToolResultBudgetSettingsTests(unittest.TestCase):
@@ -209,32 +258,39 @@ class ToolResultBudgetSettingsTests(unittest.TestCase):
                 **self._environ(),
                 "TRIVAE_TOOL_RESULT_BUDGET_MODE": "dynamic",
                 "TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS": "128000",
-                "TRIVAE_MAX_TOOL_RESULT_PERCENT": "50",
-                "TRIVAE_MAX_TOOL_RESULT_TOKENS": "64000",
+                "TRIVAE_PER_CALL_TOOL_RESULT_PERCENT": "50",
+                "TRIVAE_PER_CALL_TOOL_RESULT_CAP": "64000",
+                "TRIVAE_RUN_TOOL_EVIDENCE_PERCENT": "25",
+                "TRIVAE_RUN_TOOL_EVIDENCE_CAP": "256000",
+                "TRIVAE_RUN_TOOL_EVIDENCE_BUDGET": "128000",
             }
         )
         self.assertEqual(settings.tool_result_budget_mode, "dynamic")
         self.assertEqual(settings.model_context_window_tokens, 128_000)
-        self.assertEqual(settings.max_tool_result_percent, DEFAULT_MAX_TOOL_RESULT_PERCENT)
-        self.assertEqual(settings.max_tool_result_tokens, 64_000)
-        self.assertEqual(settings.to_safe_dict()["max_tool_result_tokens"], 64_000)
+        self.assertEqual(settings.per_call_tool_result_percent, DEFAULT_PER_CALL_TOOL_RESULT_PERCENT)
+        self.assertEqual(settings.per_call_tool_result_cap, 64_000)
+        self.assertEqual(settings.run_tool_evidence_percent, DEFAULT_RUN_TOOL_EVIDENCE_PERCENT)
+        self.assertEqual(settings.run_tool_evidence_budget, 128_000)
+        self.assertEqual(settings.to_safe_dict()["per_call_tool_result_cap"], 64_000)
         self.assertNotIn("test-key", repr(settings))
 
-    def test_budget_settings_default_to_fixed_without_context_guess(self) -> None:
+    def test_budget_settings_default_to_dynamic_without_context_guess(self) -> None:
         settings = load_settings(self._environ())
-        self.assertEqual(settings.tool_result_budget_mode, "fixed")
+        self.assertEqual(settings.tool_result_budget_mode, "dynamic")
         self.assertIsNone(settings.model_context_window_tokens)
-        self.assertEqual(settings.max_tool_result_percent, DEFAULT_MAX_TOOL_RESULT_PERCENT)
-        self.assertEqual(settings.max_tool_result_tokens, DEFAULT_MAX_TOOL_RESULT_TOKENS)
+        self.assertEqual(settings.per_call_tool_result_percent, DEFAULT_PER_CALL_TOOL_RESULT_PERCENT)
+        self.assertEqual(settings.per_call_tool_result_cap, DEFAULT_PER_CALL_TOOL_RESULT_CAP)
+        self.assertEqual(settings.run_tool_evidence_percent, DEFAULT_RUN_TOOL_EVIDENCE_PERCENT)
+        self.assertEqual(settings.run_tool_evidence_cap, DEFAULT_RUN_TOOL_EVIDENCE_CAP)
 
     def test_budget_settings_reject_invalid_values(self) -> None:
         cases = (
             {"TRIVAE_TOOL_RESULT_BUDGET_MODE": "guess"},
             {"TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS": ""},
             {"TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS": "32000.0"},
-            {"TRIVAE_MAX_TOOL_RESULT_PERCENT": "0"},
-            {"TRIVAE_MAX_TOOL_RESULT_PERCENT": "101"},
-            {"TRIVAE_MAX_TOOL_RESULT_TOKENS": "-1"},
+            {"TRIVAE_PER_CALL_TOOL_RESULT_PERCENT": "0"},
+            {"TRIVAE_RUN_TOOL_EVIDENCE_PERCENT": "101"},
+            {"TRIVAE_PER_CALL_TOOL_RESULT_CAP": "-1"},
         )
         for override in cases:
             with self.subTest(override=override):
@@ -323,13 +379,137 @@ class ToolResultBudgetRuntimeTests(unittest.TestCase):
         self.assertEqual(snapshot.budget_mode, "dynamic")
         self.assertEqual(snapshot.context_window_tokens, 64_000)
         self.assertEqual(snapshot.context_window_source, "explicit_config")
-        self.assertEqual(snapshot.run_tool_evidence_budget, 32_000)
-        self.assertEqual(snapshot.effective_tool_result_budget, 32_000)
-        self.assertIsInstance(snapshot.projected_estimated_tokens, int)
+        self.assertEqual(snapshot.run_tool_evidence_budget, 16_000)
+        self.assertEqual(snapshot.effective_per_call_tool_result_budget, 16_000)
+        self.assertIsInstance(snapshot.projected_tool_result_tokens, int)
         self.assertEqual(
-            snapshot.remaining_tool_evidence_budget_after_call,
-            32_000 - snapshot.projected_estimated_tokens,
+            snapshot.remaining_run_tool_evidence_budget_after_call,
+            16_000 - snapshot.projected_tool_result_tokens,
         )
+
+    def test_adapter_uses_verified_registry_for_default_1m_context(self) -> None:
+        settings = ModelSettings(
+            api_key="",
+            base_url="https://example.test/v1",
+            provider="opencode-go",
+            model_name="deepseek-v4-flash",
+            max_turns=6,
+            tool_result_budget_mode="dynamic",
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(
+            self.registry,
+            model=ScriptedModel([]),
+            settings=settings,
+        )
+
+        config = runtime._tool_result_budget_config
+        self.assertEqual(config.context_window_tokens, 1_000_000)
+        self.assertEqual(config.context_window_source, "verified_model_registry")
+        self.assertEqual(config.per_call_ceiling, 128_000)
+        self.assertEqual(config.run_tool_evidence_budget, 250_000)
+
+    def test_trace_records_verified_registry_context_source(self) -> None:
+        model = ScriptedModel(
+            [
+                ModelStep(
+                    output=[
+                        function_call(
+                            "search_messages",
+                            {"keyword": "alpha", "limit": 5},
+                            call_id="budget-call-verified",
+                        )
+                    ]
+                ),
+                ModelStep(output=[assistant_message("answer")]),
+            ]
+        )
+        settings = ModelSettings(
+            api_key="",
+            base_url="https://example.test/v1",
+            provider="opencode-go",
+            model_name="deepseek-v4-flash",
+            max_turns=6,
+            tool_result_budget_mode="dynamic",
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=model, settings=settings)
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteTraceStore(Path(directory) / "trace-verified.sqlite3")
+            collector = TraceCollector(
+                store,
+                trace_id="trace-budget-verified",
+                request_id="request-budget-verified",
+                profile="debug",
+            )
+            traced = TraceableAgentRuntime(runtime, collector)
+            asyncio.run(
+                traced.run(
+                    AgentRunRequest(
+                        "find alpha",
+                        self.scope,
+                        available_capabilities=("search_messages",),
+                    )
+                )
+            )
+            projection = project_trace(store.read_trace("trace-budget-verified"))
+            terminal = next(
+                item
+                for item in projection.timeline
+                if item.operation == "runtime.run" and item.phase == "completed"
+            )
+            self.assertEqual(terminal.payload["context_window_tokens"], 1_000_000)
+            self.assertEqual(terminal.payload["context_window_source"], "verified_model_registry")
+            self.assertEqual(terminal.payload["run_tool_evidence_budget"], 250_000)
+            store.close()
+
+    def test_trace_records_unknown_context_fallback_source(self) -> None:
+        model = ScriptedModel(
+            [
+                ModelStep(
+                    output=[
+                        function_call(
+                            "search_messages",
+                            {"keyword": "alpha", "limit": 5},
+                            call_id="budget-call-fallback",
+                        )
+                    ]
+                ),
+                ModelStep(output=[assistant_message("answer")]),
+            ]
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(
+            self.registry,
+            model=model,
+            provider_name="unknown-provider",
+            model_name="unknown-model",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteTraceStore(Path(directory) / "trace-fallback.sqlite3")
+            collector = TraceCollector(
+                store,
+                trace_id="trace-budget-fallback",
+                request_id="request-budget-fallback",
+                profile="debug",
+            )
+            traced = TraceableAgentRuntime(runtime, collector)
+            asyncio.run(
+                traced.run(
+                    AgentRunRequest(
+                        "find alpha",
+                        self.scope,
+                        available_capabilities=("search_messages",),
+                    )
+                )
+            )
+            projection = project_trace(store.read_trace("trace-budget-fallback"))
+            terminal = next(
+                item
+                for item in projection.timeline
+                if item.operation == "runtime.run" and item.phase == "completed"
+            )
+            self.assertIsNone(terminal.payload["context_window_tokens"])
+            self.assertEqual(terminal.payload["context_window_source"], "fallback")
+            self.assertEqual(terminal.payload["run_tool_evidence_budget"], 16_000)
+            store.close()
 
     def test_runtime_multiple_tool_calls_share_one_run_pool(self) -> None:
         model = ScriptedModel(
@@ -370,12 +550,12 @@ class ToolResultBudgetRuntimeTests(unittest.TestCase):
         assert first is not None
         assert second is not None
         self.assertEqual(first.run_tool_evidence_budget, second.run_tool_evidence_budget)
-        self.assertEqual(second.remaining_tool_evidence_budget_before_call, first.remaining_tool_evidence_budget_after_call)
+        self.assertEqual(second.remaining_run_tool_evidence_budget_before_call, first.remaining_run_tool_evidence_budget_after_call)
         self.assertEqual(
-            second.remaining_tool_evidence_budget_after_call,
-            32_000 - first.projected_estimated_tokens - second.projected_estimated_tokens,
+            second.remaining_run_tool_evidence_budget_after_call,
+            16_000 - first.projected_tool_result_tokens - second.projected_tool_result_tokens,
         )
-        self.assertGreaterEqual(second.remaining_tool_evidence_budget_after_call, 0)
+        self.assertGreaterEqual(second.remaining_run_tool_evidence_budget_after_call, 0)
 
     def test_evaluation_exposes_budget_facts_without_quality_label(self) -> None:
         """Evaluation 只读取 Runtime budget snapshot，不把 truncation 改写成质量结论。"""
@@ -412,7 +592,7 @@ class ToolResultBudgetRuntimeTests(unittest.TestCase):
         self.assertIsInstance(budget_facts, tuple)
         assert isinstance(budget_facts, tuple)
         self.assertEqual(len(budget_facts), 1)
-        self.assertEqual(budget_facts[0]["run_tool_evidence_budget"], 32_000)
+        self.assertEqual(budget_facts[0]["run_tool_evidence_budget"], 16_000)
         self.assertEqual(budget_facts[0]["budget_mode"], "dynamic")
         self.assertNotIn("quality", budget_facts[0])
 
@@ -462,7 +642,7 @@ class ToolResultBudgetRuntimeTests(unittest.TestCase):
             budget = completed_tool.payload["tool_result_budget"]
             self.assertEqual(budget["budget_mode"], "dynamic")
             self.assertEqual(budget["context_window_tokens"], 128_000)
-            self.assertEqual(budget["run_tool_evidence_budget"], 64_000)
+            self.assertEqual(budget["run_tool_evidence_budget"], 32_000)
             terminal = next(
                 item
                 for item in projection.timeline

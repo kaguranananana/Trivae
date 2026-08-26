@@ -2,9 +2,11 @@
 
 from trivae.config.limits import (
     DEFAULT_LEXICAL_RESULT_LIMIT,
-    DEFAULT_MAX_TOOL_RESULT_PERCENT,
-    DEFAULT_MAX_TOOL_RESULT_TOKENS,
     DEFAULT_MEMBER_RESULT_LIMIT,
+    DEFAULT_PER_CALL_TOOL_RESULT_CAP,
+    DEFAULT_PER_CALL_TOOL_RESULT_PERCENT,
+    DEFAULT_RUN_TOOL_EVIDENCE_CAP,
+    DEFAULT_RUN_TOOL_EVIDENCE_PERCENT,
     DEFAULT_SEMANTIC_RESULT_LIMIT,
     DEFAULT_STRUCTURED_RESULT_LIMIT,
     DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
@@ -17,6 +19,15 @@ from trivae.config.limits import (
     MAX_TRUSTED_RESULT_LIMIT,
     ToolResultBudgetMode,
 )
+from trivae.config.model_capabilities import (
+    DEFAULT_MODEL_CAPABILITY_REGISTRY,
+    ContextWindowResolution,
+    ContextWindowSource,
+    ModelCapabilityError,
+    ModelCapabilityRegistry,
+    VerifiedModelMetadata,
+    resolve_context_window,
+)
 from trivae.config.settings import (
     DEFAULT_DEEPSEEK_BASE_URL,
     DeepSeekSettings,
@@ -27,8 +38,10 @@ from trivae.config.settings import (
 
 __all__ = [
     "DEFAULT_LEXICAL_RESULT_LIMIT",
-    "DEFAULT_MAX_TOOL_RESULT_PERCENT",
-    "DEFAULT_MAX_TOOL_RESULT_TOKENS",
+    "DEFAULT_PER_CALL_TOOL_RESULT_CAP",
+    "DEFAULT_PER_CALL_TOOL_RESULT_PERCENT",
+    "DEFAULT_RUN_TOOL_EVIDENCE_CAP",
+    "DEFAULT_RUN_TOOL_EVIDENCE_PERCENT",
     "DEFAULT_MEMBER_RESULT_LIMIT",
     "DEFAULT_SEMANTIC_RESULT_LIMIT",
     "DEFAULT_STRUCTURED_RESULT_LIMIT",
@@ -41,6 +54,13 @@ __all__ = [
     "MAX_STRUCTURED_RESULT_ITEMS",
     "MAX_TRUSTED_RESULT_LIMIT",
     "ToolResultBudgetMode",
+    "ContextWindowResolution",
+    "ContextWindowSource",
+    "DEFAULT_MODEL_CAPABILITY_REGISTRY",
+    "ModelCapabilityError",
+    "ModelCapabilityRegistry",
+    "VerifiedModelMetadata",
+    "resolve_context_window",
     "DEFAULT_DEEPSEEK_BASE_URL",
     "DeepSeekSettings",
     "ModelSettings",

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Mapping, TypeAlias
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
@@ -88,6 +88,110 @@ class FinalizationErrorInfo:
     code: str
     message: str
     path: str | None = None
+
+
+FinalizationStatus = Literal["valid", "degraded", "failed"]
+MAX_FINALIZATION_DIAGNOSTIC_ITEMS = 20
+
+
+@dataclass(frozen=True)
+class FinalizationDiagnostics:
+    """最终化结果的 bounded、secret-safe 诊断，不复制模型原始输出。"""
+
+    status: FinalizationStatus
+    user_answer_preserved: bool
+    error_code: str | None = None
+    error_path: str | None = None
+    degradation_codes: tuple[str, ...] = ()
+    dropped_field_count: int = 0
+    dropped_field_paths: tuple[str, ...] = ()
+    dropped_citation_count: int = 0
+    normalization_count: int = 0
+    validated_citation_count: int = 0
+
+    def __post_init__(self) -> None:
+        """校验状态与计数，只允许有限的静态诊断字段进入 Trace/Evaluation。"""
+
+        if self.status not in {"valid", "degraded", "failed"}:
+            raise AnswerContractError("finalization status is invalid")
+        if not isinstance(self.user_answer_preserved, bool):
+            raise AnswerContractError("user_answer_preserved must be a boolean")
+        object.__setattr__(self, "error_code", _optional_text("finalization error_code", self.error_code, max_chars=128))
+        object.__setattr__(self, "error_path", _optional_text("finalization error_path", self.error_path, max_chars=256))
+        object.__setattr__(
+            self,
+            "degradation_codes",
+            _diagnostic_texts(self.degradation_codes, "degradation_codes", max_chars=128),
+        )
+        object.__setattr__(
+            self,
+            "dropped_field_paths",
+            _diagnostic_texts(self.dropped_field_paths, "dropped_field_paths", max_chars=256),
+        )
+        for name in (
+            "dropped_field_count",
+            "dropped_citation_count",
+            "normalization_count",
+            "validated_citation_count",
+        ):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise AnswerContractError(f"{name} must be a non-negative integer")
+
+    def to_dict(self) -> dict[str, object]:
+        """将诊断转换成可写入 Trace/Evaluation 的普通 bounded 字典。"""
+
+        return {
+            "status": self.status,
+            "user_answer_preserved": self.user_answer_preserved,
+            "error_code": self.error_code,
+            "error_path": self.error_path,
+            "degradation_codes": list(self.degradation_codes),
+            "dropped_field_count": self.dropped_field_count,
+            "dropped_field_paths": list(self.dropped_field_paths),
+            "dropped_citation_count": self.dropped_citation_count,
+            "normalization_count": self.normalization_count,
+            "validated_citation_count": self.validated_citation_count,
+        }
+
+
+@dataclass(frozen=True)
+class FinalizationResult:
+    """最终化的 typed outcome：可提交 Artifact 或 secret-safe fatal error。"""
+
+    artifact: AnswerArtifact | None
+    diagnostics: FinalizationDiagnostics
+    error: FinalizationErrorInfo | None = None
+
+    def __post_init__(self) -> None:
+        """保持 status、artifact、error 三者一致，避免调用方自行猜测边界。"""
+
+        if not isinstance(self.diagnostics, FinalizationDiagnostics):
+            raise AnswerContractError("finalization diagnostics are invalid")
+        if self.diagnostics.status == "failed":
+            if self.artifact is not None or self.error is None:
+                raise AnswerContractError("failed finalization requires error and no artifact")
+        elif self.artifact is None or self.error is not None:
+            raise AnswerContractError("valid or degraded finalization requires an artifact and no error")
+
+
+def _diagnostic_texts(values: tuple[str, ...], name: str, *, max_chars: int) -> tuple[str, ...]:
+    """规范化有限诊断文本，避免错误路径本身造成无界增长。"""
+
+    if not isinstance(values, tuple):
+        raise AnswerContractError(f"{name} must be a tuple")
+    if len(values) > MAX_FINALIZATION_DIAGNOSTIC_ITEMS:
+        raise AnswerContractError(f"{name} exceeds {MAX_FINALIZATION_DIAGNOSTIC_ITEMS} items")
+    normalized: list[str] = []
+    for index, value in enumerate(values):
+        if not isinstance(value, str) or not value.strip():
+            raise AnswerContractError(f"{name}[{index}] must be a non-empty string")
+        item = value.strip()
+        if len(item) > max_chars:
+            raise AnswerContractError(f"{name}[{index}] exceeds {max_chars} characters")
+        if item not in normalized:
+            normalized.append(item)
+    return tuple(normalized)
 
 
 def _text(name: str, value: object, *, max_chars: int = MAX_FIELD_CHARS) -> str:
@@ -1918,3 +2022,568 @@ def finalize_answer(
         scope=scope,
         accepted_run_ids=accepted_run_ids,
     )
+
+
+@dataclass
+class _FinalizationRecoveryState:
+    """graceful recovery 过程中的 bounded 计数器，不会离开 Evidence 层。"""
+
+    dropped_field_count: int = 0
+    dropped_field_paths: list[str] = field(default_factory=list)
+    dropped_citation_count: int = 0
+    normalization_count: int = 0
+    validated_citation_count: int = 0
+    degradation_codes: list[str] = field(default_factory=list)
+    # 同一 Evidence 的多个坏 source 仍只对应一次被丢弃的 citation，避免诊断重复计数。
+    dropped_source_evidence_ids: set[str] = field(default_factory=set, repr=False)
+
+    def drop_field(self, path: str) -> None:
+        """记录一个被丢弃的字段；只保存有限路径，完整数量仍单独保留。"""
+
+        self.dropped_field_count += 1
+        if len(self.dropped_field_paths) < MAX_FINALIZATION_DIAGNOSTIC_ITEMS and path not in self.dropped_field_paths:
+            self.dropped_field_paths.append(path)
+        self.add_code("field_dropped")
+
+    def drop_citation(self) -> None:
+        """记录一个未能通过当前 run provenance 的 citation。"""
+
+        self.dropped_citation_count += 1
+        self.add_code("citation_dropped")
+
+    def drop_citation_for_evidence(self, evidence_id: str) -> None:
+        """按 Evidence 去重记录 source 失败，防止 hydrate 与 binding 各算一次。"""
+
+        if evidence_id in self.dropped_source_evidence_ids:
+            return
+        self.dropped_source_evidence_ids.add(evidence_id)
+        self.drop_citation()
+
+    def add_code(self, code: str) -> None:
+        """以去重方式保留稳定 degradation code，不保存动态错误正文。"""
+
+        if code not in self.degradation_codes and len(self.degradation_codes) < MAX_FINALIZATION_DIAGNOSTIC_ITEMS:
+            self.degradation_codes.append(code)
+
+
+_FATAL_GRACEFUL_CODES = frozenset(
+    {
+        "INVALID_PROVENANCE",
+        "SCOPE_VIOLATION",
+        "MESSAGE_SOURCE_MISMATCH",
+        "TRUSTED_METADATA_UNAVAILABLE",
+    }
+)
+
+
+def _recovery_text(value: object, path: str, state: _FinalizationRecoveryState) -> str | None:
+    """尝试保留一个 bounded 文本字段；非法局部字段不会破坏同一答案。"""
+
+    try:
+        return _text(path, value)
+    except AnswerContractError:
+        state.drop_field(path)
+        return None
+
+
+def _recovery_limitations(
+    value: object,
+    path: str,
+    state: _FinalizationRecoveryState,
+) -> tuple[str, ...]:
+    """规范化有界 limitations；字符串是唯一允许确定性转成单元素数组的错误形态。"""
+
+    if isinstance(value, str):
+        normalized = _recovery_text(value, path, state)
+        if normalized is None:
+            return ()
+        state.normalization_count += 1
+        state.add_code("limitations_normalized")
+        return (normalized,)
+    if not isinstance(value, list):
+        state.drop_field(path)
+        return ()
+    if len(value) > MAX_LIMITATIONS:
+        state.drop_field(path)
+        return ()
+    normalized_limitations: list[str] = []
+    for index, item in enumerate(value):
+        text = _recovery_text(item, f"{path}[{index}]", state)
+        if text is not None:
+            normalized_limitations.append(text)
+    return tuple(normalized_limitations)
+
+
+def _recovery_model_sources(
+    value: object,
+    path: str,
+    state: _FinalizationRecoveryState,
+) -> tuple[tuple[tuple[str, SourceRelation], ...], bool]:
+    """逐条解析 semantic source handle，坏 citation 只影响它自己。"""
+
+    if not isinstance(value, list):
+        state.drop_field(path)
+        return (), True
+    if len(value) > MAX_SOURCES_PER_EVIDENCE:
+        state.drop_field(path)
+        return (), True
+    sources: list[tuple[str, SourceRelation]] = []
+    had_invalid_source = False
+    for index, raw_source in enumerate(value):
+        source_path = f"{path}[{index}]"
+        try:
+            sources.append(_parse_model_source(raw_source, source_path))
+        except AnswerFinalizationError:
+            had_invalid_source = True
+            state.drop_field(source_path)
+    return tuple(sources), had_invalid_source
+
+
+def _recovery_full_sources(
+    value: object,
+    path: str,
+    state: _FinalizationRecoveryState,
+) -> tuple[tuple[EvidenceSource, ...], bool]:
+    """解析旧 full Artifact 的 source；模型提供的显示 metadata 仍不会被采用。"""
+
+    if not isinstance(value, list):
+        state.drop_field(path)
+        return (), True
+    if len(value) > MAX_SOURCES_PER_EVIDENCE:
+        state.drop_field(path)
+        return (), True
+    sources: list[EvidenceSource] = []
+    had_invalid_source = False
+    for index, raw_source in enumerate(value):
+        source_path = f"{path}[{index}]"
+        if not isinstance(raw_source, Mapping):
+            had_invalid_source = True
+            state.drop_field(source_path)
+            continue
+        try:
+            relation = raw_source["relation"]
+            reference = _parse_source(raw_source["source"], f"{source_path}.source")
+            sources.append(EvidenceSource(relation, reference))
+        except (KeyError, AnswerFinalizationError, AnswerContractError):
+            had_invalid_source = True
+            state.drop_field(source_path)
+    return tuple(sources), had_invalid_source
+
+
+def _recovery_sufficiency(
+    value: object,
+    path: str,
+    state: _FinalizationRecoveryState,
+) -> EvidenceSufficiency | None:
+    """读取 evidence 的有限枚举；不合法时放弃局部 evidence metadata。"""
+
+    if isinstance(value, str) and value in {"sufficient", "partial", "insufficient"}:
+        return value  # type: ignore[return-value]
+    state.drop_field(path)
+    return None
+
+
+def _recovery_blocks(
+    payload: Mapping[str, Any],
+    state: _FinalizationRecoveryState,
+) -> tuple[AnswerContentBlock, ...]:
+    """从 full Artifact payload 保留可读 content block，并丢弃非法局部 block。"""
+
+    raw_blocks: object = payload.get("content_blocks")
+    if raw_blocks is None and "answer" in payload:
+        raw_blocks = [{"block_id": "answer", "text": payload.get("answer")}]
+    if not isinstance(raw_blocks, list):
+        state.drop_field("content_blocks")
+        raw_answer = _recovery_text(payload.get("answer"), "answer", state)
+        return () if raw_answer is None else (AnswerContentBlock("answer", raw_answer),)
+    if len(raw_blocks) > MAX_CONTENT_BLOCKS:
+        state.drop_field("content_blocks")
+        raw_blocks = raw_blocks[:MAX_CONTENT_BLOCKS]
+    blocks: list[AnswerContentBlock] = []
+    for index, raw_block in enumerate(raw_blocks):
+        path = f"content_blocks[{index}]"
+        if not isinstance(raw_block, Mapping):
+            state.drop_field(path)
+            continue
+        block_id = _recovery_text(raw_block.get("block_id"), f"{path}.block_id", state)
+        text = _recovery_text(raw_block.get("text"), f"{path}.text", state)
+        if block_id is None or text is None:
+            continue
+        try:
+            blocks.append(AnswerContentBlock(block_id, text))
+        except AnswerContractError:
+            state.drop_field(path)
+    return tuple(blocks)
+
+
+def _recovery_candidate_artifact(
+    payload: Mapping[str, Any],
+    *,
+    has_tool_results: bool,
+    state: _FinalizationRecoveryState,
+) -> tuple[AnswerArtifact, tuple[tuple[str, str], ...]]:
+    """从 semantic claims 构建 host-owned identity，返回待 hydrate 的 binding 目标。"""
+
+    raw_claims = payload.get("claims")
+    if not isinstance(raw_claims, list):
+        state.drop_field("claims")
+        fallback = _recovery_text(payload.get("answer"), "answer", state)
+        if fallback is None:
+            raise _model_error("INVALID_MODEL_CANDIDATE", "model answer contains no readable claim")
+        fallback_blocks = (AnswerContentBlock("answer", fallback),)
+        limitations = _recovery_limitations(payload.get("limitations", []), "limitations", state)
+        return AnswerArtifact(content_blocks=fallback_blocks, limitations=limitations), ()
+    if len(raw_claims) > MAX_CONTENT_BLOCKS:
+        state.drop_field("claims")
+        raw_claims = raw_claims[:MAX_CONTENT_BLOCKS]
+
+    blocks: list[AnswerContentBlock] = []
+    evidence: list[EvidenceItem] = []
+    binding_targets: list[tuple[str, str]] = []
+    answer_limitations = _recovery_limitations(payload.get("limitations", []), "limitations", state)
+    for index, raw_claim in enumerate(raw_claims):
+        path = f"claims[{index}]"
+        if not isinstance(raw_claim, Mapping):
+            state.drop_field(path)
+            continue
+        text = _recovery_text(raw_claim.get("text"), f"{path}.text", state)
+        if text is None:
+            continue
+        block_id = f"claim-{len(blocks) + 1}"
+        blocks.append(AnswerContentBlock(block_id, text))
+        claim_limitations = _recovery_limitations(
+            raw_claim.get("limitations", []),
+            f"{path}.limitations",
+            state,
+        )
+        raw_sources = raw_claim.get("sources", [])
+        model_sources, had_invalid_sources = _recovery_model_sources(
+            raw_sources,
+            f"{path}.sources",
+            state,
+        )
+        finding = _recovery_text(raw_claim.get("finding"), f"{path}.finding", state)
+        criterion = _recovery_text(raw_claim.get("criterion"), f"{path}.criterion", state)
+        sufficiency = _recovery_sufficiency(raw_claim.get("sufficiency"), f"{path}.sufficiency", state)
+        if not has_tool_results:
+            answer_limitations = tuple((*answer_limitations, *claim_limitations))[:MAX_LIMITATIONS]
+            continue
+        if finding is None or criterion is None or sufficiency is None:
+            if model_sources or had_invalid_sources:
+                state.drop_citation()
+            continue
+        evidence_id = f"e{len(evidence) + 1}"
+        evidence.append(
+            EvidenceItem(
+                evidence_id=evidence_id,
+                finding=finding,
+                criterion=criterion,
+                sufficiency=sufficiency,
+                sources=tuple(
+                    EvidenceSource(relation, SourceHandleReference(source_id))
+                    for source_id, relation in model_sources
+                ),
+                limitations=claim_limitations,
+            )
+        )
+        if had_invalid_sources:
+            state.drop_citation_for_evidence(evidence_id)
+        binding_targets.append((block_id, evidence_id))
+
+    if not blocks:
+        raise _model_error("INVALID_MODEL_CANDIDATE", "model answer contains no readable claim", "claims")
+    return (
+        AnswerArtifact(
+            content_blocks=tuple(blocks),
+            evidence_items=tuple(evidence),
+            limitations=answer_limitations,
+        ),
+        tuple(binding_targets),
+    )
+
+
+def _recovery_full_artifact(
+    payload: Mapping[str, Any],
+    *,
+    has_tool_results: bool,
+    state: _FinalizationRecoveryState,
+) -> tuple[AnswerArtifact, tuple[tuple[str, str], ...]]:
+    """从历史 full Artifact contract 保留可读内容，再独立过滤 binding。"""
+
+    blocks = _recovery_blocks(payload, state)
+    if not blocks:
+        raise _model_error("INVALID_ANSWER_ARTIFACT", "final answer contains no readable content")
+    raw_items = payload.get("evidence_items", [])
+    if not isinstance(raw_items, list):
+        state.drop_field("evidence_items")
+        raw_items = []
+    if len(raw_items) > MAX_EVIDENCE_ITEMS:
+        state.drop_field("evidence_items")
+        raw_items = raw_items[:MAX_EVIDENCE_ITEMS]
+    evidence: list[EvidenceItem] = []
+    for index, raw_item in enumerate(raw_items):
+        path = f"evidence_items[{index}]"
+        if not isinstance(raw_item, Mapping):
+            state.drop_field(path)
+            continue
+        evidence_id = _recovery_text(raw_item.get("evidence_id"), f"{path}.evidence_id", state)
+        finding = _recovery_text(raw_item.get("finding"), f"{path}.finding", state)
+        criterion = _recovery_text(raw_item.get("criterion"), f"{path}.criterion", state)
+        sufficiency = _recovery_sufficiency(raw_item.get("sufficiency"), f"{path}.sufficiency", state)
+        if evidence_id is None or finding is None or criterion is None or sufficiency is None:
+            continue
+        sources, had_invalid_sources = _recovery_full_sources(
+            raw_item.get("sources", []),
+            f"{path}.sources",
+            state,
+        )
+        limitations = _recovery_limitations(raw_item.get("limitations", []), f"{path}.limitations", state)
+        try:
+            evidence.append(
+                EvidenceItem(
+                    evidence_id=evidence_id,
+                    finding=finding,
+                    criterion=criterion,
+                    sufficiency=sufficiency,
+                    sources=sources,
+                    limitations=limitations,
+                )
+            )
+            if had_invalid_sources:
+                state.drop_citation_for_evidence(evidence_id)
+        except AnswerContractError:
+            state.drop_field(path)
+
+    raw_bindings = payload.get("citation_bindings", [])
+    if not isinstance(raw_bindings, list):
+        state.drop_field("citation_bindings")
+        raw_bindings = []
+    if len(raw_bindings) > MAX_CITATION_BINDINGS:
+        state.drop_field("citation_bindings")
+        raw_bindings = raw_bindings[:MAX_CITATION_BINDINGS]
+    binding_targets: list[tuple[str, str]] = []
+    binding_blocks: set[str] = set()
+    for index, raw_binding in enumerate(raw_bindings):
+        path = f"citation_bindings[{index}]"
+        if not isinstance(raw_binding, Mapping):
+            state.drop_citation()
+            state.drop_field(path)
+            continue
+        block_id = _recovery_text(raw_binding.get("content_block_id"), f"{path}.content_block_id", state)
+        raw_ids = raw_binding.get("evidence_ids")
+        if block_id is None or not isinstance(raw_ids, list) or not raw_ids:
+            state.drop_citation()
+            state.drop_field(path)
+            continue
+        if block_id in binding_blocks:
+            state.drop_citation()
+            state.drop_field(path)
+            continue
+        if len(raw_ids) > MAX_EVIDENCE_ITEMS:
+            state.drop_citation()
+            state.drop_field(path)
+            continue
+        for raw_id in raw_ids:
+            evidence_id = _recovery_text(raw_id, f"{path}.evidence_ids", state)
+            if evidence_id is not None:
+                binding_targets.append((block_id, evidence_id))
+        binding_blocks.add(block_id)
+    limitations = _recovery_limitations(payload.get("limitations", []), "limitations", state)
+    return (
+        AnswerArtifact(
+            content_blocks=blocks,
+            evidence_items=tuple(evidence),
+            limitations=limitations,
+        ),
+        tuple(binding_targets),
+    )
+
+
+def _hydrate_recovered_evidence(
+    evidence: tuple[EvidenceItem, ...],
+    *,
+    run_id: str | None,
+    tool_results: tuple[ToolResultRecord, ...],
+    scope: ExecutionScope,
+    accepted_run_ids: tuple[str, ...],
+    state: _FinalizationRecoveryState,
+) -> tuple[EvidenceItem, ...]:
+    """逐 source hydrate；recoverable locator 错误只丢弃当前 citation。"""
+
+    if not tool_results:
+        return evidence
+    if run_id is None or not run_id:
+        raise _model_error("INVALID_PROVENANCE", "current run identity is unavailable")
+    records = _record_index(tool_results, run_id, accepted_run_ids)
+    finalized_items: list[EvidenceItem] = []
+    for item_index, item in enumerate(evidence):
+        sources: list[EvidenceSource] = []
+        for source_index, source in enumerate(item.sources):
+            source_path = f"evidence_items[{item_index}].sources[{source_index}].source"
+            try:
+                sources.append(
+                    _finalize_source(
+                        source,
+                        run_id=run_id,
+                        accepted_run_ids=accepted_run_ids,
+                        records=records,
+                        scope=scope,
+                        source_path=source_path,
+                    )
+                )
+            except AnswerFinalizationError as exc:
+                if exc.code in _FATAL_GRACEFUL_CODES:
+                    raise
+                state.drop_citation_for_evidence(item.evidence_id)
+                state.drop_field(source_path)
+        state.validated_citation_count += len(sources)
+        finalized_items.append(replace(item, sources=tuple(sources)))
+    return tuple(finalized_items)
+
+
+def _recovery_error_result(exc: AnswerFinalizationError) -> FinalizationResult:
+    """把 fatal finalization failure 转成稳定的 failed typed result。"""
+
+    diagnostics = FinalizationDiagnostics(
+        status="failed",
+        user_answer_preserved=False,
+        error_code=exc.code,
+        error_path=exc.path,
+        degradation_codes=("finalization_failed",),
+    )
+    return FinalizationResult(
+        artifact=None,
+        diagnostics=diagnostics,
+        error=FinalizationErrorInfo(exc.code, exc.message, exc.path),
+    )
+
+
+def finalize_answer_gracefully(
+    output: str,
+    *,
+    run_id: str | None,
+    tool_results: tuple[ToolResultRecord, ...],
+    scope: ExecutionScope,
+    accepted_run_ids: tuple[str, ...] = (),
+) -> FinalizationResult:
+    """先走 strict finalizer，局部错误才进入有界 deterministic recovery。"""
+
+    try:
+        # 正常路径完全复用既有 strict validation，避免 graceful 路径改变合法答案语义。
+        artifact = finalize_answer(
+            output,
+            run_id=run_id,
+            tool_results=tool_results,
+            scope=scope,
+            accepted_run_ids=accepted_run_ids,
+        )
+    except AnswerFinalizationError as strict_error:
+        # trusted provenance/scope/empty answer 不是可恢复的局部 schema 问题。
+        if strict_error.code in _FATAL_GRACEFUL_CODES or strict_error.code == "INVALID_FINAL_OUTPUT":
+            return _recovery_error_result(strict_error)
+        state = _FinalizationRecoveryState()
+        state.add_code("strict_validation_failed")
+        try:
+            normalized_output = output.strip() if isinstance(output, str) else output
+            if not isinstance(normalized_output, str) or not normalized_output:
+                return _recovery_error_result(strict_error)
+            if normalized_output.startswith("{"):
+                try:
+                    decoded = json.loads(normalized_output)
+                except json.JSONDecodeError:
+                    # JSON-like malformed payload 没有可靠答案边界，继续显式 failed。
+                    return _recovery_error_result(strict_error)
+                if not isinstance(decoded, Mapping):
+                    return _recovery_error_result(strict_error)
+                if "claims" in decoded:
+                    recovered, binding_targets = _recovery_candidate_artifact(
+                        decoded,
+                        has_tool_results=bool(tool_results),
+                        state=state,
+                    )
+                else:
+                    recovered, binding_targets = _recovery_full_artifact(
+                        decoded,
+                        has_tool_results=bool(tool_results),
+                        state=state,
+                    )
+            else:
+                if normalized_output.startswith(("[", "```")):
+                    return _recovery_error_result(strict_error)
+                # 非结构化但可读的正文可以保留；Tool-backed citation 不会被伪造。
+                recovered = AnswerArtifact(
+                    content_blocks=(AnswerContentBlock("answer", normalized_output),)
+                )
+                binding_targets = ()
+            hydrated = _hydrate_recovered_evidence(
+                recovered.evidence_items,
+                run_id=run_id,
+                tool_results=tool_results,
+                scope=scope,
+                accepted_run_ids=accepted_run_ids,
+                state=state,
+            )
+            # Tool-backed evidence 没有任何可信 source 时也不能留在 Artifact 中，避免形成无 citation 的伪 evidence。
+            usable_evidence = (
+                tuple(item for item in hydrated if item.sources)
+                if tool_results
+                else hydrated
+            )
+            valid_evidence_ids = {
+                item.evidence_id for item in usable_evidence if item.sources
+            }
+            block_ids = {block.block_id for block in recovered.content_blocks}
+            binding_evidence_ids: dict[str, list[str]] = {}
+            for block_id, evidence_id in binding_targets:
+                if block_id not in block_ids:
+                    state.drop_citation()
+                    continue
+                if evidence_id not in valid_evidence_ids:
+                    # source hydrate 已经计过的 Evidence 不再为同一 citation 重复计数。
+                    if evidence_id not in state.dropped_source_evidence_ids:
+                        state.drop_citation()
+                    continue
+                targets = binding_evidence_ids.setdefault(block_id, [])
+                if evidence_id not in targets:
+                    targets.append(evidence_id)
+            bindings: list[CitationBinding] = []
+            for block_id, evidence_ids in binding_evidence_ids.items():
+                try:
+                    bindings.append(CitationBinding(block_id, tuple(evidence_ids)))
+                except AnswerContractError:
+                    state.drop_citation()
+            recovered = replace(
+                recovered,
+                evidence_items=usable_evidence,
+                citation_bindings=tuple(bindings),
+            )
+        except AnswerFinalizationError as recovery_error:
+            # recovery 仍遇到可信边界错误时不做第二层吞错，直接返回 fatal。
+            return _recovery_error_result(recovery_error)
+        except AnswerContractError:
+            # 只能是 recovery 自身无法形成 bounded artifact；不给调用方伪造 partial。
+            return _recovery_error_result(
+                _model_error("INVALID_ANSWER_ARTIFACT", "finalization recovery produced no valid artifact")
+            )
+        diagnostics = FinalizationDiagnostics(
+            status="degraded",
+            user_answer_preserved=True,
+            error_code=strict_error.code,
+            error_path=strict_error.path,
+            degradation_codes=tuple(state.degradation_codes),
+            dropped_field_count=state.dropped_field_count,
+            dropped_field_paths=tuple(state.dropped_field_paths),
+            dropped_citation_count=state.dropped_citation_count,
+            normalization_count=state.normalization_count,
+            validated_citation_count=state.validated_citation_count,
+        )
+        return FinalizationResult(artifact=recovered, diagnostics=diagnostics)
+    else:
+        # strict success 只补充计数，不重新解析或重新 hydrate trusted source。
+        validated_citations = sum(len(item.sources) for item in artifact.evidence_items)
+        diagnostics = FinalizationDiagnostics(
+            status="valid",
+            user_answer_preserved=True,
+            validated_citation_count=validated_citations,
+        )
+        return FinalizationResult(artifact=artifact, diagnostics=diagnostics)

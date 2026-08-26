@@ -964,6 +964,9 @@ def _print_query_result(
         limitations = _answer_limitations(artifact)
         if limitations:
             output_fn(f"Note: answer limitations — {'; '.join(limitations)}")
+        if result.is_degraded:
+            # degraded 仍是可交付答案，但必须把 citation/字段丢弃事实明确告诉用户。
+            output_fn("Note: answer validation was degraded; inspect the trace diagnostics.")
 
     # 每一轮 Query 都沿用 Application 产生的 Trace identity，详细查看交给 trace CLI。
     if result.trace_id is not None:

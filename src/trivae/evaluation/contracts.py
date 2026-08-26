@@ -32,7 +32,7 @@ SnapshotStatus = Literal["available", "invalid", "restricted", "unavailable"]
 ReferenceRelation = Literal["supports", "contradicts", "context"]
 ReferenceSourceType = Literal["message", "structured"]
 SuiteKind = Literal["design_seed", "core", "failure_regression", "calibration_slice"]
-CheckStatus = Literal["passed", "failed", "not_applicable", "unknown"]
+CheckStatus = Literal["passed", "failed", "degraded", "not_applicable", "unknown"]
 CheckSeverity = Literal["hard", "diagnostic"]
 ReviewType = Literal["human", "model_assisted"]
 ReviewLabel = Literal["pass", "fail", "mixed", "unknown", "not_reviewed"]
@@ -814,7 +814,7 @@ class DeterministicCheck:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "name", _text(self.name, "check name"))
-        if self.status not in ("passed", "failed", "not_applicable", "unknown"):
+        if self.status not in ("passed", "failed", "degraded", "not_applicable", "unknown"):
             raise EvaluationContractError("check status is invalid")
         if self.severity not in ("hard", "diagnostic"):
             raise EvaluationContractError("check severity is invalid")

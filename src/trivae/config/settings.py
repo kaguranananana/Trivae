@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from typing import Mapping, cast
 
 from trivae.config.limits import (
-    DEFAULT_MAX_TOOL_RESULT_PERCENT,
-    DEFAULT_MAX_TOOL_RESULT_TOKENS,
+    DEFAULT_PER_CALL_TOOL_RESULT_CAP,
+    DEFAULT_PER_CALL_TOOL_RESULT_PERCENT,
+    DEFAULT_RUN_TOOL_EVIDENCE_CAP,
+    DEFAULT_RUN_TOOL_EVIDENCE_PERCENT,
     ToolResultBudgetMode,
 )
 
@@ -27,7 +29,7 @@ class SettingsError(ValueError):
 
 @dataclass(frozen=True)
 class ModelSettings:
-    """OpenAI-compatible Chat Completions 的配置和运行预算。"""
+    """OpenAI-compatible Chat Completions 的配置和分离式运行预算。"""
 
     api_key: str
     base_url: str
@@ -37,10 +39,13 @@ class ModelSettings:
     max_tool_rounds: int = _DEFAULT_MAX_TOOL_ROUNDS
     max_output_tokens: int = _DEFAULT_MAX_OUTPUT_TOKENS
     completion_max_tokens: int = _DEFAULT_COMPLETION_MAX_TOKENS
-    tool_result_budget_mode: ToolResultBudgetMode = "fixed"
+    tool_result_budget_mode: ToolResultBudgetMode = "dynamic"
     model_context_window_tokens: int | None = None
-    max_tool_result_percent: int = DEFAULT_MAX_TOOL_RESULT_PERCENT
-    max_tool_result_tokens: int = DEFAULT_MAX_TOOL_RESULT_TOKENS
+    per_call_tool_result_percent: int = DEFAULT_PER_CALL_TOOL_RESULT_PERCENT
+    per_call_tool_result_cap: int = DEFAULT_PER_CALL_TOOL_RESULT_CAP
+    run_tool_evidence_percent: int = DEFAULT_RUN_TOOL_EVIDENCE_PERCENT
+    run_tool_evidence_cap: int = DEFAULT_RUN_TOOL_EVIDENCE_CAP
+    run_tool_evidence_budget: int | None = None
 
     def __repr__(self) -> str:
         """调试时只显示密钥存在性，绝不显示密钥正文。"""
@@ -55,8 +60,11 @@ class ModelSettings:
             f"completion_max_tokens={self.completion_max_tokens!r}, "
             f"tool_result_budget_mode={self.tool_result_budget_mode!r}, "
             f"model_context_window_tokens={self.model_context_window_tokens!r}, "
-            f"max_tool_result_percent={self.max_tool_result_percent!r}, "
-            f"max_tool_result_tokens={self.max_tool_result_tokens!r})"
+            f"per_call_tool_result_percent={self.per_call_tool_result_percent!r}, "
+            f"per_call_tool_result_cap={self.per_call_tool_result_cap!r}, "
+            f"run_tool_evidence_percent={self.run_tool_evidence_percent!r}, "
+            f"run_tool_evidence_cap={self.run_tool_evidence_cap!r}, "
+            f"run_tool_evidence_budget={self.run_tool_evidence_budget!r})"
         )
 
     def to_safe_dict(self) -> dict[str, object]:
@@ -73,8 +81,11 @@ class ModelSettings:
             "completion_max_tokens": self.completion_max_tokens,
             "tool_result_budget_mode": self.tool_result_budget_mode,
             "model_context_window_tokens": self.model_context_window_tokens,
-            "max_tool_result_percent": self.max_tool_result_percent,
-            "max_tool_result_tokens": self.max_tool_result_tokens,
+            "per_call_tool_result_percent": self.per_call_tool_result_percent,
+            "per_call_tool_result_cap": self.per_call_tool_result_cap,
+            "run_tool_evidence_percent": self.run_tool_evidence_percent,
+            "run_tool_evidence_cap": self.run_tool_evidence_cap,
+            "run_tool_evidence_budget": self.run_tool_evidence_budget,
         }
 
 
@@ -117,27 +128,35 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
 
     max_turns = _positive_integer(values, "TRIVAE_MAX_TURNS", _DEFAULT_MAX_TURNS)
     max_tool_rounds = _positive_integer(values, "TRIVAE_MAX_TOOL_ROUNDS", _DEFAULT_MAX_TOOL_ROUNDS)
-    max_output_tokens = _positive_integer(
-        values,
-        "TRIVAE_MAX_OUTPUT_TOKENS",
-        _DEFAULT_MAX_OUTPUT_TOKENS,
-    )
+    max_output_tokens = _positive_integer(values, "TRIVAE_MAX_OUTPUT_TOKENS", _DEFAULT_MAX_OUTPUT_TOKENS)
     completion_max_tokens = _positive_integer(
         values,
         "TRIVAE_COMPLETION_MAX_TOKENS",
         _DEFAULT_COMPLETION_MAX_TOKENS,
     )
     tool_result_budget_mode = _budget_mode(values)
-    model_context_window_tokens = _optional_positive_integer(
+    model_context_window_tokens = _optional_positive_integer(values, "TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS")
+    per_call_tool_result_percent = _bounded_percentage(
         values,
-        "TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS",
+        "TRIVAE_PER_CALL_TOOL_RESULT_PERCENT",
+        DEFAULT_PER_CALL_TOOL_RESULT_PERCENT,
     )
-    max_tool_result_percent = _bounded_percentage(values)
-    max_tool_result_tokens = _positive_integer(
+    per_call_tool_result_cap = _positive_integer(
         values,
-        "TRIVAE_MAX_TOOL_RESULT_TOKENS",
-        DEFAULT_MAX_TOOL_RESULT_TOKENS,
+        "TRIVAE_PER_CALL_TOOL_RESULT_CAP",
+        DEFAULT_PER_CALL_TOOL_RESULT_CAP,
     )
+    run_tool_evidence_percent = _bounded_percentage(
+        values,
+        "TRIVAE_RUN_TOOL_EVIDENCE_PERCENT",
+        DEFAULT_RUN_TOOL_EVIDENCE_PERCENT,
+    )
+    run_tool_evidence_cap = _positive_integer(
+        values,
+        "TRIVAE_RUN_TOOL_EVIDENCE_CAP",
+        DEFAULT_RUN_TOOL_EVIDENCE_CAP,
+    )
+    run_tool_evidence_budget = _optional_positive_integer(values, "TRIVAE_RUN_TOOL_EVIDENCE_BUDGET")
 
     return ModelSettings(
         api_key=api_key,
@@ -150,8 +169,11 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
         completion_max_tokens=completion_max_tokens,
         tool_result_budget_mode=tool_result_budget_mode,
         model_context_window_tokens=model_context_window_tokens,
-        max_tool_result_percent=max_tool_result_percent,
-        max_tool_result_tokens=max_tool_result_tokens,
+        per_call_tool_result_percent=per_call_tool_result_percent,
+        per_call_tool_result_cap=per_call_tool_result_cap,
+        run_tool_evidence_percent=run_tool_evidence_percent,
+        run_tool_evidence_cap=run_tool_evidence_cap,
+        run_tool_evidence_budget=run_tool_evidence_budget,
     )
 
 
@@ -202,7 +224,7 @@ def _positive_integer(values: Mapping[str, str], name: str, default: int) -> int
 
 
 def _optional_positive_integer(values: Mapping[str, str], name: str) -> int | None:
-    """读取可选的显式 context window；缺失表示 context 未经验证。"""
+    """读取可选的正整数；缺失表示没有显式覆盖。"""
 
     if name not in values:
         return None
@@ -221,23 +243,20 @@ def _optional_positive_integer(values: Mapping[str, str], name: str) -> int | No
 def _budget_mode(values: Mapping[str, str]) -> ToolResultBudgetMode:
     """读取严格的 fixed/dynamic 模式，不接受未知模式的静默降级。"""
 
-    raw = values.get("TRIVAE_TOOL_RESULT_BUDGET_MODE", "fixed").strip().lower()
+    raw = values.get("TRIVAE_TOOL_RESULT_BUDGET_MODE", "dynamic").strip().lower()
     if raw not in {"fixed", "dynamic"}:
         raise SettingsError("TRIVAE_TOOL_RESULT_BUDGET_MODE must be fixed or dynamic")
     return cast(ToolResultBudgetMode, raw)
 
 
-def _bounded_percentage(values: Mapping[str, str]) -> int:
-    """读取 dynamic pool 百分比，确保公式输入在可解释范围内。"""
+def _bounded_percentage(values: Mapping[str, str], name: str, default: int) -> int:
+    """读取一套 dynamic 预算百分比，确保每个参数的错误名称可定位。"""
 
-    raw = values.get(
-        "TRIVAE_MAX_TOOL_RESULT_PERCENT",
-        str(DEFAULT_MAX_TOOL_RESULT_PERCENT),
-    ).strip()
+    raw = values.get(name, str(default)).strip()
     try:
         value = int(raw)
     except ValueError as exc:
-        raise SettingsError("TRIVAE_MAX_TOOL_RESULT_PERCENT must be an integer from 1 to 100") from exc
+        raise SettingsError(f"{name} must be an integer from 1 to 100") from exc
     if value < 1 or value > 100 or raw != str(value):
-        raise SettingsError("TRIVAE_MAX_TOOL_RESULT_PERCENT must be an integer from 1 to 100")
+        raise SettingsError(f"{name} must be an integer from 1 to 100")
     return value

@@ -512,6 +512,32 @@ M5a `m5-evidence-citation-finalization` 在不重开 Stage 1.8 语义的前提�
 - Trace backend、Evaluation semantic quality、citation precision/recall、minimum-citation gate、repair policy 与 bounds calibration 仍分别属于 M6/M7 或 real-run calibration。
 - 当前实现没有改变 ChatLab 继承项，也没有新增 Evidence Tool、Evidence Agent、固定关键词 Judge、固定时间 Evidence Group 或 Runtime-owned Evidence State Machine。
 
+## 24. Graceful finalization amendment（2026-08-26）
+
+### Decision
+
+strict `finalize_answer()` 继续作为内部可测试 contract；Application Query 主链使用
+`finalize_answer_gracefully()`，公开 `FinalizationStatus = valid | degraded | failed`。这不是放宽
+trusted provenance，而是把局部模型 schema/citation 错误与可信边界错误分开：
+
+- 可读 answer 已存在时，错误类型的 optional `limitations` 可按确定性规则规范化或丢弃；单条坏
+  citation/source 只影响该局部结构，合法 source 和用户正文继续进入 bounded `AnswerArtifact`。
+- 所有 citation 都不可验证时仍可交付正文，但 Artifact 没有伪造 binding，状态为 `degraded`；
+  Evaluation 的 citation/finalization check 不得把它计为 grounded pass。
+- 空答案、无法抽取正文、跨 run/cross-scope provenance、message locator mismatch、可信
+  canonical metadata 损坏仍为 `failed`，不 commit Assistant。
+
+`FinalizationDiagnostics` 只保存 status、稳定 error code/path、bounded degradation code/path、
+dropped field/citation count、normalization count、validated citation count 和
+`user_answer_preserved`；不保存 provider raw payload、secret 或 hidden reasoning。degraded Artifact
+可以正常 Conversation commit，failed Result 保持没有 Artifact。
+
+### Regression boundary
+
+未知 optional field 不改变合法答案；`limitations: "..."` 只做单元素数组规范化并留下 Trace 事实。
+strict parser/validator 的直接失败测试继续保留，应用层回归另测 degraded delivery、CLI 提示、Trace
+和 Evaluation 分轴。禁止二次 LLM repair、静默替换 source 或 catch-all Exception 掩盖 root cause。
+
 ## 23. M5b Implementation Status
 
 M5b `m5-conversation-persistence-finalization` 在不放宽 Stage 1.8 current-run provenance 语义的前提下完成了第一版 durable Conversation Store：

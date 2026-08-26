@@ -120,7 +120,7 @@ class RuntimeContext:
     current_tool_call_id: str | None = None
     # observability operation context 只存在进程内，Tool adapter 可选地消费它。
     trace_context: object | None = None
-    # 每次 RuntimeContext 都拥有独立账本；直接构造 context 的旧 caller 仍得到 fixed 16k contract。
+    # 每次 RuntimeContext 都拥有独立账本；直接构造 context 也遵循 dynamic unknown 的 16k shared fallback。
     tool_result_budget_policy: ToolResultBudgetPolicy = field(
         default_factory=lambda: ToolResultBudgetConfig().new_policy()
     )

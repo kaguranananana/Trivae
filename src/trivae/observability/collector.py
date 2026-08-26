@@ -656,11 +656,14 @@ class TraceableAgentRuntime(AgentRuntime):
             payload["budget_mode"] = first_budget.budget_mode
             payload["context_window_tokens"] = first_budget.context_window_tokens
             payload["context_window_source"] = first_budget.context_window_source
-            payload["max_tool_result_percent"] = first_budget.max_tool_result_percent
-            payload["absolute_tool_result_cap"] = first_budget.absolute_tool_result_cap
+            payload["per_call_tool_result_percent"] = first_budget.per_call_tool_result_percent
+            payload["per_call_tool_result_cap"] = first_budget.per_call_tool_result_cap
+            payload["per_call_tool_result_ceiling"] = first_budget.per_call_tool_result_ceiling
+            payload["run_tool_evidence_percent"] = first_budget.run_tool_evidence_percent
+            payload["run_tool_evidence_cap"] = first_budget.run_tool_evidence_cap
             payload["run_tool_evidence_budget"] = first_budget.run_tool_evidence_budget
-            payload["remaining_tool_evidence_budget"] = (
-                last_budget.remaining_tool_evidence_budget_after_call
+            payload["remaining_run_tool_evidence_budget"] = (
+                last_budget.remaining_run_tool_evidence_budget_after_call
             )
             payload["tool_result_budget_call_count"] = len(budget_snapshots)
         if result.final_answer is not None:

@@ -42,6 +42,7 @@ class _FakeResult:
     conversation_id: str | None
     trace_id: str | None
     is_successful: bool
+    is_degraded: bool = False
     termination: str = "completed"
     finalization_error: object | None = None
     runtime_result: object = field(default_factory=lambda: SimpleNamespace(error=None))
@@ -412,6 +413,35 @@ class ChatCliTests(unittest.TestCase):
 
         self.assertIn("formal final answer", output)
         self.assertNotIn("raw runtime answer", output)
+
+    def test_degraded_answer_is_visible_with_explicit_validation_note(self) -> None:
+        """degraded Artifact 仍展示正文，同时提醒用户 Trace 中存在局部校验降级。"""
+
+        artifact = AnswerArtifact(
+            content_blocks=(AnswerContentBlock("answer", "可交付答案"),),
+            limitations=("部分 citation 被丢弃",),
+        )
+        application = _FakeApplication(
+            (_session("qq:100", "AI 群"),),
+            [
+                _FakeResult(
+                    "可交付答案",
+                    "raw runtime answer",
+                    "conversation",
+                    "trace",
+                    True,
+                    is_degraded=True,
+                    answer_artifact=artifact,
+                )
+            ],
+        )
+        _, input_fn = _scripted_input(["1", "问题", "/exit"])
+        output: list[str] = []
+
+        asyncio.run(cli._run_interactive_chat(application, input_fn=input_fn, output_fn=output.append))
+
+        self.assertIn("可交付答案", output)
+        self.assertIn("Note: answer validation was degraded; inspect the trace diagnostics.", output)
 
     def test_success_answer_displays_claim_evidence_and_trusted_urls(self) -> None:
         """答案层必须同时显示 claim 绑定、证据标准和可信消息 URL。"""

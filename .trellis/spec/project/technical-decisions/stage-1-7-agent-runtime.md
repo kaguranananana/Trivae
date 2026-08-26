@@ -1008,6 +1008,36 @@ standard    planned
 
 单纯因为"标准 Agent 架构通常更复杂""未来可能有 UI"或"以后可能有用"不能重新打开 Confirmed 决策。
 
+## 21. 1M context dynamic budget amendment（2026-08-26）
+
+### Decision
+
+本次校准把模型能力、单次 Tool Result ceiling 和 Run-level Evidence pool 固定为三个不同概念：
+
+```text
+opencode-go / deepseek-v4-flash
+    verified model context = 1,000,000
+    per-call Tool Result ceiling = min(floor(context * 50%), 128,000)
+    Run-level Tool Evidence pool = min(floor(context * 25%), 256,000)
+```
+
+`ToolResultBudgetConfig`、`ToolResultBudgetPolicy` 和 `ToolResultBudgetSnapshot` 各自记录两套预算。
+每个 Runtime run 创建一个共享 policy；Tool adapter 先 reserve 本次 effective budget，projection 完成后按
+实际 estimate settle，未使用 reservation 归还 pool。显式 `run_tool_evidence_budget` 只覆盖实验 candidate，
+不改变 per-call ceiling。
+
+### Resolution and fallback
+
+Context 解析优先级是 `explicit_config → verified_model_registry → fallback`。当前 registry 只登记已验证的
+`opencode-go / deepseek-v4-flash → 1,000,000`；unknown dynamic model 不猜 context，而使用 per-call 16k、
+共享 Run pool 16k。`fixed` 仍是显式 16k compatibility baseline，不读取 context/registry。
+
+### Reopen boundary
+
+1M 只是 capacity upper bound，不是应填满的目标。Run pool 默认 candidate、provider cost、latency、attention
+dilution、重复/无关 evidence 和 enumeration quality 由 paired Evaluation 决定；只有新 synthetic/real
+evidence 证明当前 pool 或 attribution 不足时才重新打开本 amendment。
+
 ## 20. Context Engineering hardening amendment（2026-08-25）
 
 ### Decision

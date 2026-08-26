@@ -9,7 +9,10 @@ from trivae.query.evidence import (
     CitationBinding,
     EvidenceItem,
     EvidenceSource,
+    FinalizationDiagnostics,
     FinalizationErrorInfo,
+    FinalizationResult,
+    FinalizationStatus,
     MessageDisplaySnapshot,
     MessageSource,
     ModelAnswerCandidate,
@@ -18,6 +21,7 @@ from trivae.query.evidence import (
     StructuredSource,
     ToolResultRecord,
     finalize_answer,
+    finalize_answer_gracefully,
     parse_model_answer_candidate,
 )
 from trivae.query.orchestrator import QueryOrchestrator
@@ -34,6 +38,9 @@ __all__ = [
     "EvidenceItem",
     "EvidenceSource",
     "FinalizationErrorInfo",
+    "FinalizationDiagnostics",
+    "FinalizationResult",
+    "FinalizationStatus",
     "MessageDisplaySnapshot",
     "MessageSource",
     "ModelAnswerCandidate",
@@ -55,6 +62,7 @@ __all__ = [
     "SourceHandleReference",
     "ToolResultRecord",
     "finalize_answer",
+    "finalize_answer_gracefully",
     "parse_model_answer_candidate",
     "ModelContextMessage",
 ]
