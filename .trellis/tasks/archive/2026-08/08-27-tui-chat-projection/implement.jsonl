@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/agent-runtime-guidelines.md", "reason": "Runtime/reasoning/thinking_visibility 既有契约，TUI projection 必须沿用"}
+{"file": ".trellis/spec/backend/product-experience-guidelines.md", "reason": "CLI renderer contract 与产品体验硬边界"}
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "根因优先/最小修复原则"}
+{"file": ".trellis/tasks/08-27-tui-chat-projection/research/chatlab-process-segments.md", "reason": "ChatLab process segment 两阶段聚合参考"}
+{"file": ".trellis/tasks/08-27-tui-chat-projection/research/beautifului-agent-ux.md", "reason": "Beautiful UI Task Rows/progressive disclosure UX 参考"}
