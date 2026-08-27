@@ -94,7 +94,29 @@ src/trivae/
 
 M4 的 env、Query/Runtime request/result/event 与 M5 finalization 边界见 [Agent Runtime Guidelines](./agent-runtime-guidelines.md)。Runtime adapter 是唯一允许直接依赖 OpenAI Agents SDK 的新业务模块；`query` application contracts、`query/evidence.py`、`capabilities/`、`retrieval/` 与 `data/` 不反向依赖 SDK。
 
+## Local Web interface（2026-08-27 落地）
+
+```text
+src/trivae/
+├── conversation/
+│   └── process.py           # TurnProcessCollector：UI-neutral 一轮过程摘要收集
+└── interfaces/
+    └── web/                 # Local Web UI backend（FastAPI，唯一执行链仍是 Application）
+        ├── contracts.py     # DTO：ScopeRequest/QueryStreamRequest 等（scope 由后端编译）
+        ├── routes.py        # /api/readiness|source-sessions|conversations|query|traces
+        ├── streaming.py     # QueryStreamEvent → NDJSON + abort lifecycle + disconnect 取消
+        ├── projection.py    # facade 结果 → bounded JSON projection
+        ├── conversation.py  # conversation CRUD / 来源上下文 drill-down
+        ├── trace_actions.py # trace log resolve + local-only Reveal in Finder
+        └── server.py        # create_web_app / run_web_server（trivae web）
+web/                         # Vue3+Vite+Pinia+Tailwind 前端（pnpm；构建产物 web/dist 由后端托管）
+```
+
+Web 只是 interface：不直接触碰 Store/Retrieval/provider；事件消费 UI-neutral QueryStreamEvent；
+conversation/trace 复用正式 Store。决策与 Failure Cases 见
+[web-primary-interface ADR](../project/technical-decisions/web-primary-interface.md)。
+
 ## 后续阶段（实现任务启动后补充）
 
-- Python package / module boundary → 已由 Stage 1.11 定义概念 ownership；M5 已落地 `query/evidence.py`，M5b 已落地 `conversation/` 的 Conversation / Assistant Message persistence、显式 Artifact JSON codec、stable ordinal replay 与 Application commit boundary；M6 已落地 `observability/{contracts,collector,sqlite,projection}.py`；Evaluation 仍随对应 Implementation task 落地。
+- Python package / module boundary → 已由 Stage 1.11 定义概念 ownership；M5 已落地 `query/evidence.py`，M5b 已落地 `conversation/` 的 Conversation / Assistant Message persistence、显式 Artifact JSON codec、stable ordinal replay 与 Application commit boundary；M6 已落地 `observability/{contracts,collector,sqlite,projection}.py`；Local Web UI 已于 2026-08-27 落地 `interfaces/web/` 与 `web/`。
 - 测试目录布局 → 当前继续使用 unittest；M1/M2/M3 contract/integration tests 分文件维护，真实数据校准记录在 task validation artifact，不把 raw 数据复制到 tests。

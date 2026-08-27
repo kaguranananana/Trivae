@@ -732,3 +732,71 @@ Q6 no-result 防滥用设计 → 第 6 条 + tests/test_no_result_finalization.p
 - bigram 契约精确边界：≥2 字 Han 子串 = 完整召回；单字 query 是 known limitation（doc token 全为
   bigram，"荐"命中不了"心推/推荐"内部），不是 bug 也不是 silent-fallback 场景——作为契约写进模块
   docstring 与 problem record，未来出现单字检索真实需求再触发重评估。
+
+## Local Web UI 事实索引（2026-08-27，branch codex/web-ui）
+
+> 完整决策链见 [web-primary-interface.md](./technical-decisions/web-primary-interface.md)。
+> 实现证据：src/trivae/interfaces/web/*、web/*（Vue SPA）、tests/test_web_server.py、
+> tests/test_web_streaming_contract.py、web/tests/*。以下每条均可基于真实代码/trace 回答。
+
+### Problem / Motivation
+
+- **为什么从 TUI 增加 Web**：终端无法富展示结构化 Tool Result（20 items/16k 纯文本上限）、
+  Router reason/Plan/Retrieval coverage 诊断与历史过程回放；ChatLab 证明 Web 是 AI Chat 的
+  primary surface。TUI 工作未浪费：QueryStreamAdapter/TuiProjectionEngine 与全部契约原样保留，
+  Web 是第三个消费者（feat commit 395af4a/1405673/fbf0b32）。
+
+### Design Rationale / Why not
+
+- **Runtime 不直接输出 Vue event**：RuntimeEvent 是 SDK 边界的稳定事实流；Web 需要的是与
+  Trace/CLI 同源的 UI-neutral 事件 + 归属信息。直接输出 Vue event 会把展示状态机焊进 Runtime，
+  CLI/TUI/Evaluation 无法共享。
+- **QueryStreamEvent 为什么 UI-neutral**：三个接口消费同一事件流 = 同一执行语义；扩展
+  （thinking_visibility/result_projection/abort_event）全部 additive 带默认值，CLI/TUI 零改动
+  （tests/test_query_streaming.py 全量通过验证）。
+- **Tool 用 tool_call_id**：同轮可并行调用同名工具；ChatLab updateToolBlockStatus 先按
+  toolCallId 精确匹配再 fallback name，Trivae 前端 store 只按 tool_call_id 匹配。
+- **Retrieval 用 parent_operation_id**：retrieval.search.* 的 parent 是具体 tool call；
+  无 parent 的 retrieval 独立展示——禁止按"相邻事件"猜归属。
+- **Router reason 来自 Router contract**：RouteDecision(route/confidence/source/reason) 是
+  Router 自身的契约输出，经 router.decision payload → QueryStreamEvent metadata 透传；
+  前端只渲染不生成（真实 smoke：source=llm reason="查询仅要求获取最近的讨论话题…" conf=0.95）。
+- **Tool Result 为什么不能只传字符串**：TUI 的 project_tool_result_detail 是有界展示投影；
+  Web 需要结构化 items（sender/timestamp/session/content/hit/urls/score）才能做"真实看到了什么"。
+  新增 project_tool_result_structure（transport ≤200 items + 截断标志），canonical 语义不变。
+- **大量 Tool Result 如何避免 DOM 爆炸**：transport 上限（200）与 UI 折叠（默认 20 条）是两个
+  独立预算，UI 显示 "显示 20 / 100 条" + transport_truncated 显式标志；完整数据归 Trace。
+- **为什么使用 SSE/HTTP streaming（NDJSON）**：POST body + 单向事件流；fetch ReadableStream
+  原生支持 AbortController；无 WebSocket 的连接生命周期/代理复杂度。
+- **browser disconnect 如何 cancel**：服务端 event generator 每 0.2s 轮询
+  `request.is_disconnected()`，断连即 set abort_event → runtime 优雅取消 → query.aborted
+  terminal → stream.end(status=aborted)；streaming response 自身被取消时 also cancel task。
+- **conversation 如何恢复**：message 级 trace_id 引用 + TurnProcessCollector 的 bounded 过程
+  摘要（router/plan/tool/steps）随 commit_turn 持久化；重新打开 = User/Answer/Sources/过程组
+  全部还原 + 原 conversation_id 继续 follow-up（真实 smoke：两问同 conv，指代解析成功）。
+- **切换 conversation 为什么 stream 不串**：store 维持 streamOwners(request_id→buffer) 映射，
+  appendEvent 按 owner 写；ChatLab 同构（targetBuffer 捕获 + bindDisplayedBuffer 只切显示）。
+  单测 chatStore.test.ts 覆盖 owner isolation。
+
+### Failure Cases（真实发生并修复）
+
+- **claims schema 答案流为空**：DeepSeek 经 json_finalization_repaired 路径输出
+  `{"claims":[...]}`（非 content_blocks），delta parser 只认 content_blocks[*].text →
+  answer.delta=0，CLI 靠 final_answer 兜底而 Web 无正文。修复：parser 同源提取
+  claims[*].text（回归测试 AnswerDeltaClaimsSchemaTests）。
+- **流式过程不显示**：过程组完成后默认折叠被错误套用到 streaming；ChatLab 行为是活动段实时
+  展开。修复 isOpen = isActive || hasError。
+- **Stop 后 Send 不恢复**：streams 用普通 Map，computed 不失效 → 按钮状态卡死。修复：reactive Map。
+- **tool.completed 双源覆盖**：runtime（带 result_projection）与 normalized（带 summary）各发
+  一次；store 用 additive merge 而非整体覆盖。
+
+### Evidence
+
+- 真实 provider smoke：STANDARD（route reason/conf=0.95、get_recent_messages 100 items、
+  18 sources、trace-f7649b27…）与 PLAN（5 步 plan、3 thinking 段、5 tool calls、retrieval
+  partial/truncated stats、145 answer deltas、16 sources、trace-ccb9e07d…）。
+- macOS Finder 真机：open -R 参数数组打开并选中 data/traces/trace-*.log；非法 id 404、
+  路径穿越拒绝、非 localhost 403 REVEAL_LOCAL_ONLY。
+- Playwright E2E 22/22（历史回放/Router/Reason/Confidence/Tool arguments/Result/20-100 displayed/
+  Sources/Trace/follow-tail/回到最新/新对话/刷新恢复）+ Stop 流程 3 项。
+- 质量门：ruff/mypy 干净；pytest 472 全绿（TUI/CLI 回归在内）；web vitest 7、tsc/build 干净。
