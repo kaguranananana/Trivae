@@ -77,8 +77,8 @@ class _ScriptedApplication:
 _SIMPLE_SCRIPT = [
     _event("query.started"),
     _event("route.completed", route="planned_execution"),
-    _event("thinking.delta", content="alpha"),
-    _event("thinking.delta", content="beta"),
+    _event("thinking.delta", content="alpha", thinking_visibility="public_summary"),
+    _event("thinking.delta", content="beta", thinking_visibility="public_summary"),
     _event("thinking.completed"),
     _event("answer.delta", content="最近推荐包括 "),
     _event("answer.delta", content="GitHub repos 与 skills"),
