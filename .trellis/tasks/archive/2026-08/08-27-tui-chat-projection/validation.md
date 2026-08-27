@@ -72,3 +72,21 @@
 `/var/folders/ct/c_406rh940z5g1k0nj8vlmrw0000gn/T/opencode/smoke*/{top,final}.svg`：
 top 视角含 `You > … / ▶ 执行过程 · N 步 · Xs / 回答` 三层结构；
 final 视角聚焦 Markdown 渲染的回答正文；中文宽字符未破坏边框。
+
+
+## 追加：真实终端缺陷修复验证（2026-08-27 晚）
+
+用户实测暴露三类缺陷，全部修复并用 PTY+ANSI 回放取视觉真值：
+
+1. `/exit` MountError 崩溃（exit_code=1）：根因是 execute_command 同步 exit() 后
+   输入回路继续 append；改为 `_exit_requested` 标记 + 渲染完成后 call_after_refresh(exit)。
+2. `/help` 无输出、追加内容不上屏、picker 列表不完整：根因为 `run(inline=True)` 实验性
+   渲染路径在真实驱动下不可靠（widget 树/布局全部正确，paint 未发生）；切回标准
+   alternate screen `run()` 后视觉真值回放确认所有内容按帧上屏。
+3. picker 无操作提示、启动 12 行英文帮助灌屏：增加操作提示行 + 启动压缩为单行中文提示，
+   `/help` 用正常前景色输出完整清单。
+
+新增真实按键路径测试（禁止 hook 内部回调）：`tests/test_tui_app.py::RealKeyPathTests`。
+PTY 端到端：`trivae chat` 全流程（选群 → /help → /scope → /exit → code 0）与
+真实 DeepSeek 对话（You > → 执行过程(失败工具自动展开含参数) → 回答 → 来源与证据折叠块
+→ limitations note → Ctrl+C code 0）均通过。

@@ -8,7 +8,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
-from trivae.interfaces.tui.app import ChatScreen, TrivaeChatApp
+from textual.widgets import Input, ListView
+
+from trivae.interfaces.tui.app import ChatScreen, PickerScreen, TrivaeChatApp
 from trivae.interfaces.tui.widgets import ProcessRow
 from trivae.query.streaming import QueryStreamEvent
 
@@ -281,3 +283,81 @@ class PlainFallbackTests(unittest.TestCase):
 
         plain_args = cli.build_parser().parse_args(["chat", "--plain"])
         self.assertTrue(plain_args.plain)
+
+
+class RealKeyPathTests(unittest.TestCase):
+    """完全通过 Pilot 按键驱动的真实交互路径回归。
+
+    背景：此前手工调用 `_handle_picker_selection()` 绕过了 picker 屏，
+    导致「Enter 默认直通」与「/exit 关闭竞态」两类缺陷漏测；本组测试禁止任何 hook。
+    """
+
+    def test_picker_arrows_select_session_then_help_then_clean_exit(self) -> None:
+        async def scenario() -> None:
+            scripted = _ScriptedApplication([])
+            app = TrivaeChatApp(scripted, sessions=scripted.sessions, readiness_summary="ready")
+            async with app.run_test(size=(110, 40)) as pilot:
+                await pilot.pause()
+                self.assertIsInstance(app.screen, PickerScreen)
+                # 初始焦点在列表上，第 0 项为「全部群聊」。
+                self.assertIsInstance(app.focused, ListView)
+
+                # ↓ 移动到第一个真实群聊再 Enter，进入会话屏。
+                await pilot.press("down")
+                await pilot.press("enter")
+                for _ in range(5):
+                    await pilot.pause()
+                chat = app.screen
+                self.assertIsInstance(chat, ChatScreen)
+                self.assertEqual(app._selected_name, "技术分享群")
+                self.assertEqual(
+                    app._scope.allowed_session_ids,  # type: ignore[union-attr]
+                    ("session-1",),
+                )
+                # AUTO_FOCUS 应把焦点交给输入框（文档化行为断言）。
+                for _ in range(3):
+                    if isinstance(app.focused, Input):
+                        break
+                    await pilot.pause()
+                self.assertIsInstance(app.focused, Input)
+
+                # /help 完整输出 12 行且不崩溃。
+                before_help = len(list(chat.history.children))
+                for char in "/help":
+                    await pilot.press(char)
+                await pilot.press("enter")
+                for _ in range(8):
+                    await pilot.pause()
+                after_help = len(list(chat.history.children))
+                self.assertEqual(after_help - before_help, 12)
+                self.assertFalse(chat.prompt.disabled)
+
+                # /exit 必须干净退出：run_test 在消息泵抛异常时会向外传播，
+                # 走到这里即证明没有 MountError/crash。
+                for char in "/exit":
+                    await pilot.press(char)
+                await pilot.press("enter")
+                for _ in range(10):
+                    await pilot.pause()
+
+            self.assertEqual(app.return_code, 0)
+
+        asyncio.run(scenario())
+
+    def test_picker_enter_without_arrows_selects_all_chats_scope(self) -> None:
+        """直接 Enter（提示行已写明）选择全部群聊，与 plain CLI 的 0 语义一致。"""
+
+        async def scenario() -> None:
+            scripted = _ScriptedApplication([])
+            app = TrivaeChatApp(scripted, sessions=scripted.sessions, readiness_summary="ready")
+            async with app.run_test(size=(110, 40)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                for _ in range(5):
+                    await pilot.pause()
+                self.assertIsInstance(app.screen, ChatScreen)
+                assert app._scope is not None
+                self.assertIsNone(app._scope.allowed_session_ids)
+                self.assertEqual(app._selected_name, "全部群聊")
+
+        asyncio.run(scenario())

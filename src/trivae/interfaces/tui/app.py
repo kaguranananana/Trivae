@@ -37,21 +37,6 @@ if TYPE_CHECKING:
     from trivae.query.evidence import AnswerSourceSummary
 
 
-_COMMAND_HELP = [
-    "/help  显示命令",
-    "/new   开始新对话",
-    "/scope 查看当前 scope",
-    "/chats 切换群聊",
-    "/status 本地就绪状态",
-    "/history 历史对话",
-    "/resume n 恢复历史对话",
-    "/good /bad [note] 反馈上一条回答",
-    "/feedback 查看反馈",
-    "/source n 查看引用来源",
-    "/exit 退出",
-]
-
-
 class StreamChanges(Message):
     """engine 投影结果的批量送达；由 ChatScreen 消费并落到 widget。"""
 
@@ -87,6 +72,10 @@ class PickerScreen(Screen["int | None"]):
         text-style: bold;
         margin-bottom: 1;
     }
+    #picker-hint {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
     """
 
     BINDINGS = [
@@ -101,6 +90,7 @@ class PickerScreen(Screen["int | None"]):
     def compose(self) -> ComposeResult:
         with Vertical(id="picker-panel"):
             yield Label("Trivae", id="picker-title")
+            yield Label("↑ ↓ 选择群聊 · Enter 确认（第一项为全部群聊）· Esc 退出", id="picker-hint")
             yield Label(self._readiness_summary)
             items = [ListItem(Label(f"{index}. {name}")) for index, name in enumerate(self._session_names)]
             yield ListView(*items)
@@ -381,6 +371,8 @@ class TrivaeChatApp(App[None]):
         self._chat_screen: ChatScreen | None = None
         self._active_worker: Worker | None = None
         self._active_round_id: int | None = None
+        # /exit、/quit 只标记意图；由输入回路在渲染完成后统一退出，避免关闭竞态。
+        self._exit_requested = False
 
     def on_mount(self) -> None:
         names = [session.name for session in self._sessions]
@@ -416,7 +408,8 @@ class TrivaeChatApp(App[None]):
         if screen is None:
             return
         screen.append_note_lines([f"Selected: {self._selected_name}"])
-        screen.append_note_lines(_COMMAND_HELP)
+        # 启动只给一行轻提示；完整命令清单按需 /help，避免 12 行帮助把内容推出视口。
+        screen.append_note_lines(["提示：直接提问开始检索；/help 查看全部命令"])
         screen.set_running(False)
 
     def _reset_conversation_state(self) -> None:
@@ -433,7 +426,11 @@ class TrivaeChatApp(App[None]):
             return
         if message.text.startswith("/"):
             lines = await self.execute_command(message.text)
-            screen.append_note_lines(lines)
+            command = message.text.split(maxsplit=1)[0]
+            # /help 是主动索取的命令清单，用正常前景色；其余备注保持暗色。
+            screen.append_note_lines(lines, classes="" if command == "/help" else "note-line")
+            if self._exit_requested:
+                self.call_after_refresh(self.exit)
             return
         self.start_query(message.text)
 
@@ -632,7 +629,8 @@ class TrivaeChatApp(App[None]):
 
         command, _, argument = text.partition(" ")
         if command in {"/exit", "/quit"}:
-            self.exit()
+            # 先让调用方渲染 Bye.，再由输入回路延迟退出；同步 exit 会让 screen 在挂载前 detach。
+            self._exit_requested = True
             return ["Bye."]
         if command == "/help":
             help_lines: list[str] = []

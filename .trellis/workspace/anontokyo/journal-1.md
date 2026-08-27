@@ -858,3 +858,12 @@ Preserved unique validated find_members canonical user_id in replayed conversati
 ### Status
 
 [OK] **Completed**
+
+## 2026-08-27(晚) · TUI 真实终端缺陷修复
+
+用户实测暴露：/exit 同步 exit() 与后续 append 的关闭竞态（MountError, exit_code=1）；
+inline 渲染模式下追加内容不上屏；picker 缺操作提示。修复：延迟退出标记、
+run() 标准全屏模式替代 inline（widget 布局正确但 paint 不发生是 inline 路径问题）、
+提示行与启动轻提示。教训：headless Pilot 绕过真实 picker 交互路径导致漏测，
+新增 RealKeyPathTests 禁止 hook 回调；用 PTY+ANSI 回放器取"屏幕视觉真值"
+而非字节流 grep（差分刷屏会让多帧字符交错，grep 有假阴性）。

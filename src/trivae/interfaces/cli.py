@@ -1459,8 +1459,8 @@ def _run_tui_chat(application: TrivaeApplication, *, verbose: bool) -> int:
         readiness_summary=readiness_summary,
         verbose=verbose,
     )
-    # inline 模式：退出后历史保留在终端 scrollback，不进 alternate screen。
-    tui_app.run(inline=True)
+    # 标准全屏（alternate screen）模式：渲染路径最成熟；退出后终端恢复原样。
+    tui_app.run()
     return 0
 
 
