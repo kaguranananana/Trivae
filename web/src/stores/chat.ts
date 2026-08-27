@@ -69,6 +69,7 @@ export type ProcessBlock =
       durationMs?: number | null
     }
   | { kind: 'error'; code?: string | null; message?: string | null }
+  | { kind: 'narration'; text: string }
 
 export interface UserItem {
   id: string
@@ -548,9 +549,16 @@ export const useChatStore = defineStore('chat', () => {
       case 'answer.delta':
         assistant.answer += event.content ?? ''
         break
+      case 'answer.superseded':
+        // Tool 边界确认先前的 provisional 正文只是叙述：降级为过程文本块，answer 等待最终回合。
+        if (assistant.answer) {
+          assistant.blocks.push({ kind: 'narration', text: assistant.answer })
+          assistant.answer = ''
+        }
+        break
       case 'answer.completed':
-        // 完整 answer 已由 delta 累积；仅当缺失时使用正式内容补齐。
-        if (!assistant.answer && event.content) assistant.answer = event.content
+        // finalizer 权威文本覆盖流式累积（修正 parser/finalizer 差异）。
+        if (event.content) assistant.answer = event.content
         break
       case 'usage.updated':
         break

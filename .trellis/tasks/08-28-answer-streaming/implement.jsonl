@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/agent-runtime-guidelines.md", "reason": "streaming contract 既有约定，扩展 answer.delta 语义前必读"}
+{"file": ".trellis/spec/backend/product-experience-guidelines.md", "reason": "CLI renderer 不得受 provisional 事件影响"}

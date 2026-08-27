@@ -247,6 +247,57 @@ class _AbortedStreamRuntime:
         return self._aborted()
 
 
+class ProvisionalAnswerStreamingTests(unittest.TestCase):
+    """provisional_answer_streaming=True 时正文即时流出；Tool 边界显式降级。"""
+
+    def _adapter(self, sink: _EventSink) -> QueryStreamAdapter:
+        return QueryStreamAdapter(sink, provisional_answer_streaming=True)
+
+    def test_default_mode_keeps_buffered_flush(self) -> None:
+        sink = _EventSink()
+        adapter = QueryStreamAdapter(sink)
+        adapter.handle_runtime_event(_runtime_event("turn_started"))
+        adapter.handle_runtime_event(_runtime_event("content_delta", text="第一段"))
+        # turn 未结束前不产生 answer.delta（既有保守语义）。
+        self.assertEqual([event.type for event in sink.events if event.type == "answer.delta"], [])
+        adapter.handle_runtime_event(_runtime_event("turn_completed"))
+        deltas = [event for event in sink.events if event.type == "answer.delta"]
+        self.assertEqual([event.content for event in deltas], ["第一段"])
+        self.assertFalse(deltas[0].provisional)
+
+    def test_provisional_deltas_stream_immediately(self) -> None:
+        sink = _EventSink()
+        adapter = self._adapter(sink)
+        adapter.handle_runtime_event(_runtime_event("turn_started"))
+        adapter.handle_runtime_event(_runtime_event("content_delta", text='{"claims":[{"text":"你'))
+        adapter.handle_runtime_event(_runtime_event("content_delta", text='好"}]}'))
+        deltas = [event for event in sink.events if event.type == "answer.delta"]
+        # delta 到达即流出，不等 turn 边界。
+        self.assertEqual([event.content for event in deltas], ["你", "好"])
+        self.assertTrue(all(event.provisional for event in deltas))
+        adapter.handle_runtime_event(_runtime_event("turn_completed"))
+        # turn 边界不重复 flush。
+        self.assertEqual(len([event for event in sink.events if event.type == "answer.delta"]), 2)
+
+    def test_tool_boundary_supersedes_provisional_text(self) -> None:
+        sink = _EventSink()
+        adapter = self._adapter(sink)
+        adapter.handle_runtime_event(_runtime_event("turn_started"))
+        adapter.handle_runtime_event(_runtime_event("content_delta", text="先说明一下，我需要先查数据"))
+        adapter.handle_runtime_event(_runtime_event("tool_started", tool_name="semantic_search", tool_call_id="run/t/1"))
+        superseded = [event for event in sink.events if event.type == "answer.superseded"]
+        self.assertEqual(len(superseded), 1)
+        self.assertEqual(superseded[0].content, "先说明一下，我需要先查数据")
+        # 后续最终 turn 正文不再被降级。
+        adapter.handle_runtime_event(_runtime_event("turn_completed"))
+        adapter.handle_runtime_event(_runtime_event("turn_started"))
+        adapter.handle_runtime_event(_runtime_event("content_delta", text="最终答案"))
+        adapter.handle_runtime_event(_runtime_event("turn_completed"))
+        self.assertEqual(len([event for event in sink.events if event.type == "answer.superseded"]), 1)
+        final_deltas = [event for event in sink.events if event.type == "answer.delta"]
+        self.assertEqual([event.content for event in final_deltas], ["先说明一下，我需要先查数据", "最终答案"])
+
+
 class GracefulAbortChainTests(unittest.TestCase):
     """abort_event 从 Application 一路透传到 runtime stream，终态为 aborted。"""
 

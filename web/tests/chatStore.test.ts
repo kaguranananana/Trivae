@@ -71,7 +71,7 @@ const streamLines: object[] = [
 describe('chat store stream routing', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/api/conversations')) {
         return new Response(JSON.stringify(createdConversation), { status: 201 })
@@ -111,6 +111,45 @@ describe('chat store stream routing', () => {
     const tool = blocks[2]
     const toolProjection = tool?.kind === 'tool' ? tool.resultProjection : null
     expect(toolProjection?.result.total_items).toBe(5)
+  })
+
+  it('streams provisional deltas and demotes narration on superseded', async () => {
+    const chat = useChatStore()
+    chat.newChat({ mode: 'all' })
+    const streamLines: object[] = [
+      { type: 'stream.started', request_id: 'request-1', conversation_id: 'conv-1' },
+      { type: 'answer.delta', sequence: 1, content: '我需要先查数据', provisional: true },
+      { type: 'answer.superseded', sequence: 2, content: '我需要先查数据' },
+      { type: 'answer.delta', sequence: 3, content: '最终', provisional: true },
+      { type: 'answer.delta', sequence: 4, content: '答案', provisional: true },
+      { type: 'answer.completed', sequence: 5, content: '权威最终答案' },
+      {
+        type: 'stream.end',
+        request_id: 'request-1',
+        status: 'completed',
+        conversation_id: 'conv-1',
+        trace_id: 'trace-1',
+        sources: [],
+      },
+    ]
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/api/conversations')) {
+        return new Response(JSON.stringify(createdConversation), { status: 201 })
+      }
+      if (url.endsWith('/api/query/stream')) {
+        return ndjsonResponse(streamLines)
+      }
+      return new Response('{}', { status: 404 })
+    }))
+    await chat.send('问题', { mode: 'all' })
+
+    const assistant = chat.buffers['conv-1']?.items[1]
+    const blocks = assistant && assistant.role === 'assistant' ? assistant.blocks : []
+    const narration = blocks.find((block) => block.kind === 'narration')
+    expect(narration && narration.kind === 'narration' ? narration.text : null).toBe('我需要先查数据')
+    expect(assistant && assistant.role === 'assistant' ? assistant.answer : null).toBe('权威最终答案')
+    expect(assistant && assistant.role === 'assistant' ? assistant.traceId : null).toBe('trace-1')
   })
 
   it('keeps stream writes in owner buffer when the user switches conversations', async () => {

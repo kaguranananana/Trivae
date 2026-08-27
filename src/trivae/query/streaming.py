@@ -31,6 +31,7 @@ QueryStreamEventType = Literal[
     "retrieval.completed",
     "retrieval.failed",
     "answer.delta",
+    "answer.superseded",
     "answer.completed",
     "query.completed",
     "query.failed",
@@ -68,6 +69,9 @@ class QueryStreamEvent:
     result_detail: str | None = None
     # 结构化 Tool Result 投影（interface-owned，additive）；TUI/CLI 只消费 result_detail。
     result_projection: Mapping[str, object] | None = None
+    # provisional=True 表示该 answer delta 尚未越过 Tool 边界确认，可能被 answer.superseded 降级；
+    # 仅在 adapter 开启 provisional_answer_streaming 时出现，默认事件保持 False 兼容旧消费者。
+    provisional: bool = False
     error_code: str | None = None
     error_message: str | None = None
     duration_ms: float | None = None
@@ -623,11 +627,16 @@ class QueryStreamAdapter:
         handler: QueryStreamEventHandler,
         *,
         trace_id: str | None = None,
-        thinking_visibility_policy: ThinkingVisibilityPolicy = frozenset({"public_summary"}),
+        thinking_visibility_policy: ThinkingVisibilityPolicy = DEFAULT_THINKING_VISIBILITY_POLICY,
+        provisional_answer_streaming: bool = False,
     ) -> None:
         self._handler = handler
         self._trace_id = trace_id
         self._thinking_visibility_policy = thinking_visibility_policy
+        # False（默认）＝既有保守语义：正文在 turn_completed 后一次 flush，Tool turn 叙述不进入 answer。
+        # True（Web）＝content delta 立即以 provisional answer.delta 流出；Tool 边界发 answer.superseded
+        # 让消费方把已显示文本降级为过程叙述，避免"答案整块蹦出"同时不误标中间叙述。
+        self._provisional_answer_streaming = provisional_answer_streaming
         self._sequence = 0
         self._answer_parser = AnswerArtifactDeltaParser()
         self._saw_content_delta = False
@@ -637,6 +646,8 @@ class QueryStreamAdapter:
         self._thinking_active = False
         # 当前开放段已接收到的 delta 可见性；summary 与 provider reasoning 不合并成同一段。
         self._active_thinking_visibility: ThinkingVisibility | None = None
+        # provisional 模式下本回合已流出的正文，供 Tool 边界 superseded 时降级。
+        self._provisional_turn_text: list[str] = []
 
     def handle_runtime_event(self, event: RuntimeEvent) -> None:
         """投影 reasoning/content/usage；persistent Trace mapper仍独立忽略 token delta。"""
@@ -647,12 +658,22 @@ class QueryStreamAdapter:
             self._saw_content_delta = False
             self._turn_had_tool = False
             self._pending_answer_fragments = []
+            self._provisional_turn_text = []
             self._start_thinking(event.sequence)
             return
         if event.type in {"tool_started", "tool_completed"}:
             # 模型在发起 Tool 前可能先输出说明文字；这些不是最终答案，先标记后统一丢弃。
             self._complete_thinking(event.sequence)
             self._turn_had_tool = True
+            if self._provisional_answer_streaming and self._provisional_turn_text:
+                # provisional 模式：本回合正文已经流出，Tool 边界确认它只是叙述，
+                # 显式通知消费方降级（Web 把它折进过程组），而不是默默蒸发。
+                self._emit(
+                    "answer.superseded",
+                    content="".join(self._provisional_turn_text),
+                    source_sequence=event.sequence,
+                )
+                self._provisional_turn_text = []
             if event.type == "tool_completed" and event.tool_result is not None:
                 self._emit(
                     "tool.completed",
@@ -682,9 +703,20 @@ class QueryStreamAdapter:
             self._complete_thinking(event.sequence)
             self._saw_content_delta = True
             content = self._answer_parser.feed(event.text)
-            if content:
-                # 只有确认本 turn 没有 Tool 后才把正文交给 CLI；避免把模型中间叙述当成答案。
-                self._pending_answer_fragments.append(content)
+            if not content:
+                return
+            if self._provisional_answer_streaming:
+                # 立即流出 provisional 正文；是否成为最终答案由 Tool 边界 / turn 边界裁决。
+                self._provisional_turn_text.append(content)
+                self._emit(
+                    "answer.delta",
+                    content=content,
+                    provisional=True,
+                    source_sequence=event.sequence,
+                )
+                return
+            # 保守模式（CLI/TUI 默认）：只有确认本 turn 没有 Tool 后才把正文交给消费者。
+            self._pending_answer_fragments.append(content)
             return
         if event.type == "turn_completed":
             self._complete_thinking(event.sequence)
@@ -739,6 +771,11 @@ class QueryStreamAdapter:
 
         fragments = self._pending_answer_fragments
         self._pending_answer_fragments = []
+        if self._provisional_answer_streaming:
+            # provisional 正文已在 content_delta 即时流出：无 Tool 的 turn 视为确认，
+            # 不重复发 answer.delta；有 Tool 的 turn 已在 Tool 边界发过 answer.superseded。
+            self._provisional_turn_text = []
+            return
         if self._turn_had_tool:
             return
         for fragment in fragments:

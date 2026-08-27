@@ -396,6 +396,11 @@ finalized Artifact。
   `MAX_SOURCE_URL_CHARS` 限制；模型正文中自行抄写的 URL 不是 trusted Source URL。
 - QueryStreamAdapter 暂存当前 model turn 的 content delta；如果该 turn 发起 Tool，则在
   `turn_completed` 丢弃中间说明；只有无 Tool 的最终 turn 才投影为 `answer.delta`。
+- 默认（CLI/TUI）保持上述保守 flush 语义。`provisional_answer_streaming=True`（Local Web）改为：
+  content delta 立即投影为 `answer.delta(provisional=True)`；Tool 边界显式发
+  `answer.superseded`，由消费方把已显示文本降级为过程叙述（Web 折进过程组），不再静默蒸发。
+  `answer.completed` 始终携带 finalizer 权威文本，消费方以它覆盖流式累积。两种模式下
+  Tool-turn prose 都不得进入持久化 Answer / Conversation。
 - provider 字段名不能证明可见性：`reasoning_text` 与 `reasoning_summary_text` 不因字段名进入
   UI，只有 adapter 归一化时显式附加的 `public_summary` 标记才可视；
   OpenCode Go 的 DeepSeek V4 Flash 使用 `reasoning.effort="low"`，为必须闭合的 JSON 留预算。

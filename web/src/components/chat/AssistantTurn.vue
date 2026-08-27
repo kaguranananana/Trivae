@@ -118,6 +118,10 @@ const statusLabel = computed(() => {
               <BlockPlan v-else-if="block.kind === 'plan'" :block="block" />
               <BlockThinking v-else-if="block.kind === 'thinking'" :block="block" />
               <BlockTool v-else-if="block.kind === 'tool'" :block="block" />
+              <div v-else-if="block.kind === 'narration'" class="rounded-md border border-default/50 px-3 py-2 text-xs text-dimmed">
+                <span class="mb-1 block text-[10px] uppercase tracking-wide">模型说明（非最终回答）</span>
+                <span class="whitespace-pre-wrap">{{ block.text }}</span>
+              </div>
               <div v-else-if="block.kind === 'error'" class="rounded-md bg-error/10 px-3 py-2 text-xs text-error">
                 <span class="font-semibold">执行错误</span>
                 <span v-if="block.code" class="ml-1 font-mono">[{{ block.code }}]</span>

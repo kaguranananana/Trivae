@@ -616,6 +616,7 @@ class TrivaeApplication:
         on_event: QueryStreamEventHandler | None = None,
         abort_event: object | None = None,
         thinking_visibility_policy: Collection[str] | None = None,
+        provisional_answer_streaming: bool = False,
     ) -> QueryResult:
         """Query 的正式 Application 入口，standard/planned 共享同一 runtime。
 
@@ -644,6 +645,7 @@ class TrivaeApplication:
             dispatch_stream_event,
             trace_id=trace_id,
             thinking_visibility_policy=self._resolve_thinking_policy(thinking_visibility_policy),
+            provisional_answer_streaming=provisional_answer_streaming,
         )
         trace = TraceCollector(
             self._trace_store,

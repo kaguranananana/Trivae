@@ -177,6 +177,7 @@ export interface StreamEvent {
   result_summary?: Record<string, unknown> | null
   result_detail?: string | null
   result_projection?: ToolResultProjection | null
+  provisional?: boolean
   error_code?: string | null
   error_message?: string | null
   duration_ms?: number | null

@@ -74,6 +74,7 @@ def encode_stream_event(event: QueryStreamEvent) -> bytes:
         "result_summary",
         "result_detail",
         "result_projection",
+        "provisional",
         "error_code",
         "error_message",
         "duration_ms",
@@ -179,6 +180,7 @@ async def _event_generator(
             on_event=on_event,
             abort_event=abort_event,
             thinking_visibility_policy=WEB_THINKING_VISIBILITY_POLICY,
+            provisional_answer_streaming=True,
         )
 
     task = asyncio.create_task(run_query())
