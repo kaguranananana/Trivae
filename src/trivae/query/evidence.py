@@ -729,6 +729,68 @@ def tool_results_have_result_facts(tool_results: tuple[ToolResultRecord, ...]) -
     return False
 
 
+# 只有这些 Agent-facing retrieval 工具的成功空结果才能为 kind=no_result 提供
+# positive proof；get_schema/find_members 等不产生候选集合完整性的证据。
+_RETRIEVAL_TOOL_NAMES = frozenset(
+    {
+        "lexical_search",
+        "semantic_search",
+        "search_messages",
+        "get_recent_messages",
+        "get_message_context",
+    }
+)
+
+# 这些 limitation 信号表示该次 retrieval 未能"完整确定地返回空集合"：
+# 执行失败、部分覆盖、未知 coverage、被截断的结果集都不能支持"范围内没有数据"。
+_INCOMPLETE_ZERO_SIGNALS = frozenset(
+    {
+        "tool_result_partial",
+        "retrieval_partial",
+        "retrieval_truncated",
+    }
+)
+
+
+def _is_complete_empty_retrieval_record(record: ToolResultRecord) -> bool:
+    """单个 retrieval record 是否构成“明确成功且完整确定为空”的证据。"""
+
+    if record.tool_name not in _RETRIEVAL_TOOL_NAMES:
+        return False
+    # error/partial envelope 一律不构成 proof；error_code 同时记录在 limitations。
+    if record.status != "ok":
+        return False
+    for limitation in record.limitations:
+        if limitation in _INCOMPLETE_ZERO_SIGNALS or limitation.startswith("tool_error:"):
+            return False
+        if limitation.startswith("coverage:") and limitation != "coverage:complete":
+            return False
+    return True
+
+
+def has_verified_zero_result_evidence(tool_results: tuple[ToolResultRecord, ...]) -> bool:
+    """kind=no_result 的 positive-proof 判定。
+
+    必须同时满足：
+    1. 至少一次相关 retrieval 调用存在记录；
+    2. 所有相关 retrieval 调用都 status=ok 且无 partial/error/incomplete coverage/
+       truncation 信号（任何一条失败路径都会让"没有数据"结论不完备）；
+    3. 当前 run 全部 Tool Result Records 中确实不存在可引用事实。
+    """
+
+    retrieval_records = [
+        record for record in tool_results if record.tool_name in _RETRIEVAL_TOOL_NAMES
+    ]
+    if not retrieval_records:
+        return False
+    if any(
+        not _is_complete_empty_retrieval_record(record)
+        for record in retrieval_records
+    ):
+        return False
+    return not tool_results_have_result_facts(tool_results)
+
+
 def parse_model_no_result_candidate(output: str) -> ModelAnswerNoResult:
     """解析 kind=no_result 的显式 zero-result final contract。"""
 
@@ -2078,17 +2140,13 @@ def finalize_answer(
         except json.JSONDecodeError:
             decoded_output = None
         if isinstance(decoded_output, Mapping) and decoded_output.get("kind") == NO_RESULT_KIND:
-            # 显式 zero-result 契约：Host 先验证“确无可引用数据”，再放行无 citation 的答案。
+            # 显式 zero-result 契约：positive proof——必须存在成功且完整确定为空的
+            # retrieval 记录，且全程无可引用数据；error/partial/incomplete 走原 failure。
             no_result = parse_model_no_result_candidate(normalized_output)
-            if not tool_results:
-                raise _model_error(
-                    "INVALID_MODEL_CANDIDATE",
-                    "no-result answers require executed tool results",
-                )
-            if tool_results_have_result_facts(tool_results):
+            if not has_verified_zero_result_evidence(tool_results):
                 raise _model_error(
                     "INVALID_FINAL_OUTPUT",
-                    "zero-result final answer conflicts with non-empty tool results",
+                    "zero-result final answer lacks verified complete-and-empty retrieval evidence",
                 )
             return compile_model_no_result_answer(no_result)
         if isinstance(decoded_output, Mapping) and "claims" in decoded_output:
@@ -2589,13 +2647,13 @@ def finalize_answer_gracefully(
                 if not isinstance(decoded, Mapping):
                     return _recovery_error_result(strict_error)
                 if decoded.get("kind") == NO_RESULT_KIND:
-                    # no-result recovery 与 strict 同 guard；冲突走 fatal，不产生降级 artifact。
+                    # no-result recovery 与 strict 共用 positive-proof guard；不满足走 fatal。
                     no_result = parse_model_no_result_candidate(normalized_output)
-                    if not tool_results or tool_results_have_result_facts(tool_results):
+                    if not has_verified_zero_result_evidence(tool_results):
                         return _recovery_error_result(
                             _model_error(
                                 "INVALID_FINAL_OUTPUT",
-                                "zero-result final answer conflicts with actual tool results",
+                                "zero-result final answer lacks verified complete-and-empty retrieval evidence",
                             )
                         )
                     recovered = compile_model_no_result_answer(no_result)

@@ -19,6 +19,7 @@ from trivae.query.evidence import (
     build_tool_result_record,
     finalize_answer,
     finalize_answer_gracefully,
+    has_verified_zero_result_evidence,
     scope_snapshot,
     tool_results_have_result_facts,
 )
@@ -105,14 +106,79 @@ class NoResultFinalizationTests(unittest.TestCase):
         artifact = finalize_answer(HONEST_NO_RESULT, run_id="run-x", tool_results=(record,), scope=self.scope)
         self.assertIsInstance(artifact, AnswerArtifact)
 
-    def test_no_result_conflicting_with_real_results_is_fatal(self) -> None:
-        # 防 bypass：tool results 确实携带消息时，no_result 候选必须 fatal 拒绝。
-        record = self._record(empty_window=False, tool_call_id="tc-b")
+    # ---- positive-proof 收紧：error/partial/incomplete coverage 一律拒绝 no_result ----
+
+    def _record_with_envelope(self, *, status: str, data: object, tool_call_id: str) -> ToolResultRecord:
+        from trivae.capabilities.contracts import ToolEnvelope, ToolError
+
+        envelope = ToolEnvelope(
+            status=status,  # type: ignore[arg-type]
+            data=data,
+            meta={"truncated": False},
+            error=ToolError(code="RETRIEVAL_ERROR", message="injected failure") if status == "error" else None,
+        )
+        return build_tool_result_record(
+            run_id="run-x",
+            tool_call_id=tool_call_id,
+            tool_result_id=f"{tool_call_id}/result",
+            tool_name="lexical_search",
+            envelope=envelope,
+            scope=self.scope,
+        )
+
+    def test_error_tool_result_rejects_no_result(self) -> None:
+        record = self._record_with_envelope(status="error", data=None, tool_call_id="tc-err")
+        self.assertFalse(has_verified_zero_result_evidence((record,)))
+        result = finalize_answer_gracefully(
+            HONEST_NO_RESULT, run_id="run-x", tool_results=(record,), scope=self.scope
+        )
+        self.assertIsNone(result.artifact)
+        if result.error is not None:
+            self.assertEqual(result.error.code, "INVALID_FINAL_OUTPUT")
+
+    def test_partial_tool_result_rejects_no_result(self) -> None:
+        record = self._record_with_envelope(status="partial", data=None, tool_call_id="tc-part")
+        self.assertFalse(has_verified_zero_result_evidence((record,)))
+        with self.assertRaises(Exception):
+            finalize_answer(HONEST_NO_RESULT, run_id="run-x", tool_results=(record,), scope=self.scope)
+
+    def test_incomplete_coverage_tool_result_rejects_no_result(self) -> None:
+        # semantic index partial coverage：ok 状态但 coverage!=complete 不能证明“无数据”。
+        from types import SimpleNamespace
+
+        from trivae.retrieval.structured import Coverage
+
+        incomplete = SimpleNamespace(
+            partial=False,
+            truncated=False,
+            coverage=Coverage(status="none", basis="canonical_plus_semantic_index"),
+        )
+        record = self._record_with_envelope(status="ok", data=incomplete, tool_call_id="tc-cov")
+        self.assertIn("coverage:none", record.limitations)
+        self.assertFalse(has_verified_zero_result_evidence((record,)))
+        with self.assertRaises(Exception):
+            finalize_answer(HONEST_NO_RESULT, run_id="run-x", tool_results=(record,), scope=self.scope)
+
+    def test_successful_complete_zero_result_is_accepted(self) -> None:
+        # positive proof 的正例：recent ok + coverage complete + 0 facts。
+        record = self._record(empty_window=True, tool_call_id="tc-proof")
+        self.assertTrue(has_verified_zero_result_evidence((record,)))
+
+    def test_mixed_error_and_empty_retrieval_records_are_rejected(self) -> None:
+        # 任何一条 retrieval 失败路径都让"范围内没有数据"结论不完备。
+        empty_record = self._record(empty_window=True, tool_call_id="tc-ok1")
+        error_record = self._record_with_envelope(status="error", data=None, tool_call_id="tc-ok2")
+        self.assertTrue(has_verified_zero_result_evidence((empty_record,)))
+        self.assertFalse(
+            has_verified_zero_result_evidence((empty_record, error_record))
+        )
+
+    def test_conflicting_real_results_stays_fatal(self) -> None:
+        record = self._record(empty_window=False, tool_call_id="tc-b2")
         result = finalize_answer_gracefully(
             BYPASS_NO_RESULT, run_id="run-x", tool_results=(record,), scope=self.scope
         )
         self.assertIsNone(result.artifact)
-        self.assertIsNotNone(result.error)
         if result.error is not None:
             self.assertEqual(result.error.code, "INVALID_FINAL_OUTPUT")
 
@@ -134,8 +200,8 @@ class NoResultFinalizationTests(unittest.TestCase):
         with self.assertRaises(Exception):
             finalize_answer(HONEST_NO_RESULT, run_id="run-x", tool_results=(), scope=self.scope)
 
-    def test_schema_only_records_do_not_block_no_result(self) -> None:
-        # schema inspection tables[] 只是 metadata：不算检索事实，也不阻塞 no_result 放行。
+    def test_schema_only_records_without_retrieval_proof_are_rejected(self) -> None:
+        # schema inspection tables[] 只是 metadata：既不算事实，也不构成“检索完成且为空”的证明。
         from trivae.query.evidence import ToolStructuredItem
 
         record = ToolResultRecord(
@@ -151,10 +217,13 @@ class NoResultFinalizationTests(unittest.TestCase):
             limitations=(),
         )
         self.assertFalse(tool_results_have_result_facts((record,)))
+        self.assertFalse(has_verified_zero_result_evidence((record,)))
         result = finalize_answer_gracefully(
             HONEST_NO_RESULT, run_id="run-x", tool_results=(record,), scope=self.scope
         )
-        self.assertIsNone(result.error)
+        self.assertIsNone(result.artifact)
+        if result.error is not None:
+            self.assertEqual(result.error.code, "INVALID_FINAL_OUTPUT")
 
 
 if __name__ == "__main__":  # pragma: no cover

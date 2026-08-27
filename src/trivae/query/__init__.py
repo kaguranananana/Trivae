@@ -66,5 +66,6 @@ __all__ = [
     "parse_model_answer_candidate",
     "parse_model_no_result_candidate",
     "tool_results_have_result_facts",
+    "has_verified_zero_result_evidence",
     "ModelContextMessage",
 ]

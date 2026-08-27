@@ -11,7 +11,11 @@ v2 在 v1 基础上为每个 maximal Han run 建立显式边界：用空格包�
 （bigram 序列或单字），使 unicode61 总能切出独立 token。ASCII 内容逐字不动，
 URL/code/identifier 内部语义保持不变。
 
-  doc 含某 Han 子串 ⇔ doc tokens 以保序短语包含查询归一化 bigram 序列
+Recall 契约（精确表述）：
+- 长度 ≥2 的 Han 子串 ⇔ doc tokens 以保序短语包含查询归一化 bigram 序列（完整召回）；
+- 单个汉字 query 不是完整 substring recall：doc 侧 token 全部是 bigram（或孤立单字），
+  "荐" 无法命中 bigram "心推/推荐" 内部的字符——这是当前 known limitation，
+  不引入 unigram/LIKE/fallback 改变索引形态。
 """
 
 from __future__ import annotations
