@@ -135,7 +135,8 @@ export const useChatStore = defineStore('chat', () => {
 
   /** stream 事件按 request_id 找到 owner buffer；不依赖"当前 conversation"全局变量。 */
   const streamOwners = new Map<string, string>()
-  const streams = new Map<string, StreamContext>()
+  // streams 必须响应式：Send/Stop 按钮与 activeStreamRequestId 依赖它。
+  const streams = reactive(new Map<string, StreamContext>())
 
   const currentBuffer = computed<ConversationBuffer | null>(() => {
     if (currentKey.value === null) return null
@@ -518,10 +519,13 @@ export const useChatStore = defineStore('chat', () => {
         const block = findToolBlock(assistant, event.tool_call_id ?? '')
         if (!block) break
         block.status = event.type === 'tool.failed' ? 'failed' : 'completed'
-        block.resultSummary = event.result_summary ?? null
-        block.resultProjection = event.result_projection ?? null
-        block.errorCode = event.error_code ?? null
-        block.durationMs = event.duration_ms ?? null
+        // runtime 与 normalized 两个事实来源各带一部分投影；只做 additive 合并，不用空值覆盖。
+        if (event.result_summary) {
+          block.resultSummary = { ...(block.resultSummary ?? {}), ...event.result_summary }
+        }
+        if (event.result_projection) block.resultProjection = event.result_projection
+        if (event.error_code) block.errorCode = event.error_code
+        if (event.duration_ms !== null && event.duration_ms !== undefined) block.durationMs = event.duration_ms
         break
       }
       case 'retrieval.completed': {

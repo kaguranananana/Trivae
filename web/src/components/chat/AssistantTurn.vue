@@ -44,7 +44,11 @@ const segmentOpen = ref<Record<string, boolean>>({})
 function isOpen(index: number): boolean {
   const override = segmentOpen.value[`seg-${index}`]
   if (override !== undefined) return override
-  return hasProcessSegmentError(segments.value[index], (block) => block.kind === 'error')
+  // ChatLab 行为：运行中的活动段实时展开；完成后折叠，错误组保持展开。
+  return (
+    isActiveProcessSegment(segments.value, index, isStreaming.value) ||
+    hasProcessSegmentError(segments.value[index], (block) => block.kind === 'error')
+  )
 }
 
 function toggleSegment(index: number): void {

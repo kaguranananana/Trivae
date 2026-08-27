@@ -425,11 +425,13 @@ class AnswerArtifactDeltaParser:
 
         path = self._current_value_path()
         if character == '"':
+            # Finalizer 接受两种正式候选 schema：content_blocks[*].text 与 claims[*].text。
+            # 两种的用户可见正文按同一 target 提取，preview 与 answer_text 保持同源。
             is_target = (
                 len(path) == 3
-                and path[0] == "content_blocks"
                 and isinstance(path[1], int)
                 and path[2] == "text"
+                and path[0] in ("content_blocks", "claims")
             )
             self._start_string("value", is_target=is_target)
             return

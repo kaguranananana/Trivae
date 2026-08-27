@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -192,6 +193,37 @@ class ProviderDeltaNormalizationTests(unittest.TestCase):
         self.assertTrue(
             OpenAIAgentsRuntimeAdapter._is_thinking_done(self._event("response.reasoning_summary_text.done"))
         )
+
+
+class AnswerDeltaClaimsSchemaTests(unittest.TestCase):
+    """claims[*].text 是正式候选 schema；delta preview 必须与 answer_text 同源。"""
+
+    def _parse(self, raw: str) -> str:
+        parser = AnswerArtifactDeltaParser()
+        output = []
+        for index in range(0, len(raw), 7):
+            output.append(parser.feed(raw[index : index + 7]))
+        parser.finish()
+        return "".join(output)
+
+    def test_claims_text_streams_as_answer_preview(self) -> None:
+        raw = json.dumps(
+            {
+                "claims": [
+                    {"text": "第一条结论", "finding": "f", "criterion": "c", "sufficiency": "sufficient"},
+                    {"text": "第二条\n多行", "finding": "f2", "criterion": "c2", "sufficiency": "partial"},
+                ]
+            },
+            ensure_ascii=False,
+        )
+        self.assertEqual(self._parse(raw), "第一条结论\n\n第二条\n多行")
+
+    def test_content_blocks_schema_still_streams(self) -> None:
+        raw = json.dumps(
+            {"content_blocks": [{"text": "块一", "block_id": "a"}, {"text": "块二", "block_id": "b"}]},
+            ensure_ascii=False,
+        )
+        self.assertEqual(self._parse(raw), "块一\n\n块二")
 
 
 class AnswerArtifactDeltaParserTests(unittest.TestCase):
