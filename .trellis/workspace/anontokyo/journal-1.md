@@ -888,3 +888,25 @@ run() 标准全屏模式替代 inline（widget 布局正确但 paint 不发生�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 39: 修复 Textual TUI 下 SEMANTIC_EMBEDDING_FAILED（bad fds_to_keep）
+
+**Date**: 2026-08-27
+**Task**: 修复 Textual TUI 下 SEMANTIC_EMBEDDING_FAILED（bad fds_to_keep）
+**Branch**: `main`
+
+### Summary
+
+定位并修复 TUI 下语义检索全挂问题：Textual 以 _PrintCapture(fileno()==-1) 替换 stdio，模型懒加载时 tqdm 惰性建锁触发 CPython 3.14 resource_tracker 把 -1 传给 fork_exec。插桩实测对照 [2,10] vs [-1,10] 闭环根因；在 create_application 工厂期预热 tqdm mp lock 消除触发窗口。新增 bootstrap/process_warmup.py + 4 个确定性回归测试（复现控制/修复验证/幂等/接线），pytest 381 全绿 + ruff + mypy 通过，问题记录沉淀到 spec/project/problems/textual-stdio-tqdm-bad-fds.md。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `89154bd` | (see git log) |
+| `220b07b` | (see git log) |
+
+### Status
+
+[OK] **Completed**
