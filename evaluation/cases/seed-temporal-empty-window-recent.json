@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-temporal-empty-window-recent",
+  "version": 1,
+  "suite_tags": [
+    "design_seed",
+    "temporal_overview",
+    "empty_window",
+    "no_result_contract"
+  ],
+  "dataset_snapshot": {
+    "snapshot_id": "snapshot:bind-at-run",
+    "canonical_database_identity": "sqlite-canonical:bind-at-run",
+    "schema_version": "canonical-m1-v1",
+    "source_identity": "source:bind-at-run",
+    "message_count": 0,
+    "relevant_time_range": [
+      null,
+      null
+    ],
+    "deterministic_fingerprint": "manifest:bind-at-run",
+    "created_at": "2026-08-27T00:00:00+00:00",
+    "status": "unavailable",
+    "manifest": {
+      "binding": "explicit snapshot materialization required"
+    }
+  },
+  "data_access_scope": {
+    "allowed_session_ids": null,
+    "start_timestamp": null,
+    "end_timestamp": null,
+    "max_results": 100
+  },
+  "query": "昨天上午群里有没有什么新消息？（对应时间窗内确认为空）",
+  "locale": "zh-CN",
+  "reference_findings": [
+    {
+      "finding_id": "successful-empty-outcome",
+      "criterion": "Tool ok + coverage complete + 0 messages 时，Agent 能以 no_result 形态 completed，且不得输出无 evidence 的 positive factual claim",
+      "expected_semantics": "final 使用 {kind:no_result,...} 或等价诚实表述；Host 在 tool results 含数据时必须拒绝该形态。",
+      "reference_evidence": [],
+      "annotation_completeness": "unknown",
+      "provenance": {
+        "source": "zero-result finalization contract (lexical-v2-zero-result task)",
+        "created_at": "2026-08-27T00:00:00+00:00",
+        "method": "contract-level regression; snapshot binding pending materialization",
+        "snapshot_id": "snapshot:bind-at-run",
+        "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}"
+      },
+      "known_limitations": [
+        "未绑定真实 Snapshot；确定性回归位于 tests/test_no_result_finalization.py 与 tests/test_temporal_zero_result_integration.py"
+      ],
+      "critical": true
+    }
+  ],
+  "uncertainty_constraints": [
+    "不硬编码正确主题名称；聊天数据随 Snapshot 变化。",
+    "partial/truncated 时不得声称覆盖全部近期讨论。"
+  ],
+  "negative_constraints": [
+    "禁止先猜测主题再 semantic/lexical 搜索。",
+    "不得引用 Scope 外消息。",
+    "不得使用 machine current time 解析相对时间。"
+  ],
+  "critical_requirements": [
+    "zero-result 不 terminal failed",
+    "positive claims 无 citation 必须 finalization failed"
+  ],
+  "diagnostic_expectations": {
+    "preferred_owner": "retrieval",
+    "tool_selection": {
+      "category": "temporal_overview",
+      "preferred_first_tools": [
+        "get_recent_messages"
+      ],
+      "allowed_follow_up_tools": [
+        "lexical_search",
+        "semantic_search",
+        "execute_sql",
+        "get_message_context",
+        "find_members"
+      ],
+      "judgement": "diagnostic_expectation_only"
+    }
+  },
+  "review_policy": {
+    "rubric_version": "m7-v1",
+    "reviewer_types": [
+      "human"
+    ],
+    "blind_pairwise": true,
+    "human_adjudication_on_disagreement": true
+  },
+  "provenance": {
+    "source": "Real failure case: temporal overview question failed with retrieval guessing; ChatLab baseline uses get_recent_messages.",
+    "method": "Failure-case-driven seed per Stage 1.4 ADR reopen trigger",
+    "created_at": "2026-08-27T00:00:00+00:00"
+  }
+}

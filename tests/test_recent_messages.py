@@ -115,6 +115,15 @@ class RecentMessagesCapabilityTests(unittest.TestCase):
         self.store.close()
         self.temporary.cleanup()
 
+    def test_no_args_defaults_to_recent_two_days_archive_latest(self) -> None:
+        # B1 contract：SDK `{}` 合法调用 ≡ relative 2 days；不再出现 SDK 合法/Capability 拒绝。
+        scope = ExecutionScope(allowed_session_ids=("qq:920",))
+        request = GetRecentMessagesInput()
+        result = self.capability.execute(request, scope)
+        self.assertEqual(result.total_hits, 2)
+        query_end = result.query.to_dict()["end_timestamp"]
+        self.assertEqual(query_end, self.latest + 1)
+
     def test_relative_time_range_resolves_archive_latest(self) -> None:
         scope = ExecutionScope(allowed_session_ids=("qq:920",), start_timestamp=None, end_timestamp=None)
         request = GetRecentMessagesInput(
@@ -159,15 +168,19 @@ class RecentMessagesCapabilityTests(unittest.TestCase):
         with self.assertRaises(CapabilityScopeError):
             self.capability.execute(request, scope)
 
-    def test_relative_anchor_unavailable_in_empty_scope_is_explicit_error(self) -> None:
-        # trusted session 无任何消息时 archive_latest 不存在；显式失败而非静默空结果。
+    def test_relative_anchor_missing_in_empty_scope_is_legal_zero_result(self) -> None:
+        # trusted session 无消息时 archive_latest 不存在；zero-result 契约下这是合法空结果
+        # 而不是参数错误（旧实现曾抛 CapabilityContractError 导致模型进入无效重试）。
         scope = ExecutionScope(allowed_session_ids=("qq:999",))
         request = GetRecentMessagesInput(
             time_range={"kind": "relative", "amount": 1, "unit": "week", "anchor": "archive_latest"},
             limit=10,
         )
-        with self.assertRaises(CapabilityContractError):
-            self.capability.execute(request, scope)
+        result = self.capability.execute(request, scope)
+        self.assertEqual(result.total_hits, 0)
+        self.assertEqual(len(result.messages), 0)
+        self.assertFalse(result.truncated)
+        self.assertEqual(result.coverage.status, "complete")
 
     def test_zero_result_is_ok_not_error(self) -> None:
         scope = ExecutionScope(allowed_session_ids=("qq:920",))

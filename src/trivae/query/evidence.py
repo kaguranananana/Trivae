@@ -691,6 +691,85 @@ class ModelAnswerCandidate:
         object.__setattr__(self, "limitations", _limitations("candidate limitations", self.limitations))
 
 
+NO_RESULT_KIND = "no_result"
+
+
+@dataclass(frozen=True)
+class ModelAnswerNoResult:
+    """zero-result final candidate：成功查询得到空集合时的合法 final 形态。
+
+    只有 Host 能从当前 Tool Result Records 验证“确无可引用数据”时才被接受，
+    防止它演变为无 evidence factual claim 的 citation bypass。
+    """
+
+    summary: str
+    limitations: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "summary", _text("no_result summary", self.summary, max_chars=MAX_ANSWER_CHARS))
+        object.__setattr__(self, "limitations", _limitations("no_result limitations", self.limitations))
+
+
+def tool_results_have_result_facts(tool_results: tuple[ToolResultRecord, ...]) -> bool:
+    """Host 判定当前 run 是否存在任何可引用的检索事实。
+
+    message items 或非 schema 的 structured row（SQL rows/aggregate buckets/member
+    candidates）都算事实；schema inspection tables[] 只是 metadata，不构成事实。
+    这是 zero-result 候选的唯一放行依据，模型无法通过参数影响。
+    """
+
+    for record in tool_results:
+        if record.message_items:
+            return True
+        if any(
+            item.locator_kind == "row" and not item.locator.startswith("tables[")
+            for item in record.structured_items
+        ):
+            return True
+    return False
+
+
+def parse_model_no_result_candidate(output: str) -> ModelAnswerNoResult:
+    """解析 kind=no_result 的显式 zero-result final contract。"""
+
+    if not isinstance(output, str) or not output.strip():
+        raise _model_error("INVALID_FINAL_OUTPUT", "final answer must be non-empty text")
+    try:
+        decoded = json.loads(output.strip())
+    except json.JSONDecodeError as exc:
+        raise _model_error("INVALID_MODEL_CANDIDATE", "no-result answer is not valid JSON") from exc
+    if not isinstance(decoded, Mapping):
+        raise _model_error("INVALID_MODEL_CANDIDATE", "no-result answer must be an object")
+    if decoded.get("kind") != NO_RESULT_KIND:
+        raise _model_error("INVALID_MODEL_CANDIDATE", f"answer kind must be {NO_RESULT_KIND}", "kind")
+    if "claims" in decoded:
+        # 不允许 no-result 与 claims 形态混合（即使空数组）：有数据时必须走正常 citation contract。
+        raise _model_error(
+            "INVALID_MODEL_CANDIDATE",
+            f"{NO_RESULT_KIND} answer must not carry a claims field",
+            "claims",
+        )
+    summary_value = decoded.get("summary")
+    if not isinstance(summary_value, str):
+        raise _model_error("INVALID_MODEL_CANDIDATE", "no-result answer requires a summary", "summary")
+    try:
+        return ModelAnswerNoResult(
+            summary=summary_value,
+            limitations=tuple(decoded.get("limitations") or ()),
+        )
+    except (AnswerContractError, TypeError) as exc:
+        raise _model_error("INVALID_MODEL_CANDIDATE", str(exc)) from exc
+
+
+def compile_model_no_result_answer(candidate: ModelAnswerNoResult) -> AnswerArtifact:
+    """把 zero-result candidate 编译为单一可读 block；无 evidence/citation 是契约语义。"""
+
+    return AnswerArtifact(
+        content_blocks=(AnswerContentBlock("answer", candidate.summary),),
+        limitations=candidate.limitations,
+    )
+
+
 @dataclass(frozen=True)
 class ToolMessageItem:
     """Tool Result 中一个可引用的 bounded canonical message projection。"""
@@ -1998,6 +2077,20 @@ def finalize_answer(
             decoded_output = json.loads(normalized_output)
         except json.JSONDecodeError:
             decoded_output = None
+        if isinstance(decoded_output, Mapping) and decoded_output.get("kind") == NO_RESULT_KIND:
+            # 显式 zero-result 契约：Host 先验证“确无可引用数据”，再放行无 citation 的答案。
+            no_result = parse_model_no_result_candidate(normalized_output)
+            if not tool_results:
+                raise _model_error(
+                    "INVALID_MODEL_CANDIDATE",
+                    "no-result answers require executed tool results",
+                )
+            if tool_results_have_result_facts(tool_results):
+                raise _model_error(
+                    "INVALID_FINAL_OUTPUT",
+                    "zero-result final answer conflicts with non-empty tool results",
+                )
+            return compile_model_no_result_answer(no_result)
         if isinstance(decoded_output, Mapping) and "claims" in decoded_output:
             # 新 contract 只解析语义字段；Host compiler 负责 Artifact identity bookkeeping。
             candidate = compile_model_answer_candidate(
@@ -2495,7 +2588,19 @@ def finalize_answer_gracefully(
                     return _recovery_error_result(strict_error)
                 if not isinstance(decoded, Mapping):
                     return _recovery_error_result(strict_error)
-                if "claims" in decoded:
+                if decoded.get("kind") == NO_RESULT_KIND:
+                    # no-result recovery 与 strict 同 guard；冲突走 fatal，不产生降级 artifact。
+                    no_result = parse_model_no_result_candidate(normalized_output)
+                    if not tool_results or tool_results_have_result_facts(tool_results):
+                        return _recovery_error_result(
+                            _model_error(
+                                "INVALID_FINAL_OUTPUT",
+                                "zero-result final answer conflicts with actual tool results",
+                            )
+                        )
+                    recovered = compile_model_no_result_answer(no_result)
+                    binding_targets: tuple[tuple[str, str], ...] = ()
+                elif "claims" in decoded:
                     recovered, binding_targets = _recovery_candidate_artifact(
                         decoded,
                         has_tool_results=bool(tool_results),

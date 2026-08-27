@@ -64,5 +64,7 @@ __all__ = [
     "finalize_answer",
     "finalize_answer_gracefully",
     "parse_model_answer_candidate",
+    "parse_model_no_result_candidate",
+    "tool_results_have_result_facts",
     "ModelContextMessage",
 ]

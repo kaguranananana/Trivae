@@ -59,6 +59,29 @@ class RecentMessagesCapability:
                 end_timestamp=scope.end_timestamp,
             )
             latest_timestamp = self.retrieval.repository.latest_message_timestamp(anchor_scope)
+            if latest_timestamp is None:
+                # trusted scope（session+time 界定）内没有任何消息：recent 查询的合法空结果，
+                # 而不是参数错误；模型将以 no-result contract 收尾。必须继承 trusted 边界，
+                # 不能退化为全 session 浏览，否则会把范围外消息当作空窗答案的依据。
+                empty_window_result = self.retrieval.retrieve_recent_messages(
+                    MessageQuery(
+                        session_ids=scoped_sessions,
+                        start_timestamp=scope.start_timestamp,
+                        end_timestamp=scope.end_timestamp,
+                        limit=request.limit,
+                    )
+                )
+                return replace(
+                    empty_window_result,
+                    metadata=replace(
+                        empty_window_result.metadata,
+                        details={
+                            **empty_window_result.metadata.details,
+                            "resolved_time_range": None,
+                            "zero_result_note": "trusted scope contains no messages; archive_latest unavailable",
+                        },
+                    ),
+                )
             resolved_time_range = resolve_relative_time_range(
                 request,
                 scope,

@@ -13,6 +13,7 @@ from trivae.config.limits import (
     DEFAULT_TRUSTED_RESULT_LIMIT,
     MAX_RECENT_MESSAGES_LIMIT,
     MAX_TRUSTED_RESULT_LIMIT,
+    RECENT_MESSAGES_DEFAULT_AMOUNT,
 )
 from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
@@ -259,7 +260,11 @@ class SearchMessagesInput:
 
 @dataclass(frozen=True)
 class GetRecentMessagesInput:
-    """get_recent_messages 的 temporal browsing 输入；时间窗决定候选集合。"""
+    """get_recent_messages 的 temporal browsing 输入；时间窗决定候选集合。
+
+    无任何时间参数时契约等价于 relative recent 2 days（anchor=archive_latest），
+    与 SDK schema 全参数可选的形状保持一致；不允许 machine current time 参与。
+    """
 
     time_range: RelativeTimeRange | Mapping[str, object] | None = None
     start_timestamp: int | None = None
@@ -272,11 +277,17 @@ class GetRecentMessagesInput:
         _validate_optional_timestamp("start_timestamp", self.start_timestamp)
         _validate_optional_timestamp("end_timestamp", self.end_timestamp)
         normalized_time_range = RelativeTimeRange.from_value(self.time_range)
+        if normalized_time_range is None and self.start_timestamp is None and self.end_timestamp is None:
+            # SDK schema 与 Capability contract 的统一缺省：最近两天，archive_latest 锚定。
+            normalized_time_range = RelativeTimeRange(
+                kind="relative",
+                amount=RECENT_MESSAGES_DEFAULT_AMOUNT,
+                unit="day",
+                anchor="archive_latest",
+            )
         object.__setattr__(self, "time_range", normalized_time_range)
         if normalized_time_range is not None and (self.start_timestamp is not None or self.end_timestamp is not None):
             raise CapabilityContractError("time_range cannot be combined with absolute timestamps")
-        if normalized_time_range is None and self.start_timestamp is None and self.end_timestamp is None:
-            raise CapabilityContractError("time_range or an explicit time window is required")
         if self.start_timestamp is not None and self.end_timestamp is not None:
             if self.start_timestamp > self.end_timestamp:
                 raise CapabilityContractError("query time scope is reversed")

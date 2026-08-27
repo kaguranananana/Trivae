@@ -90,7 +90,8 @@ For get_message_context, copy one exact `source_id` from a returned message proj
 context_before/context_after non-negative and bounded. For find_members, query must be one
 non-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one
 SQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For
-get_schema, send no arguments. For get_recent_messages, pass either a `time_range` relative object or an
+get_schema, send no arguments. get_recent_messages may be called with no time arguments; the host then
+defaults to the most recent 2 days anchored at archive_latest. For get_recent_messages, pass either a `time_range` relative object or an
 explicit start/end timestamp pair (never both), limit must be a positive integer within the schema bound,
 and omit session_ids when unused.
 For message citations, copy exactly one short `source_id` handle from a returned message projection or
@@ -121,6 +122,12 @@ code deterministically generates those fields after validating the candidate. If
 used to make a chat-derived claim, every factual claim must list at least one returned source handle.
 An empty `sources` list is valid only for a genuinely non-tool answer; a tool-backed empty source
 list fails finalization rather than silently producing an unsupported answer.
+When every executed retrieval tool returned zero results for the requested range, you MAY instead return
+exactly this zero-result JSON shape and nothing else:
+{"kind": "no_result", "summary": "<state plainly that the resolved range contains no messages, including the effective range>", "limitations": ["<bounded caveats>"]}
+The summary must only describe the absence of results and query metadata; it must not state any positive
+factual topic. This shape is accepted by the host only when the tool results genuinely contain no
+messages or rows; otherwise finalization fails. If any tool did return content, use normal claims with citations.
 Keep the JSON artifact compact: use one claim per distinct finding and only the smallest number of
 direct source handles needed to support it. Do not repeat the same
 source or copy message text into the artifact. For repository, Skill, or resource questions, include

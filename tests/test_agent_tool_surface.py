@@ -96,6 +96,39 @@ class AgentToolSurfaceTests(unittest.TestCase):
         self.assertIn("find_members.candidates[]", SYSTEM_PROMPT)
         self.assertIn("never compare `messages.sender_user_id` directly to a QQ UIN", SYSTEM_PROMPT)
 
+    def test_temporal_selection_boundary_is_declared(self) -> None:
+        """B6：temporal overview 必须由 description+prompt 引导优先 get_recent_messages。"""
+
+        registry = CapabilityRegistry()
+        registry.register(_RecordingTool("get_recent_messages"))
+        registry.register(_RecordingTool("lexical_search"))
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=ScriptedModel([]))
+        request = AgentRunRequest(
+            "最近一两天大家都在聊什么？",
+            ExecutionScope(max_results=100),
+            available_capabilities=("get_recent_messages", "lexical_search"),
+        )
+        agent = runtime._build_agent(request, runtime._build_context(request), object())
+        recent = {tool.name: tool for tool in agent.tools}["get_recent_messages"]
+        # description 绑定 question shape，而不是关键词匹配；空参默认语义必须写明。
+        self.assertIn("temporal browsing", recent.description)
+        self.assertIn(
+            "Do NOT guess topics and search them with lexical_search or semantic_search",
+            recent.description,
+        )
+        self.assertIn(
+            "without any time argument defaults to the most recent 2 days anchored at archive_latest",
+            recent.description,
+        )
+        self.assertIn("Zero results is a normal outcome", recent.description)
+        # prompt 层 tool selection boundary 与 zero-result 出口同样被锁定。
+        self.assertIn(
+            "Use get_recent_messages when the candidate set is determined mainly by time",
+            SYSTEM_PROMPT,
+        )
+        self.assertIn('{"kind": "no_result"', SYSTEM_PROMPT)
+        self.assertIn("otherwise finalization fails", SYSTEM_PROMPT)
+
     def test_agent_can_continue_from_lexical_to_semantic_in_one_runtime(self) -> None:
         lexical = _RecordingTool("lexical_search")
         semantic = _RecordingTool("semantic_search")
