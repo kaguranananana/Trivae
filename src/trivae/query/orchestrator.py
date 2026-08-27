@@ -482,6 +482,8 @@ class QueryOrchestrator:
                     "selected_source_count": len(selected_sources),
                     "selected_source_ids": selected_sources,
                     "limitations": answer_artifact.limitations,
+                    "resolved_time_range": answer_artifact.resolved_time_range,
+                    "retrieval_coverage": answer_artifact.retrieval_coverage,
                     "finalization_status": finalization_diagnostics.status,
                     "user_answer_preserved": finalization_diagnostics.user_answer_preserved,
                     "dropped_field_count": finalization_diagnostics.dropped_field_count,
@@ -523,6 +525,8 @@ class QueryOrchestrator:
                     "dropped_citation_count": finalization_diagnostics.dropped_citation_count,
                     "normalization_count": finalization_diagnostics.normalization_count,
                     "validated_citation_count": finalization_diagnostics.validated_citation_count,
+                    "resolved_time_range": answer_artifact.resolved_time_range,
+                    "retrieval_coverage": answer_artifact.retrieval_coverage,
                     # 这是通过 finalization 校验后的 Debug execution snapshot；业务事实仍由 AnswerArtifact/Conversation Store 持有。
                     "answer_text": answer_artifact.answer_text,
                 },

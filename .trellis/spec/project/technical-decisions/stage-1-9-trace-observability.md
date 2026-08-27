@@ -704,3 +704,17 @@ Trace 现在把三类事实分开保存：
 并可 commit，但不等于 citation 或自然语言质量通过。真正 failed 的 finalization 仍写
 `citation.validation.failed`、`answer.finalization.failed` 和 `query.failed`，并且不产生 Assistant
 commit。Trace payload 只含上述 bounded projection，不复制 raw provider output、secret 或 hidden CoT。
+
+## 23. Temporal Overview Trace Amendment（2026-08-28）
+
+`structured.browse.completed` 对 recent page 必须记录同一 scope 下的 `total_hits`、
+`returned/retrieved_count`、`covered_units/eligible_units`、`coverage`、`partial`、`truncated`、
+`has_more`、`next_cursor`、resolved half-open UTC range 和 retrieval latency。Runtime terminal
+另外汇总 model projection 的 `projected_count`、`omitted_messages`、estimate 与 truncation；
+这两组数量不能合并成一个“返回条数”。
+
+Trace 的 projection 必须保持有界：canonical record 可保存最多 5000 个 bounded message items，
+但 Retrieval event payload 不复制完整正文，UI detail 只构造 bounded preview。真实 two-day
+window 的 Trace facts 因而可以复核 `2699 → 1000/1000/699` 和 model projection 的省略，而不
+制造第二份全量聊天转储。`AnswerArtifact.retrieval_coverage`/`resolved_time_range` 作为
+finalization event 的 Host-owned facts 一并保存，日期错配或 coverage 退化均显式暴露。

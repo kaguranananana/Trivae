@@ -538,6 +538,24 @@ dropped field/citation count、normalization count、validated citation count �
 strict parser/validator 的直接失败测试继续保留，应用层回归另测 degraded delivery、CLI 提示、Trace
 和 Evaluation 分轴。禁止二次 LLM repair、静默替换 source 或 catch-all Exception 掩盖 root cause。
 
+## 25. Temporal Overview Evidence Amendment（2026-08-28）
+
+Evidence/Finalization 继承 recent Tool Result 的执行完整性，但不把它折叠进 claim
+`sufficiency`：
+
+- current-run recent record 保存 page `coverage`、`total_hits`、`retrieved_count`、`has_more`、
+  `next_cursor` 与 Host-resolved half-open range；message citation 仍只从 canonical projection
+  hydrate。
+- `AnswerArtifact` 由 Host 自动保存 `retrieval_coverage` 和 `resolved_time_range`，并把
+  `retrieval_partial`、`retrieval_truncated`、`coverage:partial` 等执行限制保留在
+  `limitations`。Conversation codec/replay 不丢弃这些字段。
+- `TIME_RANGE_MISMATCH` 或 `COVERAGE_MISMATCH` 是可信执行事实冲突，必须 failed，不可通过
+  graceful recovery 删除 citation 或把 partial 变成 complete；empty-window 仍走原有
+  positive-proof no-result contract。
+
+这样“claim 是否被来源支持”和“来源是否覆盖了整个 requested window”保持两条独立轴，
+overview 的 partial 不能被 Evidence 语义包装成全窗口结论。
+
 ## 23. M5b Implementation Status
 
 M5b `m5-conversation-persistence-finalization` 在不放宽 Stage 1.8 current-run provenance 语义的前提下完成了第一版 durable Conversation Store：

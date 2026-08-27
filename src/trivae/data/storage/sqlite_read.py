@@ -303,6 +303,25 @@ def _where_clause(scope: ScopeFilters, alias: str = "m") -> tuple[str, list[obje
     if scope.end_timestamp is not None:
         clauses.append(f"{alias}.timestamp < ?")
         parameters.append(scope.end_timestamp)
+    before_cursor = getattr(scope, "before_cursor", None)
+    if before_cursor is not None:
+        # 复用 canonical ordering 的四元组做严格小于比较，保证同 timestamp/NULL seq 不重不漏。
+        cursor_seq_present = 1 if before_cursor.seq is None else 0
+        cursor_seq = before_cursor.seq if before_cursor.seq is not None else 0
+        clauses.append(
+            f"({alias}.timestamp, "
+            f"CASE WHEN {alias}.seq IS NULL THEN 1 ELSE 0 END, "
+            f"COALESCE({alias}.seq, 0), {alias}.internal_message_id) "
+            "< (?, ?, ?, ?)"
+        )
+        parameters.extend(
+            (
+                before_cursor.timestamp,
+                cursor_seq_present,
+                cursor_seq,
+                before_cursor.internal_message_id,
+            )
+        )
     if scope.sender_user_ids is not None:
         placeholders = ", ".join("?" for _ in scope.sender_user_ids)
         clauses.append(f"{alias}.sender_user_id IN ({placeholders})")

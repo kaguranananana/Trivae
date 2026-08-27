@@ -510,6 +510,17 @@ class TraceableAgentRuntime(AgentRuntime):
             if event.tool_call.tool_result_budget is not None:
                 # 每个 completed Tool 都保留自己的预算快照，便于解释累计 pool 的归因。
                 payload["tool_result_budget"] = event.tool_call.tool_result_budget.to_dict()
+            for field_name, payload_name in (
+                ("model_result_projected_messages", "projected_messages"),
+                ("model_result_omitted_messages", "omitted_messages"),
+                ("model_result_omitted_context_messages", "omitted_context_messages"),
+                ("model_result_omitted_hit_messages", "omitted_hit_messages"),
+            ):
+                value = getattr(event.tool_call, field_name)
+                if isinstance(value, int) and not isinstance(value, bool):
+                    payload[payload_name] = value
+            if event.tool_call.model_result_truncated is not None:
+                payload["projection_truncated"] = event.tool_call.model_result_truncated
         if event.usage is not None:
             payload["usage"] = dict(event.usage)
         if event.model_visible_context is not None:
@@ -657,6 +668,12 @@ class TraceableAgentRuntime(AgentRuntime):
         )
         payload["tool_result_projection_omitted_context_messages"] = sum(
             call.model_result_omitted_context_messages or 0 for call in result.tool_calls
+        )
+        payload["tool_result_projection_projected_messages"] = sum(
+            call.model_result_projected_messages or 0 for call in result.tool_calls
+        )
+        payload["tool_result_projection_omitted_messages"] = sum(
+            call.model_result_omitted_messages or 0 for call in result.tool_calls
         )
         budget_snapshots = [
             call.tool_result_budget

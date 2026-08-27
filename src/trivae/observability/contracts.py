@@ -262,6 +262,8 @@ class TraceMetrics:
     tool_result_projection_truncated_count: int = 0
     tool_result_projection_omitted_context_messages: int = 0
     tool_result_projection_omitted_hit_messages: int = 0
+    tool_result_projection_projected_messages: int = 0
+    tool_result_projection_omitted_messages: int = 0
 
 
 @dataclass(frozen=True)

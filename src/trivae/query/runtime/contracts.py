@@ -91,6 +91,9 @@ class RuntimeToolCall:
     model_result_omitted_hit_messages: int | None = None
     model_result_omitted_context_messages: int | None = None
     tool_result_budget: ToolResultBudgetSnapshot | None = None
+    # model projection 的消息覆盖单独记录，不能与 retrieval returned count 混为一谈。
+    model_result_projected_messages: int | None = None
+    model_result_omitted_messages: int | None = None
 
     @property
     def tool_round(self) -> int | None:

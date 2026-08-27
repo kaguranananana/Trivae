@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import perf_counter
 from typing import Iterator, Literal, Mapping, Protocol, Sequence
 
 from trivae.config.limits import (
     DEFAULT_LEXICAL_RESULT_LIMIT,
+    DEFAULT_RECENT_MESSAGES_LIMIT,
     DEFAULT_STRUCTURED_RESULT_LIMIT,
     MAX_LEXICAL_RESULT_LIMIT,
+    MAX_RECENT_MESSAGES_LIMIT,
     MAX_STRUCTURED_RESULT_ITEMS,
 )
 
@@ -142,6 +144,151 @@ class MessageQuery(ScopeFilters):
 
 
 @dataclass(frozen=True)
+class RecentMessagesCursor:
+    """recent browsing 的稳定 keyset 边界与原始查询窗口。"""
+
+    # 这四个字段共同表达 canonical ordering 的一个严格位置，不依赖 offset 或时间唯一性。
+    timestamp: int
+    seq: int | None
+    internal_message_id: str
+    # continuation 必须沿用第一页的绝对 window/session，避免重新解析 archive_latest 产生漂移。
+    start_timestamp: int | None
+    end_timestamp: int | None
+    session_ids: tuple[str, ...] | None = None
+    resolved_time_range: Mapping[str, object] | None = None
+
+    def __post_init__(self) -> None:
+        """校验 cursor 只携带 canonical ordering 和 bounded scope 字段。"""
+
+        if isinstance(self.timestamp, bool) or not isinstance(self.timestamp, int):
+            raise InvalidRetrievalQuery("recent cursor timestamp must be an integer")
+        if self.seq is not None and (isinstance(self.seq, bool) or not isinstance(self.seq, int)):
+            raise InvalidRetrievalQuery("recent cursor seq must be an integer or None")
+        if not isinstance(self.internal_message_id, str) or not self.internal_message_id:
+            raise InvalidRetrievalQuery("recent cursor internal_message_id must be non-empty")
+        for name, value in (("start_timestamp", self.start_timestamp), ("end_timestamp", self.end_timestamp)):
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+                raise InvalidRetrievalQuery(f"recent cursor {name} must be an integer")
+        if (
+            self.start_timestamp is not None
+            and self.end_timestamp is not None
+            and self.start_timestamp > self.end_timestamp
+        ):
+            raise InvalidRetrievalQuery("recent cursor window is reversed")
+        if self.session_ids is not None:
+            if (
+                isinstance(self.session_ids, str)
+                or not self.session_ids
+                or any(not isinstance(value, str) or not value for value in self.session_ids)
+            ):
+                raise InvalidRetrievalQuery("recent cursor session_ids must contain non-empty strings")
+            object.__setattr__(self, "session_ids", tuple(self.session_ids))
+        if self.resolved_time_range is not None and not isinstance(self.resolved_time_range, Mapping):
+            raise InvalidRetrievalQuery("recent cursor resolved_time_range must be a mapping or None")
+
+    @classmethod
+    def from_value(cls, value: object) -> "RecentMessagesCursor":
+        """把 Tool 输入的普通 object 转成严格 cursor，禁止模型拼接半个位置。"""
+
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, Mapping):
+            raise InvalidRetrievalQuery("recent cursor must be an object")
+        try:
+            session_ids = value.get("session_ids")
+            if session_ids is not None:
+                if isinstance(session_ids, str):
+                    raise InvalidRetrievalQuery("recent cursor session_ids must be an array")
+                session_ids = tuple(session_ids)
+            return cls(
+                timestamp=value["timestamp"],
+                seq=value.get("seq"),
+                internal_message_id=value["internal_message_id"],
+                start_timestamp=value["start_timestamp"],
+                end_timestamp=value["end_timestamp"],
+                session_ids=session_ids,
+                resolved_time_range=value.get("resolved_time_range"),
+            )
+        except KeyError as exc:
+            raise InvalidRetrievalQuery(f"recent cursor is missing {exc.args[0]}") from exc
+        except (TypeError, ValueError) as exc:
+            raise InvalidRetrievalQuery("recent cursor has invalid fields") from exc
+
+    @classmethod
+    def from_message(
+        cls,
+        message: "MessageProjection",
+        *,
+        start_timestamp: int | None,
+        end_timestamp: int | None,
+        session_ids: tuple[str, ...] | None,
+        resolved_time_range: Mapping[str, object] | None = None,
+    ) -> "RecentMessagesCursor":
+        """从本批最早消息生成下一批所需的稳定位置。"""
+
+        return cls(
+            timestamp=message.timestamp,
+            seq=message.seq,
+            internal_message_id=message.internal_message_id,
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+            session_ids=session_ids,
+            resolved_time_range=resolved_time_range,
+        )
+
+    def with_resolved_time_range(
+        self,
+        resolved_time_range: Mapping[str, object] | None,
+    ) -> "RecentMessagesCursor":
+        """把 Capability 解析出的 Host 时间事实补到已生成的 cursor。"""
+
+        return replace(self, resolved_time_range=resolved_time_range)
+
+    def to_dict(self) -> dict[str, object]:
+        """输出模型可原样回传的 bounded cursor。"""
+
+        return {
+            "timestamp": self.timestamp,
+            "seq": self.seq,
+            "internal_message_id": self.internal_message_id,
+            "start_timestamp": self.start_timestamp,
+            "end_timestamp": self.end_timestamp,
+            "session_ids": self.session_ids,
+            "resolved_time_range": (
+                None if self.resolved_time_range is None else dict(self.resolved_time_range)
+            ),
+        }
+
+
+@dataclass(frozen=True)
+class RecentMessagesQuery(MessageQuery):
+    """只供 temporal browsing 使用的高容量 MessageQuery。"""
+
+    limit: int | None = DEFAULT_RECENT_MESSAGES_LIMIT
+    before_cursor: RecentMessagesCursor | None = None
+
+    def __post_init__(self) -> None:
+        # 不调用 MessageQuery.__post_init__，避免 recent query 被通用 structured 的 100 封顶。
+        ScopeFilters.__post_init__(self)
+        _validate_limit("limit", self.limit)
+        if self.limit is not None and self.limit > MAX_RECENT_MESSAGES_LIMIT:
+            raise InvalidRetrievalQuery(
+                f"recent message limit must not exceed {MAX_RECENT_MESSAGES_LIMIT}"
+            )
+        if self.before_cursor is not None and not isinstance(self.before_cursor, RecentMessagesCursor):
+            raise InvalidRetrievalQuery("before_cursor must be a RecentMessagesCursor or None")
+
+    def to_dict(self) -> dict[str, object]:
+        """保存 recent scope、容量和 cursor，供 Trace/Evidence 重放。"""
+
+        return {
+            **self.scope_dict(),
+            "limit": self.limit,
+            "before_cursor": None if self.before_cursor is None else self.before_cursor.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
 class AggregateQuery(ScopeFilters):
     """Structured count/group query；聚合本身不读取消息列表。"""
 
@@ -244,6 +391,45 @@ class Coverage:
 
     status: CoverageStatus
     basis: str
+    covered_units: int | None = None
+    eligible_units: int | None = None
+    unit: str | None = None
+    known_gaps: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        """校验可选的覆盖数量，避免把 page count 当成完整窗口事实。"""
+
+        if self.status not in {"complete", "partial", "none", "unknown", "not_applicable"}:
+            raise InvalidRetrievalQuery("coverage status is invalid")
+        if not isinstance(self.basis, str) or not self.basis:
+            raise InvalidRetrievalQuery("coverage basis must be non-empty")
+        for name in ("covered_units", "eligible_units"):
+            value = getattr(self, name)
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+                raise InvalidRetrievalQuery(f"coverage {name} must be a non-negative integer or None")
+        if self.covered_units is not None and self.eligible_units is not None:
+            if self.covered_units > self.eligible_units:
+                raise InvalidRetrievalQuery("coverage covered_units cannot exceed eligible_units")
+        if self.unit is not None and (not isinstance(self.unit, str) or not self.unit):
+            raise InvalidRetrievalQuery("coverage unit must be non-empty or None")
+        if not isinstance(self.known_gaps, tuple) or any(
+            not isinstance(value, str) or not value for value in self.known_gaps
+        ):
+            raise InvalidRetrievalQuery("coverage known_gaps must be a tuple of non-empty strings")
+
+    def to_dict(self) -> dict[str, object]:
+        """输出兼容旧 coverage 字段且包含 recent 数量事实的普通字典。"""
+
+        payload: dict[str, object] = {"status": self.status, "basis": self.basis}
+        if self.covered_units is not None:
+            payload["covered_units"] = self.covered_units
+        if self.eligible_units is not None:
+            payload["eligible_units"] = self.eligible_units
+        if self.unit is not None:
+            payload["unit"] = self.unit
+        if self.known_gaps:
+            payload["known_gaps"] = list(self.known_gaps)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -415,26 +601,81 @@ class StructuredRetrieval:
         )
 
     def retrieve_recent_messages(self, query: MessageQuery) -> StructuredMessageResult:
-        """Temporal browsing 的 latest-N selection：窗口尾部 limit 条按阅读顺序返回。"""
+        """Temporal browsing 按 keyset cursor 分页：窗口尾部批次按阅读顺序返回。"""
 
         started = perf_counter()
-        total_hits = self.repository.count_messages(query)
-        messages = self.repository.read_recent_messages(query)
+        recent_query = (
+            query
+            if isinstance(query, RecentMessagesQuery)
+            else RecentMessagesQuery(
+                session_ids=query.session_ids,
+                start_timestamp=query.start_timestamp,
+                end_timestamp=query.end_timestamp,
+                sender_user_ids=query.sender_user_ids,
+                message_types=query.message_types,
+                source_message_id=query.source_message_id,
+                reply_to_source_message_id=query.reply_to_source_message_id,
+                limit=query.limit,
+            )
+        )
+        # total 永远在不带 cursor 的同一 requested scope 上统计，不能把剩余页误报成总量。
+        total_query = replace(recent_query, before_cursor=None)
+        total_hits = self.repository.count_messages(total_query)
+        remaining_hits = (
+            total_hits
+            if recent_query.before_cursor is None
+            else self.repository.count_messages(recent_query)
+        )
+        messages = self.repository.read_recent_messages(recent_query)
+        if len(messages) > remaining_hits:
+            # Repository 违反 count/read 一致性时直接暴露实现错误，不用 partial 掩盖数据竞争。
+            raise RetrievalError("recent message page returned more rows than its remaining count")
+        has_more = remaining_hits > len(messages)
+        covered_units = total_hits - remaining_hits + len(messages)
+        next_cursor = None
+        if has_more:
+            if not messages:
+                raise RetrievalError("recent message page reports more rows but returned no messages")
+            # 单侧 absolute window 也必须能继续；cursor 直接保存 None 边界，不能丢掉原始 scope。
+            next_cursor = RecentMessagesCursor.from_message(
+                messages[0],
+                start_timestamp=recent_query.start_timestamp,
+                end_timestamp=recent_query.end_timestamp,
+                session_ids=recent_query.session_ids,
+            ).to_dict()
         latency_ms = (perf_counter() - started) * 1000
         return StructuredMessageResult(
-            query=query,
+            query=recent_query,
             strategy="structured",
             messages=messages,
             total_hits=total_hits,
             returned_count=len(messages),
-            coverage=Coverage(status="complete", basis="canonical_store"),
-            partial=False,
-            truncated=total_hits > len(messages),
+            coverage=Coverage(
+                status="partial" if has_more else "complete",
+                basis="canonical_store",
+                covered_units=covered_units,
+                eligible_units=total_hits,
+                unit="message",
+            ),
+            partial=has_more,
+            truncated=has_more,
             metadata=RetrievalMetadata(
-                filters=query.to_dict(),
+                filters=recent_query.to_dict(),
                 ordering="latest-limit selection (timestamp DESC), returned chronologically; " + ORDERING_DESCRIPTION,
                 latency_ms=latency_ms,
-                details={"selection": "latest_limit"},
+                details={
+                    "selection": "latest_limit",
+                    "has_more": has_more,
+                    "retrieved_count": len(messages),
+                    "covered_units": covered_units,
+                    "eligible_units": total_hits,
+                    "before_cursor": (
+                        None
+                        if recent_query.before_cursor is None
+                        else recent_query.before_cursor.to_dict()
+                    ),
+                    "next_cursor": next_cursor,
+                },
             ),
         )
 

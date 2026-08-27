@@ -637,6 +637,11 @@ class TrivaeChatApp(App[None]):
             else ()
         )
         notes: list[str] = []
+        if successful and isinstance(artifact, AnswerArtifact) and artifact.resolved_time_range:
+            # TUI 也显示 Host-owned UTC 窗口，用户不会只依赖模型正文中的日期。
+            start = artifact.resolved_time_range.get("resolved_start_utc") or "-"
+            end = artifact.resolved_time_range.get("resolved_end_utc") or "-"
+            notes.append(f"Effective time range: [{start}, {end})")
         if limitations:
             notes.append(f"Note: answer limitations — {'; '.join(limitations)}")
         if getattr(result, "is_degraded", False):

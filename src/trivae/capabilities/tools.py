@@ -28,6 +28,7 @@ from trivae.retrieval.sql import SchemaResult, SQLQueryResult
 from trivae.retrieval.structured import (
     InvalidRetrievalQuery,
     LexicalIndexError,
+    RecentMessagesCursor,
     RetrievalError,
     RetrievalResult,
     StructuredMessageResult,
@@ -679,6 +680,9 @@ class _CapabilityTool:
         if isinstance(request, GetRecentMessagesInput):
             # __post_init__ 已把 time_range 归一化为 RelativeTimeRange；保留运行时防线。
             normalized_time_range = request.time_range
+            cursor = request.cursor
+            if cursor is not None and not isinstance(cursor, RecentMessagesCursor):
+                raise RuntimeError("GetRecentMessagesInput cursor was not normalized")
             projected_time_range: object = None
             if isinstance(normalized_time_range, RelativeTimeRange):
                 projected_time_range = normalized_time_range.to_dict()
@@ -688,6 +692,7 @@ class _CapabilityTool:
                 "end_timestamp": request.end_timestamp,
                 "session_ids": request.session_ids,
                 "limit": request.limit,
+                "cursor": None if cursor is None else cursor.to_dict(),
             }
         if isinstance(request, FindMembersInput):
             return {"query": request.query, "session_ids": request.session_ids, "limit": request.limit}
@@ -702,14 +707,20 @@ class _CapabilityTool:
 
         if isinstance(result, StructuredMessageResult):
             # temporal browsing 是 canonical message candidate 读取，不复制聊天正文进 Trace。
+            details = result.metadata.details
             return {
                 "tool_name": self.name,
                 "returned_messages": result.returned_count,
+                "retrieved_count": details.get("retrieved_count", result.returned_count),
                 "total_hits": result.total_hits,
                 "selection": result.metadata.details.get("selection"),
                 "partial": result.partial,
                 "truncated": result.truncated,
-                "coverage": {"status": result.coverage.status, "basis": result.coverage.basis},
+                "has_more": details.get("has_more", result.partial),
+                "next_cursor": details.get("next_cursor"),
+                "coverage": result.coverage.to_dict(),
+                "resolved_time_range": details.get("resolved_time_range"),
+                "latency_ms": result.metadata.latency_ms,
             }
         if isinstance(result, MessageContextResult):
             return {
@@ -767,10 +778,16 @@ class _CapabilityTool:
                 "message_id": result.message_id,
             }
         if isinstance(result, StructuredMessageResult):
+            details = result.metadata.details
             return {
                 "truncated": result.truncated,
                 "returned_messages": result.returned_count,
+                "retrieved_count": details.get("retrieved_count", result.returned_count),
                 "total_hits": result.total_hits,
+                "coverage": result.coverage.to_dict(),
+                "has_more": details.get("has_more", result.partial),
+                "next_cursor": details.get("next_cursor"),
+                "resolved_time_range": details.get("resolved_time_range"),
             }
         if isinstance(result, FindMembersResult):
             return {

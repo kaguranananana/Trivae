@@ -101,6 +101,8 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
     tool_result_projection_truncated_count = 0
     tool_result_projection_omitted_context_messages = 0
     tool_result_projection_omitted_hit_messages = 0
+    tool_result_projection_projected_messages = 0
+    tool_result_projection_omitted_messages = 0
 
     for event in stored.events:
         if event.duration_ms is not None:
@@ -137,6 +139,12 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
             raw_omitted_hits = event.payload.get("tool_result_projection_omitted_hit_messages")
             if isinstance(raw_omitted_hits, int) and not isinstance(raw_omitted_hits, bool):
                 tool_result_projection_omitted_hit_messages = raw_omitted_hits
+            raw_projected_messages = event.payload.get("tool_result_projection_projected_messages")
+            if isinstance(raw_projected_messages, int) and not isinstance(raw_projected_messages, bool):
+                tool_result_projection_projected_messages = raw_projected_messages
+            raw_omitted_messages = event.payload.get("tool_result_projection_omitted_messages")
+            if isinstance(raw_omitted_messages, int) and not isinstance(raw_omitted_messages, bool):
+                tool_result_projection_omitted_messages = raw_omitted_messages
 
     total_duration_ms = _duration_between(stored.started_at, stored.terminal_at)
     if total_duration_ms is None:
@@ -154,6 +162,8 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
         tool_result_projection_truncated_count=tool_result_projection_truncated_count,
         tool_result_projection_omitted_context_messages=tool_result_projection_omitted_context_messages,
         tool_result_projection_omitted_hit_messages=tool_result_projection_omitted_hit_messages,
+        tool_result_projection_projected_messages=tool_result_projection_projected_messages,
+        tool_result_projection_omitted_messages=tool_result_projection_omitted_messages,
     )
 
 

@@ -1081,3 +1081,16 @@ Artifact/evidence/citation/binding IDs、排序去重和持久化。
 本 amendment 不引入 Code Mode、Tool Calling 替代品、hidden CoT 输出、citation repair、retry 或
 fallback。完整 provenance 仍留在 Host/Trace/validated Artifact；只有发给模型的 projection 被压缩。
 需要改变边界必须由新的真实 Failure Case 或 paired Evaluation 触发，而不是由单个样例驱动。
+
+## 22. Temporal Browsing Runtime Amendment（2026-08-28）
+
+Runtime 对 broad recent overview 必须把 Retrieval candidate capacity 与 Tool Result model
+projection budget 分开看待：`get_recent_messages` 首页默认可取 `1000`、最多 `5000`，但
+`project_tool_result_for_model` 仍在独立 token budget 内投影。模型收到 `coverage=partial` 或
+`has_more=true` 时，必须原样回传 Host-issued `next_cursor`，直到完成或 runtime budget 终止并
+把 partial limitation 暴露给 finalization；不能把 projection 中可见的少量消息当作 canonical
+window 的全量。
+
+相对时间的 absolute range 不由 Runtime 或模型计算。Capability 只用 trusted scope 内的
+`archive_latest` 解析一次，Runtime/Trace 传递同一 Host-owned range；模型提及日期只能复制
+其中的 UTC 文本，不能读取 historical context 或本地当前时间自行换算。

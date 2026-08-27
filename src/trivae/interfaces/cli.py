@@ -981,6 +981,11 @@ def _print_query_result(
         _print_source_block(source_summaries, output_fn=output_fn, verbose=verbose)
     if result.is_successful and isinstance(artifact, AnswerArtifact):
         limitations = _answer_limitations(artifact)
+        if artifact.resolved_time_range:
+            # 最终时间事实由 Host 投影，直接显示 UTC 区间，避免正文中的人工换算成为唯一依据。
+            start = artifact.resolved_time_range.get("resolved_start_utc") or "-"
+            end = artifact.resolved_time_range.get("resolved_end_utc") or "-"
+            output_fn(f"Effective time range: [{start}, {end})")
         if limitations:
             output_fn(f"Note: answer limitations — {'; '.join(limitations)}")
         if result.is_degraded:

@@ -53,16 +53,18 @@ def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
 
 def _model_projection_metrics(
     payload: dict[str, object],
-) -> tuple[int | None, bool | None, int | None, int | None]:
-    """读取 Host projection 的 estimate、context omission 和 direct-hit omission。"""
+) -> tuple[int | None, bool | None, int | None, int | None, int | None, int | None]:
+    """读取 Host projection 的 estimate、可见消息数和各类 omission。"""
 
     metrics = payload.get("model_projection")
     if not isinstance(metrics, dict):
-        return None, None, None, None
+        return None, None, None, None, None, None
     estimated_tokens = metrics.get("estimated_tokens")
     truncated = metrics.get("truncated")
     omitted_context = metrics.get("omitted_context_messages")
     omitted_hits = metrics.get("omitted_hit_messages")
+    projected_messages = metrics.get("projected_messages")
+    omitted_messages = metrics.get("omitted_messages")
     return (
         estimated_tokens if isinstance(estimated_tokens, int) and not isinstance(estimated_tokens, bool) else None,
         truncated if isinstance(truncated, bool) else None,
@@ -70,6 +72,12 @@ def _model_projection_metrics(
         if isinstance(omitted_context, int) and not isinstance(omitted_context, bool)
         else None,
         omitted_hits if isinstance(omitted_hits, int) and not isinstance(omitted_hits, bool) else None,
+        projected_messages
+        if isinstance(projected_messages, int) and not isinstance(projected_messages, bool)
+        else None,
+        omitted_messages
+        if isinstance(omitted_messages, int) and not isinstance(omitted_messages, bool)
+        else None,
     )
 
 
@@ -471,12 +479,16 @@ def _append_runtime_tool_result(
         model_result_truncated,
         model_result_omitted_context_messages,
         model_result_omitted_hit_messages,
+        model_result_projected_messages,
+        model_result_omitted_messages,
     ) = _model_projection_metrics(result_payload)
     if (
         model_result_estimated_tokens is None
         or model_result_truncated is None
         or model_result_omitted_context_messages is None
         or model_result_omitted_hit_messages is None
+        or model_result_projected_messages is None
+        or model_result_omitted_messages is None
     ):
         raise RuntimeError("model projection did not expose complete budget metrics")
     budget_snapshot = runtime_context.tool_result_budget_policy.complete_call(
@@ -499,6 +511,8 @@ def _append_runtime_tool_result(
             model_result_truncated=model_result_truncated,
             model_result_omitted_context_messages=model_result_omitted_context_messages,
             model_result_omitted_hit_messages=model_result_omitted_hit_messages,
+            model_result_projected_messages=model_result_projected_messages,
+            model_result_omitted_messages=model_result_omitted_messages,
             tool_result_budget=budget_snapshot,
         )
     )
@@ -957,8 +971,11 @@ class GetRecentMessagesSDKToolAdapter:
             "chronological reading order, plus returned/total counts and truncated. Zero results is a "
             "normal outcome when the window truly has no messages. Prefer limit at or near the schema "
             "maximum for broad recent-activity questions so a two-day overview is not needlessly "
-            "partial. The trusted session/time scope is enforced by the host and cannot be expanded by "
-            "arguments; do not repeat this call with identical arguments. When the question contains a "
+            "partial. If has_more is true, call this tool again with the exact next_cursor returned "
+            "by the host; the cursor keeps the original absolute window and session scope, and must not "
+            "be edited or combined with a new time range. Do not repeat a cursor already used. The "
+            "trusted session/time scope is enforced by the host and cannot be expanded by arguments. "
+            "When the question contains a "
             "precise lexical target such as a URL, repository name, code identifier, error message, "
             "nickname, or exact phrase, use lexical_search instead; for concept paraphrases without "
             "precise wording use semantic_search."
@@ -976,6 +993,7 @@ class GetRecentMessagesSDKToolAdapter:
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
             session_ids: list[str] | None = None,
+            cursor: dict[str, object] | None = None,
             limit: int = default_limit,
         ) -> dict[str, object]:
             """只接受 typed 时间窗字段；trusted scope 不从模型参数读取。
@@ -989,6 +1007,8 @@ class GetRecentMessagesSDKToolAdapter:
                 end_timestamp: Optional integer exclusive upper bound in milliseconds;
                     cannot be combined with time_range.
                 session_ids: Optional non-empty session ID array; use null when unused.
+                cursor: Optional host-issued continuation cursor. When present, pass it back exactly;
+                    do not combine it with time_range or edit its scope/position.
                 limit: Positive message count no greater than the trusted result bound.
             """
 
@@ -1002,6 +1022,7 @@ class GetRecentMessagesSDKToolAdapter:
                     start_timestamp=start_timestamp,
                     end_timestamp=end_timestamp,
                     session_ids=None if session_ids is None else tuple(session_ids),
+                    cursor=cursor,
                     limit=limit,
                 )
             except CapabilityContractError as exc:

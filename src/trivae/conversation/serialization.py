@@ -157,6 +157,16 @@ def _artifact_to_dict(artifact: AnswerArtifact) -> dict[str, object]:
             for item in artifact.evidence_items
         ],
         "limitations": list(artifact.limitations),
+        "resolved_time_range": (
+            None
+            if artifact.resolved_time_range is None
+            else dict(artifact.resolved_time_range)
+        ),
+        "retrieval_coverage": (
+            None
+            if artifact.retrieval_coverage is None
+            else dict(artifact.retrieval_coverage)
+        ),
     }
 
 
@@ -318,12 +328,20 @@ def _parse_artifact(value: object) -> AnswerArtifact:
         _text(f"limitations[{index}]", limitation)
         for index, limitation in enumerate(_sequence("limitations", _required(raw, "limitations")))
     )
+    raw_time_range = raw.get("resolved_time_range")
+    if raw_time_range is not None and not isinstance(raw_time_range, Mapping):
+        raise ConversationCodecError("resolved_time_range must be an object or null")
+    raw_retrieval_coverage = raw.get("retrieval_coverage")
+    if raw_retrieval_coverage is not None and not isinstance(raw_retrieval_coverage, Mapping):
+        raise ConversationCodecError("retrieval_coverage must be an object or null")
     try:
         return AnswerArtifact(
             content_blocks=content_blocks,
             citation_bindings=bindings,
             evidence_items=evidence_items,
             limitations=limitations,
+            resolved_time_range=raw_time_range,
+            retrieval_coverage=raw_retrieval_coverage,
         )
     except (TypeError, ValueError) as exc:
         raise ConversationCodecError("decoded answer artifact violates its domain contract") from exc

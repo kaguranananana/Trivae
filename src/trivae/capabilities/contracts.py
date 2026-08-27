@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from typing import Literal, Mapping, Sequence
 
 from trivae.config.limits import (
@@ -20,6 +21,8 @@ from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
 from trivae.retrieval.sql import SchemaResult, SQLQueryResult
 from trivae.retrieval.structured import (
+    InvalidRetrievalQuery,
+    RecentMessagesCursor,
     RetrievalResult,
     StructuredAggregateResult,
     StructuredMessageResult,
@@ -147,14 +150,31 @@ class ResolvedTimeRange:
     end_timestamp: int
 
     def to_dict(self) -> dict[str, object]:
-        """同时保留原始意图和 resolved absolute boundary，便于复核。"""
+        """同时保留毫秒边界和 Host 生成的 UTC 文本，避免模型自行换算日期。"""
 
         return {
             **self.requested.to_dict(),
             "anchor_timestamp": self.anchor_timestamp,
             "resolved_start_timestamp": self.start_timestamp,
             "resolved_end_timestamp": self.end_timestamp,
+            "anchor_utc": format_timestamp_utc(self.anchor_timestamp),
+            "resolved_start_utc": format_timestamp_utc(self.start_timestamp),
+            "resolved_end_utc": format_timestamp_utc(self.end_timestamp),
+            "resolved_interval_utc": (
+                f"[{format_timestamp_utc(self.start_timestamp)}, "
+                f"{format_timestamp_utc(self.end_timestamp)})"
+            ),
         }
+
+
+def format_timestamp_utc(timestamp: int) -> str:
+    """把 canonical 整数毫秒格式化为唯一的 UTC ISO-8601 文本。"""
+
+    if isinstance(timestamp, bool) or not isinstance(timestamp, int):
+        raise CapabilityContractError("canonical timestamp must be an integer")
+    return datetime.fromtimestamp(timestamp / 1_000, tz=timezone.utc).isoformat(
+        timespec="milliseconds"
+    ).replace("+00:00", "Z")
 
 
 def _normalize_non_empty_strings(
@@ -271,13 +291,34 @@ class GetRecentMessagesInput:
     end_timestamp: int | None = None
     session_ids: tuple[str, ...] | None = None
     limit: int = DEFAULT_RECENT_MESSAGES_LIMIT
+    cursor: RecentMessagesCursor | Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "session_ids", _normalize_scope_sessions(self.session_ids))
         _validate_optional_timestamp("start_timestamp", self.start_timestamp)
         _validate_optional_timestamp("end_timestamp", self.end_timestamp)
         normalized_time_range = RelativeTimeRange.from_value(self.time_range)
-        if normalized_time_range is None and self.start_timestamp is None and self.end_timestamp is None:
+        try:
+            normalized_cursor = (
+                None if self.cursor is None else RecentMessagesCursor.from_value(self.cursor)
+            )
+        except (InvalidRetrievalQuery, TypeError, ValueError) as exc:
+            raise CapabilityContractError(f"cursor has invalid fields: {exc}") from exc
+        if normalized_cursor is not None:
+            # continuation 使用上一批 Host 已解析的 absolute window，禁止重新锚定 archive_latest。
+            if normalized_time_range is not None:
+                raise CapabilityContractError("cursor cannot be combined with time_range")
+            for name in ("start_timestamp", "end_timestamp"):
+                requested_value = getattr(self, name)
+                cursor_value = getattr(normalized_cursor, name)
+                if requested_value is not None and requested_value != cursor_value:
+                    raise CapabilityContractError(f"cursor {name} does not match the request")
+                object.__setattr__(self, name, cursor_value)
+            if self.session_ids is not None and self.session_ids != normalized_cursor.session_ids:
+                raise CapabilityContractError("cursor session_ids do not match the request")
+            object.__setattr__(self, "session_ids", normalized_cursor.session_ids)
+            normalized_time_range = None
+        elif normalized_time_range is None and self.start_timestamp is None and self.end_timestamp is None:
             # SDK schema 与 Capability contract 的统一缺省：最近两天，archive_latest 锚定。
             normalized_time_range = RelativeTimeRange(
                 kind="relative",
@@ -286,6 +327,7 @@ class GetRecentMessagesInput:
                 anchor="archive_latest",
             )
         object.__setattr__(self, "time_range", normalized_time_range)
+        object.__setattr__(self, "cursor", normalized_cursor)
         if normalized_time_range is not None and (self.start_timestamp is not None or self.end_timestamp is not None):
             raise CapabilityContractError("time_range cannot be combined with absolute timestamps")
         if self.start_timestamp is not None and self.end_timestamp is not None:
@@ -477,7 +519,7 @@ class ToolEnvelope:
                 "expanded_messages": [asdict(message) for message in self.data.expanded_messages],
                 "total_hits": self.data.total_hits,
                 "returned_messages": self.data.returned_messages,
-                "coverage": asdict(self.data.coverage),
+                "coverage": self.data.coverage.to_dict(),
                 "partial": self.data.partial,
                 "truncated": self.data.truncated,
                 "metadata": {
@@ -511,7 +553,7 @@ class ToolEnvelope:
                 "expanded_messages": [asdict(message) for message in self.data.expanded_messages],
                 "total_hits": self.data.total_hits,
                 "returned_messages": self.data.returned_messages,
-                "coverage": asdict(self.data.coverage),
+                "coverage": self.data.coverage.to_dict(),
                 "partial": self.data.partial,
                 "truncated": self.data.truncated,
                 "metadata": {
@@ -528,7 +570,7 @@ class ToolEnvelope:
                 "messages": [asdict(message) for message in self.data.messages],
                 "total_hits": self.data.total_hits,
                 "returned_count": self.data.returned_count,
-                "coverage": asdict(self.data.coverage),
+                "coverage": self.data.coverage.to_dict(),
                 "partial": self.data.partial,
                 "truncated": self.data.truncated,
                 "metadata": {
@@ -557,7 +599,7 @@ class ToolEnvelope:
                 "query": self.data.query.to_dict(),
                 "total_count": self.data.total_count,
                 "buckets": [asdict(bucket) for bucket in self.data.buckets],
-                "coverage": asdict(self.data.coverage),
+                "coverage": self.data.coverage.to_dict(),
                 "partial": self.data.partial,
                 "truncated": self.data.truncated,
                 "metadata": {

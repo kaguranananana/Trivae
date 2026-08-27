@@ -457,7 +457,8 @@ terminal: failed, 5 tool calls, ~75s, final_answer unavailable
 - 输入沿用 RelativeTimeRange（anchor=archive_latest）或显式时间戳；trusted scope 由 Capability 强制继承；
 - 排序语义固定为"窗口内先选最新 limit 条，再按自然阅读顺序返回"（selection DESC → return ASC）；
 - 结果复用 `StructuredMessageResult` 与统一 Envelope/Evidence/Citation/Trace 主链路，不建第二套 provenance；
-- limit 复用 structured bound（default/max = 100），truncation 显式；
+- recent browsing 使用独立 limit（default `1000`、hard cap `5000`），通用 structured 仍保持
+  default/max `100`；truncation、coverage 与 continuation 显式；
 - 不在 Tool 内做价值判断；主题发现与总结是 Agent synthesis 的职责。
 
 **Tool Selection Boundary**（写入 prompt 与 tool description）：
@@ -498,3 +499,23 @@ run≥2 生成重叠 bigram；strategy bump 至 `unicode61+cjk-bigram-v2`，v1 �
 | 项目 | 决策 |
 | --- | --- |
 | 第一版 Tool Surface | + `get_recent_messages`（Temporal Browsing，复用 Structured Retrieval） |
+
+## 20. Temporal Browsing Implementation Amendment（2026-08-28）
+
+旧 §19 的 recent `100` 上限在真实 Failure Case 中被证明把 page bound 错当成 overview 能力，
+本节是对该实现参数与跨层 contract 的明确修订。
+
+- Capability schema/input 使用独立 recent `1000/5000` capacity；它不修改 structured `100`、
+  lexical/semantic budget，也不绕过 trusted `ExecutionScope.max_results`。
+- `get_recent_messages` 使用 canonical keyset cursor，而不是 offset。cursor 固定原始 session/time
+  scope 和 `(timestamp, seq-present, seq, internal_message_id)` 位置；下一页严格读取更早 rows，
+  因此 same-timestamp/NULL-seq ordering 可复现且页间无 overlap/gap。
+- Tool Envelope 与 Retrieval Result 必须同时返回 `total_hits`、`returned_count/retrieved_count`、
+  `coverage`、`partial`、`truncated`、`has_more`、`next_cursor`；最终 Answer Artifact 继续保存
+  Host-owned `retrieval_coverage`，不把模型自行生成的“完整”字样当作事实。
+- relative `time_range` 只在 trusted scope 内以 `archive_latest` 解析；millisecond half-open range
+  的 UTC 文本沿 Tool、Trace、Evidence、Citation 和 Conversation codec 传播。
+
+真实 canonical DB 的两天窗口为 `2699` 条；按 `1000 + 1000 + 699` continuation 完成读取，页间
+无重复且最终 coverage complete。单次 1000/5000 请求的 model projection 仍独立受 16000 token
+budget 约束，不能用提高 retrieval limit 代替 context budget。

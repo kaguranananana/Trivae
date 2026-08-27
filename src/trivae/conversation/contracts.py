@@ -196,6 +196,19 @@ class ConversationMessage:
                     lines.append(f"  limitations={'; '.join(item.limitations)}")
         if artifact.limitations:
             lines.append(f"Historical answer limitations: {'; '.join(artifact.limitations)}")
+        if artifact.resolved_time_range:
+            start = artifact.resolved_time_range.get("resolved_start_utc")
+            end = artifact.resolved_time_range.get("resolved_end_utc")
+            lines.append(f"Historical Host-resolved time range: [{start or '-'}, {end or '-'})")
+        if artifact.retrieval_coverage:
+            # 历史上下文只携带 coverage 事实，不把旧页的消息来源伪装成本轮新证据。
+            status = artifact.retrieval_coverage.get("status")
+            retrieved = artifact.retrieval_coverage.get("retrieved_count")
+            eligible = artifact.retrieval_coverage.get("eligible_units")
+            lines.append(
+                f"Historical retrieval coverage: status={status}, "
+                f"retrieved={retrieved}, eligible={eligible}"
+            )
         # 只回放已验证的 canonical 身份字段，不回放旧 Tool Result 的 source locator。
         lines.extend(_historical_member_identity_context(artifact))
         return ModelContextMessage(role="assistant", content="\n".join(lines))

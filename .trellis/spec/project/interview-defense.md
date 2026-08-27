@@ -800,3 +800,75 @@ Q6 no-result 防滥用设计 → 第 6 条 + tests/test_no_result_finalization.p
 - Playwright E2E 22/22（历史回放/Router/Reason/Confidence/Tool arguments/Result/20-100 displayed/
   Sources/Trace/follow-tail/回到最新/新对话/刷新恢复）+ Stop 流程 3 项。
 - 质量门：ruff/mypy 干净；pytest 472 全绿（TUI/CLI 回归在内）；web vitest 7、tsc/build 干净。
+
+## Temporal Overview Coverage 事实索引（2026-08-28）
+
+### Problem / Motivation
+
+- 真实 Trace `trace-3ca9975108534180b73ce7f518d7c1c4` 的两天窗口有 `2699` 条消息，旧
+  `get_recent_messages` 只返回 `100` 条，却把尾部样本用于全窗口概览。
+- 同一 Trace 的 Host 毫秒边界对应 UTC 2026-08-14 至 2026-08-16，最终文字写成六月；根因是
+  时间事实没有成为跨 Tool/Trace/Artifact 的强制 metadata，模型把原始数字自行换算了日期。
+
+### Design Rationale / Why not
+
+- 选择 recent 独立 `default=1000 / max=5000`，因为 broad temporal browsing 需要 recall；保留
+  structured `100`、lexical/semantic 自己的预算和独立 Tool Result token budget，因为它们解决
+  的不是同一个资源/语义问题。
+- 选择 keyset cursor 而不是 offset：canonical ordering 的复合边界能处理 same timestamp、NULL
+  seq 和新消息插入；cursor 同时锁定 session/time scope，越权或篡改显式失败。
+- 不选择“只提高 max 到 5000”：2699 条仍可能超过模型 token budget，所以 canonical retrieval
+  与 model projection 必须记录两套数量；Trace 不复制全量正文。
+
+### Failure / Regression Evidence
+
+- `real failure`：旧窗口 `total_hits=2699, returned=100`；修复后真实 DB 以 `1000+1000+699`
+  完成 continuation，union `2699`、overlap `0`。
+- `regression test case`：`tests/test_temporal_overview_coverage.py` 覆盖默认/硬上限、partial/
+  complete、cursor no-overlap/no-gap、same-timestamp deterministic、scope/window tampering、
+  projection truncation、empty no-result、Trace facts 与 Artifact codec。
+- `anticipated risk`：5000 canonical messages 在未来更长正文上可能使 projection 频繁达到预算；
+  当前用 measured omission 保留事实，只有 paired Evaluation 证明质量不足时才调整 budget 或
+  引入摘要/分桶。
+
+### Evaluation / Evidence
+
+- `measured fact`：archive latest `1786847688000` = `2026-08-16T02:34:48.000Z`；two-day
+  half-open `[1786674888000, 1786847688001)` count `2699`；one-day count `911`；低密度一小时
+  count `1`；future empty count `0`。
+- `measured fact`：two-day 1000-page projection `projected≈165, omitted≈835`；5000 request
+  canonical `2699`、projection `≈175`、omitted `≈2524`；两者均受 `16000` estimate budget。
+- `measured fact`：稳定样本中 SQLite retrieve median 约 `28.5/33.6/39.4ms`（100/1000/5000），
+  projection median 约 `2.1/125.2/513.5ms`；tracemalloc diagnostic peak 约 `0.44/4.08/11.39MB`。
+  这些数字只代表当前本地数据库/实现，不能表述为生产 SLA。
+
+### Observability / Debugging
+
+`structured.browse.completed` 能按 page 复核 `total/returned/covered/eligible/coverage/has_more/
+next_cursor/range/latency`；Runtime terminal 能复核 `projected/omitted/token estimate`。因此可以
+区分 canonical retrieval 不完整、model projection 预算截断、scope/time contract error 和
+Evidence citation 越界，而不是把它们都归为“模型总结不好”。
+
+### Boundary / Ownership
+
+```text
+Canonical Store / SQLite read adapter owns message facts and keyset predicate.
+Capability owns trusted scope and archive_latest resolution.
+Tool/Runtime owns envelope and model projection budgets.
+Evidence/Answer Artifact owns current-run validation and persisted coverage/time facts.
+Trace owns append-only execution projection; Agent owns topic semantics, not timestamps.
+```
+
+### Evolution / Interview Evidence Map
+
+- Q：为什么最近两天不能直接把几千条塞进模型？
+  Evidence：backend temporal-overview spec、real DB projection metrics、Stage 1.7/1.9 amendments。
+- Q：怎么证明 summary 覆盖整个时间窗口？
+  Evidence：keyset continuation contract、`2699 → 1000+1000+699` smoke、no-gap/no-overlap tests、
+  final `retrieval_coverage`。
+- Q：partial retrieval 如何避免误导？
+  Evidence：`coverage=partial`/`has_more`/`next_cursor`、Artifact limitations、
+  `COVERAGE_MISMATCH` fatal boundary 和 Trace per-page facts。
+- Q：时间错配如何定位？
+  Evidence：`archive_latest` Host resolution、UTC/millisecond assertions、`TIME_RANGE_MISMATCH`
+  regression、Artifact/Conversation round-trip。

@@ -80,6 +80,10 @@ class QueryStreamEvent:
     source_sequence: int | None = None
     parent_operation_id: str | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
+    # Host-resolved temporal fact，供富 UI 直接展示，不依赖模型正文中的日期。
+    resolved_time_range: Mapping[str, object] | None = None
+    # Host-owned coverage fact，供 Web/CLI 回放时区分完整窗口与未遍历完的窗口。
+    retrieval_coverage: Mapping[str, object] | None = None
 
 
 QueryStreamEventHandler = Callable[[QueryStreamEvent], None]
@@ -89,7 +93,12 @@ def project_tool_result_detail(record: ToolResultRecord) -> str:
     """把 canonical ToolResultRecord 投影为有界、provider-neutral 的 TUI 明细。"""
 
     item_texts: list[tuple[str, bool]] = []
+    primary_structured = tuple(item for item in record.structured_items if item.locator_kind != "field")
+    available_count = len(record.message_items) + len(primary_structured)
     for index, item in enumerate(record.message_items, start=1):
+        # TUI 只需要前 20 个预览项；不要为了计算展示正文遍历/序列化整个 recent page。
+        if len(item_texts) >= _TOOL_DETAIL_MAX_ITEMS:
+            break
         message = item.message
         sender = message.sender_name or message.sender_user_id or message.sender_platform_id or "未知发送者"
         session = message.session_display or message.session_id
@@ -105,8 +114,9 @@ def project_tool_result_detail(record: ToolResultRecord) -> str:
         item_texts.append(_detail_item_text(index, fields))
 
     # field locator 是 row/aggregate 的可引用子项；TUI 结果列表展示完整父项即可，避免同一结果重复占位。
-    primary_structured = tuple(item for item in record.structured_items if item.locator_kind != "field")
-    for index, structured_item in enumerate(primary_structured, start=len(item_texts) + 1):
+    for index, structured_item in enumerate(primary_structured, start=len(record.message_items) + 1):
+        if len(item_texts) >= _TOOL_DETAIL_MAX_ITEMS:
+            break
         structured_fields = (
             ("source", record.structured_source_handle(structured_item)),
             ("locator", structured_item.locator),
@@ -115,7 +125,6 @@ def project_tool_result_detail(record: ToolResultRecord) -> str:
         )
         item_texts.append(_detail_item_text(index, structured_fields))
 
-    available_count = len(item_texts)
     selected: list[str] = []
     used_chars = 0
     field_truncated = False
@@ -130,7 +139,29 @@ def project_tool_result_detail(record: ToolResultRecord) -> str:
 
     displayed_count = len(selected)
     omitted_count = available_count - displayed_count
-    sections = [*selected]
+    sections: list[str] = []
+    if record.tool_name == "get_recent_messages":
+        # overview 页面先展示完整窗口事实，再展示有界的消息预览，避免误把 20 条当成全量结果。
+        query_snapshot = record.query_scope_snapshot
+        coverage = query_snapshot.get("coverage")
+        range_snapshot = query_snapshot.get("resolved_time_range")
+        overview_fields: list[tuple[str, object]] = [
+            ("returned", query_snapshot.get("retrieved_count", len(record.message_items))),
+            ("total_hits", query_snapshot.get("total_hits", "unknown")),
+            ("coverage", coverage if coverage is not None else "unknown"),
+            ("has_more", query_snapshot.get("has_more", "retrieval_partial" in record.limitations)),
+        ]
+        if isinstance(range_snapshot, Mapping):
+            interval = range_snapshot.get("resolved_interval_utc")
+            if interval is not None:
+                overview_fields.append(("resolved_time_range", interval))
+        overview_lines = ["窗口概览:"]
+        for name, value in overview_fields:
+            bounded, overview_truncated = _bounded_detail_value(value)
+            overview_lines.append(f"{name}: {bounded}")
+            field_truncated = field_truncated or overview_truncated
+        sections.append("\n".join(overview_lines))
+    sections.extend(selected)
     if record.limitations:
         limitations = ", ".join(record.limitations)
         bounded, limitations_truncated = _bounded_detail_value(limitations)
@@ -216,6 +247,15 @@ def project_tool_result_structure(record: ToolResultRecord) -> dict[str, object]
         "transport_truncated": total_items > transported,
         "transport_max_items": budget,
     }
+    # recent 的 overview 元数据必须和消息条目一起到达富 UI，避免界面只显示页内样本。
+    if record.tool_name == "get_recent_messages":
+        query_snapshot = record.query_scope_snapshot
+        result["total_hits"] = query_snapshot.get("total_hits")
+        result["retrieved_count"] = query_snapshot.get("retrieved_count", total_message_items)
+        result["has_more"] = query_snapshot.get("has_more", "retrieval_partial" in record.limitations)
+        result["coverage"] = query_snapshot.get("coverage")
+        result["next_cursor"] = query_snapshot.get("next_cursor")
+        result["resolved_time_range"] = query_snapshot.get("resolved_time_range")
     return {
         "tool_call_id": record.tool_call_id,
         "tool_name": record.tool_name,
@@ -849,9 +889,14 @@ class QueryStreamAdapter:
                     "candidate_count",
                     "total_hits",
                     "returned_messages",
+                    "retrieved_count",
+                    "projected_count",
+                    "omitted_messages",
                     "coverage",
                     "partial",
                     "truncated",
+                    "has_more",
+                    "resolved_time_range",
                     "latency_ms",
                     "query",
                 )
@@ -873,7 +918,13 @@ class QueryStreamAdapter:
             )
         elif event.operation == "answer.finalization.completed":
             self._complete_thinking(event.sequence)
-            self._emit("answer.completed", content=self._text(payload.get("answer_text")), **common)
+            self._emit(
+                "answer.completed",
+                content=self._text(payload.get("answer_text")),
+                resolved_time_range=payload.get("resolved_time_range"),
+                retrieval_coverage=payload.get("retrieval_coverage"),
+                **common,
+            )
         elif event.operation in {"query.completed", "query.failed", "query.aborted"}:
             self._complete_thinking(event.sequence)
             terminal_type = cast(
@@ -967,6 +1018,8 @@ class QueryStreamAdapter:
             "dropped_citation_count",
             "normalization_count",
             "validated_citation_count",
+            "resolved_time_range",
+            "retrieval_coverage",
         ):
             if key in event.payload:
                 metadata[key] = event.payload[key]

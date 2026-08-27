@@ -281,3 +281,17 @@ Structured Results（scalar / aggregate / records）不一定有 `score` / `mess
 - Candidate / Retrieval Result 的具体数据结构（与 Storage / Data Schema 联动）
 
 Stage 1.10 已确认 Evaluation Case、Reference completeness / provenance、pinned Variant、paired comparison 与 Failure Regression 的治理契约。以上 Retrieval 参数、Reranker、Fusion、Chunk、Message-level index 和 Query-specific strategy 仍必须通过该契约的真实 Case / Calibration Slice 校准，不能把 ChatLab 默认值写成已确认数值。
+
+## 16. Temporal Browsing Retrieval Amendment（2026-08-28）
+
+`get_recent_messages` 的 broad temporal browsing 是 Structured Retrieval 复用底层 canonical
+read adapter 的独立 primitive，不等同于通用 `MessageQuery` 的 100 行数边界。其实现容量为
+default `1000`、hard cap `5000`，并通过 keyset cursor 在同一 half-open time/session scope 内继续
+读取更早消息。每页的 query-scope coverage 使用 `total_hits`、`covered_units/eligible_units`、
+`has_more`、`partial` 和 `truncated` 公开；model projection 的 token budget 另行计算，不能
+覆盖或缩小 Retrieval 的 canonical denominator。
+
+该分层保持本 ADR 的职责边界：Retrieval 只提供有序候选和完整性事实，不做主题/价值判断；
+Agent synthesis 只在看到完整 coverage 或明确声明 partial 时组织 overview。真实窗口
+`2699` 条的 `1000+1000+699` continuation、same-timestamp ordering 与无 overlap/gap 回归，
+以及性能校准，记录于 temporal overview task 的 validation 文档。

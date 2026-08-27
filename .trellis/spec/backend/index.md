@@ -19,6 +19,7 @@
 | [Logging Guidelines](./logging-guidelines.md) | 日志与可观测性原则 | 已填 |
 | [Quality Guidelines](./quality-guidelines.md) | 测试与质量要求 | 已填 |
 | [Agent Runtime Guidelines](./agent-runtime-guidelines.md) | M4 Query、Router/Planner、DeepSeek、SDK Tool、streaming 与 lifecycle 契约 | 已填 M4 |
+| [Temporal Overview Guidelines](./temporal-overview-guidelines.md) | `get_recent_messages` 容量、keyset continuation、coverage、projection 与 Host 时间事实 | 已填 2026-08-28 |
 | [Database Guidelines](./database-guidelines.md) | 数据库相关规范 | 已填 M1 SQLite、M2 Retrieval/FTS5 与 M5b Conversation Store contract；Semantic/Vector 与 migration/deployment 仍 Pending |
 | [Product Experience Guidelines](./product-experience-guidelines.md) | CLI/Application source、scope、readiness、feedback、history 与 renderer contract | 已填 2026-08-25 |
 

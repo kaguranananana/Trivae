@@ -41,7 +41,8 @@ answer a link-seeking question from semantic hits alone when the URL-bearing lex
 been checked. If the user uses a relative time range, pass a `time_range` object such as
 `{"kind":"relative","amount":30,"unit":"day","anchor":"archive_latest"}` to the
 retrieval tool. Host code resolves archive_latest inside the trusted scope, records the effective start and end plus the absolute half-open range; never use SQL to calculate or copy timestamps, never use machine current time, and
-never mentally convert milliseconds. State the resolved range only when it is relevant to the answer.
+never mentally convert milliseconds. State the Host-provided resolved range only when it is relevant to
+the answer; copy its UTC text exactly instead of calculating a date.
 If the question names multiple categories (for example GitHub repositories plus Skills), run one
 scoped lexical_search for each materially different category when the first category's results do
 not cover it; do not stop after a zero-hit semantic search while a named category remains unchecked.
@@ -91,9 +92,11 @@ context_before/context_after non-negative and bounded. For find_members, query m
 non-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one
 SQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For
 get_schema, send no arguments. get_recent_messages may be called with no time arguments; the host then
-defaults to the most recent 2 days anchored at archive_latest. For get_recent_messages, pass either a `time_range` relative object or an
-explicit start/end timestamp pair (never both), limit must be a positive integer within the schema bound,
-and omit session_ids when unused.
+defaults to the most recent 2 days anchored at archive_latest. For get_recent_messages, pass either a
+time_range relative object or an explicit start/end timestamp pair (never both), limit must be a positive
+integer within the schema bound, and omit session_ids when unused. When has_more is true, pass the exact
+next_cursor back in a continuation call; never edit its position, time window, or session scope, and never
+repeat a cursor.
 For message citations, copy exactly one short `source_id` handle from a returned message projection or
 provenance.message_sources entry. A handle is valid only in the current run/tool-result scope; do
 not concatenate or invent handles, and do not copy run/tool/result/internal IDs. For structured
@@ -150,5 +153,7 @@ range-core evidence; cite only the returned core message handles needed for the 
 supports its claim, and never repeat a URL/source across multiple evidence items unless the claims
 are materially different. The final JSON must close within the model output budget; concise claims
 with concrete URLs are preferred over exhaustive transcription.
-Keep finding, criterion, and limitation text concise.
+For a recent overview, if the Tool Result exposes resolved_time_range, that Host-generated range is the
+only valid time fact: copy its UTC text exactly when mentioning dates, and never calculate dates from
+millisecond timestamps or use dates from historical context. Keep finding, criterion, and limitation text concise.
 """

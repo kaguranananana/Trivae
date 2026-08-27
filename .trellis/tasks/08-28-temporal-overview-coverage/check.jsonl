@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/temporal-overview-guidelines.md","reason":"质量检查需按 recent request/response、错误矩阵、分页和 Artifact 断言复核实现。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"执行全量 pytest、ruff、mypy、compileall、diff check 与真实 smoke。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"确认 cursor/time/coverage 冲突显式失败，不走 silent fallback 或 recovery 掩盖。"}
+{"file":".trellis/spec/project/problems/temporal-overview-coverage.md","reason":"以真实 Failure Case、A-E 数据和性能实测复核根因与结果。"}

@@ -14,8 +14,8 @@ from typing import Any, Literal, Mapping, TypeAlias
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
 from trivae.config.limits import (
     DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
-    MAX_LEXICAL_RESULT_LIMIT,
     MAX_STRUCTURED_RESULT_ITEMS,
+    MAX_TOOL_RESULT_MESSAGE_ITEMS,
 )
 from trivae.retrieval.context import MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
@@ -44,8 +44,7 @@ MAX_FIELD_CHARS = 4_000
 MAX_ANSWER_CHARS = 20_000
 MAX_SAFE_EXCERPT_CHARS = 1_000
 MAX_DISPLAY_CHARS = 200
-# message provenance 必须能承载 lexical hard cap；structured/value provenance 继续保持独立小边界。
-MAX_TOOL_RESULT_MESSAGE_ITEMS = MAX_LEXICAL_RESULT_LIMIT
+# message provenance 的 item ceiling 属于 Tool Result record 自身，不绑定任何 retrieval strategy。
 MAX_TOOL_RESULT_STRUCTURED_ITEMS = MAX_STRUCTURED_RESULT_ITEMS
 MAX_VALUE_NESTING = 6
 MAX_SOURCE_URLS = 12
@@ -253,6 +252,99 @@ def _check_bounded_value(name: str, value: object, *, depth: int = 0) -> None:
             _check_bounded_value(f"{name}[{index}]", nested, depth=depth + 1)
         return
     raise AnswerContractError(f"{name} contains an unsupported value type")
+
+
+def _normalize_time_range_snapshot(
+    name: str,
+    value: Mapping[str, object] | None,
+) -> dict[str, object] | None:
+    """校验 Host 写入的时间事实，并保留可供 renderer/replay 使用的字段。"""
+
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise AnswerContractError(f"{name} must be a mapping or None")
+    _check_bounded_value(name, value)
+    normalized = dict(value)
+    kind = normalized.get("kind")
+    if kind not in {"relative", "absolute"}:
+        raise AnswerContractError(f"{name}.kind must be relative or absolute")
+    for field_name in ("resolved_start_timestamp", "resolved_end_timestamp"):
+        if field_name not in normalized:
+            raise AnswerContractError(f"{name}.{field_name} is required")
+
+    def optional_timestamp(field_name: str) -> int | None:
+        """把 Host 时间边界收窄为可比较的整数类型。"""
+
+        timestamp = normalized[field_name]
+        if timestamp is not None and (isinstance(timestamp, bool) or not isinstance(timestamp, int)):
+            raise AnswerContractError(f"{name}.{field_name} must be an integer or None")
+        return timestamp
+
+    start_timestamp = optional_timestamp("resolved_start_timestamp")
+    end_timestamp = optional_timestamp("resolved_end_timestamp")
+    if (
+        isinstance(start_timestamp, int)
+        and not isinstance(start_timestamp, bool)
+        and isinstance(end_timestamp, int)
+        and not isinstance(end_timestamp, bool)
+        and start_timestamp > end_timestamp
+    ):
+        raise AnswerContractError(f"{name} interval is reversed")
+    for field_name in ("anchor_utc", "resolved_start_utc", "resolved_end_utc", "resolved_interval_utc"):
+        text = normalized.get(field_name)
+        if text is not None and (not isinstance(text, str) or not text.strip()):
+            raise AnswerContractError(f"{name}.{field_name} must be non-empty text or None")
+    return normalized
+
+
+def _normalize_retrieval_coverage(
+    name: str,
+    value: Mapping[str, object] | None,
+) -> dict[str, object] | None:
+    """校验最终 Artifact 中的 recent coverage，保证 partial 事实可直接回放。"""
+
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise AnswerContractError(f"{name} must be a mapping or None")
+    _check_bounded_value(name, value)
+    normalized = dict(value)
+    status = normalized.get("status")
+    if status not in {"complete", "partial"}:
+        raise AnswerContractError(f"{name}.status must be complete or partial")
+    basis = normalized.get("basis")
+    if not isinstance(basis, str) or not basis.strip():
+        raise AnswerContractError(f"{name}.basis must be non-empty text")
+    if normalized.get("unit") != "message":
+        raise AnswerContractError(f"{name}.unit must be message")
+    covered_units = normalized.get("covered_units")
+    eligible_units = normalized.get("eligible_units")
+    retrieved_count = normalized.get("retrieved_count")
+    for field_name, field_value in (
+        ("covered_units", covered_units),
+        ("eligible_units", eligible_units),
+        ("retrieved_count", retrieved_count),
+    ):
+        if isinstance(field_value, bool) or not isinstance(field_value, int):
+            raise AnswerContractError(f"{name}.{field_name} must be a non-negative integer")
+        if field_value < 0:
+            raise AnswerContractError(f"{name}.{field_name} must be a non-negative integer")
+    assert isinstance(covered_units, int)
+    assert isinstance(eligible_units, int)
+    assert isinstance(retrieved_count, int)
+    if covered_units > eligible_units:
+        raise AnswerContractError(f"{name}.covered_units cannot exceed eligible_units")
+    if retrieved_count > covered_units:
+        raise AnswerContractError(f"{name}.retrieved_count cannot exceed covered_units")
+    has_more = normalized.get("has_more")
+    if not isinstance(has_more, bool):
+        raise AnswerContractError(f"{name}.has_more must be a boolean")
+    if has_more != (status == "partial"):
+        raise AnswerContractError(f"{name}.status and has_more disagree")
+    if status == "complete" and covered_units != eligible_units:
+        raise AnswerContractError(f"{name}.complete coverage must cover all eligible messages")
+    return normalized
 
 
 def extract_urls(value: object) -> tuple[str, ...]:
@@ -583,6 +675,10 @@ class AnswerArtifact:
     citation_bindings: tuple[CitationBinding, ...] = ()
     evidence_items: tuple[EvidenceItem, ...] = ()
     limitations: tuple[str, ...] = ()
+    # 时间范围由 Host 从当前 Tool Result 派生，模型不能伪造或自行换算。
+    resolved_time_range: Mapping[str, object] | None = None
+    # retrieval coverage 同样由 Host 派生，避免持久化 Artifact 丢失 partial/complete 事实。
+    retrieval_coverage: Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         # 先验证内容块 identity，后续 citation 才能确定性地指向一个内容单元。
@@ -624,6 +720,16 @@ class AnswerArtifact:
                 raise AnswerContractError("citation binding references an unknown evidence ID")
 
         object.__setattr__(self, "limitations", _limitations("answer limitations", self.limitations))
+        object.__setattr__(
+            self,
+            "resolved_time_range",
+            _normalize_time_range_snapshot("resolved_time_range", self.resolved_time_range),
+        )
+        object.__setattr__(
+            self,
+            "retrieval_coverage",
+            _normalize_retrieval_coverage("retrieval_coverage", self.retrieval_coverage),
+        )
         if len(self.answer_text) > MAX_ANSWER_CHARS:
             raise AnswerContractError(f"answer content exceeds {MAX_ANSWER_CHARS} characters")
 
@@ -1087,6 +1193,214 @@ def _retrieval_limitations(status: ToolResultStatus, data: object | None, error_
     return tuple(limitations)
 
 
+def _record_time_range(record: ToolResultRecord) -> dict[str, object] | None:
+    """读取 recent record 的 Host 时间事实，拒绝未经校验的任意映射。"""
+
+    if record.tool_name != "get_recent_messages":
+        return None
+    raw_range = record.query_scope_snapshot.get("resolved_time_range")
+    if raw_range is None:
+        return None
+    if not isinstance(raw_range, Mapping):
+        raise _model_error("TIME_RANGE_MISMATCH", "recent tool result has an invalid resolved time range")
+    return _normalize_time_range_snapshot("tool result resolved_time_range", raw_range)
+
+
+def _recent_time_range_key(time_range: Mapping[str, object]) -> tuple[object, object]:
+    """只按实际半开边界比较窗口，避免 relative/absolute 表示差异造成假冲突。"""
+
+    return (
+        time_range.get("resolved_start_timestamp"),
+        time_range.get("resolved_end_timestamp"),
+    )
+
+
+def _current_recent_time_range(
+    tool_results: tuple[ToolResultRecord, ...],
+) -> dict[str, object] | None:
+    """从当前 Run 的所有 recent page 派生唯一 Host 时间窗口。"""
+
+    observed: list[dict[str, object]] = []
+    unknown_with_facts = False
+    for record in tool_results:
+        if record.tool_name != "get_recent_messages":
+            continue
+        time_range = _record_time_range(record)
+        if time_range is None:
+            if record.message_items:
+                unknown_with_facts = True
+            continue
+        observed.append(time_range)
+    if observed and unknown_with_facts:
+        raise _model_error(
+            "TIME_RANGE_MISMATCH",
+            "recent results mix a resolved window with an unresolved message window",
+        )
+    if not observed:
+        return None
+    first = observed[0]
+    first_key = _recent_time_range_key(first)
+    if any(_recent_time_range_key(item) != first_key for item in observed[1:]):
+        raise _model_error(
+            "TIME_RANGE_MISMATCH",
+            "recent tool results contain conflicting resolved time windows",
+        )
+    return first
+
+
+def _recent_record_coverage(record: ToolResultRecord) -> dict[str, object] | None:
+    """把一个 recent record 的页级 coverage 补成最终 Artifact 所需的完整快照。"""
+
+    if record.tool_name != "get_recent_messages":
+        return None
+    raw_coverage = record.query_scope_snapshot.get("coverage")
+    if raw_coverage is None:
+        if record.message_items:
+            raise _model_error(
+                "COVERAGE_MISMATCH",
+                "recent message result has messages but no coverage snapshot",
+            )
+        return None
+    if not isinstance(raw_coverage, Mapping):
+        raise _model_error("COVERAGE_MISMATCH", "recent message coverage snapshot is invalid")
+    snapshot = record.query_scope_snapshot
+    required_fields = ("total_hits", "retrieved_count", "has_more")
+    if any(field_name not in snapshot for field_name in required_fields):
+        raise _model_error(
+            "COVERAGE_MISMATCH",
+            "recent message result is missing page coverage facts",
+        )
+    retrieved_count = snapshot["retrieved_count"]
+    total_hits = snapshot["total_hits"]
+    has_more = snapshot["has_more"]
+    if (
+        isinstance(retrieved_count, bool)
+        or not isinstance(retrieved_count, int)
+        or retrieved_count != len(record.message_items)
+    ):
+        raise _model_error("COVERAGE_MISMATCH", "recent retrieved_count does not match message items")
+    if isinstance(total_hits, bool) or not isinstance(total_hits, int) or total_hits < 0:
+        raise _model_error("COVERAGE_MISMATCH", "recent total_hits is invalid")
+    if not isinstance(has_more, bool):
+        raise _model_error("COVERAGE_MISMATCH", "recent has_more is invalid")
+    normalized = dict(raw_coverage)
+    normalized["retrieved_count"] = retrieved_count
+    normalized["has_more"] = has_more
+    eligible_units = normalized.get("eligible_units")
+    if eligible_units != total_hits:
+        raise _model_error("COVERAGE_MISMATCH", "recent coverage eligible_units disagrees with total_hits")
+    try:
+        return _normalize_retrieval_coverage("recent retrieval coverage", normalized)
+    except AnswerContractError as exc:
+        raise _model_error("COVERAGE_MISMATCH", str(exc)) from exc
+
+
+def _current_recent_coverage(
+    tool_results: tuple[ToolResultRecord, ...],
+) -> dict[str, object] | None:
+    """从当前 Run 的 recent pages 汇总唯一消息数与最终 coverage 状态。"""
+
+    observed: list[dict[str, object]] = []
+    message_ids: set[str] = set()
+    for record in tool_results:
+        coverage = _recent_record_coverage(record)
+        if coverage is None:
+            continue
+        observed.append(coverage)
+        message_ids.update(item.message.internal_message_id for item in record.message_items)
+    if not observed:
+        return None
+
+    first = observed[0]
+    invariant_fields = ("basis", "unit", "eligible_units")
+    for item in observed[1:]:
+        if any(item[field_name] != first[field_name] for field_name in invariant_fields):
+            raise _model_error("COVERAGE_MISMATCH", "recent pages disagree on coverage scope")
+    covered_values = [item["covered_units"] for item in observed]
+    if any(
+        isinstance(previous, int)
+        and isinstance(current, int)
+        and current < previous
+        for previous, current in zip(covered_values, covered_values[1:])
+    ):
+        # 页级 covered_units 是 continuation 的单调事实；下降意味着重复起始页或错误 cursor。
+        raise _model_error("COVERAGE_MISMATCH", "recent page coverage moved backwards")
+
+    latest = dict(observed[-1])
+    latest["retrieved_count"] = len(message_ids)
+    try:
+        return _normalize_retrieval_coverage("retrieval_coverage", latest)
+    except AnswerContractError as exc:
+        raise _model_error("COVERAGE_MISMATCH", str(exc)) from exc
+
+
+def _attach_execution_facts(
+    artifact: AnswerArtifact,
+    tool_results: tuple[ToolResultRecord, ...],
+) -> AnswerArtifact:
+    """把当前 Run 的窗口与 retrieval limitation 编译进最终 Artifact。"""
+
+    resolved_time_range = _current_recent_time_range(tool_results)
+    retrieval_coverage = _current_recent_coverage(tool_results)
+    if (
+        artifact.resolved_time_range is not None
+        and resolved_time_range is not None
+        and _recent_time_range_key(artifact.resolved_time_range)
+        != _recent_time_range_key(resolved_time_range)
+    ):
+        raise _model_error(
+            "TIME_RANGE_MISMATCH",
+            "answer time range does not match the Host-resolved tool window",
+            "resolved_time_range",
+        )
+    if (
+        artifact.retrieval_coverage is not None
+        and retrieval_coverage is not None
+        and dict(artifact.retrieval_coverage) != retrieval_coverage
+    ):
+        raise _model_error(
+            "COVERAGE_MISMATCH",
+            "answer retrieval coverage does not match Host retrieval facts",
+            "retrieval_coverage",
+        )
+    merged_limitations = list(artifact.limitations)
+    for record in tool_results:
+        for limitation in record.limitations:
+            if limitation not in merged_limitations:
+                merged_limitations.append(limitation)
+    try:
+        return replace(
+            artifact,
+            limitations=tuple(merged_limitations),
+            resolved_time_range=resolved_time_range
+            if resolved_time_range is not None
+            else artifact.resolved_time_range,
+            retrieval_coverage=retrieval_coverage
+            if retrieval_coverage is not None
+            else artifact.retrieval_coverage,
+        )
+    except AnswerContractError as exc:
+        raise _model_error("INVALID_ANSWER_ARTIFACT", str(exc)) from exc
+
+
+def _assert_message_matches_recent_window(
+    record: ToolResultRecord,
+    message: MessageProjection,
+    source_path: str,
+) -> None:
+    """确认 recent citation 的 canonical timestamp 落在同一 Host 半开窗口内。"""
+
+    time_range = _record_time_range(record)
+    if time_range is None:
+        return
+    start_timestamp = time_range["resolved_start_timestamp"]
+    end_timestamp = time_range["resolved_end_timestamp"]
+    if isinstance(start_timestamp, int) and not isinstance(start_timestamp, bool) and message.timestamp < start_timestamp:
+        raise _model_error("TIME_RANGE_MISMATCH", "message citation is before the resolved recent window", source_path)
+    if isinstance(end_timestamp, int) and not isinstance(end_timestamp, bool) and message.timestamp >= end_timestamp:
+        raise _model_error("TIME_RANGE_MISMATCH", "message citation is after the resolved recent window", source_path)
+
+
 def build_tool_result_record(
     *,
     run_id: str,
@@ -1115,7 +1429,19 @@ def build_tool_result_record(
         query_snapshot = data.query.to_dict()
     elif isinstance(data, StructuredMessageResult):
         message_items = _message_items(data.messages)
-        query_snapshot = data.query.to_dict()
+        # recent query 的 resolved range 在 metadata 中，由 Capability 注入后与 continuation 一起保留。
+        query_snapshot = {
+            **data.query.to_dict(),
+            "resolved_time_range": data.metadata.details.get("resolved_time_range"),
+            "retrieved_count": data.metadata.details.get("retrieved_count", data.returned_count),
+            "total_hits": data.total_hits,
+            "returned_count": data.returned_count,
+            "coverage": data.coverage.to_dict(),
+            "partial": data.partial,
+            "truncated": data.truncated,
+            "has_more": data.metadata.details.get("has_more", data.partial),
+            "next_cursor": data.metadata.details.get("next_cursor"),
+        }
     elif isinstance(data, MessageContextResult):
         # Explicit context 的所有消息都属于当前 Tool Result，可继续使用 MessageSource citation。
         message_items = _message_items(data.messages)
@@ -1435,6 +1761,7 @@ def _projected_source_ids(value: object) -> set[str]:
 
 def _set_projection_metrics(
     payload: dict[str, object],
+    record: ToolResultRecord,
     *,
     token_budget: int,
     truncated: bool,
@@ -1443,13 +1770,27 @@ def _set_projection_metrics(
 ) -> None:
     """写入公开 projection 预算事实，避免 Host 侧 trim 变成 hidden truncation。"""
 
+    visible_source_ids = _projected_source_ids(payload.get("data"))
+    projected_messages = sum(
+        1 for source_id in visible_source_ids if source_id.startswith("m")
+    )
+    omitted_messages = max(0, len(record.message_items) - projected_messages)
     payload["model_projection"] = {
         "token_budget": token_budget,
         "estimated_tokens": (_projection_size(payload) + MODEL_TOKEN_CHAR_RATIO - 1) // MODEL_TOKEN_CHAR_RATIO,
         "truncated": truncated,
         "omitted_context_messages": omitted_context_messages,
         "omitted_hit_messages": omitted_hit_messages,
+        "projected_messages": projected_messages,
+        "projected_count": projected_messages,
+        "omitted_messages": omitted_messages,
     }
+    # meta 属于当前 projection 的公开摘要；canonical ToolEnvelope 本身仍保留 retrieved/total。
+    meta = payload.get("meta")
+    if isinstance(meta, dict):
+        meta["projected_messages"] = projected_messages
+        meta["projected_count"] = projected_messages
+        meta["omitted_messages"] = omitted_messages
 
 
 def project_tool_result_for_model(
@@ -1464,10 +1805,12 @@ def project_tool_result_for_model(
         raise ToolResultProjectionError("tool result token budget must be positive")
     canonical_payload = envelope.to_dict()
     projected_data, slots = _project_model_data(canonical_payload.get("data"), record)
+    raw_meta = canonical_payload.get("meta")
+    projected_meta = dict(raw_meta) if isinstance(raw_meta, Mapping) else raw_meta
     payload: dict[str, object] = {
         "status": canonical_payload["status"],
         "data": projected_data,
-        "meta": canonical_payload["meta"],
+        "meta": projected_meta,
         "error": canonical_payload["error"],
         "provenance": record.to_model_provenance(),
     }
@@ -1484,6 +1827,7 @@ def project_tool_result_for_model(
         payload.pop("model_projection", None)
         _set_projection_metrics(
             payload,
+            record,
             token_budget=token_budget,
             truncated=truncated,
             omitted_context_messages=omitted_context_messages,
@@ -2018,6 +2362,7 @@ def _finalize_source(
             raise _model_error("MESSAGE_SOURCE_MISMATCH", "message locator does not match the tool result", source_path)
         if not _scope_allows_message(message, scope):
             raise _model_error("SCOPE_VIOLATION", "message source is outside the trusted execution scope", source_path)
+        _assert_message_matches_recent_window(matched_record, message, source_path)
         return EvidenceSource(
             source.relation,
             replace(
@@ -2099,7 +2444,7 @@ def validate_answer_artifact(
                 )
     if not artifact.evidence_items:
         # 没有 Tool 事实的普通回答不需要 current-run provenance，但仍已经是结构化 Artifact。
-        return artifact
+        return _attach_execution_facts(artifact, tool_results)
     if run_id is None or not run_id:
         raise _model_error("INVALID_PROVENANCE", "current run identity is unavailable")
     records = _record_index(tool_results, run_id, accepted_run_ids)
@@ -2118,7 +2463,11 @@ def validate_answer_artifact(
         )
         finalized_items.append(replace(item, sources=finalized_sources))
     try:
-        return replace(artifact, evidence_items=tuple(finalized_items))
+        hydrated = replace(artifact, evidence_items=tuple(finalized_items))
+        return _attach_execution_facts(hydrated, tool_results)
+    except AnswerFinalizationError:
+        # trusted time/provenance 边界错误必须保留稳定错误码，不能被普通 schema 包装覆盖。
+        raise
     except AnswerContractError as exc:
         raise _model_error("INVALID_ANSWER_ARTIFACT", str(exc)) from exc
 
@@ -2148,7 +2497,10 @@ def finalize_answer(
                     "INVALID_FINAL_OUTPUT",
                     "zero-result final answer lacks verified complete-and-empty retrieval evidence",
                 )
-            return compile_model_no_result_answer(no_result)
+            return _attach_execution_facts(
+                compile_model_no_result_answer(no_result),
+                tool_results,
+            )
         if isinstance(decoded_output, Mapping) and "claims" in decoded_output:
             # 新 contract 只解析语义字段；Host compiler 负责 Artifact identity bookkeeping。
             candidate = compile_model_answer_candidate(
@@ -2223,6 +2575,10 @@ _FATAL_GRACEFUL_CODES = frozenset(
         "SCOPE_VIOLATION",
         "MESSAGE_SOURCE_MISMATCH",
         "TRUSTED_METADATA_UNAVAILABLE",
+        # recent citation 越过 Host 时间窗属于可信边界冲突，不能被 recovery 降级为无 citation 答案。
+        "TIME_RANGE_MISMATCH",
+        # recent 页的 coverage 冲突说明执行事实不可信，不能被 recovery 隐去。
+        "COVERAGE_MISMATCH",
     }
 )
 
@@ -2720,6 +3076,7 @@ def finalize_answer_gracefully(
                 evidence_items=usable_evidence,
                 citation_bindings=tuple(bindings),
             )
+            recovered = _attach_execution_facts(recovered, tool_results)
         except AnswerFinalizationError as recovery_error:
             # recovery 仍遇到可信边界错误时不做第二层吞错，直接返回 fatal。
             return _recovery_error_result(recovery_error)
