@@ -116,3 +116,10 @@ Han/non-Han tokenizer 边界——len==2 run 替换结果等于原文，首尾 b
 EvaluationRunner.resolve_snapshot 要求 case snapshot status=="available"；bind-at-run design seed
 不能作为已执行 evaluation 报告。确定性回归落在 pytest 层；「模型优先选择 recent」依赖真实推理，
 以 smoke trace 取证。两个 seed 保持如实标注（annotation_completeness=unknown）。
+
+### Known Limitation（收口时记录，非新 Failure）
+
+bigram 归一化的 recall 契约是**长度 ≥2 的 Han 子串按保序短语完整召回**。单个汉字 query
+（如 `荐`）不是 substring recall：doc 侧 token 全部为 bigram（或孤立单字），单字无法命中
+bigram 内部字符位置（回归 `test_single_han_character_recall` 锁定该边界）。当前不引入
+unigram/LIKE/fallback 改变索引形态；如未来出现真实 Failure Case（单字搜索高频）再评估。

@@ -728,3 +728,7 @@ Q3 index version 防 drift → 第 3 条 + test_v1_index_is_rejected_by_v2_reade
 Q4 temporal capability 必要性 → 第 4 条 + before/after trace 对照；
 Q5 zero-result 非失败的分层论证 → 第 5 条 + tests/test_recent_messages.py;
 Q6 no-result 防滥用设计 → 第 6 条 + tests/test_no_result_finalization.py::test_no_result_conflicting_with_real_results_is_fatal。
+
+- bigram 契约精确边界：≥2 字 Han 子串 = 完整召回；单字 query 是 known limitation（doc token 全为
+  bigram，"荐"命中不了"心推/推荐"内部），不是 bug 也不是 silent-fallback 场景——作为契约写进模块
+  docstring 与 problem record，未来出现单字检索真实需求再触发重评估。
