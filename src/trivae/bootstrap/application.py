@@ -10,6 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 
+from trivae.bootstrap.process_warmup import warm_tqdm_multiprocessing_lock
 from trivae.bootstrap.status import ApplicationReadiness, ProviderReadiness
 from trivae.capabilities.contracts import (
     ExecuteSQLInput,
@@ -967,6 +968,11 @@ def create_application(
 ) -> TrivaeApplication:
     """Composition Root 统一装配 write/read/derived/retrieval/capability 组件。"""
 
+    # 在 stdio 仍是真实终端的阶段预热 tqdm multiprocessing lock：
+    # 所有 CLI 命令路径共用本工厂，而 chat 的 TUI 分支在 TrivaeChatApp.run()
+    # 中才会把 sys.stderr 替换成 _PrintCapture(fileno()==-1)；提前建锁使后续
+    # 嵌入模型加载不再触发 CPython 3.14 resource_tracker 的坏 fd 缺陷窗口。
+    warm_tqdm_multiprocessing_lock()
     resolved_database_path = database_path.resolve()
     resolved_semantic_path = (
         semantic_index_path or database_path.with_name(f"{database_path.stem}.semantic.sqlite3")
