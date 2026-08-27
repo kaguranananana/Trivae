@@ -11,6 +11,7 @@ from trivae.capabilities.contracts import (
     ExecutionScope,
     FindMembersInput,
     GetMessageContextInput,
+    GetRecentMessagesInput,
     GetSchemaInput,
     RelativeTimeRange,
     SearchMessagesInput,
@@ -29,6 +30,7 @@ from trivae.retrieval.structured import (
     LexicalIndexError,
     RetrievalError,
     RetrievalResult,
+    StructuredMessageResult,
 )
 
 RetrievalToolData = RetrievalResult | SemanticRetrievalResult
@@ -418,6 +420,7 @@ class _CapabilityTool:
         request: (
             SearchMessagesInput
             | SemanticSearchInput
+            | GetRecentMessagesInput
             | GetMessageContextInput
             | FindMembersInput
             | GetSchemaInput
@@ -435,6 +438,7 @@ class _CapabilityTool:
         request: (
             SearchMessagesInput
             | SemanticSearchInput
+            | GetRecentMessagesInput
             | GetMessageContextInput
             | FindMembersInput
             | GetSchemaInput
@@ -492,6 +496,7 @@ class _CapabilityTool:
         request: (
             SearchMessagesInput
             | SemanticSearchInput
+            | GetRecentMessagesInput
             | GetMessageContextInput
             | FindMembersInput
             | GetSchemaInput
@@ -671,6 +676,19 @@ class _CapabilityTool:
                 "context_before": request.context_before,
                 "context_after": request.context_after,
             }
+        if isinstance(request, GetRecentMessagesInput):
+            # __post_init__ 已把 time_range 归一化为 RelativeTimeRange；保留运行时防线。
+            normalized_time_range = request.time_range
+            projected_time_range: object = None
+            if isinstance(normalized_time_range, RelativeTimeRange):
+                projected_time_range = normalized_time_range.to_dict()
+            return {
+                "time_range": projected_time_range,
+                "start_timestamp": request.start_timestamp,
+                "end_timestamp": request.end_timestamp,
+                "session_ids": request.session_ids,
+                "limit": request.limit,
+            }
         if isinstance(request, FindMembersInput):
             return {"query": request.query, "session_ids": request.session_ids, "limit": request.limit}
         if isinstance(request, GetSchemaInput):
@@ -682,6 +700,17 @@ class _CapabilityTool:
     def _result_payload(self, result: object) -> dict[str, object]:
         """保留 context/member 的 bounded 结果摘要，避免 Trace 保存完整聊天正文。"""
 
+        if isinstance(result, StructuredMessageResult):
+            # temporal browsing 是 canonical message candidate 读取，不复制聊天正文进 Trace。
+            return {
+                "tool_name": self.name,
+                "returned_messages": result.returned_count,
+                "total_hits": result.total_hits,
+                "selection": result.metadata.details.get("selection"),
+                "partial": result.partial,
+                "truncated": result.truncated,
+                "coverage": {"status": result.coverage.status, "basis": result.coverage.basis},
+            }
         if isinstance(result, MessageContextResult):
             return {
                 "tool_name": "get_message_context",
@@ -727,7 +756,7 @@ class _CapabilityTool:
 
     @staticmethod
     def _result_meta(
-        result: MessageContextResult | FindMembersResult | SchemaResult | SQLQueryResult,
+        result: MessageContextResult | StructuredMessageResult | FindMembersResult | SchemaResult | SQLQueryResult,
     ) -> dict[str, object]:
         """构造统一 envelope meta，保留 no-result、schema 和 truncation 事实。"""
 
@@ -736,6 +765,12 @@ class _CapabilityTool:
                 "truncated": result.truncated,
                 "returned_messages": len(result.messages),
                 "message_id": result.message_id,
+            }
+        if isinstance(result, StructuredMessageResult):
+            return {
+                "truncated": result.truncated,
+                "returned_messages": result.returned_count,
+                "total_hits": result.total_hits,
             }
         if isinstance(result, FindMembersResult):
             return {
@@ -753,6 +788,18 @@ class _CapabilityTool:
             "returned_rows": result.returned_rows,
             "columns": result.columns,
         }
+
+
+class RecentMessagesTool(_CapabilityTool):
+    """Agent-facing get_recent_messages Tool；temporal selection 复用 Structured Retrieval。"""
+
+    name = "get_recent_messages"
+    trace_stage = "retrieval"
+    internal_operation_prefix = "structured.browse"
+    failure_origin_stage = "retrieval"
+
+    def __init__(self, capability: Any) -> None:
+        super().__init__(capability, GetRecentMessagesInput)
 
 
 class GetMessageContextTool(_CapabilityTool):

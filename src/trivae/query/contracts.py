@@ -94,6 +94,7 @@ class QueryRequest:
     available_capabilities: tuple[str, ...] = (
         "lexical_search",
         "semantic_search",
+        "get_recent_messages",
         "get_message_context",
         "find_members",
         "get_schema",

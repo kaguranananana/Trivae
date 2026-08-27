@@ -42,6 +42,7 @@ class AgentToolSurfaceTests(unittest.TestCase):
             (
                 "lexical_search",
                 "semantic_search",
+                "get_recent_messages",
                 "get_message_context",
                 "find_members",
                 "get_schema",

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 
+from trivae.data.storage.sqlite_lexical_text import FTS_TOKENIZER_STRATEGY_ID, normalize_lexical_index_text
 from trivae.retrieval.structured import LexicalIndexError
 
 
@@ -65,12 +66,20 @@ class SQLiteLexicalIndex:
                 )
                 """
             )
+            # content_text 在入索引前做确定性 CJK bigram 归一化；unicode61 语义对
+            # 非 Han 文本保持不变。strategy 标识写入 derived meta，供 read 侧校验 stale。
+            self._connection.create_function(
+                "trivae_normalize_lexical_text",
+                1,
+                normalize_lexical_index_text,
+            )
             self._connection.execute(
                 """
                 INSERT INTO messages_fts(
                     internal_message_id, session_id, source_message_id, content_text
                 )
-                SELECT internal_message_id, session_id, source_message_id, content_text
+                SELECT internal_message_id, session_id, source_message_id,
+                       trivae_normalize_lexical_text(content_text)
                 FROM messages
                 """
             )
@@ -78,6 +87,22 @@ class SQLiteLexicalIndex:
             canonical_row = self._connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()
             if row is None or canonical_row is None or int(row["total"]) != int(canonical_row["total"]):
                 raise LexicalIndexError("FTS5 rebuild count does not match canonical messages")
+            # 记录 rebuild 使用的归一化 strategy；read 侧据此显式拒绝旧索引而不是静默误召回。
+            self._connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS trivae_derived_meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+                """
+            )
+            self._connection.execute(
+                """
+                INSERT INTO trivae_derived_meta(key, value) VALUES ('lexical_tokenizer_strategy', ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                """,
+                (FTS_TOKENIZER_STRATEGY_ID,),
+            )
             self._connection.commit()
         except Exception:
             # derived rebuild 失败不能留下半完成索引；canonical 表不在这个事务中被修改。
@@ -94,4 +119,5 @@ class SQLiteLexicalIndex:
         """删除 derived index 以验证 canonical facts 不依赖 FTS。"""
 
         self._connection.execute("DROP TABLE IF EXISTS messages_fts")
+        self._connection.execute("DROP TABLE IF EXISTS trivae_derived_meta")
         self._connection.commit()

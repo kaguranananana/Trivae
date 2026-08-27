@@ -11,6 +11,7 @@ from trivae.capabilities.contracts import (
     ExecuteSQLInput,
     FindMembersInput,
     GetMessageContextInput,
+    GetRecentMessagesInput,
     GetSchemaInput,
     SearchMessagesInput,
     SemanticSearchInput,
@@ -21,9 +22,11 @@ from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.limits import (
     DEFAULT_LEXICAL_RESULT_LIMIT,
     DEFAULT_MEMBER_RESULT_LIMIT,
+    DEFAULT_RECENT_MESSAGES_LIMIT,
     DEFAULT_SEMANTIC_RESULT_LIMIT,
     MAX_LEXICAL_RESULT_LIMIT,
     MAX_MEMBER_RESULT_LIMIT,
+    MAX_RECENT_MESSAGES_LIMIT,
     MAX_SEMANTIC_RESULT_LIMIT,
 )
 from trivae.observability.contracts import FailureInfo
@@ -911,3 +914,148 @@ class ExecuteSQLSDKToolAdapter:
             max_rows_schema["maximum"] = min(trusted_max_results, MAX_SQL_RESULT_ROWS)
 
         return execute_sql
+
+
+class GetRecentMessagesSDKToolAdapter:
+    """把 get_recent_messages 的 typed temporal browsing 输入接入同一主链路。"""
+
+    def __init__(self, registry: CapabilityRegistry) -> None:
+        self.registry = registry
+
+    def as_sdk_tool(self, *, trusted_max_results: int | None = None) -> Any:
+        """创建 temporal browsing Function Tool；scope 仍由 RuntimeContext 注入。"""
+
+        if trusted_max_results is not None:
+            if isinstance(trusted_max_results, bool) or not isinstance(trusted_max_results, int):
+                raise TypeError("trusted_max_results must be an integer when provided")
+            if trusted_max_results <= 0:
+                raise ValueError("trusted_max_results must be positive when provided")
+
+        effective_maximum = (
+            MAX_RECENT_MESSAGES_LIMIT if trusted_max_results is None else min(
+                trusted_max_results, MAX_RECENT_MESSAGES_LIMIT
+            )
+        )
+        default_limit = min(DEFAULT_RECENT_MESSAGES_LIMIT, effective_maximum)
+
+        description = (
+            "Read the most recent messages inside a time range for temporal browsing: use it as the "
+            "first call when the candidate set is determined mainly by time and the user asks for an "
+            "overview, summary, topic discovery, or what people talked about recently (for example "
+            "'最近两天聊了什么', '最近有什么值得看的', '昨天发生了什么'). Do NOT guess topics and search "
+            "them with lexical_search or semantic_search for this kind of question; read the real "
+            "recent window first, then analyze and cite. The tool returns the latest `limit` canonical "
+            "messages of the resolved window in natural chronological reading order, plus returned/"
+            "total counts and truncated. Zero results is a normal outcome when the window truly has "
+            "no messages. Prefer limit at or near the schema maximum for broad recent-activity "
+            "questions so a two-day overview is not needlessly partial. The trusted session/time scope "
+            "is enforced by the host and cannot be expanded by arguments; do not repeat this call with "
+            "identical arguments. When the question contains a precise lexical target such as a URL, "
+            "repository name, code identifier, error message, nickname, or exact phrase, use "
+            "lexical_search instead; for concept paraphrases without precise wording use semantic_search."
+        )
+
+        @function_tool(
+            name_override="get_recent_messages",
+            description_override=description,
+            failure_error_function=None,
+            strict_mode=False,
+        )
+        async def get_recent_messages(
+            context: RunContextWrapper[RuntimeContext],
+            time_range: dict[str, object] | None = None,
+            start_timestamp: int | None = None,
+            end_timestamp: int | None = None,
+            session_ids: list[str] | None = None,
+            limit: int = default_limit,
+        ) -> dict[str, object]:
+            """只接受 typed 时间窗字段；trusted scope 不从模型参数读取。
+
+            Args:
+                time_range: Relative range object anchored to archive_latest, e.g.
+                    {"kind":"relative","amount":2,"unit":"day","anchor":"archive_latest"};
+                    Host resolves absolute timestamps and records them in Trace.
+                start_timestamp: Optional integer inclusive lower bound in milliseconds;
+                    cannot be combined with time_range.
+                end_timestamp: Optional integer exclusive upper bound in milliseconds;
+                    cannot be combined with time_range.
+                session_ids: Optional non-empty session ID array; use null when unused.
+                limit: Positive message count no greater than the trusted result bound.
+            """
+
+            runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
+                context,
+                "get_recent_messages",
+            )
+            try:
+                request = GetRecentMessagesInput(
+                    time_range=time_range,
+                    start_timestamp=start_timestamp,
+                    end_timestamp=end_timestamp,
+                    session_ids=None if session_ids is None else tuple(session_ids),
+                    limit=limit,
+                )
+            except CapabilityContractError as exc:
+                envelope = _contract_error_envelope(exc)
+                if trace_context is not None:
+                    cast(Any, trace_context).emit(
+                        stage="tool",
+                        operation="tool.call.failed",
+                        phase="failed",
+                        operation_id=f"tool:{tool_call_id}",
+                        parent_operation_id=getattr(trace_context, "parent_operation_id", None),
+                        outcome="error",
+                        payload={"tool_name": "get_recent_messages", "error_code": exc.error_code},
+                        failure=FailureInfo(
+                            error_code=exc.error_code,
+                            origin_stage="tool",
+                            observed_stage="tool",
+                            category="contract",
+                            handling="returned_to_agent",
+                            cause_operation_id=f"tool:{tool_call_id}",
+                        ),
+                    )
+            else:
+                try:
+                    if runtime_context.capability_registry is not self.registry:
+                        raise RuntimeError("SDK local context registry does not match the registered tool adapter")
+                    envelope = runtime_context.capability_registry.invoke(
+                        "get_recent_messages",
+                        request,
+                        runtime_context.scope,
+                        trace_context=trace_context,
+                    )
+                except Exception:
+                    runtime_context.tool_calls.append(
+                        RuntimeToolCall(
+                            "get_recent_messages",
+                            "failed",
+                            tool_call_id=tool_call_id,
+                            round=runtime_context.current_tool_round,
+                        )
+                    )
+                    raise
+            return _append_runtime_tool_result(
+                runtime_context,
+                "get_recent_messages",
+                tool_call_id,
+                envelope,
+                budget_call,
+            )
+
+        if trusted_max_results is not None:
+            # 与其他工具一致：provider schema 只表达当前 dynamic bound，真实 enforcement 在 Capability。
+            schema = getattr(get_recent_messages, "params_json_schema", None)
+            if not isinstance(schema, dict):
+                raise TypeError("SDK Function Tool did not expose params_json_schema")
+            properties = schema.get("properties")
+            if not isinstance(properties, dict):
+                raise TypeError("SDK Function Tool schema did not expose properties")
+            limit_schema = properties.get("limit")
+            if not isinstance(limit_schema, dict):
+                raise TypeError("get_recent_messages schema did not expose limit")
+            limit_schema["minimum"] = 1
+            limit_schema["maximum"] = effective_maximum
+            limit_schema["default"] = default_limit
+
+        return get_recent_messages

@@ -9,6 +9,7 @@ from trivae.capabilities.contracts import (
     ExecutionScope,
     FindMembersInput,
     GetMessageContextInput,
+    GetRecentMessagesInput,
     GetSchemaInput,
     SearchMessagesInput,
     SemanticSearchInput,
@@ -18,6 +19,7 @@ from trivae.capabilities.contracts import (
 ToolRequest = (
     SearchMessagesInput
     | SemanticSearchInput
+    | GetRecentMessagesInput
     | GetMessageContextInput
     | FindMembersInput
     | GetSchemaInput

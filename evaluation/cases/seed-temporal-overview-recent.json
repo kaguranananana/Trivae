@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "case_id": "seed-temporal-overview-recent",
+  "version": 1,
+  "suite_tags": ["design_seed", "temporal_overview", "failure_regression_trace_87060c"],
+  "dataset_snapshot": {
+    "snapshot_id": "snapshot:bind-at-run",
+    "canonical_database_identity": "sqlite-canonical:bind-at-run",
+    "schema_version": "canonical-m1-v1",
+    "source_identity": "source:bind-at-run",
+    "message_count": 0,
+    "relevant_time_range": [null, null],
+    "deterministic_fingerprint": "manifest:bind-at-run",
+    "created_at": "2026-08-27T00:00:00+00:00",
+    "status": "unavailable",
+    "manifest": {"binding": "explicit snapshot materialization required"}
+  },
+  "data_access_scope": {"allowed_session_ids": null, "start_timestamp": null, "end_timestamp": null, "max_results": 100},
+  "query": "最近一两天大家都在讨论什么有价值的内容",
+  "locale": "zh-CN",
+  "reference_findings": [{
+    "finding_id": "temporal-browsing-first",
+    "criterion": "候选集合由时间范围决定时，Agent 是否先读取时间窗口内真实消息再做主题归纳",
+    "expected_semantics": "首个数据读取 Tool 应为 get_recent_messages；答案基于窗口内消息归纳主题并给出可解析 citations，不要求命中任何固定主题名称。",
+    "reference_evidence": [],
+    "annotation_completeness": "unknown",
+    "provenance": {
+      "source": "real-failure-trace-87060c18023e46988f4df09a98a27f9f",
+      "created_at": "2026-08-27T00:00:00+00:00",
+      "method": "真实用户同题对比（ChatLab vs Trivae before：semantic/lexical guessing x4 + get_schema → failed ~75s）",
+      "snapshot_id": "snapshot:bind-at-run",
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}"
+    },
+    "known_limitations": ["未绑定真实 Snapshot，不能据此计算 Recall。"],
+    "critical": true
+  }],
+  "uncertainty_constraints": [
+    "不硬编码正确主题名称；聊天数据随 Snapshot 变化。",
+    "partial/truncated 时不得声称覆盖全部近期讨论。"
+  ],
+  "negative_constraints": [
+    "禁止先猜测主题再 semantic/lexical 搜索。",
+    "不得引用 Scope 外消息。",
+    "不得使用 machine current time 解析相对时间。"
+  ],
+  "critical_requirements": [
+    "首选 get_recent_messages 且 limit 接近 trusted bound。",
+    "每个 chat-derived claim 至少一个可解析 source handle。",
+    "Trace 记录 resolved time range 与 returned/total/truncated。"
+  ],
+  "diagnostic_expectations": {
+    "preferred_owner": "retrieval",
+    "tool_selection": {
+      "category": "temporal_overview",
+      "preferred_first_tools": ["get_recent_messages"],
+      "allowed_follow_up_tools": ["lexical_search", "semantic_search", "execute_sql", "get_message_context", "find_members"],
+      "judgement": "diagnostic_expectation_only"
+    }
+  },
+  "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": true, "human_adjudication_on_disagreement": true},
+  "provenance": {
+    "source": "Real failure case: temporal overview question failed with retrieval guessing; ChatLab baseline uses get_recent_messages.",
+    "method": "Failure-case-driven seed per Stage 1.4 ADR reopen trigger",
+    "created_at": "2026-08-27T00:00:00+00:00"
+  }
+}

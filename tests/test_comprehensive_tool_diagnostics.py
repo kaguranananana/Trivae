@@ -21,6 +21,7 @@ from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
 CANONICAL_TOOLS = (
     "lexical_search",
     "semantic_search",
+    "get_recent_messages",
     "get_message_context",
     "find_members",
     "get_schema",
@@ -149,23 +150,28 @@ class ComprehensiveToolDiagnosticsTests(unittest.TestCase):
                 [
                     ModelStep(output=[function_call("lexical_search", {"keyword": "sqlite-vec"}, call_id="f1")]),
                     ModelStep(output=[function_call("semantic_search", {"query": "Agent 框架过重"}, call_id="f2")]),
-                    ModelStep(output=[function_call("get_message_context", {"message_id": "message:test"}, call_id="f3")]),
-                    ModelStep(output=[function_call("find_members", {"query": "same-nick"}, call_id="f4")]),
-                    ModelStep(output=[function_call("get_schema", {}, call_id="f5")]),
+                    ModelStep(output=[function_call(
+                        "get_recent_messages",
+                        {"time_range": {"kind": "relative", "amount": 2, "unit": "day", "anchor": "archive_latest"}, "limit": 50},
+                        call_id="f3",
+                    )]),
+                    ModelStep(output=[function_call("get_message_context", {"message_id": "message:test"}, call_id="f4")]),
+                    ModelStep(output=[function_call("find_members", {"query": "same-nick"}, call_id="f5")]),
+                    ModelStep(output=[function_call("get_schema", {}, call_id="f6")]),
                     ModelStep(
                         output=[
                             function_call(
                                 "execute_sql",
                                 {"sql": "SELECT COUNT(*) AS total FROM messages"},
-                                call_id="f6",
+                                call_id="f7",
                             )
                         ]
                     ),
                     ModelStep(output=[assistant_message("综合调查已完成")]),
                 ]
             ),
-            max_turns=8,
-            max_tool_rounds=6,
+            max_turns=9,
+            max_tool_rounds=7,
         )
         scope = ExecutionScope(allowed_session_ids=("session:test",), max_results=5)
         request = AgentRunRequest(
@@ -180,8 +186,8 @@ class ComprehensiveToolDiagnosticsTests(unittest.TestCase):
         self.assertEqual({tool.name for tool in agent.tools}, set(CANONICAL_TOOLS))
         self.assertNotIn("search_messages", {tool.name for tool in agent.tools})
         self.assertEqual([call.name for call in result.tool_calls], list(CANONICAL_TOOLS))
-        self.assertEqual(len(result.tool_calls), 6)
-        self.assertEqual(len(result.tool_results), 6)
+        self.assertEqual(len(result.tool_calls), 7)
+        self.assertEqual(len(result.tool_results), 7)
         self.assertEqual({record.run_id for record in result.tool_results}, {result.run_id})
         self.assertEqual({record.tool_name for record in result.tool_results}, set(CANONICAL_TOOLS))
         self.assertTrue(all(recording.calls[0][1] is scope for recording in recordings.values()))

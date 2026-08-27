@@ -7,6 +7,7 @@
   "cases": [
     {"case_id": "seed-trusted-session-filter", "version": 1},
     {"case_id": "seed-partial-truncated-retrieval", "version": 1},
-    {"case_id": "seed-citation-provenance", "version": 1}
+    {"case_id": "seed-citation-provenance", "version": 1},
+    {"case_id": "seed-temporal-overview-recent", "version": 1}
   ]
 }

@@ -40,6 +40,7 @@ from trivae.query.runtime.openai_tools import (
     ExecuteSQLSDKToolAdapter,
     FindMembersSDKToolAdapter,
     GetMessageContextSDKToolAdapter,
+    GetRecentMessagesSDKToolAdapter,
     GetSchemaSDKToolAdapter,
     LexicalSearchSDKToolAdapter,
     SearchMessagesSDKToolAdapter,
@@ -1125,6 +1126,12 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         if "semantic_search" in context.available_capabilities:
             tools.append(
                 SemanticSearchSDKToolAdapter(context.capability_registry).as_sdk_tool(
+                    trusted_max_results=context.scope.max_results
+                )
+            )
+        if "get_recent_messages" in context.available_capabilities:
+            tools.append(
+                GetRecentMessagesSDKToolAdapter(context.capability_registry).as_sdk_tool(
                     trusted_max_results=context.scope.max_results
                 )
             )

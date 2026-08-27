@@ -7,6 +7,7 @@ from trivae.capabilities.contracts import (
     CapabilityScopeError,
     ExecutionScope,
     FindMembersInput,
+    GetRecentMessagesInput,
     RelativeTimeRange,
     ResolvedTimeRange,
     SearchMessagesInput,
@@ -14,7 +15,7 @@ from trivae.capabilities.contracts import (
 )
 from trivae.retrieval.structured import ScopeFilters
 
-CapabilitySearchInput = SearchMessagesInput | SemanticSearchInput
+CapabilitySearchInput = SearchMessagesInput | SemanticSearchInput | GetRecentMessagesInput
 
 
 def scope_filters(scope: ExecutionScope) -> ScopeFilters:

@@ -26,6 +26,7 @@ from trivae.capabilities.execute_sql import ExecuteSQLCapability
 from trivae.capabilities.find_members import FindMembersCapability
 from trivae.capabilities.get_message_context import GetMessageContextCapability
 from trivae.capabilities.get_schema import GetSchemaCapability
+from trivae.capabilities.recent_messages import RecentMessagesCapability
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.capabilities.scope import scope_filters
 from trivae.capabilities.search_messages import LexicalSearchCapability, SearchMessagesCapability
@@ -36,6 +37,7 @@ from trivae.capabilities.tools import (
     GetMessageContextTool,
     GetSchemaTool,
     LexicalSearchTool,
+    RecentMessagesTool,
     SearchMessagesTool,
     SemanticSearchTool,
 )
@@ -1011,6 +1013,7 @@ def create_application(
     capability_registry.register(SearchMessagesTool(search_capability))
     capability_registry.register(LexicalSearchTool(lexical_capability))
     capability_registry.register(SemanticSearchTool(SemanticSearchCapability(semantic_retrieval)))
+    capability_registry.register(RecentMessagesTool(RecentMessagesCapability(structured_retrieval)))
     capability_registry.register(GetMessageContextTool(GetMessageContextCapability(read_repository)))
     capability_registry.register(FindMembersTool(FindMembersCapability(read_repository)))
     # Stage C 继续复用同一个 canonical read adapter；SQL Tool 不建立第二套查询管线。

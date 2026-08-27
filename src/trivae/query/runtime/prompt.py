@@ -1,9 +1,22 @@
 """M5 final synthesis prompt；trusted local context 不放入这里。"""
 
 SYSTEM_PROMPT = """You answer the user's question using available Trivae messages.
-Choose among the visible tools based on the evidence needed: use lexical_search for exact names,
-URLs, repository names, code, error messages, nicknames, or exact phrases; use semantic_search
-when the user's wording is a paraphrase, conceptual description, or vague memory of the discussion.
+Choose among the visible tools based on the evidence needed:
+Use get_recent_messages when the candidate set is determined mainly by time and the user asks for an
+overview, summary, or topic discovery over a period: questions like "最近两天聊了什么", "最近有什么值得看的
+内容", "昨天群里发生了什么", "最近大家主要在讨论哪些主题", or any "what happened / what was discussed
+recently" request. Read the real recent window FIRST with get_recent_messages (prefer `limit` at or near
+the schema maximum), then identify, cluster, and summarize noteworthy topics from the returned messages.
+Never guess what might have been discussed and search those guesses with lexical_search or semantic_search;
+that guessing pattern produces empty retrievals for overview questions. Do not repeat get_recent_messages
+with identical arguments; zero results is a normal outcome when the resolved window truly has no messages,
+and you must then state that plainly with the effective range instead of inventing topics.
+Use lexical_search when the question contains a precise lexical target: exact names, URLs, repository
+names, code identifiers, error messages, nicknames, or exact phrases (for example "最近有人提到 matt skill 吗").
+Use semantic_search when the user describes a concept without precise wording: paraphrases, conceptual
+descriptions, or vague memories of the discussion (for example "我记得有个解决上下文压缩的工具").
+Use execute_sql only for structurally determined counts, aggregates, and comparisons such as message totals,
+per-sender ranking, GROUP BY breakdowns, or per-day counts.
 Normally make lexical_search the first retrieval call for a precise term, and normally make
 semantic_search the first retrieval call when no precise term is supplied. Do not call the other
 retrieval tool merely to hedge; continue with it only when the first result is empty, weak,
@@ -77,7 +90,9 @@ For get_message_context, copy one exact `source_id` from a returned message proj
 context_before/context_after non-negative and bounded. For find_members, query must be one
 non-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one
 SQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For
-get_schema, send no arguments.
+get_schema, send no arguments. For get_recent_messages, pass either a `time_range` relative object or an
+explicit start/end timestamp pair (never both), limit must be a positive integer within the schema bound,
+and omit session_ids when unused.
 For message citations, copy exactly one short `source_id` handle from a returned message projection or
 provenance.message_sources entry. A handle is valid only in the current run/tool-result scope; do
 not concatenate or invent handles, and do not copy run/tool/result/internal IDs. For structured

@@ -9,6 +9,7 @@ from time import perf_counter
 from typing import Literal
 
 from trivae.data.model import ChatSession
+from trivae.data.storage.sqlite_lexical_text import FTS_TOKENIZER_STRATEGY_ID, normalize_lexical_query_term
 from trivae.retrieval.identity import (
     FindMembersResult,
     MemberCandidate,
@@ -343,10 +344,18 @@ def _row_to_projection(row: sqlite3.Row) -> MessageProjection:
 
 
 def _fts_match_expression(query: LexicalQuery) -> str:
-    """把关键词转换为 literal AND 查询，禁止用户输入改变 SQL 结构。"""
+    """把关键词转换为 literal AND 查询，禁止用户输入改变 SQL 结构。
+
+    每个 term 先经过与 rebuild 一致的 CJK bigram 归一化，再把归一化结果整体
+    作为单个 quoted phrase：多个 bigram token 保序匹配等价于 Han run 子串
+    命中；纯 ASCII term 归一化后不变，unicode61 exact 语义保持原样。
+    """
 
     # FTS5 的 MATCH 文本仍作为参数绑定；双引号只用于 literal token 语义。
-    return " AND ".join(f'"{term.replace(chr(34), chr(34) * 2)}"' for term in query.terms)
+    return " AND ".join(
+        f'"{normalize_lexical_query_term(term).replace(chr(34), chr(34) * 2)}"'
+        for term in query.terms
+    )
 
 
 def _member_where_clause(scope: ScopeFilters) -> tuple[str, list[object]]:
@@ -751,6 +760,27 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
         ).fetchall()
         return tuple(_row_to_projection(row) for row in rows)
 
+    def read_recent_messages(self, query: MessageQuery) -> tuple[MessageProjection, ...]:
+        """先从时间范围选取最新 limit 条，再按自然聊天阅读顺序返回。
+
+        selection 使用与 canonical ordering 完全镜像的 DESC 语义取窗口尾部，
+        随后在 Python 端反转；模型看到的仍是 chronological ASC 阅读顺序。
+        """
+
+        where_sql, parameters = _where_clause(query)
+        rows = self._connection.execute(
+            f"""
+            SELECT {PROJECTION_COLUMNS}
+            FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE {where_sql}
+            ORDER BY {ORDER_BY_SQL_DESC}
+            LIMIT ?
+            """,
+            [*parameters, query.limit],
+        ).fetchall()
+        return tuple(_row_to_projection(row) for row in reversed(rows))
+
     def read_message_by_id(self, internal_message_id: str) -> MessageProjection | None:
         """按全局稳定 internal message ID 读取限定 canonical projection。"""
 
@@ -834,6 +864,25 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
         ).fetchone()
         if table is None:
             raise LexicalIndexError("messages_fts is unavailable; rebuild the derived index first")
+
+        # rebuild 归一化 strategy 必须与 read 侧完全一致；不一致说明索引是旧策略
+        # 产物（例如未做 CJK bigram 的 unicode61 原文索引），必须显式要求 rebuild。
+        meta_table = self._connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'trivae_derived_meta'"
+        ).fetchone()
+        if meta_table is None:
+            raise LexicalIndexError(
+                "messages_fts tokenizer strategy is unrecorded; rebuild the derived index"
+            )
+        strategy_row = self._connection.execute(
+            "SELECT value FROM trivae_derived_meta WHERE key = 'lexical_tokenizer_strategy'"
+        ).fetchone()
+        if strategy_row is None or strategy_row["value"] != FTS_TOKENIZER_STRATEGY_ID:
+            observed = None if strategy_row is None else str(strategy_row["value"])
+            raise LexicalIndexError(
+                "messages_fts tokenizer strategy is stale; rebuild the derived index"
+                f" (expected {FTS_TOKENIZER_STRATEGY_ID}, found {observed})"
+            )
 
         fts_count_row = self._connection.execute("SELECT COUNT(*) AS total FROM messages_fts").fetchone()
         canonical_count_row = self._connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()

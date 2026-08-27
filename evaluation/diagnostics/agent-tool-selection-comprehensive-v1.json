@@ -7,137 +7,285 @@
   "available_tools": [
     "lexical_search",
     "semantic_search",
+    "get_recent_messages",
     "get_message_context",
     "find_members",
     "get_schema",
     "execute_sql"
   ],
-  "legacy_compatibility_tools": ["search_messages"],
+  "legacy_compatibility_tools": [
+    "search_messages"
+  ],
   "cases": [
     {
       "case_id": "F1",
       "category": "lexical_dominant",
       "query": "谁提到过 sqlite-vec？",
-      "preferred_first_tools": ["lexical_search"],
-      "allowed_follow_up_tools": ["semantic_search"],
-      "deterministic_contract": ["record_actual_tool_sequence", "preserve_current_run_provenance"],
+      "preferred_first_tools": [
+        "lexical_search"
+      ],
+      "allowed_follow_up_tools": [
+        "semantic_search"
+      ],
+      "deterministic_contract": [
+        "record_actual_tool_sequence",
+        "preserve_current_run_provenance"
+      ],
       "quality_judgement": "separate_llm_or_human_review"
     },
     {
       "case_id": "F2",
       "category": "semantic_dominant",
       "query": "之前大家有没有讨论过 Agent 框架太重、封装太多之类的问题？",
-      "preferred_first_tools": ["semantic_search"],
-      "allowed_follow_up_tools": ["lexical_search"],
-      "deterministic_contract": ["preserve_semantic_partial_or_unavailable_state"],
+      "preferred_first_tools": [
+        "semantic_search"
+      ],
+      "allowed_follow_up_tools": [
+        "lexical_search"
+      ],
+      "deterministic_contract": [
+        "preserve_semantic_partial_or_unavailable_state"
+      ],
       "quality_judgement": "separate_llm_or_human_review"
     },
     {
       "case_id": "F3",
       "category": "context_deepening",
       "query": "找到讨论 sqlite-vec 的关键消息，并说明它前后具体讨论了什么。",
-      "preferred_first_tools": ["lexical_search", "semantic_search"],
-      "allowed_follow_up_tools": ["get_message_context", "lexical_search", "semantic_search"],
-      "deterministic_contract": ["context_message_id_is_current_run", "context_scope_is_preserved", "bounded_context_is_visible"],
+      "preferred_first_tools": [
+        "lexical_search",
+        "semantic_search"
+      ],
+      "allowed_follow_up_tools": [
+        "get_message_context",
+        "lexical_search",
+        "semantic_search"
+      ],
+      "deterministic_contract": [
+        "context_message_id_is_current_run",
+        "context_scope_is_preserved",
+        "bounded_context_is_visible"
+      ],
       "quality_judgement": "sequence_is_task_dependent"
     },
     {
       "case_id": "F4",
       "category": "context_sufficient_no_deepening",
       "query": "sqlite-vec 是什么？请给出简短回答。",
-      "preferred_first_tools": ["lexical_search", "semantic_search"],
-      "allowed_follow_up_tools": ["lexical_search", "semantic_search"],
-      "deterministic_contract": ["do_not_require_context_tool_when_search_context_is_sufficient"],
+      "preferred_first_tools": [
+        "lexical_search",
+        "semantic_search"
+      ],
+      "allowed_follow_up_tools": [
+        "lexical_search",
+        "semantic_search"
+      ],
+      "deterministic_contract": [
+        "do_not_require_context_tool_when_search_context_is_sufficient"
+      ],
       "quality_judgement": "sequence_is_task_dependent"
     },
     {
       "case_id": "F5",
       "category": "member_unique_then_retrieval",
       "query": "先找出与 sqlite-vec 相关的成员，再检索该成员的相关讨论。",
-      "preferred_first_tools": ["find_members"],
-      "allowed_follow_up_tools": ["lexical_search", "semantic_search", "get_message_context"],
-      "deterministic_contract": ["member_candidates_include_match_reason", "member_scope_is_preserved", "no_identity_guessing"],
+      "preferred_first_tools": [
+        "find_members"
+      ],
+      "allowed_follow_up_tools": [
+        "lexical_search",
+        "semantic_search",
+        "get_message_context"
+      ],
+      "deterministic_contract": [
+        "member_candidates_include_match_reason",
+        "member_scope_is_preserved",
+        "no_identity_guessing"
+      ],
       "quality_judgement": "separate_llm_or_human_review"
     },
     {
       "case_id": "F6",
       "category": "member_ambiguity",
       "query": "昵称相同的成员分别是谁？不要把候选强行合并。",
-      "preferred_first_tools": ["find_members"],
-      "allowed_follow_up_tools": ["lexical_search", "semantic_search"],
-      "deterministic_contract": ["preserve_multiple_candidates", "return_match_reasons", "do_not_force_unique_resolution"],
+      "preferred_first_tools": [
+        "find_members"
+      ],
+      "allowed_follow_up_tools": [
+        "lexical_search",
+        "semantic_search"
+      ],
+      "deterministic_contract": [
+        "preserve_multiple_candidates",
+        "return_match_reasons",
+        "do_not_force_unique_resolution"
+      ],
       "quality_judgement": "separate_llm_or_human_review"
     },
     {
       "case_id": "F7",
       "category": "member_no_result",
       "query": "查找成员标识 __comprehensive_unknown_member__，并明确说明是否有候选。",
-      "preferred_first_tools": ["find_members"],
-      "allowed_follow_up_tools": ["lexical_search", "semantic_search"],
-      "deterministic_contract": ["zero_candidates_is_explicit_success", "no_fabricated_identity"],
+      "preferred_first_tools": [
+        "find_members"
+      ],
+      "allowed_follow_up_tools": [
+        "lexical_search",
+        "semantic_search"
+      ],
+      "deterministic_contract": [
+        "zero_candidates_is_explicit_success",
+        "no_fabricated_identity"
+      ],
       "quality_judgement": "deterministic_contract_plus_answer_review"
     },
     {
       "case_id": "F8",
       "category": "structured_count",
       "query": "当前允许范围内一共有多少条消息？",
-      "preferred_first_tools": ["execute_sql", "get_schema"],
-      "allowed_sequences": [["execute_sql"], ["get_schema", "execute_sql"]],
-      "deterministic_contract": ["use_read_only_sql", "return_bounded_structured_result", "scope_is_hard_boundary"],
+      "preferred_first_tools": [
+        "execute_sql",
+        "get_schema"
+      ],
+      "allowed_sequences": [
+        [
+          "execute_sql"
+        ],
+        [
+          "get_schema",
+          "execute_sql"
+        ]
+      ],
+      "deterministic_contract": [
+        "use_read_only_sql",
+        "return_bounded_structured_result",
+        "scope_is_hard_boundary"
+      ],
       "quality_judgement": "separate_llm_or_human_review"
     },
     {
       "case_id": "F9",
       "category": "structured_aggregation",
       "query": "按发送者统计消息数量，并找出发言最多者。",
-      "preferred_first_tools": ["execute_sql", "get_schema"],
-      "allowed_sequences": [["execute_sql"], ["get_schema", "execute_sql"]],
-      "deterministic_contract": ["grouped_rows_are_bounded", "structured_result_has_provenance", "scope_is_hard_boundary"],
+      "preferred_first_tools": [
+        "execute_sql",
+        "get_schema"
+      ],
+      "allowed_sequences": [
+        [
+          "execute_sql"
+        ],
+        [
+          "get_schema",
+          "execute_sql"
+        ]
+      ],
+      "deterministic_contract": [
+        "grouped_rows_are_bounded",
+        "structured_result_has_provenance",
+        "scope_is_hard_boundary"
+      ],
       "quality_judgement": "separate_llm_or_human_review"
     },
     {
       "case_id": "F10",
       "category": "mixed_retrieval_sql",
       "query": "先定位 sqlite-vec 相关讨论，再统计这些消息所在会话在指定时间范围内的消息量。",
-      "preferred_first_tools": ["lexical_search", "semantic_search", "find_members"],
-      "allowed_follow_up_tools": ["get_message_context", "execute_sql", "get_schema", "lexical_search", "semantic_search"],
-      "deterministic_contract": ["record_category_switch", "do_not_count_large_message_sets_in_model", "preserve_scope_across_tools"],
+      "preferred_first_tools": [
+        "lexical_search",
+        "semantic_search",
+        "find_members"
+      ],
+      "allowed_follow_up_tools": [
+        "get_message_context",
+        "execute_sql",
+        "get_schema",
+        "lexical_search",
+        "semantic_search"
+      ],
+      "deterministic_contract": [
+        "record_category_switch",
+        "do_not_count_large_message_sets_in_model",
+        "preserve_scope_across_tools"
+      ],
       "quality_judgement": "separate_llm_or_human_review"
     },
     {
       "case_id": "F11",
       "category": "lexical_no_result",
       "query": "搜索明确不存在的标识符 __comprehensive_lexical_no_result__。",
-      "preferred_first_tools": ["lexical_search"],
-      "allowed_follow_up_tools": ["semantic_search"],
-      "deterministic_contract": ["no_fabricated_evidence", "no_silent_data_source_change", "empty_result_is_visible"],
+      "preferred_first_tools": [
+        "lexical_search"
+      ],
+      "allowed_follow_up_tools": [
+        "semantic_search"
+      ],
+      "deterministic_contract": [
+        "no_fabricated_evidence",
+        "no_silent_data_source_change",
+        "empty_result_is_visible"
+      ],
       "quality_judgement": "deterministic_contract_plus_answer_review"
     },
     {
       "case_id": "F12",
       "category": "semantic_weak_or_no_result",
       "query": "聊天里是否讨论过一个没有足够证据支持的全新概念 __comprehensive_weak_concept__？",
-      "preferred_first_tools": ["semantic_search"],
-      "allowed_follow_up_tools": ["lexical_search"],
-      "deterministic_contract": ["preserve_weak_or_partial_result", "no_fabricated_evidence", "no_unrecorded_fallback"],
+      "preferred_first_tools": [
+        "semantic_search"
+      ],
+      "allowed_follow_up_tools": [
+        "lexical_search"
+      ],
+      "deterministic_contract": [
+        "preserve_weak_or_partial_result",
+        "no_fabricated_evidence",
+        "no_unrecorded_fallback"
+      ],
       "quality_judgement": "deterministic_contract_plus_answer_review"
     },
     {
       "case_id": "F13",
       "category": "structured_zero_rows",
       "query": "查询不存在时间范围内的消息记录；如果返回 zero rows，请明确说明为空结果。",
-      "preferred_first_tools": ["execute_sql", "get_schema"],
-      "allowed_sequences": [["execute_sql"], ["get_schema", "execute_sql"]],
-      "deterministic_contract": ["zero_rows_is_not_tool_error", "do_not_fabricate_citation", "preserve_structured_provenance"],
+      "preferred_first_tools": [
+        "execute_sql",
+        "get_schema"
+      ],
+      "allowed_sequences": [
+        [
+          "execute_sql"
+        ],
+        [
+          "get_schema",
+          "execute_sql"
+        ]
+      ],
+      "deterministic_contract": [
+        "zero_rows_is_not_tool_error",
+        "do_not_fabricate_citation",
+        "preserve_structured_provenance"
+      ],
       "quality_judgement": "deterministic_contract_plus_answer_review"
     },
     {
       "case_id": "F14",
       "category": "scope_sensitive_mixed",
       "query": "只统计当前 session scope 内的消息，不要读取其他 session。",
-      "preferred_first_tools": ["execute_sql"],
-      "allowed_follow_up_tools": ["get_schema", "lexical_search", "semantic_search", "get_message_context"],
-      "deterministic_contract": ["trusted_scope_is_enforced_without_model_where", "scope_escape_is_explicit_error", "all_tool_results_keep_scope"],
+      "preferred_first_tools": [
+        "execute_sql"
+      ],
+      "allowed_follow_up_tools": [
+        "get_schema",
+        "lexical_search",
+        "semantic_search",
+        "get_message_context"
+      ],
+      "deterministic_contract": [
+        "trusted_scope_is_enforced_without_model_where",
+        "scope_escape_is_explicit_error",
+        "all_tool_results_keep_scope"
+      ],
       "quality_judgement": "deterministic_scope_contract"
     }
   ],

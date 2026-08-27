@@ -8,8 +8,10 @@ from typing import Literal, Mapping, Sequence
 from trivae.config.limits import (
     DEFAULT_LEXICAL_RESULT_LIMIT,
     DEFAULT_MEMBER_RESULT_LIMIT,
+    DEFAULT_RECENT_MESSAGES_LIMIT,
     DEFAULT_SEMANTIC_RESULT_LIMIT,
     DEFAULT_TRUSTED_RESULT_LIMIT,
+    MAX_RECENT_MESSAGES_LIMIT,
     MAX_TRUSTED_RESULT_LIMIT,
 )
 from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, MessageContextResult
@@ -253,6 +255,37 @@ class SearchMessagesInput:
         for name, value in (("context_before", self.context_before), ("context_after", self.context_after)):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise CapabilityContractError(f"{name} must be non-negative")
+
+
+@dataclass(frozen=True)
+class GetRecentMessagesInput:
+    """get_recent_messages 的 temporal browsing 输入；时间窗决定候选集合。"""
+
+    time_range: RelativeTimeRange | Mapping[str, object] | None = None
+    start_timestamp: int | None = None
+    end_timestamp: int | None = None
+    session_ids: tuple[str, ...] | None = None
+    limit: int = DEFAULT_RECENT_MESSAGES_LIMIT
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "session_ids", _normalize_scope_sessions(self.session_ids))
+        _validate_optional_timestamp("start_timestamp", self.start_timestamp)
+        _validate_optional_timestamp("end_timestamp", self.end_timestamp)
+        normalized_time_range = RelativeTimeRange.from_value(self.time_range)
+        object.__setattr__(self, "time_range", normalized_time_range)
+        if normalized_time_range is not None and (self.start_timestamp is not None or self.end_timestamp is not None):
+            raise CapabilityContractError("time_range cannot be combined with absolute timestamps")
+        if normalized_time_range is None and self.start_timestamp is None and self.end_timestamp is None:
+            raise CapabilityContractError("time_range or an explicit time window is required")
+        if self.start_timestamp is not None and self.end_timestamp is not None:
+            if self.start_timestamp > self.end_timestamp:
+                raise CapabilityContractError("query time scope is reversed")
+        if isinstance(self.limit, bool) or not isinstance(self.limit, int) or self.limit <= 0:
+            raise CapabilityContractError("limit must be positive")
+        if self.limit > MAX_RECENT_MESSAGES_LIMIT:
+            raise CapabilityContractError(
+                f"limit must not exceed {MAX_RECENT_MESSAGES_LIMIT}"
+            )
 
 
 @dataclass(frozen=True)

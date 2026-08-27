@@ -330,6 +330,9 @@ class CanonicalReadRepository(Protocol):
     def read_messages(self, query: MessageQuery) -> tuple[MessageProjection, ...]:
         """读取有界且已排序的 canonical projections。"""
 
+    def read_recent_messages(self, query: MessageQuery) -> tuple[MessageProjection, ...]:
+        """从时间范围选取最新 limit 条并按 chronological 顺序返回。"""
+
     def read_message_by_id(self, internal_message_id: str) -> MessageProjection | None:
         """按稳定 internal message ID 读取 canonical projection。"""
 
@@ -408,6 +411,30 @@ class StructuredRetrieval:
                 filters=query.to_dict(),
                 ordering=ORDERING_DESCRIPTION,
                 latency_ms=latency_ms,
+            ),
+        )
+
+    def retrieve_recent_messages(self, query: MessageQuery) -> StructuredMessageResult:
+        """Temporal browsing 的 latest-N selection：窗口尾部 limit 条按阅读顺序返回。"""
+
+        started = perf_counter()
+        total_hits = self.repository.count_messages(query)
+        messages = self.repository.read_recent_messages(query)
+        latency_ms = (perf_counter() - started) * 1000
+        return StructuredMessageResult(
+            query=query,
+            strategy="structured",
+            messages=messages,
+            total_hits=total_hits,
+            returned_count=len(messages),
+            coverage=Coverage(status="complete", basis="canonical_store"),
+            partial=False,
+            truncated=total_hits > len(messages),
+            metadata=RetrievalMetadata(
+                filters=query.to_dict(),
+                ordering="latest-limit selection (timestamp DESC), returned chronologically; " + ORDERING_DESCRIPTION,
+                latency_ms=latency_ms,
+                details={"selection": "latest_limit"},
             ),
         )
 
