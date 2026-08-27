@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "High-noise group chat intelligence analysis system"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.141.1",
     # 当前 streamed/cancellation contract 已按本地验证的 SDK API 固定到 0.22.0。
     "openai-agents==0.22.0",
     # semantic index 使用 sqlite-vec；sentence-transformers 放在可选 extra，避免检索-only 启动下载模型。
@@ -11,6 +12,7 @@ dependencies = [
     # 默认 `trivae chat` 使用 Textual TUI；--plain 与非 TTY 回退到 stdout renderer。
     # 2.0 起提供 Screen 级原生文本选择/复制；上界覆盖当前已验证的 8.x API。
     "textual>=2,<9",
+    "uvicorn>=0.52.4",
 ]
 
 [project.optional-dependencies]

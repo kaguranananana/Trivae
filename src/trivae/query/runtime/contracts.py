@@ -255,6 +255,10 @@ class RuntimeEvent:
     model: str
     sequence: int
     text: str | None = None
+    # thinking_delta 的可见性来源：public_summary 是 provider 公开 summary；
+    # provider_reasoning 是 provider/SDK 实际下发且应用层合法获得的 reasoning text。
+    # 两者都只透传 provider 真实返回的内容，不反推、不伪造 hidden CoT。
+    thinking_visibility: Literal["public_summary", "provider_reasoning"] = "public_summary"
     tool_call: RuntimeToolCall | None = None
     tool_name: str | None = None
     tool_call_id: str | None = None

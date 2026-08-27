@@ -11,11 +11,10 @@ from trivae.query.contracts import QueryDiagnostic, QueryRequest, QueryResult
 from trivae.query.evidence import FinalizationErrorInfo, finalize_answer_gracefully
 from trivae.query.planner import Planner, PlannerResult, render_plan_guidance
 from trivae.query.router import RouteDecision, Router
-from trivae.query.runtime.contracts import AgentRuntime
+from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeEvent, RuntimeResult
 
 if TYPE_CHECKING:
     from trivae.observability.collector import TraceCollector
-    from trivae.query.runtime.contracts import RuntimeEvent
 
 
 class QueryOrchestrator:
@@ -36,14 +35,47 @@ class QueryOrchestrator:
         self.planner = planner
         self._capability_names = None if capability_names is None else tuple(capability_names)
 
+    @staticmethod
+    async def _run_with_abort(
+        runtime: AgentRuntime,
+        runtime_request: AgentRunRequest,
+        abort_event: object,
+    ) -> RuntimeResult:
+        """无 Trace 时仍以 stream + abort_event 消费 Runtime，保持取消语义一致。"""
+
+        stream = getattr(runtime, "stream", None)
+        if not callable(stream):
+            raise ValueError("graceful abort requires a streaming runtime")
+        terminal = None
+        stream_iterator = stream(runtime_request, abort_event)
+        try:
+            async for event in stream_iterator:
+                if not isinstance(event, RuntimeEvent):
+                    raise TypeError("runtime stream must yield RuntimeEvent values")
+                if event.type in {"completed", "failed", "aborted"} and event.result is not None:
+                    terminal = event.result
+        finally:
+            close = getattr(stream_iterator, "aclose", None)
+            if callable(close):
+                await close()
+        if terminal is None:
+            raise RuntimeError("runtime stream ended without a terminal result")
+        return terminal
+
     async def run(
         self,
         request: QueryRequest,
         *,
         trace: TraceCollector | None = None,
         runtime_event_observer: Callable[[RuntimeEvent], None] | None = None,
+        abort_event: object | None = None,
     ) -> QueryResult:
-        """路由、可选规划后调用一次同一 Runtime；Planner 失败不阻塞主链路。"""
+        """路由、可选规划后调用一次同一 Runtime；Planner 失败不阻塞主链路。
+
+        ``abort_event`` 是可选的优雅取消信号（提供 is_set()/wait() 的对象）；
+        传入后由 Runtime adapter 解释为 cooperative abort，终态为 aborted，
+        区别于 asyncio task cancellation。
+        """
 
         if runtime_event_observer is not None and trace is None:
             # live RuntimeEvent 与 normalized facts 必须经同一 Traceable wrapper 排序，禁止另建执行链。
@@ -285,8 +317,11 @@ class QueryOrchestrator:
             plan_guidance,
             trace_context=None if trace is None else trace.operation_context(query_operation_id),
         )
-        if trace is None:
-            runtime = self.runtime
+        if trace is None and abort_event is None:
+            runtime_result = await self.runtime.run(runtime_request)
+        elif trace is None:
+            # 无 Trace 的 caller 也必须获得一致的优雅取消语义，不静默丢弃 abort。
+            runtime_result = await self._run_with_abort(self.runtime, runtime_request, abort_event)
         else:
             # 延迟导入避免 query package 与 observability collector 的初始化环相互依赖。
             from trivae.observability.collector import TraceableAgentRuntime
@@ -295,8 +330,9 @@ class QueryOrchestrator:
                 self.runtime,
                 trace,
                 runtime_event_observer=runtime_event_observer,
+                abort_event=abort_event,
             )
-        runtime_result = await runtime.run(runtime_request)
+            runtime_result = await runtime.run(runtime_request)
         if runtime_result.termination != "completed":
             # Runtime failure/abort/max-turn 不能被包装成 Evidence partial 或成功回答。
             if trace is not None:

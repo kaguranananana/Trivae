@@ -953,9 +953,24 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 if stream_delta is not None:
                     delta_type, delta = stream_delta
                     if delta_type == "thinking_summary":
-                        # 只有 provider/SDK 实际返回公开 summary delta 才开启 Process 段。
+                        # 只有 provider 明确给出的 summary 才开启公开 Process 段。
                         state.thinking_active = True
-                        yield self._event(state, "thinking_delta", text=delta)
+                        yield self._event(
+                            state,
+                            "thinking_delta",
+                            text=delta,
+                            thinking_visibility="public_summary",
+                        )
+                    elif delta_type == "reasoning_text":
+                        # provider 实际下发的 raw reasoning text 按 provider_reasoning 可见性透传；
+                        # adapter 不解释内容，下游按各自的 visibility policy 决定展示。
+                        state.thinking_active = True
+                        yield self._event(
+                            state,
+                            "thinking_delta",
+                            text=delta,
+                            thinking_visibility="provider_reasoning",
+                        )
                     else:
                         # SDK 没有显式 reasoning done 时，正文首 token 仍是可靠的段落边界。
                         if state.thinking_active:
@@ -1218,16 +1233,25 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         return items
 
     @staticmethod
-    def _stream_delta(event: Any) -> tuple[Literal["thinking_summary", "content"], str] | None:
-        """只把公开 reasoning summary 和 answer text 归一化，过滤 hidden reasoning text。"""
+    def _stream_delta(event: Any) -> tuple[Literal["thinking_summary", "reasoning_text", "content"], str] | None:
+        """只把 provider 实际下发的 reasoning 与 answer text 归一化，不做业务猜测。
+
+        - ``response.output_text.delta``：最终 answer 正文。
+        - ``response.reasoning_summary_text.delta``：provider 公开 reasoning summary。
+        - ``response.reasoning_text.delta``：兼容 provider 实际下发的 raw reasoning text；
+          该事件由 SDK 公开 stream 传递，属于应用层合法可获得的内容，按
+          ``provider_reasoning`` 可见性透传。provider 没有给出时不存在该事件，
+          Runtime 不反推、不模拟 hidden CoT。
+        """
 
         data = getattr(event, "data", None)
         event_type = getattr(data, "type", None)
         if event_type == "response.output_text.delta":
-            delta_type: Literal["thinking_summary", "content"] = "content"
+            delta_type: Literal["thinking_summary", "reasoning_text", "content"] = "content"
         elif event_type == "response.reasoning_summary_text.delta":
-            # 只有 provider 明确给出的 summary 才进入公开过程摘要；reasoning_text 属于 hidden boundary。
             delta_type = "thinking_summary"
+        elif event_type == "response.reasoning_text.delta":
+            delta_type = "reasoning_text"
         else:
             return None
         delta = getattr(data, "delta", None)
@@ -1256,6 +1280,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         event_type: RuntimeEventType,
         *,
         text: str | None = None,
+        thinking_visibility: Literal["public_summary", "provider_reasoning"] = "public_summary",
         tool_call: RuntimeToolCall | None = None,
         tool_name: str | None = None,
         tool_call_id: str | None = None,
@@ -1275,6 +1300,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             model=state.model,
             sequence=state.sequence,
             text=text,
+            thinking_visibility=thinking_visibility,
             tool_call=tool_call,
             tool_name=tool_name,
             tool_call_id=tool_call_id,

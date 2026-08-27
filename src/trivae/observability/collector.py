@@ -396,10 +396,13 @@ class TraceableAgentRuntime(AgentRuntime):
         collector: TraceCollector,
         *,
         runtime_event_observer: Callable[[RuntimeEvent], None] | None = None,
+        abort_event: object | None = None,
     ) -> None:
         self.runtime = runtime
         self.collector = collector
         self._runtime_event_observer = runtime_event_observer
+        # 优雅取消信号原样透传给 streaming runtime；run-only runtime 不支持时显式暴露。
+        self._abort_event = abort_event
         self._run_operation_id = "runtime.run"
         self._last_turn_operation_id: str | None = None
 
@@ -411,7 +414,12 @@ class TraceableAgentRuntime(AgentRuntime):
         runtime_request = replace(request, trace_context=trace_context)
         stream = getattr(self.runtime, "stream", None)
         if callable(stream):
+            if self._abort_event is not None:
+                return await self._run_stream(stream, runtime_request, abort_event=self._abort_event)
             return await self._run_stream(stream, runtime_request)
+        if self._abort_event is not None:
+            # 静默忽略 abort 会把 Stop 变成假取消，这里必须显式暴露 contract 缺口。
+            raise ValueError("graceful abort requires a streaming runtime")
 
         self.collector.emit(
             stage="runtime",
@@ -432,11 +440,17 @@ class TraceableAgentRuntime(AgentRuntime):
         self._map_terminal_result(result)
         return result
 
-    async def _run_stream(self, stream: Any, request: AgentRunRequest) -> RuntimeResult:
+    async def _run_stream(
+        self,
+        stream: Any,
+        request: AgentRunRequest,
+        *,
+        abort_event: object | None = None,
+    ) -> RuntimeResult:
         """逐条映射非 delta RuntimeEvent，并保留底层 terminal result。"""
 
         terminal: RuntimeResult | None = None
-        stream_iterator = stream(request)
+        stream_iterator = stream(request) if abort_event is None else stream(request, abort_event)
         try:
             async for event in stream_iterator:
                 if not isinstance(event, RuntimeEvent):

@@ -38,6 +38,16 @@ QueryStreamEventType = Literal[
     "usage.updated",
 ]
 
+# thinking 的可见性契约：public_summary 只放行 provider 公开 summary（CLI/TUI 保守默认）；
+# provider_reasoning 额外放行 provider/SDK 实际下发的 raw reasoning text（Web 可选开启）。
+ThinkingVisibility = Literal["public_summary", "provider_reasoning"]
+ThinkingVisibilityPolicy = frozenset[ThinkingVisibility]
+DEFAULT_THINKING_VISIBILITY_POLICY: ThinkingVisibilityPolicy = frozenset({"public_summary"})
+
+# Web/富 UI 的结构化 Tool Result transport 预算；UI 折叠预算（默认 20 条）由前端自己控制，
+# transport 截断与 UI 折叠必须在展示层显式区分。
+WEB_TOOL_RESULT_MAX_ITEMS = 200
+
 
 @dataclass(frozen=True)
 class QueryStreamEvent:
@@ -47,8 +57,8 @@ class QueryStreamEvent:
     sequence: int
     trace_id: str | None = None
     content: str | None = None
-    # 只有 Runtime adapter 明确标记的 provider public summary 才允许进入用户过程展示。
-    thinking_visibility: Literal["public_summary"] | None = None
+    # 只有 Runtime adapter 明确标记的 provider reasoning 才允许进入用户过程展示。
+    thinking_visibility: ThinkingVisibility | None = None
     route: str | None = None
     plan: Mapping[str, object] | None = None
     tool_name: str | None = None
@@ -56,6 +66,8 @@ class QueryStreamEvent:
     arguments: Mapping[str, object] | None = None
     result_summary: Mapping[str, object] | None = None
     result_detail: str | None = None
+    # 结构化 Tool Result 投影（interface-owned，additive）；TUI/CLI 只消费 result_detail。
+    result_projection: Mapping[str, object] | None = None
     error_code: str | None = None
     error_message: str | None = None
     duration_ms: float | None = None
@@ -132,6 +144,81 @@ def project_tool_result_detail(record: ToolResultRecord) -> str:
     if len(detail) > _TOOL_DETAIL_MAX_TOTAL_CHARS:
         raise ValueError("tool result detail exceeded the declared TUI character budget")
     return detail
+
+
+def project_tool_result_structure(record: ToolResultRecord) -> dict[str, object]:
+    """把 canonical ToolResultRecord 投影为结构化、有 transport 预算的富 UI 明细。
+
+    与 ``project_tool_result_detail`` 的 TUI bounded 文本不同，本投影保留结构化字段，
+    供 Web 等 interface 渲染真实 message items / structured rows。canonical evidence
+    语义不在此改写：只读取 record 已有 provenance 与 limitation 事实。
+    """
+
+    total_message_items = len(record.message_items)
+    primary_structured = tuple(
+        item for item in record.structured_items if item.locator_kind != "field"
+    )
+    budget = WEB_TOOL_RESULT_MAX_ITEMS
+    items: list[dict[str, object]] = []
+
+    for index, item in enumerate(record.message_items, start=1):
+        if len(items) >= budget:
+            break
+        message = item.message
+        items.append(
+            {
+                "kind": "message",
+                "source_handle": record.message_source_handle(item),
+                "sender": message.sender_name or message.sender_user_id or message.sender_platform_id or "未知发送者",
+                "timestamp": message.timestamp,
+                "session": message.session_display or message.session_id,
+                "content": message.normalized_content,
+                "content_truncated": item.content_truncated,
+                "hit": item.is_hit,
+                "urls": list(item.urls),
+            }
+        )
+
+    for structured_item in primary_structured:
+        if len(items) >= budget:
+            break
+        items.append(
+            {
+                "kind": "structured",
+                "source_handle": record.structured_source_handle(structured_item),
+                "locator_kind": structured_item.locator_kind,
+                "locator": structured_item.locator,
+                "value": structured_item.value_snapshot,
+            }
+        )
+
+    transported = len(items)
+    total_items = total_message_items + len(primary_structured)
+    hit_count = sum(1 for item in record.message_items if item.is_hit)
+    result: dict[str, object] = {
+        "items": items,
+        "item_kind": (
+            "messages"
+            if total_message_items
+            else "structured"
+            if primary_structured
+            else "none"
+        ),
+        "total_items": total_items,
+        "message_items": total_message_items,
+        "structured_items": len(primary_structured),
+        "hit_items": hit_count,
+        "limitations": list(record.limitations),
+        "transport_truncated": total_items > transported,
+        "transport_max_items": budget,
+    }
+    return {
+        "tool_call_id": record.tool_call_id,
+        "tool_name": record.tool_name,
+        "tool_result_id": record.tool_result_id,
+        "status": record.status,
+        "result": result,
+    }
 
 
 def _detail_item_text(index: int, fields: tuple[tuple[str, object], ...]) -> tuple[str, bool]:
@@ -529,9 +616,16 @@ class AnswerArtifactDeltaParser:
 class QueryStreamAdapter:
     """把同次 Query 的 RuntimeEvent 与 normalized event 合并为单调 live stream。"""
 
-    def __init__(self, handler: QueryStreamEventHandler, *, trace_id: str | None = None) -> None:
+    def __init__(
+        self,
+        handler: QueryStreamEventHandler,
+        *,
+        trace_id: str | None = None,
+        thinking_visibility_policy: ThinkingVisibilityPolicy = frozenset({"public_summary"}),
+    ) -> None:
         self._handler = handler
         self._trace_id = trace_id
+        self._thinking_visibility_policy = thinking_visibility_policy
         self._sequence = 0
         self._answer_parser = AnswerArtifactDeltaParser()
         self._saw_content_delta = False
@@ -539,6 +633,8 @@ class QueryStreamAdapter:
         self._pending_answer_fragments: list[str] = []
         # Thinking 生命周期由 adapter 显式跟踪，确保每个模型回合形成独立过程段。
         self._thinking_active = False
+        # 当前开放段已接收到的 delta 可见性；summary 与 provider reasoning 不合并成同一段。
+        self._active_thinking_visibility: ThinkingVisibility | None = None
 
     def handle_runtime_event(self, event: RuntimeEvent) -> None:
         """投影 reasoning/content/usage；persistent Trace mapper仍独立忽略 token delta。"""
@@ -561,16 +657,17 @@ class QueryStreamAdapter:
                     tool_name=event.tool_name,
                     tool_call_id=event.tool_call_id,
                     result_detail=project_tool_result_detail(event.tool_result),
+                    result_projection=project_tool_result_structure(event.tool_result),
                     source_sequence=event.sequence,
                 )
             return
         if event.type == "thinking_delta":
-            if event.text:
-                self._start_thinking(event.sequence)
+            if event.text and event.thinking_visibility in self._thinking_visibility_policy:
+                self._start_thinking(event.sequence, event.thinking_visibility)
                 self._emit(
                     "thinking.delta",
                     content=event.text,
-                    thinking_visibility="public_summary",
+                    thinking_visibility=event.thinking_visibility,
                     source_sequence=event.sequence,
                 )
             return
@@ -601,12 +698,29 @@ class QueryStreamAdapter:
                 # SDK-independent injected runtimes may omit turn_completed；terminal boundary仍需 flush。
                 self._flush_answer_turn(event.sequence)
 
-    def _start_thinking(self, source_sequence: int) -> None:
-        """在真实模型回合或公开摘要到达时只开启一个过程段。"""
+    def _start_thinking(
+        self,
+        source_sequence: int,
+        visibility: ThinkingVisibility | None = None,
+    ) -> None:
+        """在真实模型回合或放行的 reasoning delta 到达时维护唯一开放段。
+
+        可见性变化（summary ↔ provider reasoning）会切段，避免把两类 reasoning
+        合并成同一展示块；初始 turn_started 段没有可见性，由首个 delta 定型。
+        """
 
         if self._thinking_active:
-            return
+            if visibility is None or visibility == self._active_thinking_visibility or (
+                self._active_thinking_visibility is None
+            ):
+                if visibility is not None and self._active_thinking_visibility is None:
+                    self._active_thinking_visibility = visibility
+                return
+            # 可见性切换：先关闭当前段，再开启新段。
+            self._thinking_active = False
+            self._emit("thinking.completed", source_sequence=source_sequence)
         self._thinking_active = True
+        self._active_thinking_visibility = visibility
         self._emit("thinking.started", source_sequence=source_sequence)
 
     def _complete_thinking(self, source_sequence: int) -> None:
@@ -615,6 +729,7 @@ class QueryStreamAdapter:
         if not self._thinking_active:
             return
         self._thinking_active = False
+        self._active_thinking_visibility = None
         self._emit("thinking.completed", source_sequence=source_sequence)
 
     def _flush_answer_turn(self, source_sequence: int) -> None:
