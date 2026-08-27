@@ -654,3 +654,44 @@ context source hit 为 2,215.8ms。初版 projection 的 O(n²) 尾部删除已�
 - Copy/export UX：全屏 TUI 接管鼠标导致原生选中失效（终端 Shift+拖拽可绕过）；
   追加 `/export` 命令把会话 block 快照导出纯文本。选 alternate screen 放弃 inline scrollback
   也是同类取舍：渲染可靠性 > 退出后内容残留。
+
+## Temporal browsing 与 CJK lexical recall 事实索引（2026-08-27）
+
+- Real failure before/after：`最近一两天大家都在讨论什么有价值的内容` 在 trace `trace-87060c18023e46988f4df09a98a27f9f`
+  中为 semantic×3+lexical 猜测→failed ~75s；修复后 trace-3c348e06… / e3b18400… / 41c05fb2…
+  均以 `get_recent_messages` 为首个且唯一数据读取 Tool，1 tool call、1 round、23–36s、finalization valid、3–5 citations。
+- 为什么 retrieval 工具已存在还需要 recent messages：候选集合由时间范围决定时，"猜测主题再检索猜测"
+  对 embedding/BM25 都不构成 query-document 相关性；ChatLab 同题一次 browse 成功是外部对照，
+  Trivae 自己的证据是 ADR §11 预设 reopen trigger 被真实 trace 触发（见 `.trellis/spec/project/problems/temporal-browsing-cjk-lexical-recall.md`）。
+- Agent-facing tool ergonomics：execute_sql 理论可行（ORDER BY DESC LIMIT），但真实 trace 证明模型
+  在第 4 轮拿到 schema 后仍放弃——能力存在于 API 不等于 Agent 会稳定使用；新 Tool 的 description
+  直接绑定 question shape（overview/recent/topic discovery），把选择问题从"推理规划"降为"模式匹配"。
+- Specialized Tool 何时值得增加：沿用 ADR §11 标准——高频 + 机械/易错 + 明显收益；本轮新增工具内部
+  零新数据读取代码（复用 StructuredRetrieval.retrieve_recent_messages → repository read_recent_messages）。
+- Candidate data vs LLM judgment 分离：get_recent_messages 只做 latest-N selection，返回值里没有
+  "有价值"字段；价值判定/citation 归 Agent final artifact，Host finalizer 负责 scope 重校验与 grounding。
+- 中文 FTS recall 根因证据链：先排除 canonical 存在/session scope/timestamp/index freshness（count 一致）
+  /MATCH escape，再用 fts5vocab 拿到实测 tokens（真心推荐=单 token；推荐这个repo 也是单 token）才归因
+  tokenizer——不是从经验直接断言。
+- Tokenizer 影响：trigram 探针证明其对 2 字查询 MATCH=0 且破坏 ASCII exact contract；
+  bigram 归一化只改写 Han run（重叠 bigram 保序短语 ⇔ 子串命中），URL/repo/code/error matrix 测试锁定不退化。
+- 为什么不做 silent LIKE fallback：改变成本曲线（全表扫）、隐藏 strategy 不一致这类配置漂移故障、
+  让 coverage/provenance 变成假话；替代方案是把 strategy id 写进 derived meta 并在 read 侧显式 stale。
+- 用 Trace 区分"选错工具"与"检索错误"：tool.call payload 记录 request/result summary 与 error code 所在层
+  （tool contract / retrieval execution / runtime terminal 分开）；trace-87060c 里每个 0-hit 都是
+  `status ok + total 0` 的正常结果，失败归属在 Agent 决策与最终契约，而非 retrieval 执行异常。
+- Remaining honest gap（anticipated risk）：答案契约对 limitations-only 空 claims 仍是 fatal；本次通过
+  保证浏览路径有真实内容不再触发，但窗口确无消息时应回答空的场景仍未开放该出口（未改动契约，留待独立 Failure Case）。
+
+## Interview ln mapping
+
+Q1 已有两类检索为何还要 recent messages → 本节第 2 条 + ADR §19；
+Q2 execute_sql 理论即可为何不够 → 第 3 条 + trace 对照；
+Q3 tool ergonomics 定义 → 第 3 条；
+Q4 specialized tool 增加标准 → 第 4 条 + ADR §11；
+Q5 如何用真实 Failure Case reopen 旧 ADR → ADR §11→§19 + problem record；
+Q6 candidate/judgment 分离 → 第 6 条 + recent_messages.py 边界注释；
+Q7 中文 FTS 为何 0-hit → 第 7 条诊断链 + sqlite_lexical_text.py；
+Q8 tokenizer 取舍 → 第 8 条 trigram/bigram 实测矩阵；
+Q9 silent LIKE 为何被拒 → 第 9 条 + problem record Options 表；
+Q10 Trace 定位方法论 → 第 10 条。

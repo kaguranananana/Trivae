@@ -436,3 +436,50 @@ M2/M3 implementation task 已落地第一条 Retrieval-facing capability：regis
 - 经验窗口默认值仍属于 implementation baseline，而不是 Evaluation-confirmed optimal parameter；下一轮以真实 Case Bundle 重新校准。
 
 M3 本轮不实现 `semantic_search`、`get_message_context`、`find_members`、`get_schema`、`execute_sql` 的 Tool surface，也不进入 Router/Planner/Runtime；这些保持下一条 vertical slice 的 scope。
+
+## 19. Reopen（Stage 1.10）：新增 `get_recent_messages`
+
+**Reopen Trigger（真实 Failure Case）**：用户真实询问 `最近一两天大家都在讨论什么有价值的内容`，Trace `trace-87060c18023e46988f4df09a98a27f9f` 记录了完整失败链路：
+
+```text
+semantic_search（猜测主题）→ 0 hits
+lexical_search("推荐")       → 0 hits（中文 recall 问题，见 Problem Record）
+semantic_search ×2           → 0 hits
+get_schema                   → 未执行 SQL 即放弃
+terminal: failed, 5 tool calls, ~75s, final_answer unavailable
+```
+
+§11 的预设 reopen 条件被满足："SQL 过程过于机械 / Agent 并不稳定走 SQL 路径 / 高频问题类型"。Agent 面对 temporal overview 问题的实际行为是"猜测最近可能聊了什么，再检索自己的猜测"，该访问模式对 lexical/semantic retrieval 天然不匹配。
+
+**Decision**：新增第 7 个 Agent-facing Tool `get_recent_messages`，作为 Temporal Browsing primitive：
+
+- 内部完全复用 StructuredRetrieval / Canonical Read Repository，不复制数据读取；
+- 输入沿用 RelativeTimeRange（anchor=archive_latest）或显式时间戳；trusted scope 由 Capability 强制继承；
+- 排序语义固定为"窗口内先选最新 limit 条，再按自然阅读顺序返回"（selection DESC → return ASC）；
+- 结果复用 `StructuredMessageResult` 与统一 Envelope/Evidence/Citation/Trace 主链路，不建第二套 provenance；
+- limit 复用 structured bound（default/max = 100），truncation 显式；
+- 不在 Tool 内做价值判断；主题发现与总结是 Agent synthesis 的职责。
+
+**Tool Selection Boundary**（写入 prompt 与 tool description）：
+
+```text
+候选集合由时间范围决定 + overview/summary/topic discovery → get_recent_messages
+精确 lexical target（URL/repo/code/error/nickname/exact phrase）→ lexical_search
+概念转述无精确词                                               → semantic_search
+结构化统计 counts/GROUP BY                                      → execute_sql
+```
+
+Router 保持 LLM 路由不变；本轮依赖 tool description + prompt 保证选择正确性。真实 smoke 显示同题查询稳定以 `get_recent_messages` 为首个且唯一的数据读取 Tool（1 tool call, 1 tool round）完成并产出可解析 citations。若后续 Evaluation 发现模型仍频繁错选，才考虑 Rule Router 特判（不允许 keyword hardcode 如 `if "最近" in query`）。
+
+**Rejected alternatives**：
+- 仅修改 prompt 引导多尝试 synonyms：继续制造 multi-query guessing（permanently rejected by 真实 trace）；
+- 直接用 execute_sql 替代新 Tool：ADR §11 预设的 reopen trigger 已被真实 Failure Case 触发，execute_sql ergonomics 已被证明不足；
+- silent LIKE fallback：违反本项目 no-silent-fallback 原则。
+
+### 附带决策：CJK bigram derived-index normalization
+
+Failure B（`lexical_search("推荐")` 对 canonical `真心推荐 值得看一看` 0-hit）经真实库诊断定位为 unicode61 tokenizer 行为：连续 Han run 存成单 token（实测 tokens `[真心推荐] [值得看一看]`）。修复采用 rebuild/query 双侧一致的 CJK bigram 归一化派生索引（strategy id `unicode61+cjk-bigram-v1`，元数据表 `trivae_derived_meta`，read 侧显式 stale 校验）；ASCII/URL/code 的 unicode61 exact 行为不受影响。方案比较（trigram/dual index/LIKE fallback）与证据见 Problem Record `temporal-browsing-cjk-lexical-recall`。
+
+| 项目 | 决策 |
+| --- | --- |
+| 第一版 Tool Surface | + `get_recent_messages`（Temporal Browsing，复用 Structured Retrieval） |
