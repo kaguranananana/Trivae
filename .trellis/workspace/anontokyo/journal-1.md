@@ -910,3 +910,25 @@ run() 标准全屏模式替代 inline（widget 布局正确但 paint 不发生�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 40: TUI interaction repair handoff: identity drift, detail, collapse layout, iTerm2 mouse diagnosis
+
+**Date**: 2026-08-27
+**Task**: TUI interaction repair handoff: identity drift, detail, collapse layout, iTerm2 mouse diagnosis
+**Branch**: `main`
+
+### Summary
+
+接手 Codex 交接的 tui-interaction-repair 收尾：修复双事件流 tool_call_id 漂移（trace 节点 tool: 前缀导致一次调用拆成两个残缺 block）、孤儿 retrieval 死行可展开化、空 record 文案、AnswerBlock 继承 height:1fr 吸收折叠空间的布局 bug；补 Ctrl+Q 退出与跨源一致性/几何往返回归测试（446 passed）；Kitty 协议禁用已在 cli 入口落地。真机诊断定案：滚动+选中同时失效是 iTerm2 弹窗 Permanently 关闭 Mouse Reporting（plist 实证），恢复步骤与终端矩阵已记入 spec 与 research 笔记。当前修复已提交 1447b76，两个任务归档，uv.lock 入库。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1447b76` | (see git log) |
+| `ff93014` | (see git log) |
+
+### Status
+
+[OK] **Completed**
