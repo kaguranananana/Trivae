@@ -45,3 +45,6 @@ data/exports/
 # Web frontend（构建产物按需 pnpm -C web build 生成；trivae web 自动探测 web/dist）
 web/node_modules/
 web/dist/
+
+# TS 增量构建缓存
+web/*.tsbuildinfo
