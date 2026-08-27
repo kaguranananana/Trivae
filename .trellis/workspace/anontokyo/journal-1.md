@@ -867,3 +867,24 @@ run() 标准全屏模式替代 inline（widget 布局正确但 paint 不发生�
 提示行与启动轻提示。教训：headless Pilot 绕过真实 picker 交互路径导致漏测，
 新增 RealKeyPathTests 禁止 hook 回调；用 PTY+ANSI 回放器取"屏幕视觉真值"
 而非字节流 grep（差分刷屏会让多帧字符交错，grep 有假阴性）。
+
+
+## Session 38: 修复 SEMANTIC_EMBEDDING_FAILED 错误透传
+
+**Date**: 2026-08-27
+**Task**: 修复 SEMANTIC_EMBEDDING_FAILED 错误透传
+**Branch**: `main`
+
+### Summary
+
+排障 trace-8631f2b5：semantic_search 报 SEMANTIC_EMBEDDING_FAILED 仅含异常类名。定位 embedding.py 三处异常转换丢 str(exc)，补齐完整原文、新增 2 个失败路径回归测试，规范沉淀到 backend/error-handling.md。377 tests + ruff + mypy 全过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9b573c9` | (see git log) |
+
+### Status
+
+[OK] **Completed**

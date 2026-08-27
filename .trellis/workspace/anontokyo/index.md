@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 37
+- **Total Sessions**: 38
 - **Last Active**: 2026-08-27
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~836 | Active |
+| `journal-1.md` | ~890 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 38 | 2026-08-27 | 修复 SEMANTIC_EMBEDDING_FAILED 错误透传 | `9b573c9` | `main` |
 | 37 | 2026-08-27 | Fix cross-turn member identity filtering | `8155ddf` | `main` |
 | 36 | 2026-08-26 | Real Provider paired budget evaluation | `4b62b03` | `codex/dynamic-tool-result-budget-regression` |
 | 35 | 2026-08-26 | 1M context budget and graceful finalization | `2db47ef`, `4e9b596` | `codex/dynamic-tool-result-budget-regression` |
