@@ -178,8 +178,10 @@ class ProviderDeltaNormalizationTests(unittest.TestCase):
             self._event("response.output_text.delta", '{"content_blocks"')
         )
 
+        # 2026-08-27 Web UI reasoning visibility contract：provider/SDK 实际下发的
+        # reasoning text 属于合法可获得内容，按 provider_reasoning 透传（不再丢弃）。
         self.assertEqual(summary, ("thinking_summary", "分析问题"))
-        self.assertIsNone(reasoning)
+        self.assertEqual(reasoning, ("reasoning_text", "继续分析"))
         self.assertEqual(answer, ("content", '{"content_blocks"'))
 
     def test_provider_without_or_empty_reasoning_is_ignored(self) -> None:

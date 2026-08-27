@@ -273,10 +273,22 @@ class SQLiteConversationStoreTests(unittest.TestCase):
         class FailingAssistantStore(SQLiteConversationStore):
             """在 assistant insert 边界注入确定性失败，验证生产 transaction 的回滚。"""
 
-            def _insert_message(self, message: ConversationMessage, artifact_json: str | None) -> None:
+            def _insert_message(
+                self,
+                message: ConversationMessage,
+                artifact_json: str | None,
+                *,
+                trace_id: str | None,
+                projection_json: str | None,
+            ) -> None:
                 if message.role == "assistant":
                     raise RuntimeError("injected assistant insert failure")
-                super()._insert_message(message, artifact_json)
+                super()._insert_message(
+                    message,
+                    artifact_json,
+                    trace_id=trace_id,
+                    projection_json=projection_json,
+                )
 
         with tempfile.TemporaryDirectory() as directory:
             database_path = Path(directory) / "conversation.sqlite3"

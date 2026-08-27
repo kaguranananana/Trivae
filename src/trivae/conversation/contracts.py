@@ -139,6 +139,11 @@ class ConversationMessage:
     content: str
     created_at: str
     answer_artifact: AnswerArtifact | None = None
+    # assistant turn 的可选 replay 引用：trace 拥有完整过程事实，message 只保存 identity。
+    trace_id: str | None = None
+    # bounded 过程摘要（router/plan/tool/retrieval/usage 的普通值 JSON），
+    # 由 interface 层消费；这里只保证它是普通值 mapping。
+    process_projection: Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         # 先校验稳定 identity，确保恢复的 message 不能漂移到另一个 conversation。
@@ -150,6 +155,10 @@ class ConversationMessage:
             raise ConversationError("role must be user or assistant")
         object.__setattr__(self, "content", _required_text("content", self.content))
         object.__setattr__(self, "created_at", _required_text("created_at", self.created_at))
+        if self.trace_id is not None:
+            object.__setattr__(self, "trace_id", _required_text("trace_id", self.trace_id))
+        if self.process_projection is not None and not isinstance(self.process_projection, Mapping):
+            raise ConversationError("process_projection must be a mapping when provided")
 
         # User turn 不得携带 Artifact；Assistant turn 必须携带已经验证过的 Artifact。
         if self.role == "user" and self.answer_artifact is not None:
@@ -238,6 +247,8 @@ class ConversationSummary:
     title: str
     message_count: int
     scope: ExecutionScope | None
+    # 最后一条 message 的 bounded 预览；空 conversation 为 None。
+    preview: str | None = None
 
     def __post_init__(self) -> None:
         # 历史标题来自首个 User query，仍限制长度避免列表被单条输入撑大。
@@ -263,11 +274,20 @@ class ConversationStore(Protocol):
     def list_summaries(self, limit: int = 20) -> tuple[ConversationSummary, ...]:
         """按更新时间读取 bounded history metadata。"""
 
+    def rename_conversation(self, conversation_id: str, title: str) -> Conversation:
+        """显式 rename conversation title，不改变消息或 scope。"""
+
+    def delete_conversation(self, conversation_id: str) -> None:
+        """删除 AI conversation 聚合本身；canonical chat 数据不属于该接口。"""
+
     def commit_turn(
         self,
         conversation_id: str,
         user_content: str,
         answer_artifact: AnswerArtifact,
+        *,
+        trace_id: str | None = None,
+        process_projection: Mapping[str, object] | None = None,
     ) -> Conversation:
         """原子追加 User + completed Assistant turn。"""
 

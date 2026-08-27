@@ -193,12 +193,19 @@ class _BrokenTraceStore:
 class _FailingConversationStore(SQLiteConversationStore):
     """在 assistant insert 边界失败，验证 commit failure Trace 仍可读取。"""
 
-    def _insert_message(self, message: ConversationMessage, artifact_json: str | None) -> None:
+    def _insert_message(
+        self,
+        message: ConversationMessage,
+        artifact_json: str | None,
+        *,
+        trace_id: str | None,
+        projection_json: str | None,
+    ) -> None:
         """让 atomic transaction 暴露真实 persistence exception。"""
 
         if message.role == "assistant":
             raise RuntimeError("injected conversation commit failure")
-        super()._insert_message(message, artifact_json)
+        super()._insert_message(message, artifact_json, trace_id=trace_id, projection_json=projection_json)
 
 
 def _event(

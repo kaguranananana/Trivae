@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
 
 from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope
@@ -54,6 +55,11 @@ CREATE INDEX IF NOT EXISTS idx_conversation_messages_order
     ON conversation_messages(conversation_id, ordinal);
 """
 
+# Web/replay 需要的 additive 列；旧数据库按 nullable migration 逐个补齐。
+MAX_TITLE_OVERRIDE_CHARS = 120
+MAX_PROCESS_PROJECTION_CHARS = 32_000
+MAX_PREVIEW_CHARS = 160
+
 
 class SQLiteConversationStore:
     """拥有 Conversation SQLite connection、schema 和 atomic turn transaction。"""
@@ -66,7 +72,7 @@ class SQLiteConversationStore:
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
         self.connection.executescript(SCHEMA_SQL)
-        self._ensure_scope_column()
+        self._ensure_additive_columns()
         self.connection.commit()
         self._closed = False
 
@@ -116,7 +122,7 @@ class SQLiteConversationStore:
             raise ConversationPersistenceError("conversation history limit must be between 1 and 100")
         rows = self.connection.execute(
             """
-            SELECT conversation_id, created_at, updated_at, scope_snapshot_json
+            SELECT conversation_id, created_at, updated_at, scope_snapshot_json, title_override
             FROM conversations
             ORDER BY updated_at DESC, conversation_id ASC
             LIMIT ?
@@ -129,7 +135,8 @@ class SQLiteConversationStore:
                 """
                 SELECT
                     COUNT(*) AS message_count,
-                    MIN(CASE WHEN role = 'user' THEN ordinal END) AS first_user_ordinal
+                    MIN(CASE WHEN role = 'user' THEN ordinal END) AS first_user_ordinal,
+                    MAX(ordinal) AS last_ordinal
                 FROM conversation_messages
                 WHERE conversation_id = ?
                 """,
@@ -137,6 +144,7 @@ class SQLiteConversationStore:
             ).fetchone()
             count = 0 if message_row is None else int(message_row["message_count"])
             first_user_ordinal = None if message_row is None else message_row["first_user_ordinal"]
+            last_ordinal = None if message_row is None else message_row["last_ordinal"]
             title = "New conversation"
             if first_user_ordinal is not None:
                 title_row = self.connection.execute(
@@ -149,6 +157,11 @@ class SQLiteConversationStore:
                 ).fetchone()
                 if title_row is not None and isinstance(title_row["content"], str):
                     title = title_row["content"].strip()[:120] or title
+            override = row["title_override"]
+            if isinstance(override, str) and override.strip():
+                # 显式 rename 拥有最高 title 优先级；空 override 回退到首条 user query。
+                title = override.strip()[:MAX_TITLE_OVERRIDE_CHARS]
+            preview = self._load_preview(row["conversation_id"], last_ordinal)
             summaries.append(
                 ConversationSummary(
                     conversation_id=row["conversation_id"],
@@ -157,17 +170,46 @@ class SQLiteConversationStore:
                     title=title,
                     message_count=count,
                     scope=self._decode_scope(row["scope_snapshot_json"]),
+                    preview=preview,
                 )
             )
         return tuple(summaries)
+
+    def _load_preview(self, conversation_id: str, last_ordinal: int | None) -> str | None:
+        """读取最后一条 message 的 bounded preview，空 conversation 无 preview。"""
+
+        if last_ordinal is None:
+            return None
+        row = self.connection.execute(
+            """
+            SELECT role, content
+            FROM conversation_messages
+            WHERE conversation_id = ? AND ordinal = ?
+            """,
+            (conversation_id, last_ordinal),
+        ).fetchone()
+        if row is None or not isinstance(row["content"], str):
+            return None
+        role = "You" if row["role"] == "user" else "Assistant"
+        text = " ".join(row["content"].split())
+        if len(text) > MAX_PREVIEW_CHARS:
+            text = text[: MAX_PREVIEW_CHARS - 1] + "…"
+        return f"{role}: {text}" if text else None
 
     def commit_turn(
         self,
         conversation_id: str,
         user_content: str,
         answer_artifact: AnswerArtifact,
+        *,
+        trace_id: str | None = None,
+        process_projection: Mapping[str, object] | None = None,
     ) -> Conversation:
-        """在同一 transaction 中追加 User 与 validated Assistant message。"""
+        """在同一 transaction 中追加 User 与 validated Assistant message。
+
+        ``trace_id`` 与 ``process_projection`` 是面向 replay 的可选引用：
+        conversation 只保存 bounded 引用与摘要，大 payload 仍归 Trace/Tool 记录所有。
+        """
 
         self._ensure_open()
         if not isinstance(answer_artifact, AnswerArtifact):
@@ -176,6 +218,8 @@ class SQLiteConversationStore:
         # 先完成 JSON 编码和领域对象检查，避免 transaction 中途才发现 Artifact 不可持久化。
         artifact_json = serialize_answer_artifact(answer_artifact)
         normalized_user_content = self._normalize_content(user_content)
+        normalized_trace_id = self._normalize_trace_id(trace_id)
+        projection_json = self._encode_process_projection(process_projection)
 
         try:
             # BEGIN IMMEDIATE 让 ordinal 分配和两个 message insert 在同一写锁内完成。
@@ -208,8 +252,13 @@ class SQLiteConversationStore:
             )
 
             # User insert 成功不等于 turn 成功；assistant 或 update 失败时外层 except 会整体 rollback。
-            self._insert_message(user_message, None)
-            self._insert_message(assistant_message, artifact_json)
+            self._insert_message(user_message, None, trace_id=None, projection_json=None)
+            self._insert_message(
+                assistant_message,
+                artifact_json,
+                trace_id=normalized_trace_id,
+                projection_json=projection_json,
+            )
             self.connection.execute(
                 "UPDATE conversations SET updated_at = ? WHERE conversation_id = ?",
                 (timestamp, conversation_id),
@@ -228,14 +277,73 @@ class SQLiteConversationStore:
 
         return self._load_conversation(conversation_id)
 
-    def _insert_message(self, message: ConversationMessage, artifact_json: str | None) -> None:
+    def rename_conversation(self, conversation_id: str, title: str) -> Conversation:
+        """显式 rename 覆盖 title；不触碰消息、scope 或 updated_at 排序事实。"""
+
+        self._ensure_open()
+        normalized_id = self._normalize_identity(conversation_id, "conversation_id")
+        if not isinstance(title, str) or not title.strip():
+            raise ConversationPersistenceError("conversation title must be a non-empty string")
+        normalized_title = title.strip()[:MAX_TITLE_OVERRIDE_CHARS]
+        try:
+            cursor = self.connection.execute(
+                "UPDATE conversations SET title_override = ? WHERE conversation_id = ?",
+                (normalized_title, normalized_id),
+            )
+            self.connection.commit()
+        except sqlite3.Error as exc:
+            self.connection.rollback()
+            raise ConversationPersistenceError("conversation rename failed") from exc
+        if cursor.rowcount == 0:
+            raise ConversationNotFoundError(f"conversation not found: {normalized_id}")
+        return self._load_conversation(normalized_id)
+
+    def delete_conversation(self, conversation_id: str) -> None:
+        """只删除 AI conversation 聚合；canonical chat 表不属于本 Store 的 ownership。"""
+
+        self._ensure_open()
+        normalized_id = self._normalize_identity(conversation_id, "conversation_id")
+        try:
+            self.connection.execute("BEGIN IMMEDIATE")
+            cursor = self.connection.execute(
+                "SELECT conversation_id FROM conversations WHERE conversation_id = ?",
+                (normalized_id,),
+            ).fetchone()
+            if cursor is None:
+                self.connection.rollback()
+                raise ConversationNotFoundError(f"conversation not found: {normalized_id}")
+            # 先删子行再删父行；FK 开启且无 cascade，顺序颠倒会违反约束。
+            self.connection.execute(
+                "DELETE FROM conversation_messages WHERE conversation_id = ?",
+                (normalized_id,),
+            )
+            self.connection.execute(
+                "DELETE FROM conversations WHERE conversation_id = ?",
+                (normalized_id,),
+            )
+            self.connection.commit()
+        except ConversationNotFoundError:
+            raise
+        except sqlite3.Error as exc:
+            self.connection.rollback()
+            raise ConversationPersistenceError("conversation deletion failed") from exc
+
+    def _insert_message(
+        self,
+        message: ConversationMessage,
+        artifact_json: str | None,
+        *,
+        trace_id: str | None,
+        projection_json: str | None,
+    ) -> None:
         """集中持久化 message，保留可测试的 transaction 中间边界。"""
 
         self.connection.execute(
             """
             INSERT INTO conversation_messages(
-                message_id, conversation_id, ordinal, role, content, created_at, answer_artifact_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                message_id, conversation_id, ordinal, role, content, created_at,
+                answer_artifact_json, trace_id, process_projection_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 message.message_id,
@@ -245,6 +353,8 @@ class SQLiteConversationStore:
                 message.content,
                 message.created_at,
                 artifact_json,
+                trace_id,
+                projection_json,
             ),
         )
 
@@ -277,7 +387,8 @@ class SQLiteConversationStore:
 
         message_rows = self.connection.execute(
             """
-            SELECT message_id, conversation_id, ordinal, role, content, created_at, answer_artifact_json
+            SELECT message_id, conversation_id, ordinal, role, content, created_at,
+                   answer_artifact_json, trace_id, process_projection_json
             FROM conversation_messages
             WHERE conversation_id = ?
             ORDER BY ordinal ASC
@@ -293,16 +404,26 @@ class SQLiteConversationStore:
             scope=self._decode_scope(row["scope_snapshot_json"]),
         )
 
-    def _ensure_scope_column(self) -> None:
-        """为旧版 Conversation 表执行一次 additive nullable migration。"""
+    def _ensure_additive_columns(self) -> None:
+        """为旧版 Conversation 表执行 nullable additive migration。"""
 
-        columns = {
+        conversation_columns = {
             row["name"]
             for row in self.connection.execute("PRAGMA table_info(conversations)").fetchall()
         }
-        if "scope_snapshot_json" not in columns:
+        if "scope_snapshot_json" not in conversation_columns:
+            self.connection.execute("ALTER TABLE conversations ADD COLUMN scope_snapshot_json TEXT")
+        if "title_override" not in conversation_columns:
+            self.connection.execute("ALTER TABLE conversations ADD COLUMN title_override TEXT")
+        message_columns = {
+            row["name"]
+            for row in self.connection.execute("PRAGMA table_info(conversation_messages)").fetchall()
+        }
+        if "trace_id" not in message_columns:
+            self.connection.execute("ALTER TABLE conversation_messages ADD COLUMN trace_id TEXT")
+        if "process_projection_json" not in message_columns:
             self.connection.execute(
-                "ALTER TABLE conversations ADD COLUMN scope_snapshot_json TEXT"
+                "ALTER TABLE conversation_messages ADD COLUMN process_projection_json TEXT"
             )
 
     @staticmethod
@@ -352,6 +473,8 @@ class SQLiteConversationStore:
 
         role = row["role"]
         artifact_json = row["answer_artifact_json"]
+        trace_id = row["trace_id"] if "trace_id" in row.keys() else None
+        projection_json = row["process_projection_json"] if "process_projection_json" in row.keys() else None
         if role == "user":
             if artifact_json is not None:
                 raise ConversationPersistenceError("user message unexpectedly contains an artifact")
@@ -367,6 +490,15 @@ class SQLiteConversationStore:
                 raise ConversationPersistenceError("assistant artifact could not be restored") from exc
         else:
             raise ConversationPersistenceError("conversation message has an invalid role")
+        process_projection = None
+        if projection_json is not None:
+            try:
+                decoded_projection = json.loads(projection_json)
+            except json.JSONDecodeError as exc:
+                raise ConversationPersistenceError("process projection is invalid JSON") from exc
+            if not isinstance(decoded_projection, dict):
+                raise ConversationPersistenceError("process projection must be a JSON object")
+            process_projection = decoded_projection
 
         try:
             return ConversationMessage(
@@ -377,6 +509,8 @@ class SQLiteConversationStore:
                 content=row["content"],
                 created_at=row["created_at"],
                 answer_artifact=artifact,
+                trace_id=trace_id if isinstance(trace_id, str) and trace_id else None,
+                process_projection=process_projection,
             )
         except (TypeError, ValueError) as exc:
             raise ConversationPersistenceError("conversation message violates its domain contract") from exc
@@ -388,6 +522,33 @@ class SQLiteConversationStore:
         if not isinstance(value, str) or not value.strip():
             raise ConversationPersistenceError(f"{name} must be a non-empty string")
         return value.strip()
+
+    @staticmethod
+    def _normalize_trace_id(trace_id: str | None) -> str | None:
+        """可选 trace 引用；非空时必须是纯 identity 文本。"""
+
+        if trace_id is None:
+            return None
+        normalized = SQLiteConversationStore._normalize_identity(trace_id, "trace_id")
+        return normalized
+
+    @staticmethod
+    def _encode_process_projection(process_projection: Mapping[str, object] | None) -> str | None:
+        """把 bounded 过程摘要编码为 JSON；超限显式失败，不静默截断回放数据。"""
+
+        if process_projection is None:
+            return None
+        if not isinstance(process_projection, Mapping):
+            raise ConversationPersistenceError("process projection must be a mapping")
+        try:
+            encoded = json.dumps(process_projection, ensure_ascii=False, sort_keys=True)
+        except (TypeError, ValueError) as exc:
+            raise ConversationPersistenceError(f"process projection is not JSON serializable: {exc}") from exc
+        if len(encoded) > MAX_PROCESS_PROJECTION_CHARS:
+            raise ConversationPersistenceError(
+                f"process projection exceeds {MAX_PROCESS_PROJECTION_CHARS} characters"
+            )
+        return encoded
 
     @classmethod
     def _normalize_content(cls, value: str) -> str:

@@ -12,6 +12,7 @@ from .contracts import (
     ConversationStore,
     ConversationSummary,
 )
+from .process import TurnProcessCollector
 from .serialization import deserialize_answer_artifact, serialize_answer_artifact
 from .sqlite import SQLiteConversationStore
 
@@ -27,6 +28,7 @@ __all__ = [
     "ConversationSummary",
     "ConversationStore",
     "SQLiteConversationStore",
+    "TurnProcessCollector",
     "deserialize_answer_artifact",
     "serialize_answer_artifact",
 ]

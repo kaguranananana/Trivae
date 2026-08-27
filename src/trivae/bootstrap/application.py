@@ -6,9 +6,10 @@ import inspect
 import logging
 import sqlite3
 import uuid
+from collections.abc import Collection
 from dataclasses import replace
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from trivae.bootstrap.process_warmup import warm_tqdm_multiprocessing_lock
 from trivae.bootstrap.status import ApplicationReadiness, ProviderReadiness
@@ -48,6 +49,7 @@ from trivae.conversation import (
     ConversationStore,
     ConversationSummary,
     SQLiteConversationStore,
+    TurnProcessCollector,
 )
 from trivae.data.ingestion.importer import SharedImporter
 from trivae.data.model import ChatSession, ImportRunSummary
@@ -90,7 +92,13 @@ from trivae.query.orchestrator import QueryOrchestrator
 from trivae.query.planner import Planner, SoftPlanner
 from trivae.query.router import Router, RuleRouter
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeResult
-from trivae.query.streaming import QueryStreamAdapter, QueryStreamEventHandler
+from trivae.query.streaming import (
+    DEFAULT_THINKING_VISIBILITY_POLICY,
+    QueryStreamAdapter,
+    QueryStreamEvent,
+    QueryStreamEventHandler,
+    ThinkingVisibilityPolicy,
+)
 from trivae.retrieval.lexical import LexicalRetrieval
 from trivae.retrieval.semantic.builder import SemanticIndexBuilder
 from trivae.retrieval.semantic.contracts import (
@@ -374,6 +382,18 @@ class TrivaeApplication:
         self._ensure_open()
         return self.conversation_store.list_summaries(limit)
 
+    def rename_conversation(self, conversation_id: str, title: str) -> Conversation:
+        """通过 Application facade 显式 rename 一个 AI conversation。"""
+
+        self._ensure_open()
+        return self.conversation_store.rename_conversation(conversation_id, title)
+
+    def delete_conversation(self, conversation_id: str) -> None:
+        """删除 AI conversation 聚合；canonical chat 数据不受影响。"""
+
+        self._ensure_open()
+        self.conversation_store.delete_conversation(conversation_id)
+
     def resume_conversation(self, conversation_id: str) -> Conversation:
         """恢复带有明确 scope contract 的 Conversation，拒绝猜测旧权限。"""
 
@@ -594,22 +614,44 @@ class TrivaeApplication:
         request: QueryRequest,
         *,
         on_event: QueryStreamEventHandler | None = None,
+        abort_event: object | None = None,
+        thinking_visibility_policy: Collection[str] | None = None,
     ) -> QueryResult:
-        """Query 的正式 Application 入口，standard/planned 共享同一 runtime。"""
+        """Query 的正式 Application 入口，standard/planned 共享同一 runtime。
+
+        ``abort_event`` 是可选优雅取消信号；提供 is_set()/wait() 的对象即可，
+        终态为 aborted。``thinking_visibility_policy`` 控制哪些 provider reasoning
+        delta 进入实时事件（默认保持 CLI/TUI 的 public_summary 保守行为）。
+        """
 
         self._ensure_open()
         request_id = request.request_id or f"request-{uuid.uuid4().hex}"
         trace_id = f"trace-{uuid.uuid4().hex}"
         traced_request = replace(request, request_id=request_id)
+        # 过程摘要收集与 live streaming 共用同一个 adapter 事件流；两个消费者互不影响顺序。
+        process_collector = TurnProcessCollector()
+        user_handler = on_event
+
+        def dispatch_stream_event(event: QueryStreamEvent) -> None:
+            """单一分发点：先持久化事实收集，再通知 interface handler。"""
+
+            process_collector.handle(event)
+            if user_handler is not None:
+                user_handler(event)
+
         # 一个 adapter 同时消费 normalized facts 与 Runtime delta，并独立分配 Query live sequence。
-        stream_adapter = None if on_event is None else QueryStreamAdapter(on_event, trace_id=trace_id)
+        stream_adapter = QueryStreamAdapter(
+            dispatch_stream_event,
+            trace_id=trace_id,
+            thinking_visibility_policy=self._resolve_thinking_policy(thinking_visibility_policy),
+        )
         trace = TraceCollector(
             self._trace_store,
             trace_id=trace_id,
             request_id=request_id,
             profile=request.trace_profile,
             event_observer=(
-                None if stream_adapter is None else stream_adapter.handle_normalized_event
+                stream_adapter.handle_normalized_event
             ),
         )
         trace.emit(
@@ -676,8 +718,9 @@ class TrivaeApplication:
                 effective_request,
                 trace=trace,
                 runtime_event_observer=(
-                    None if stream_adapter is None else stream_adapter.handle_runtime_event
+                    stream_adapter.handle_runtime_event
                 ),
+                abort_event=abort_event,
             )
             artifact = result.answer_artifact
             if result.is_successful:
@@ -693,7 +736,13 @@ class TrivaeApplication:
                     payload={"conversation_id": conversation.conversation_id},
                 )
                 try:
-                    self.conversation_store.commit_turn(conversation.conversation_id, request.query, artifact)
+                    self.conversation_store.commit_turn(
+                        conversation.conversation_id,
+                        request.query,
+                        artifact,
+                        trace_id=trace.trace_id,
+                        process_projection=process_collector.to_projection(),
+                    )
                 except Exception as exc:
                     trace.emit(
                         stage="conversation",
@@ -837,6 +886,21 @@ class TrivaeApplication:
                 )
             setattr(exc, "trace_id", trace.trace_id)
             raise
+
+    @staticmethod
+    def _resolve_thinking_policy(
+        thinking_visibility_policy: Collection[str] | None,
+    ) -> "ThinkingVisibilityPolicy":
+        """校验可见性策略取值；未知值显式失败，不静默丢弃。"""
+
+        if thinking_visibility_policy is None:
+            return DEFAULT_THINKING_VISIBILITY_POLICY
+        values = tuple(thinking_visibility_policy)
+        allowed = {"public_summary", "provider_reasoning"}
+        invalid = sorted(set(values) - allowed)
+        if invalid:
+            raise QueryContractError(f"unknown thinking visibility values: {invalid}")
+        return cast("ThinkingVisibilityPolicy", frozenset(values))
 
     def _conversation_for_request(self, request: QueryRequest) -> Conversation:
         """解析 conversation identity，并拒绝跨 scope 复用持久化历史。"""

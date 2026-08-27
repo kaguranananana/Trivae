@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "backend 分层规范入口：query/conversation/interfaces 层实现前必读"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "package ownership 与 interfaces 层目录约定，web 子包需遵循"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "错误码/异常边界约定，web API 错误响应需对齐"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "ruff/mypy/pytest 质量门标准"}
+{"file": ".trellis/spec/backend/product-experience-guidelines.md", "reason": "CLI/TUI 既有产品体验约定，Web 需保持同等 failure 透明度"}
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "根因优先/有界自主等工程原则"}
+{"file": ".trellis/spec/project/technical-decisions.md", "reason": "ADR 沉放格式参考"}

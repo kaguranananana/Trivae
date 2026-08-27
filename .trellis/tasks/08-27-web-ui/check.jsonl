@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "全量质量门与测试组织约定"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "校验错误处理是否显式暴露而非静默降级"}
+{"file": ".trellis/spec/backend/product-experience-guidelines.md", "reason": "校验 failure/partial/degradation 是否如实展示"}
+{"file": ".trellis/spec/project/interview-defense.md", "reason": "interview-defense 更新格式"}
