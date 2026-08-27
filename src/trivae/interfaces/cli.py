@@ -344,6 +344,19 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("data/trivae.sqlite3"),
         help="SQLite database path",
     )
+    web_parser = subparsers.add_parser(
+        "web",
+        help="Start the local ChatLab-style Web UI (primary interaction surface)",
+    )
+    web_parser.add_argument(
+        "--database",
+        type=Path,
+        default=Path("data/trivae.sqlite3"),
+        help="SQLite Canonical Store path",
+    )
+    web_parser.add_argument("--host", default="127.0.0.1", help="Bind host; non-localhost disables local OS integrations")
+    web_parser.add_argument("--port", type=int, default=8710, help="Bind port")
+    web_parser.add_argument("--no-open", action="store_true", help="Do not auto-open the browser")
     return parser
 
 
@@ -1509,6 +1522,37 @@ def _run_chat_command(args: argparse.Namespace) -> int:
         return 1
 
 
+def _run_web_command(args: argparse.Namespace) -> int:
+    """启动 Local Web UI；执行链路仍然完全复用 Application。"""
+
+    # 延迟导入保持其他 CLI 子命令不加载 FastAPI。
+    from trivae.interfaces.web.server import WebServerSettings, run_web_server
+
+    try:
+        return run_web_server(
+            WebServerSettings(
+                database_path=args.database,
+                host=args.host,
+                port=args.port,
+                open_browser=not args.no_open,
+            )
+        )
+    except KeyboardInterrupt:
+        print("Web server stopped.")
+        return 0
+    except (
+        DotenvError,
+        CapabilityContractError,
+        ConversationError,
+        QueryContractError,
+        RetrievalError,
+        SettingsError,
+        TraceStoreError,
+    ) as exc:
+        print(f"Error: {exc}")
+        return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """执行 CLI；已分类 ingestion error 转成非零状态，未知异常继续暴露。"""
 
@@ -1516,6 +1560,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "chat":
         return _run_chat_command(args)
+    if args.command == "web":
+        return _run_web_command(args)
     if args.command == "eval":
         return _run_evaluation_command(args)
     if args.command == "semantic":

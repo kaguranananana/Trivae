@@ -49,3 +49,8 @@ warn_unused_ignores = true
 # tqdm 是 [semantic] extra 的传递依赖（无官方类型存根）；process_warmup 仅调用其公开类方法。
 module = "tqdm.*"
 ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]

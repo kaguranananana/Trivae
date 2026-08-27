@@ -2206,6 +2206,11 @@ semantic = [
     { name = "sentence-transformers" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "httpx" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.141.1" },
@@ -2219,6 +2224,9 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.52.4" },
 ]
 provides-extras = ["semantic", "dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "httpx", specifier = ">=0.28.1" }]
 
 [[package]]
 name = "truststore"
