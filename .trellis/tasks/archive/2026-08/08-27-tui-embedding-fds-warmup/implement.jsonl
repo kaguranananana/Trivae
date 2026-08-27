@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "SEMANTIC_EMBEDDING_FAILED 错误透传规范与既有教训"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "新增 bootstrap 预热代码需遵循的分层与目录约束"}
+{"file": ".trellis/tasks/08-27-tui-embedding-fds-warmup/research/root-cause-tui-fds-to-keep.md", "reason": "完整根因链、实测对照数据与方案依据"}
