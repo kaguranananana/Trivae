@@ -1004,3 +1004,24 @@ smoke 必须断言时序/分布而不只是事件类型。
 ### Status
 
 [OK] **Completed**
+
+
+## Session 41: Fix temporal overview coverage
+
+**Date**: 2026-08-28
+**Task**: Fix temporal overview coverage
+**Branch**: `main`
+
+### Summary
+
+修复 get_recent_messages broad temporal browsing：独立 1000/5000 容量、keyset continuation、page coverage、model projection 省略事实、Host UTC 时间范围和 Answer Artifact 持久化；真实 2699 条窗口完成 1000+1000+699 无重叠/无遗漏 smoke，全量测试与质量门禁通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `98180a3` | (see git log) |
+
+### Status
+
+[OK] **Completed**

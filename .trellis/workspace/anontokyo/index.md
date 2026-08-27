@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 40
-- **Last Active**: 2026-08-27
+- **Total Sessions**: 41
+- **Last Active**: 2026-08-28
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~934 | Active |
+| `journal-1.md` | ~1027 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 41 | 2026-08-28 | Fix temporal overview coverage | `98180a3` | `main` |
 | 40 | 2026-08-27 | TUI interaction repair handoff: identity drift, detail, collapse layout, iTerm2 mouse diagnosis | `1447b76`, `ff93014` | `main` |
 | 39 | 2026-08-27 | 修复 Textual TUI 下 SEMANTIC_EMBEDDING_FAILED（bad fds_to_keep） | `89154bd`, `220b07b` | `main` |
 | 38 | 2026-08-27 | 修复 SEMANTIC_EMBEDDING_FAILED 错误透传 | `9b573c9` | `main` |
