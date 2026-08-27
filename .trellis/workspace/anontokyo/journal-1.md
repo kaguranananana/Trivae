@@ -932,3 +932,49 @@ run() 标准全屏模式替代 inline（widget 布局正确但 paint 不发生�
 ### Status
 
 [OK] **Completed**
+
+## Session 41: ChatLab-style Local Web UI — backend streaming/abort/reasoning 扩展 + Vue 前端 + 真实 smoke/E2E
+
+**Date**: 2026-08-27
+**Task**: 08-27-web-ui（ChatLab-style Local Web UI）
+**Branch**: `codex/web-ui`
+
+### Summary
+
+审计 Trivae 主链路与 ChatLab（aiChat.ts/chatMessageProcessSegments/ChatMessage.vue/useChatScroll 等）后，
+在 `codex/web-ui` 分支完成 primary interaction surface 第一阶段：(1) 契约 additive 扩展——
+RuntimeEvent/QueryStreamEvent 携带 thinking_visibility（public_summary|provider_reasoning）、
+QueryStreamAdapter visibility policy（CLI/TUI 默认不变）、project_tool_result_structure（transport≤200）、
+abort_event 从 application.query 贯穿到 runtime.stream；(2) Conversation Store 扩展 rename/delete/preview/
+trace_id/process_projection + TurnProcessCollector；(3) interfaces/web FastAPI 后端（NDJSON streaming、
+Stop+断连双通道优雅取消、scope 预检 409、trace reveal 三层防御）；(4) Vue3+Vite+Pinia+Tailwind/Nuxt UI
+前端：aiChat buffer 模式（request_id→owner buffer 不串线）、process segments 双模式、Tool 结构化分页
+（20/100 displayed）、follow-tail、IME、Sources/Trace/Reveal。真实 DeepSeek smoke：STANDARD+PLAN 双路由
+（reason/conf 0.95）、5 步 plan、3 thinking 段、5 tool calls、partial/truncated retrieval stats、145 answer
+deltas、16 sources；Stop→query.aborted；Finder 真机 reveal。Playwright E2E 22/22 + Stop 3 项。
+质量门：ruff/mypy/pytest 472 全绿（TUI/CLI 回归含）、web lint/tsc/vitest/build 全绿。
+
+### 关键 Failure Case（均已修复+回归）
+
+1. DeepSeek claims schema 输出走 json_finalization_repaired 路径，delta parser 只认 content_blocks →
+   answer.delta=0；parser 增加 claims[*].text 同源提取（AnswerDeltaClaimsSchemaTests）。
+2. streaming 时过程组被错误折叠（ChatLab 是活动段实时展开）→ isOpen=isActive||hasError。
+3. tool.completed 双源覆盖 → store additive merge。
+4. streams 用普通 Map 导致 Stop 后 Send 按钮卡死 → reactive Map。
+5. web/node_modules 误入 git → git rm --cached + .gitignore（保持仓库卫生）。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `395af4a` | feat(web): add ui-neutral reasoning visibility, graceful abort and structured tool result projection |
+| `60f1dd9` | feat(web): extend conversation store with rename, delete, preview and turn process projection |
+| `1405673` | feat(web): add local web server with NDJSON streaming, conversation API and trace reveal |
+| `fbf0b32` | feat(web): add ChatLab-style Vue web UI with agent process rendering |
+| `fb9bcdc` | fix(web): stream claims-schema answer deltas and repair live process rendering |
+| `18549ee` | docs(web): record primary web interface ADR, interview defense and spec updates |
+| `(final)` | chore: remove accidentally committed web/node_modules and ignore web build outputs |
+
+### Status
+
+[OK] **Completed**
