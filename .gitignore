@@ -41,3 +41,7 @@ data/*.sqlite3
 data/evaluation/
 # TUI /export 产出包含会话与聊天内容，仅本地保存。
 data/exports/
+
+# Web frontend（构建产物按需 pnpm -C web build 生成；trivae web 自动探测 web/dist）
+web/node_modules/
+web/dist/
