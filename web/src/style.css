@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  @apply antialiased bg-default text-default;
+}
+
+/* markdown 渲染基础样式 */
+.md-body {
+  @apply text-sm leading-relaxed break-words;
+}
+.md-body p {
+  @apply my-2;
+}
+.md-body pre {
+  @apply my-2 rounded-md bg-elevated p-3 overflow-x-auto text-xs;
+}
+.md-body code {
+  @apply rounded bg-elevated px-1 py-0.5 font-mono text-xs;
+}
+.md-body pre code {
+  @apply bg-transparent p-0;
+}
+.md-body ul {
+  @apply my-2 list-disc pl-5;
+}
+.md-body ol {
+  @apply my-2 list-decimal pl-5;
+}
+.md-body a {
+  @apply text-primary underline underline-offset-2;
+}
+.md-body table {
+  @apply my-2 border-collapse text-xs;
+}
+.md-body th,
+.md-body td {
+  @apply border border-default px-2 py-1 text-left;
+}
+.md-body blockquote {
+  @apply my-2 border-l-2 border-default pl-3 text-dimmed;
+}
