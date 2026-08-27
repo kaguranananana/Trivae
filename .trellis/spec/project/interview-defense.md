@@ -233,7 +233,7 @@ Runtime/Router/Planner/Tool/Finalizer produce or validate query data but do not 
 - Failure evidence：测试覆盖空 reasoning、malformed stream、Tool failure recovery、Provider/Query failure、0 result、Trace Store failure、normal Trace truncation、Ctrl+C line recovery 和单次 Conversation commit。第一次真实 smoke 因进程未导出 API key 按 Settings contract 失败并留下 Trace；导出既有 `.env` 后成功，没有用 mock 替代。
 - Measured fact：真实 DeepSeek verbose run 产生 8 次 `search_messages`、8 次 Retrieval completion、1 次 finalization/Conversation commit/query completion；Trace complete，0 reasoning/content-delta persistence，Conversation 只有一个 560 字符 Assistant message并与最终 snapshot 相同。
 - Ownership：Runtime adapter 拥有 SDK → Runtime normalization；QueryStreamAdapter 拥有接口无关 live projection；TraceCollector 拥有持久化 data minimization；CLI Renderer 只拥有 terminal presentation；Conversation/Finalizer 语义未改变。
-- Evolution：只有真实 workload 证明普通终端 reasoning 过长、需要跨进程消费者或 HTTP/UI 产品需求时，才评估折叠、SSE/backpressure 或异步 event transport；当前不引入 TUI、queue 或第二套日志链。
+- Evolution（2026-08-23 当时判断；已被 08-27 TUI 任务实际推翻）：只有真实 workload 证明普通终端 reasoning 过长、需要跨进程消费者或 HTTP/UI 产品需求时，才评估折叠、SSE/backpressure 或异步 event transport；当时不引入 TUI、queue 或第二套日志链。后续真实 workload 确实证明了折叠 TUI 的价值，见「Textual TUI projection 事实索引」。
 
 ## Stage A Agent-facing retrieval surface 事实索引
 
@@ -630,9 +630,9 @@ context source hit 为 2,215.8ms。初版 projection 的 O(n²) 尾部删除已�
 - Tool identity & aggregation：start/complete 用 `tool_call_id` 关联同一 block，乱序完成不影响
   正确行；`retrieval.completed` 在存在 running tool 时 deterministic 合并进该行 metrics，
   消除 ChatLab 式重复 Retrieval 卡片——真实 smoke #2 验证事件链 4 个 retrieval 相关事件只呈现 1 行。
-- CoT boundary 守住：thinking block 只投影真实事件的时长/状态元数据，reasoning 文本一律不入
-  UI state（连 engine 都不存）；与 spec「provider 字段名不能证明可见性」一致，fake public_summary
-  测试断言文本不泄漏。
+- CoT boundary（第一版实现，已被下方 Owner decision reversal 更新）：第一版 thinking block 只投影
+  真实事件的时长/状态元数据；现行为为 public_summary 正文进入 UI state 并渲染，
+  无标记的私密 reasoning 依旧连 engine 都不存。
 - Streaming state management：answer delta 累积进同一 AnswerBlock，Markdown 以最新全文重建渲染；
   authoritative `answer.completed` 整体替换 preview 防 finalizer 漂移；compose 未完成时更新降级为
   登记文本（真实缺陷修复：首个 delta 同时产出 created+appended 两个 change 才能保证挂载顺序）。

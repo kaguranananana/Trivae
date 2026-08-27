@@ -145,7 +145,11 @@ projection 后按实际 estimate 结算；dynamic context 未知时 per-call 和
 
 ### Interactive streaming projection
 
-- Provider reasoning 只允许在 SDK / Runtime adapter 边界从公开 stream event 归一化为 `thinking_delta` / `thinking_completed`；CLI 不识别 `reasoning_content` 或 provider name。没有或为空时不产生 Thinking 输出，禁止按执行状态伪造推理文字。
+- Provider reasoning 只允许在 SDK / Runtime adapter 边界从公开 stream event 归一化为 `thinking_delta` / `thinking_completed`；接口层不识别 `reasoning_content` 或 provider name。没有或为空时不产生 Thinking 输出，禁止按执行状态伪造推理文字。
+- Reasoning 可见性由 `QueryStreamAdapter` 单点裁决（2026-08-27 起）：只有 adapter 显式附加
+  `thinking_visibility="public_summary"` 的 delta 才可视，默认交互界面（Textual TUI）按此标记
+  渲染思考正文；未标记的 reasoning 是私密 CoT，连 UI state 都不进入。`CliEventRenderer`
+  （`--plain`/非 TTY）继续静默，避免平铺推理污染 CI 与日志重定向。
 - `content_delta` 承载的是 Answer Artifact JSON。实时投影只能增量提取 `content_blocks[*].text`；Finalizer 仍以完整 JSON 为唯一验证边界，Conversation 只提交一次完整 Assistant message。
 - Runtime event 与 Router / Planner / Tool / Retrieval 的 normalized event 由同一个进程内 `QueryStreamAdapter` 投影为 `QueryStreamEvent`；Trace Store 不是实时队列，CLI 不轮询 SQLite。
 - reasoning 与 answer token delta 是 ephemeral stream facts，不能写入 Normal/Debug Trace；Trace 继续排除 hidden reasoning / Chain-of-Thought。Tool、Retrieval、Route 与 Plan 只显示真实结构化 event facts。
@@ -154,8 +158,9 @@ projection 后按实际 estimate 结算；dynamic context 未知时 per-call 和
 ### CLI Product Experience boundary（2026-08-25）
 
 - `CliEventRenderer` 继续消费 `QueryStreamEvent`，不创建第二个 Runtime、Query 或 Trace reader。
-- Runtime reasoning event 仍可作为 live ordering fact 传递，但终端 normal/verbose 不渲染 hidden
-  CoT；终端也不显示 raw event sequence、operation identity、JSON artifact 或 provider-specific fields。
+- Runtime reasoning event 仍可作为 live ordering fact 传递；默认 TUI 只渲染 adapter 标记为
+  `public_summary` 的正文，hidden CoT 对任何界面都不渲染。终端也不显示 raw event sequence、
+  operation identity、JSON artifact 或 provider-specific fields。
 - Source review、scope/readiness、feedback 和 history/resume 均由 `TrivaeApplication` facade
   拥有；CLI 不直接读取 SQLite、不从 prompt 推断 trusted scope。
 
@@ -384,7 +389,8 @@ finalized Artifact。
   `MAX_SOURCE_URL_CHARS` 限制；模型正文中自行抄写的 URL 不是 trusted Source URL。
 - QueryStreamAdapter 暂存当前 model turn 的 content delta；如果该 turn 发起 Tool，则在
   `turn_completed` 丢弃中间说明；只有无 Tool 的最终 turn 才投影为 `answer.delta`。
-- provider 字段名不能证明可见性：`reasoning_text` 与 `reasoning_summary_text` 不进入 CLI；
+- provider 字段名不能证明可见性：`reasoning_text` 与 `reasoning_summary_text` 不因字段名进入
+  UI，只有 adapter 归一化时显式附加的 `public_summary` 标记才可视；
   OpenCode Go 的 DeepSeek V4 Flash 使用 `reasoning.effort="low"`，为必须闭合的 JSON 留预算。
 - 相对时间只提交 `{kind: "relative", amount, unit, anchor: "archive_latest"}`；Capability 在
   trusted scope 内用 read-only `MAX(timestamp)` 求 archive latest，Host 计算半开 absolute range
@@ -412,7 +418,7 @@ finalized Artifact。
 | relative anchor 不在 trusted archive | Capability contract error，保留失败 owner，不使用 machine now |
 | message source 正文超长 | excerpt bounded，但 URL 从完整 canonical content 提取 |
 | Tool turn 产生 provider prose | 不发 `answer.delta`；保留真实 Tool/Retrieval normalized facts |
-| provider reasoning summary 到达 | 只消费生命周期顺序；终端不渲染 reasoning 文本 |
+| provider reasoning summary 到达 | 无 `public_summary` 标记：只消费生命周期顺序，不进入 UI；有标记：默认 TUI 渲染思考正文（plain renderer 仍静默） |
 | stream observer 在 delta 中抛错 | 显式 `aclose()` 底层 async generator，原错误继续传播 |
 
 ### 5. Good / Base / Bad Cases
@@ -422,7 +428,7 @@ finalized Artifact。
 - Base：消息 excerpt 只保留 1,000 字符，但 URL 位于后半段；Sources 仍显示该 URL，旧 Artifact
   缺少 `urls` 字段时按空 tuple 读取。
 - Bad：复制一整行 SQL row 的 value，因字段顺序/类型漂移失败后自动替换为 Tool Result 的值。
-- Bad：把 `reasoning_summary_text` 当成用户可见 CoT，或把 Tool turn 的“我去搜索”当成正式 Answer。
+- Bad：把无 `public_summary` 标记的 hidden reasoning 当成用户可见 CoT，或把 Tool turn 的“我去搜索”当成正式 Answer。
 - Bad：Tool-backed JSON 返回没有 source handle 的 Evidence，或让模型复制 full provenance/大型
   row；也不能用 `MIN(timestamp)` 或 machine now 把相对窗口扩成不可信时间段。
 
@@ -430,8 +436,9 @@ finalized Artifact。
 
 - Evidence：identity-only hydration、错误 identity/locator/value、source error path、
   `MISSING_EVIDENCE`、trusted URL before excerpt truncation、URL dedupe、旧/new codec round-trip。
-- Streaming/Runtime：reasoning text filtering、summary 也不渲染、Tool-turn provisional suppression、
-  provider low-effort settings、observer failure 后 async generator close。
+- Streaming/Runtime：reasoning visibility gate（无标记 delta 不进 UI state）、public_summary 由
+  默认 TUI 渲染、Tool-turn provisional suppression、provider low-effort settings、observer failure
+  后 async generator close。
 - CLI/Application：Evidence claim binding、finding/criterion/sufficiency/limitations、trusted URL、
   structured value/locator、失败不 commit 与 Trace terminal identity。
 - Quality：全量 `pytest -q`、`ruff check src tests`、`mypy src`、`compileall`、CLI help、Trellis

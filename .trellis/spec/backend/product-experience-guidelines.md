@@ -47,7 +47,9 @@
 
 normal/verbose 都消费同一个 `QueryStreamEvent` 来源。normal 显示真实阶段、回答和失败的
 用户投影；不显示 raw event/sequence/operation identity、JSON、provider-specific 字段或
-hidden CoT。Runtime reasoning event 可以被消费以维持顺序，但不进入终端。verbose 只增加
+hidden CoT。Runtime reasoning event 可以被消费以维持顺序；默认交互界面（Textual TUI）
+只渲染 adapter 标记为 `public_summary` 的思考正文，`CliEventRenderer`（`--plain`/非 TTY）
+不渲染任何 reasoning 文本。verbose 只增加
 bounded/redacted metadata，不改变执行路径。
 
 ## 4. Validation & Error Matrix
@@ -77,7 +79,7 @@ bounded/redacted metadata，不改变执行路径。
 
 - `tests/test_product_experience.py`：source deterministic dedup、scope round-trip、legacy
   NULL、history title/count、feedback upsert、readiness empty/missing。
-- `tests/test_cli_renderer.py`：CoT 不渲染、friendly failure、0-result、tool recovery、
+- `tests/test_cli_renderer.py`：plain 模式 CoT 不渲染、friendly failure、0-result、tool recovery、
   verbose 不含 stream/trace identity 和 JSON。
 - `tests/test_cli.py`：既有 Query/Application facade、`/new`/scope 语义和最终答案不回退到
   runtime 原文。
@@ -138,7 +140,8 @@ def _print_source_block(
   `Claim → evidence_id`、`Finding`、`Criterion`、`Sufficiency`、source index 和 limitations。
 - Message Source 展示 trusted session/author/timestamp/excerpt，并逐条展示 canonical snapshot URL；
   Structured Source 展示 locator/value/source_id，URL 只从 trusted value 提取。
-- normal/verbose 都不渲染任何 provider reasoning 文本；真实过程只来自 Route、Plan、Tool、
+- plain `CliEventRenderer` 不渲染任何 provider reasoning 文本（默认 TUI 按 `public_summary`
+  标记渲染，见 §9）；真实过程只来自 Route、Plan、Tool、
   Retrieval、Evidence normalized facts。Tool turn 的模型说明不能标为 Answer。
 - `AnswerArtifact` 未 validated 或 Query failed 时不展示 Evidence/Sources，不产生 commit 或 feedback
   target；错误显示 owner error 与 Trace/log identity。
@@ -150,7 +153,7 @@ def _print_source_block(
 | validated Artifact 无 Evidence | 不展示空 Evidence block；Tool-backed answer 在 Finalizer 层已失败 |
 | Message snapshot 有 URL | 输出 bounded `URL:` 行，不访问 DB |
 | Structured source | 输出 `Value` / `Source ID` / URL，不能伪装成 message |
-| provider reasoning delta | 消费顺序但终端无输出 |
+| provider reasoning delta | plain renderer 消费顺序但无输出；默认 TUI 按 `public_summary` 标记渲染（§9） |
 | Tool turn provisional text | 不显示为 Answer；只显示真实 Action/Retrieval 行 |
 | query/finalization failure | 关闭文本段并输出短错误；不输出正式成功标志 |
 
@@ -159,13 +162,14 @@ def _print_source_block(
 - Good：`Claim claim-1 → e1` 下显示 criterion/sufficiency，Sources 1 显示实际 GitHub URL，用户可
   用 `/source 1` 继续复核。
 - Base：partial retrieval 在 Evidence limitation 与 Note 中明确标记，不把部分列表说成穷尽结果。
-- Bad：CLI 从回答正文正则 URL、从 SQLite 二次查询补 source，或显示 `Thinking:` 加 provider reasoning。
+- Bad：CLI 从回答正文正则 URL、从 SQLite 二次查询补 source，或把无 `public_summary` 标记的 reasoning 当成可见思考输出（`Thinking:` 式平铺）。
 
 ### 6. Tests Required
 
 - CLI：成功 Artifact 的 claim/evidence/source/URL/limitation 输出、friendly finalization errors、
   no raw runtime answer fallback。
-- Renderer：reasoning summary 不渲染、Tool recovery、0-result、verbose 不含 raw JSON/trace identity。
+- Renderer：plain 模式 reasoning summary 不渲染、Tool recovery、0-result、verbose 不含 raw JSON/trace identity；
+  TUI 投影层只消费 `public_summary` 标记的 delta（见 §9 与 `tests/test_tui_projection.py`）。
 - Streaming：Tool-turn provisional text 不投影，最终无 Tool turn 才发 answer delta；失败不发
   answer.completed。
 

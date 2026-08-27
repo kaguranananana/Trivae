@@ -118,9 +118,12 @@ class CliEventRenderer:
         self._stream.flush()
 
     def _render_thinking_delta(self, event: QueryStreamEvent) -> None:
-        """消费 reasoning stream 以保持顺序，但不把 provider 推理文本投影到终端。"""
+        """Plain renderer 不渲染 reasoning 文本；这是界面定位差异而非遗漏。
 
-        # provider 字段名不能证明内容是安全摘要；真实 smoke 已证明 summary 也可能是长内部推理。
+        默认 TUI 按 adapter 的 `public_summary` 标记展示思考正文（见 TUI projection
+        contract §9）；plain 面向 CI/pipe/日志重定向，平铺推理会污染输出。
+        provider 字段名依旧不可信，可见性只由 QueryStreamAdapter 的标记裁决。
+        """
         return
 
     def _render_answer_delta(self, event: QueryStreamEvent) -> None:
