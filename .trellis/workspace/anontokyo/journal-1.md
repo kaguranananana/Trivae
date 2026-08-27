@@ -978,3 +978,29 @@ deltas、16 sources；Stop→query.aborted；Finder 真机 reveal。Playwright E
 ### Status
 
 [OK] **Completed**
+
+## Session 42: Answer streaming 修复——provisional answer events
+
+**Date**: 2026-08-28
+**Task**: 08-28-answer-streaming（branch codex/web-ui）
+
+### Summary
+
+用户报告 Web 端最终回答整块蹦出。根因：QueryStreamAdapter 为防止 Tool-turn 叙述误标为答案，
+把 content delta 攒到 turn_completed 一次性 flush（thinking 即时流式、answer 整块到达）。
+修复对齐 ChatLab 语义：新增 provisional_answer_streaming flag（默认 False，CLI/TUI 行为不变），
+Web 开启后 content delta 立即发 answer.delta(provisional=True)，Tool 边界显式发 answer.superseded
+让前端把叙述降级进过程组；answer.completed 权威文本覆盖流式累积。真实 DeepSeek 验证：
+answer delta span 从 0s → 41.1s（139 deltas），E2E 22/22，pytest 475 全绿。
+教训：python str.replace 静默失败导致 web 层漏传 flag，smoke 时序断言（span）抓出——
+smoke 必须断言时序/分布而不只是事件类型。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ac74b7b` | feat(web): stream answer token-by-token via provisional answer events |
+
+### Status
+
+[OK] **Completed**
