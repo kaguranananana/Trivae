@@ -9,6 +9,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable
 
 from textual.app import App, ComposeResult
@@ -632,6 +634,15 @@ class TrivaeChatApp(App[None]):
             # 先让调用方渲染 Bye.，再由输入回路延迟退出；同步 exit 会让 screen 在挂载前 detach。
             self._exit_requested = True
             return ["Bye."]
+        if command == "/export":
+            payload = self._engine.export_transcript()
+            if not payload.strip():
+                return ["当前会话还没有可导出的轮次。"]
+            export_dir = Path("data/exports")
+            export_dir.mkdir(parents=True, exist_ok=True)
+            path = export_dir / f"trivae-tui-{datetime.now():%Y%m%d-%H%M%S}.txt"
+            path.write_text(payload, encoding="utf-8")
+            return [f"已导出会话文本: {path.resolve()}"]
         if command == "/help":
             help_lines: list[str] = []
             _print_chat_commands(output_fn=help_lines.append)

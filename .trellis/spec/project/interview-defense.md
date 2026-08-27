@@ -645,3 +645,12 @@ context source hit 为 2,215.8ms。初版 projection 的 O(n²) 尾部删除已�
 - Measured evidence：370 tests / ruff / mypy 全绿；4 类真实 DeepSeek run
   （5.76s 简单、63.97s 单工具、46s 多工具含失败、76s 15 步）全程有 UI 反馈且无静默期；
   SVG 截图取证三层结构 You > / 折叠组 / 回答。
+
+- Owner decision reversal（2026-08-27）：早期「终端一概不渲染 reasoning」被产品 owner 显式推翻为
+  「public_summary 标记即展示」。边界从"标记不可信所以全禁"改为"按 boundary 标记执行"：
+  QueryStreamAdapter 是唯一判定点（无标记的 delta 直接丢弃），TUI 只消费已裁决事实。
+  面试角度：可见性策略变更只动 projection 两层中的一处 gate，Runtime/Trace 的 data minimization
+  （reasoning 不落盘）保持不变——分层使安全策略可以独立演进。
+- Copy/export UX：全屏 TUI 接管鼠标导致原生选中失效（终端 Shift+拖拽可绕过）；
+  追加 `/export` 命令把会话 block 快照导出纯文本。选 alternate screen 放弃 inline scrollback
+  也是同类取舍：渲染可靠性 > 退出后内容残留。

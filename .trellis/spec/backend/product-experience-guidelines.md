@@ -268,8 +268,10 @@ Sources: canonical message URLs
   互不影响；缺 start 的完成事实按独立块诚实出现，不伪造关联。
 - Retrieval 聚合：存在 running tool 时，`retrieval.completed` 的 counts/partial/truncated 合并进该
   tool block 的 metrics（deterministic UI 合并，不改 Retrieval 领域语义）；无 running tool 才独立成行。
-- Thinking：仓库约定 reasoning 文本不进入终端；thinking block 只投影真实事件的时长/状态，
-  单行不可展开；禁止根据间隔/工具名编造思考内容。
+- Thinking（2026-08-27 产品决策反转）：provider/runtime 明确标记 `thinking_visibility="public_summary"`
+  的 reasoning 摘要进入 ThinkingBlock 正文，流式时自动展开、完成后折叠保留可展开查看；
+  展开正文有界（尾部 1800 字符 + 省略标注）。无标记的 reasoning 是私密 CoT，
+  连 UI state 都不进入；仍禁止按间隔/工具名伪造思考内容。
 - 两阶段聚合：运行中 blocks 按事件顺序逐块出现；query terminal 后 process kinds
   （route/thinking/plan/tool/retrieval）冻结为单行 `执行过程 · N 步 · 总时长` 折叠组；
   answer 与 error 留在外层。失败/中断终态的组默认展开。

@@ -156,6 +156,49 @@ class TuiProjectionEngine:
 
         return tuple(self._finished)
 
+    def export_transcript(self) -> str:
+        """把会话中所有轮次的 UI 事实投影为纯文本，供复制/存档。
+
+        只使用已存在的 block 快照，不重新查询任何数据。
+        """
+
+        rounds = [*self._finished.values()]
+        if self._active is not None:
+            rounds.append(self._active)
+        symbols = {"completed": "✓", "failed": "✗", "aborted": "✗", "running": "•"}
+        lines: list[str] = []
+        for round_state in sorted(rounds, key=lambda item: item.round_id):
+            lines.append(f"You > {round_state.query_text}")
+            process_blocks = (
+                round_state.group.blocks
+                if round_state.group is not None
+                else [block for block in round_state.blocks if block.kind in _PROCESS_BLOCK_KINDS]
+            )
+            outer_blocks = [block for block in round_state.blocks if block.kind not in _PROCESS_BLOCK_KINDS]
+            for block in (*process_blocks, *outer_blocks):
+                step_prefix = f"{block.step_number}. " if block.step_number is not None and block.kind != "route" else ""
+                duration = f" · {format_seconds(block.duration_ms)}" if block.duration_ms is not None else ""
+                lines.append(f"{symbols[block.status]} {step_prefix}{block.title}{duration}")
+                for key, value in (block.arguments or {}).items():
+                    if value not in (None, "", (), [], {}):
+                        lines.append(f"    {key}: {_compact_value(value)}")
+                for key, value in (block.result_summary or {}).items():
+                    if value in (None, "", (), [], {}):
+                        continue
+                    lines.append(f"    {key}: {_compact_value(value)}")
+                for key in ("partial", "truncated"):
+                    if bool(block.metrics.get(key)):
+                        lines.append(f"    ⚠ {key}")
+                if block.error_code:
+                    message = f": {block.error_message}" if block.error_message else ""
+                    lines.append(f"    错误: {block.error_code}{message}")
+                text = (block.streaming_text or "").strip()
+                if text:
+                    for line in text.splitlines():
+                        lines.append(f"  {line}" if line else "")
+            lines.append("")
+        return "\n".join(lines).strip() + "\n"
+
     def begin_round(self, query_text: str) -> tuple[int, TuiChange]:
         """提交输入时开启一轮新的问答。"""
 
@@ -351,19 +394,33 @@ class TuiProjectionEngine:
         return self._emit_error_row(title="计划失败", error_code=event.error_code, error_message=event.error_message)
 
     def _apply_thinking_delta(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
-        """thinking 不渲染 reasoning 文本；只维护一个真实时长 row。"""
+        """只有 provider/runtime 明确标记 public_summary 的摘要才允许展示。
+
+        无标记的 reasoning 是私密 CoT，绝不进入 UI state。
+        """
 
         assert self._active is not None
-        existing = self._active.find_block("thinking")
-        if existing is not None:
+        if event.thinking_visibility != "public_summary":
             return ()
-        return self._emit_created(
-            block_id="thinking",
-            kind="thinking",
-            status="running",
-            title="正在思考",
-            started_monotonic=self._clock(),
+        existing = self._active.find_block("thinking")
+        if existing is None:
+            created = TuiBlock(
+                block_id="thinking",
+                kind="thinking",
+                status="running",
+                title="正在思考",
+                expanded=True,
+                started_monotonic=self._clock(),
+                streaming_text=event.content,
+            )
+            self._active.blocks.append(created)
+            return (TuiChange(action="block_created", round_id=self._active.round_id, block=created),)
+        merged = replace(
+            existing,
+            streaming_text=(existing.streaming_text or "") + (event.content or ""),
         )
+        self._replace_block(merged)
+        return (TuiChange(action="block_updated", round_id=self._active.round_id, block=merged),)
 
     def _apply_thinking_completed(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
         assert self._active is not None
@@ -375,6 +432,8 @@ class TuiProjectionEngine:
             status="completed",
             title="已思考",
             duration_ms=self._elapsed_ms(existing.started_monotonic),
+            # 完成后折叠收起正文；用户手动展开过的保持打开。
+            expanded=existing.manually_expanded,
         )
         self._replace_block(updated)
         return (TuiChange(action="block_updated", round_id=self._active.round_id, block=updated),)
@@ -614,3 +673,15 @@ def _frozen_expanded(block: TuiBlock) -> bool:
     if block.manually_expanded:
         return block.expanded
     return block.status == "failed"
+
+
+def format_seconds(duration_ms: float | None) -> str:
+    if duration_ms is None:
+        return ""
+    seconds = duration_ms / 1000.0
+    return f"{seconds:.1f}s" if seconds < 10 else f"{round(seconds)}s"
+
+
+def _compact_value(value: object) -> str:
+    rendered = str(value).replace("\n", "\\n")
+    return rendered if len(rendered) <= 200 else f"{rendered[:199]}…"

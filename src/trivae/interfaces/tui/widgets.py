@@ -23,6 +23,7 @@ from trivae.interfaces.tui.models import ProcessGroupSummary, TuiBlock, metric_c
 # collapsed 行与展开详情的边界；防止长正文撑坏布局。
 _MAX_DETAIL_ITEMS = 20
 _MAX_DETAIL_FIELD_CHARS = 800
+_MAX_THINKING_CHARS = 1800
 
 _SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
@@ -34,6 +35,7 @@ __all__ = [
     "format_duration_ms",
     "render_plan_detail",
     "render_summary_line",
+    "render_thinking_detail",
     "render_tool_detail",
 ]
 
@@ -140,6 +142,20 @@ def render_plan_detail(block: TuiBlock) -> Text | None:
     if not lines:
         return None
     return Text("\n".join(lines))
+
+
+def render_thinking_detail(block: TuiBlock) -> Text | None:
+    """public_summary 思考正文的有界展示；超长保留尾部并标注省略。"""
+
+    text = (block.streaming_text or "").strip()
+    if not text:
+        return None
+    if len(text) > _MAX_THINKING_CHARS:
+        output = Text("…（前面部分已省略）\n", style="dim")
+        output.append(text[-_MAX_THINKING_CHARS:])
+    else:
+        output = Text(text)
+    return Text("\n".join(f"  {line}" for line in output.plain.splitlines()))
 
 
 def _error_detail_text(error_code: str | None, error_message: str | None) -> str:
@@ -261,8 +277,10 @@ class ProcessRow(Static, can_focus=True):
 
     @property
     def expandable(self) -> bool:
-        if self._block.kind in {"thinking", "route"}:
-            # 没有 public summary 内容就不制造假详情。
+        if self._block.kind == "thinking":
+            # 有 public_summary 正文才可展开；纯时长行不做假详情。
+            return bool((self._block.streaming_text or "").strip())
+        if self._block.kind == "route":
             return False
         if self._block.kind == "tool":
             return bool(
@@ -279,6 +297,8 @@ class ProcessRow(Static, can_focus=True):
             return render_tool_detail(self._block)
         if self._block.kind == "plan":
             return render_plan_detail(self._block)
+        if self._block.kind == "thinking":
+            return render_thinking_detail(self._block)
         return None
 
 

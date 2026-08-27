@@ -21,49 +21,50 @@ _COUNTER = count(start=1)
 
 
 class ProjectionThinkingTests(unittest.TestCase):
-    """thinking 事件的行维护与不渲染文本边界。"""
+    """thinking 正文仅在有 public_summary 标记时进入 UI state。"""
 
-    def test_thinking_deltas_update_a_single_row_and_completed_records_duration(self) -> None:
+    def test_public_summary_deltas_accumulate_and_complete_collapses(self) -> None:
         engine = TuiProjectionEngine(clock=lambda: 0.0)
         engine.begin_round("问题")
         changes = []
-        changes.extend(engine.apply(_event("thinking.delta", content="alpha")))
-        # reasoning 文本不允许进入 UI state。
-        self.assertIsNone(changes[0].block.streaming_text)
-        changes.extend(engine.apply(_event("thinking.delta", content="beta")))
+        changes.extend(engine.apply(_event("thinking.delta", content="alpha", thinking_visibility="public_summary")))
+        changes.extend(engine.apply(_event("thinking.delta", content="beta", thinking_visibility="public_summary")))
 
-        thinking_blocks = [
-            change.block for change in changes if change.block is not None and change.block.kind == "thinking"
-        ]
-        self.assertEqual(len(thinking_blocks), 1)
         created = [change for change in changes if change.action == "block_created"]
         self.assertEqual(len(created), 1)
+        assert created[0].block is not None
+        self.assertEqual(created[0].block.streaming_text, "alpha")
         for change in changes[1:]:
             self.assertEqual(change.action, "block_updated")
+
+        blocks = {block.block_id: block for block in engine.blocks_for_debug(1)}
+        self.assertEqual(blocks["thinking"].streaming_text, "alphabeta")
 
         clock = {"now": 1.5}
         completed_engine = TuiProjectionEngine(clock=lambda: clock["now"])
         completed_engine.begin_round("问题")
-        completed_engine.apply(_event("thinking.delta", content="x"))
+        completed_engine.apply(_event("thinking.delta", content="x", thinking_visibility="public_summary"))
         clock["now"] = 2.8
         end_changes = completed_engine.apply(_event("thinking.completed"))
         self.assertEqual(end_changes[0].action, "block_updated")
         assert end_changes[0].block is not None
         self.assertEqual(end_changes[0].block.status, "completed")
         self.assertAlmostEqual(end_changes[0].block.duration_ms or 0.0, 1300.0)
+        # 完成后默认折叠；正文保留在 block 内可展开查看。
+        self.assertFalse(end_changes[0].block.expanded)
+        self.assertIn("x", end_changes[0].block.streaming_text or "")
 
-    def test_thinking_visibility_marker_does_not_leak_reasoning_text_into_state(self) -> None:
+    def test_unmarked_reasoning_never_enters_ui_state(self) -> None:
+        """无 public_summary 标记的私密 reasoning 不产生任何 UI。"""
+
         engine = TuiProjectionEngine(clock=lambda: 0.0)
         engine.begin_round("问题")
-        changes = engine.apply(
-            _event(
-                "thinking.delta",
-                content="secret internal scratchpad",
-                thinking_visibility="public_summary",
-            )
-        )
-        assert changes[0].block is not None
-        self.assertNotIn("scratchpad", str(changes[0].block))
+        changes = engine.apply(_event("thinking.delta", content="secret internal scratchpad"))
+        self.assertEqual(changes, ())
+        blocks = engine.blocks_for_debug(1)
+        self.assertEqual(blocks, ())
+        # 无 delta 时 completed 不凭空造行。
+        self.assertEqual(engine.apply(_event("thinking.completed")), ())
 
 
 class ProjectionToolIdentityTests(unittest.TestCase):
@@ -239,7 +240,7 @@ class ProjectionFoldingTests(unittest.TestCase):
     """两阶段聚合与手动展开持久化。"""
 
     def _run_started_with_tools(self, engine: TuiProjectionEngine) -> None:
-        engine.apply(_event("thinking.delta", content="a"))
+        engine.apply(_event("thinking.delta", content="a", thinking_visibility="public_summary"))
         engine.apply(_event("thinking.completed"))
         engine.apply(_event("tool.started", tool_name="search_messages", tool_call_id="t1"))
         engine.apply(_event("tool.completed", tool_name="search_messages", tool_call_id="t1", duration_ms=800))
@@ -314,3 +315,39 @@ class ProjectionTerminalTests(unittest.TestCase):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class ExportTranscriptTests(unittest.TestCase):
+    """/export 的纯文本投影。"""
+
+    def test_transcript_contains_round_query_blocks_and_answer(self) -> None:
+        engine = TuiProjectionEngine(clock=lambda: 0.0)
+        engine.begin_round("找 GitHub 推荐")
+        engine.apply(_event("thinking.delta", content="需要确定时间范围", thinking_visibility="public_summary"))
+        engine.apply(_event("thinking.completed"))
+        engine.apply(
+            _event(
+                "tool.started",
+                tool_name="search_messages",
+                tool_call_id="c1",
+                arguments={"keywords": ["github"], "limit": 100},
+            )
+        )
+        engine.apply(_event("retrieval.completed", result_summary={"candidate_count": 128}))
+        engine.apply(_event("tool.completed", tool_name="search_messages", tool_call_id="c1", duration_ms=1700))
+        engine.apply(_event("answer.completed", content="答案正文第一行\n第二行"))
+        engine.apply(_event("query.completed"))
+        engine.drain_pending_collapse()
+
+        payload = engine.export_transcript()
+        self.assertIn("You > 找 GitHub 推荐", payload)
+        self.assertIn("✓ 已思考", payload)
+        self.assertIn("需要确定时间范围", payload)
+        self.assertIn("✓ 1. 搜索消息 · 1.7s", payload)
+        self.assertIn("keywords: ['github']", payload)
+        self.assertIn("答案正文第一行", payload)
+        self.assertIn("第二行", payload)
+
+    def test_empty_engine_exports_empty_transcript(self) -> None:
+        engine = TuiProjectionEngine(clock=lambda: 0.0)
+        self.assertFalse(engine.export_transcript().strip())
