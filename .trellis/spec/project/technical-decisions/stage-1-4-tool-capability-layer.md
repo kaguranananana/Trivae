@@ -480,6 +480,21 @@ Router 保持 LLM 路由不变；本轮依赖 tool description + prompt 保证�
 
 Failure B（`lexical_search("推荐")` 对 canonical `真心推荐 值得看一看` 0-hit）经真实库诊断定位为 unicode61 tokenizer 行为：连续 Han run 存成单 token（实测 tokens `[真心推荐] [值得看一看]`）。修复采用 rebuild/query 双侧一致的 CJK bigram 归一化派生索引（strategy id `unicode61+cjk-bigram-v1`，元数据表 `trivae_derived_meta`，read 侧显式 stale 校验）；ASCII/URL/code 的 unicode61 exact 行为不受影响。方案比较（trigram/dual index/LIKE fallback）与证据见 Problem Record `temporal-browsing-cjk-lexical-recall`。
 
+### 附带决策 v2（Stage 1.10 收口）：mixed-script 边界与 no-result 契约
+
+真实复现证明 v1 未建立 Han/non-Han tokenizer 边界：`abc推荐`/`repo推荐这个` 等粘连连串仍整体单 token，
+len==2 Han run 替换结果等于原文。归一化升级为 v2——每个 maximal Han run（含单字）以空格包裹、
+run≥2 生成重叠 bigram；strategy bump 至 `unicode61+cjk-bigram-v2`，v1 索引被 read 侧显式 stale 拒绝。
+同轮把两个 contract gap 收口：
+
+1. `get_recent_messages({})` ≡ relative recent 2 days anchor=archive_latest（SDK schema 与 Capability
+   一致，无 wall clock）；空 trusted scope 上 relative 无 anchor 时返回合法空结果而非 INVALID_ARGUMENT。
+2. finalization 新增显式 zero-result 契约 `{"kind":"no_result","summary",…}`：仅当 Host 从当前 Tool Result
+   Records 验证确无 message facts 或非-schema rows 时放行；冲突立即 `INVALID_FINAL_OUTPUT` fatal，
+   并禁止携带 claims 字段——防止 zero-result 成为 evidence-free factual claim 的 bypass。
+
+证据与真实 smoke 记录见 Problem Record `temporal-browsing-cjk-lexical-recall` 第二轮章节。
+
 | 项目 | 决策 |
 | --- | --- |
 | 第一版 Tool Surface | + `get_recent_messages`（Temporal Browsing，复用 Structured Retrieval） |

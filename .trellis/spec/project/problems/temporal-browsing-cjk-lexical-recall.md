@@ -1,6 +1,7 @@
-# Problem: Temporal Browsing 缺失 与 中文 Lexical 0-hit
+# Problem: Temporal Browsing 缺失 与 中文 Lexical 0-hit（v2 收口补全）
 
-> Task: `.trellis/tasks/08-27-recent-messages-lexical-recall` · 真实 Failure Case 驱动修复记录。
+> Task: `.trellis/tasks/08-27-lexical-v2-zero-result`（第二轮收口）与 `.trellis/tasks/08-27-recent-messages-lexical-recall`。
+> 真实 Failure Case 驱动修复记录。
 
 ## Problem
 
@@ -53,3 +54,65 @@
 ## Scale
 
 - measured：47.3 万消息 rebuild ≈9s（M2 MacBook）；窗口浏览 SELECT 单位毫秒级；bigram 仅作用于 Han run，非 Han 规模不变。
+
+---
+
+## 第二轮收口：FC-A mixed-script 边界 / FC-B zero-result 契约（2026-08-27）
+
+### FC-A: CJK/ASCII 混排仍 miss（bigram v1 → v2）
+
+**复现（修改前，真实 FTS5）**：
+
+| document | normalized(v1) | query | hits |
+| --- | --- | --- | --- |
+| `abc推荐` | `abc推荐` | 推荐 | 0 |
+| `推荐abc` | `推荐abc` | 推荐 | 0 |
+| `推荐这个repo` | `推荐 荐这 这个repo` | 这个/repo | 0 |
+| `repo推荐这个` | `repo推荐 荐这 这个` | repo/推荐 | 0 |
+
+**Root Cause**：unicode61 把相邻字母/数字/CJK 视作一个 token；v1 只重写 Han run 内部且不建立
+Han/non-Han tokenizer 边界——len==2 run 替换结果等于原文，首尾 bigram 与 ASCII 仍粘连。
+
+**Decision（v2）**：每个 maximal Han run（含单字）一律用空格包裹（run≥2 生成重叠 bigram；
+单字原样保留），ASCII 内容逐字不动；rebuild/query 双侧同函数。strategy bump 为
+`unicode61+cjk-bigram-v2`：v1 索引被 read 侧显式 stale 拒绝（测试覆盖），必须 rebuild，
+无 compatibility fallback。LIKE 仍是 diagnostic oracle，不是查询路径。
+
+**Measured（真实库 rebuild 后）**：
+- `lexical_search("推荐")` in-window session 0→157(v1)→**187**(v2)；global FTS **1596 = LIKE 全量**（100% recall vs LIKE oracle）。
+- 真实 mixed-script 样本 4 条（如 `南大都做不了ai吗`、`我朋友sys两篇顶会二作研0`、`本科9的含金量高的一p`）
+  的跨边界 query 全部 self-hit（FTS MATCH 直接命中原文档行）。
+- rebuild 473,236 msgs / 8.7s；rebuild 前 read 侧正确报 stale。
+
+### FC-B: 合法空窗查询被 final contract 升级为 terminal failed
+
+**Evidence**：
+1. `get_recent_messages({})` 在 SDK schema 合法（全参数可选），Capability 却抛 INVALID_ARGUMENT
+   （"time_range or an explicit time window is required"）→ contract drift 实锤。
+2. honest no-result final JSON（`{"claims":[],"limitations":[…]}`）在 strict parse
+   （ModelAnswerCandidate requires claims）、graceful recovery（no readable claim）、validate_answer_artifact
+   （MISSING_EVIDENCE tool-backed 必须有 evidence+binding）三层都被拒 → terminal failed。
+
+**Decision**：
+- `{}` ≡ relative recent 2 days anchor=archive_latest（无 wall clock）；SDK=Capability 一致；
+  description/prompt 写明。真实 smoke 中模型自然发出 `{"limit":100}` 即成功。
+- 新显式 zero-result final 形态 `{"kind":"no_result","summary":…,"limitations":…}`：
+  - 放行条件 Host 可验证：`tool_results_have_result_facts()==False`（无 message_items 且无非-schema structured rows），
+    schema tables[] 不算事实；冲突时 strict 层 `INVALID_FINAL_OUTPUT` fatal，不产生降级 artifact。
+  - 不允许携带 claims 字段（含空数组），杜绝混合形态绕过 citation contract。
+  - 空 trusted scope 上 relative 无 archive_latest 时 Capability 返回合法空结果（coverage complete）而非参数错误。
+    该分支曾有一个中间缺陷（漏传时间界导致返回全 session 最新消息充当"空结果"，被 smoke当场抓出并修复）。
+
+**Validation（pytest 确定性回归 + 真实 smoke）**：
+- `tests/test_chinese_lexical_regression.py`（18 个用例含 v1-stale/重建恢复/mixed-script 矩阵）、
+  `tests/test_no_result_finalization.py`（8）、`tests/test_temporal_zero_result_integration.py`（3）。
+- 真实 Smoke E3（trace-0d3a998d…）：空窗 → get_recent_messages ok ×1 → no_result valid artifact
+  （1 block/0 evidence/0 citations）→ completed；E1/E2（trace-a179e8dd…/f966aba3…）completed 且唯一数据工具为 recent。
+- 已知 provider 噪声案例 trace-f3fc2a1d…：模型输出自我声明的 "Placeholder" no_result 被 guard 正确拒绝
+  ——防护机制在真实环境生效的正面证据。
+
+### Evaluation 定位说明
+
+EvaluationRunner.resolve_snapshot 要求 case snapshot status=="available"；bind-at-run design seed
+不能作为已执行 evaluation 报告。确定性回归落在 pytest 层；「模型优先选择 recent」依赖真实推理，
+以 smoke trace 取证。两个 seed 保持如实标注（annotation_completeness=unknown）。

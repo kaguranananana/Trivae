@@ -695,3 +695,36 @@ Q7 中文 FTS 为何 0-hit → 第 7 条诊断链 + sqlite_lexical_text.py；
 Q8 tokenizer 取舍 → 第 8 条 trigram/bigram 实测矩阵；
 Q9 silent LIKE 为何被拒 → 第 9 条 + problem record Options 表；
 Q10 Trace 定位方法论 → 第 10 条。
+
+## Mixed-script lexical v2 与 no-result contract 事实索引（2026-08-27 第二轮收口）
+
+- FTS5 中文 recall failure 双层根因：①unicode61 把连续 Han run 归一个 token；②mixed-script（`abc推荐`）
+  在 ASCII/Han 边界粘连成单 token。v1 bigram 只解决①；v2 用空格包裹每个 maximal Han run（含单字）建立
+  显式边界，ASCII token 内部语义不动。修改前 8 案例矩阵与修复后全部命中见 problem record 表。
+- 为什么不用 LIKE：LIKE 可作 oracle 但作为查询路径是全表扫、破坏 strategy/versioned index 的
+  failure attribution，且属于 silent-fallback 家族——项目原则禁止。
+- Derived index versioning 防语义漂移：rebuild 写 `trivae_derived_meta.lexical_tokenizer_strategy`
+  （现 `unicode61+cjk-bigram-v2`），read 侧 mismatch 即 `LexicalIndexError stale`；真实库 rebuild 前实测
+  v1 索引被拒、rebuild 后恢复——index/reader 任何一方单独升级都会显式暴露而不是静默误召回。
+- Agent 为何需要 temporal browsing capability：真实 trace 证明"能力存在（SQL）≠Agent 会用"；
+  tool description 绑定 question shape（overview/recent/topic discovery）+ Do-NOT-guess 提示后，
+  E1/E2 单工具完成。这是 ergonomics 决策而非新检索原语。
+- "0 rows 不能当执行失败"的三层依据：FTS/canonical 层 zero hit 本就 status ok（§15/14）；Capability 层
+  空 trusted scope 不再报 anchor 错误而是合法空结果；finalization 层新增 `kind=no_result` 显式形态。
+  系统错误（malformed/reversed/scope/stale/runtime）仍逐层 fatal——失败类别保持分离。
+- no-result contract 如何不变成 hallucination loophole：放行条件不是"模型声明"，而是 Host 从
+  ToolResultRecord 可验证的无事实状态（无 message_items、无非 tables[] structured rows）。冲突时
+  strict `INVALID_FINAL_OUTPUT` 立即 failed；no_result 与 claims 字段互斥。真实 provider 故意输出
+  placeholder no_result 被 guard 拒绝（trace-f3fc2a1d…）是该护栏的实证。
+- SDK schema 与 Capability contract 一致性：可选参数必须有定义完好的缺省语义，否则模型合法调用会
+  撞非法输入；`{}`≡recent-2d(anchor archive_latest) 的选择理由是 ChatLab baseline 语义 + archive
+  时间观（库尾即"最近"，绝不用 wall clock 推出必然为空的窗口）。
+
+## Interview ln mapping（第二轮）
+
+Q1 FTS5 中文 recall 根因 → 第 1 条 + 复现表；
+Q2 LIKE 为何被排除 → 第 2 条；
+Q3 index version 防 drift → 第 3 条 + test_v1_index_is_rejected_by_v2_reader；
+Q4 temporal capability 必要性 → 第 4 条 + before/after trace 对照；
+Q5 zero-result 非失败的分层论证 → 第 5 条 + tests/test_recent_messages.py;
+Q6 no-result 防滥用设计 → 第 6 条 + tests/test_no_result_finalization.py::test_no_result_conflicting_with_real_results_is_fatal。
