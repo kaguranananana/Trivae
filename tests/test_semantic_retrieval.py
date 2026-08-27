@@ -17,6 +17,7 @@ from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES, ContextExpa
 from trivae.retrieval.semantic.chunking import SemanticChunker
 from trivae.retrieval.semantic.contracts import (
     EmbeddingModelIdentity,
+    SemanticEmbeddingError,
     SemanticIndexCandidate,
     SemanticIndexIdentity,
     SemanticMessage,
@@ -278,6 +279,39 @@ class SemanticRetrievalTests(unittest.TestCase):
             self.assertEqual(releases, ["released"])
             provider.embed_query("query")
             self.assertEqual(releases, ["released", "released"])
+
+    def test_sentence_transformer_provider_load_failure_preserves_original_exception_text(self) -> None:
+        """model loader 抛出的底层异常文本必须完整进入 SemanticEmbeddingError message。"""
+
+        def failing_loader(_: str) -> object:
+            raise ValueError("hub download failed: connection reset by peer")
+
+        provider = SentenceTransformerEmbeddingProvider(
+            model="fixture/model",
+            dimension=3,
+            model_loader=failing_loader,
+        )
+        with self.assertRaises(SemanticEmbeddingError) as caught:
+            provider.embed_query("question")
+        self.assertIn("ValueError", str(caught.exception))
+        self.assertIn("hub download failed: connection reset by peer", str(caught.exception))
+
+    def test_sentence_transformer_provider_encode_failure_preserves_original_exception_text(self) -> None:
+        """encode 阶段抛出的底层异常文本必须完整进入 SemanticEmbeddingError message。"""
+
+        class Model:
+            def encode(self, texts: list[str], **kwargs: object) -> list[list[float]]:
+                raise RuntimeError("CUDA error: device-side assert triggered")
+
+        provider = SentenceTransformerEmbeddingProvider(
+            model="fixture/model",
+            dimension=3,
+            model_loader=lambda _: Model(),
+        )
+        with self.assertRaises(SemanticEmbeddingError) as caught:
+            provider.embed_documents(("document",))
+        self.assertIn("RuntimeError", str(caught.exception))
+        self.assertIn("CUDA error: device-side assert triggered", str(caught.exception))
 
     def test_index_identity_rejects_secret_fields_without_hashing(self) -> None:
         """identity 使用可读 JSON，secret 字段在构造时直接失败。"""

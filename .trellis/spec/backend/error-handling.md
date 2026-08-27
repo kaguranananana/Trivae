@@ -17,6 +17,14 @@
 - 用 fallback / 兼容分支 / 启发式后处理掩盖主链路问题。
 - 针对单个样例的特殊规则。
 
+## 异常包装必须保留根因文本
+
+把底层异常转换为项目错误类型时（`raise ProjectError(...) from exc`），新 message 必须包含原始异常的完整 `str(exc)`，不得只记录 `type(exc).__name__`。原因：Tool Result / Trace 只投影最终 message，丢失原文会让网络瞬态、缓存损坏、配置错误等不同根因在日志中不可区分，只能靠事后复现定位。
+
+- 推荐格式：`f"...: {type(exc).__name__}: {exc}"`；保留 `from exc` 维持异常链。
+- 失败路径测试断言注入异常的原始文本出现在转换后 message 中，而非只断言异常类型。
+- 参考实现：`src/trivae/retrieval/semantic/embedding.py`（2026-08-27 `SEMANTIC_EMBEDDING_FAILED` 排障教训：trace 中只剩 `ValueError` 类名，根因不可判读）。
+
 ## Retry / Fallback（默认不加）
 
 仅当真实 Failure Case 证明存在可恢复的 transient error（外部 API 短暂失败、网络抖动、模型偶发格式错误）时才引入。引入必须说明：

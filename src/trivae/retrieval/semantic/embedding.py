@@ -115,7 +115,7 @@ class SentenceTransformerEmbeddingProvider:
             torch_module.mps.empty_cache()
         except Exception as exc:
             raise SemanticEmbeddingError(
-                f"failed to release MPS embedding cache: {type(exc).__name__}"
+                f"failed to release MPS embedding cache: {type(exc).__name__}: {exc}"
             ) from exc
 
     def _load_model(self) -> Any:
@@ -134,7 +134,7 @@ class SentenceTransformerEmbeddingProvider:
                 model = constructor(self.identity.model, trust_remote_code=True)
         except Exception as exc:
             raise SemanticEmbeddingError(
-                f"failed to load embedding model {self.identity.model}: {type(exc).__name__}"
+                f"failed to load embedding model {self.identity.model}: {type(exc).__name__}: {exc}"
             ) from exc
         self._model = model
         return model
@@ -155,7 +155,9 @@ class SentenceTransformerEmbeddingProvider:
                 show_progress_bar=False,
             )
         except Exception as exc:
-            raise SemanticEmbeddingError(f"embedding encode failed: {type(exc).__name__}") from exc
+            raise SemanticEmbeddingError(
+                f"embedding encode failed: {type(exc).__name__}: {exc}"
+            ) from exc
 
     @staticmethod
     def _normalize_texts(texts: Sequence[str], name: str) -> tuple[str, ...]:
