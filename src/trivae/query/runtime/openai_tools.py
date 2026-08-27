@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from agents import RunContextWrapper, function_tool
 
@@ -34,6 +34,10 @@ from trivae.query.evidence import build_tool_result_record, project_tool_result_
 from trivae.query.runtime.budget import ToolResultBudgetCall
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
 from trivae.retrieval.sql import MAX_SQL_RESULT_ROWS
+
+if TYPE_CHECKING:
+    # 仅类型引用，避免与 observability.collector 的运行时依赖成环。
+    from trivae.observability.collector import TraceOperationContext
 
 
 def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
@@ -187,7 +191,7 @@ class SearchMessagesSDKToolAdapter:
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
-                        operation_id=f"tool:{tool_call_id}",
+                        operation_id=trace_context.operation_id,
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
                         payload={"tool_name": self.tool_name, "error_code": exc.error_code},
@@ -197,7 +201,7 @@ class SearchMessagesSDKToolAdapter:
                             observed_stage="tool",
                             category="contract",
                             handling="returned_to_agent",
-                            cause_operation_id=f"tool:{tool_call_id}",
+                            cause_operation_id=trace_context.operation_id,
                         ),
                     )
             else:
@@ -348,7 +352,7 @@ class SemanticSearchSDKToolAdapter:
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
-                        operation_id=f"tool:{tool_call_id}",
+                        operation_id=trace_context.operation_id,
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
                         payload={"tool_name": "semantic_search", "error_code": exc.error_code},
@@ -358,7 +362,7 @@ class SemanticSearchSDKToolAdapter:
                             observed_stage="tool",
                             category="contract",
                             handling="returned_to_agent",
-                            cause_operation_id=f"tool:{tool_call_id}",
+                            cause_operation_id=trace_context.operation_id,
                         ),
                     )
             else:
@@ -413,7 +417,7 @@ class SemanticSearchSDKToolAdapter:
 def _tool_runtime_context(
     context: RunContextWrapper[RuntimeContext],
     tool_name: str,
-) -> tuple[RuntimeContext, str, object | None, ToolResultBudgetCall]:
+) -> tuple[RuntimeContext, str, TraceOperationContext | None, ToolResultBudgetCall]:
     """统一解析 Runtime local context、Trivae Tool ID 和 Trace child。"""
 
     runtime_context = context.context
@@ -426,7 +430,10 @@ def _tool_runtime_context(
         child = getattr(trace_context, "child", None)
         if not callable(child):
             raise TypeError("runtime trace_context must provide child()")
-        trace_context = child(f"tool:{tool_call_id}")
+        # trace 树的 Tool 节点直接使用 Trivae-owned call id 命名。
+        # 这样 normalized tool.call.* facts 与 RuntimeEvent 携带同一 identity 字符串，
+        # 下游（TUI projection 等）不需要任何跨源格式翻译，也不会出现同调用的重复行。
+        trace_context = child(tool_call_id)
     if tool_name not in runtime_context.available_capabilities:
         # Tool 不可见时属于 Runtime invariant failure，不能返回普通 Agent 可恢复结果。
         raise RuntimeError(f"{tool_name} was invoked outside the allowed capability set")
@@ -555,7 +562,7 @@ class GetMessageContextSDKToolAdapter:
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
-                        operation_id=f"tool:{tool_call_id}",
+                        operation_id=trace_context.operation_id,
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
                         payload={"tool_name": "get_message_context", "error_code": exc.error_code},
@@ -565,7 +572,7 @@ class GetMessageContextSDKToolAdapter:
                             observed_stage="tool",
                             category="contract",
                             handling="returned_to_agent",
-                            cause_operation_id=f"tool:{tool_call_id}",
+                            cause_operation_id=trace_context.operation_id,
                         ),
                     )
             else:
@@ -661,7 +668,7 @@ class FindMembersSDKToolAdapter:
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
-                        operation_id=f"tool:{tool_call_id}",
+                        operation_id=trace_context.operation_id,
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
                         payload={"tool_name": "find_members", "error_code": exc.error_code},
@@ -671,7 +678,7 @@ class FindMembersSDKToolAdapter:
                             observed_stage="tool",
                             category="contract",
                             handling="returned_to_agent",
-                            cause_operation_id=f"tool:{tool_call_id}",
+                            cause_operation_id=trace_context.operation_id,
                         ),
                     )
             else:
@@ -758,7 +765,7 @@ class GetSchemaSDKToolAdapter:
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
-                        operation_id=f"tool:{tool_call_id}",
+                        operation_id=trace_context.operation_id,
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
                         payload={"tool_name": "get_schema", "error_code": exc.error_code},
@@ -768,7 +775,7 @@ class GetSchemaSDKToolAdapter:
                             observed_stage="tool",
                             category="contract",
                             handling="returned_to_agent",
-                            cause_operation_id=f"tool:{tool_call_id}",
+                            cause_operation_id=trace_context.operation_id,
                         ),
                     )
             else:
@@ -858,7 +865,7 @@ class ExecuteSQLSDKToolAdapter:
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
-                        operation_id=f"tool:{tool_call_id}",
+                        operation_id=trace_context.operation_id,
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
                         payload={"tool_name": "execute_sql", "error_code": exc.error_code},
@@ -868,7 +875,7 @@ class ExecuteSQLSDKToolAdapter:
                             observed_stage="tool",
                             category="contract",
                             handling="returned_to_agent",
-                            cause_operation_id=f"tool:{tool_call_id}",
+                            cause_operation_id=trace_context.operation_id,
                         ),
                     )
             else:
@@ -1004,7 +1011,7 @@ class GetRecentMessagesSDKToolAdapter:
                         stage="tool",
                         operation="tool.call.failed",
                         phase="failed",
-                        operation_id=f"tool:{tool_call_id}",
+                        operation_id=trace_context.operation_id,
                         parent_operation_id=getattr(trace_context, "parent_operation_id", None),
                         outcome="error",
                         payload={"tool_name": "get_recent_messages", "error_code": exc.error_code},
@@ -1014,7 +1021,7 @@ class GetRecentMessagesSDKToolAdapter:
                             observed_stage="tool",
                             category="contract",
                             handling="returned_to_agent",
-                            cause_operation_id=f"tool:{tool_call_id}",
+                            cause_operation_id=trace_context.operation_id,
                         ),
                     )
             else:

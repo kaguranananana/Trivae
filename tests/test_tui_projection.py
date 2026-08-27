@@ -6,6 +6,7 @@ import unittest
 from typing import cast
 
 from trivae.interfaces.tui.models import TuiProjectionEngine
+from trivae.interfaces.tui.widgets import ProcessRow
 from trivae.query.streaming import QueryStreamEvent
 
 
@@ -33,12 +34,12 @@ class ProjectionThinkingTests(unittest.TestCase):
         created = [change for change in changes if change.action == "block_created"]
         self.assertEqual(len(created), 1)
         assert created[0].block is not None
-        self.assertEqual(created[0].block.streaming_text, "alpha")
+        self.assertIsNone(created[0].block.streaming_text)
         for change in changes[1:]:
             self.assertEqual(change.action, "block_updated")
 
         blocks = {block.block_id: block for block in engine.blocks_for_debug(1)}
-        self.assertEqual(blocks["thinking"].streaming_text, "alphabeta")
+        self.assertEqual(blocks["thinking:1"].streaming_text, "alphabeta")
 
         clock = {"now": 1.5}
         completed_engine = TuiProjectionEngine(clock=lambda: clock["now"])
@@ -122,6 +123,32 @@ class ProjectionToolIdentityTests(unittest.TestCase):
         self.assertTrue(last.block.expanded)
         self.assertEqual(last.block.error_code, "SQL_READ_ONLY_VIOLATION")
 
+    def test_terminal_detail_before_start_merges_without_reopening_or_duplication(self) -> None:
+        engine = TuiProjectionEngine(clock=lambda: 0.0)
+        engine.begin_round("问题")
+        engine.apply(
+            _event(
+                "tool.completed",
+                tool_name="search_messages",
+                tool_call_id="late-start",
+                result_detail="content: 已有结果",
+            )
+        )
+        engine.apply(
+            _event(
+                "tool.started",
+                tool_name="search_messages",
+                tool_call_id="late-start",
+                arguments={"keyword": "补到参数"},
+            )
+        )
+
+        tools = [block for block in engine.blocks_for_debug(1) if block.kind == "tool"]
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0].status, "completed")
+        self.assertEqual(tools[0].arguments, {"keyword": "补到参数"})
+        self.assertIn("已有结果", tools[0].result_detail or "")
+
 
 class ProjectionStreamingTests(unittest.TestCase):
     """answer delta 累积与 authoritative 替换。"""
@@ -163,6 +190,7 @@ class ProjectionAggregationTests(unittest.TestCase):
         retrieval = engine.apply(
             _event(
                 "retrieval.completed",
+                tool_call_id="c1",
                 result_summary={"candidate_count": 128, "returned_messages": 100, "partial": False},
                 duration_ms=1300,
             )
@@ -183,6 +211,28 @@ class ProjectionAggregationTests(unittest.TestCase):
         blocks = engine.blocks_for_debug(1)
         self.assertTrue(any(block.kind == "retrieval" and block.status == "completed" for block in blocks))
 
+    def test_orphan_retrieval_row_remains_interactive(self) -> None:
+        """无法关联宿主的 retrieval 行必须保持可展开，不允许不可交互的死行。
+
+        背景（handoff A2）：此前 kind="retrieval" 一律 expandable=False——
+        行可见但点击/键盘都无响应，是唯一会出现的完全死行。
+        """
+
+        engine = TuiProjectionEngine(clock=lambda: 0.0)
+        engine.begin_round("问题")
+        engine.apply(
+            _event(
+                "retrieval.completed",
+                result_summary={"candidate_count": 40, "returned_messages": 12},
+                duration_ms=900,
+            )
+        )
+        block = next(block for block in engine.blocks_for_debug(1) if block.kind == "retrieval")
+
+        row = ProcessRow(block)
+        self.assertTrue(row.expandable)
+        self.assertIsNotNone(row.render().plain)
+
     def test_partial_and_truncated_flags_survive_merge(self) -> None:
         engine = TuiProjectionEngine(clock=lambda: 0.0)
         engine.begin_round("问题")
@@ -190,6 +240,7 @@ class ProjectionAggregationTests(unittest.TestCase):
         engine.apply(
             _event(
                 "retrieval.completed",
+                tool_call_id="s1",
                 result_summary={"candidate_count": 74, "truncated": True},
                 duration_ms=800,
             )
@@ -197,6 +248,46 @@ class ProjectionAggregationTests(unittest.TestCase):
         blocks = engine.blocks_for_debug(1)
         tool = next(block for block in blocks if block.kind == "tool")
         self.assertTrue(bool(tool.metrics.get("truncated")))
+
+    def test_retrieval_parent_identity_never_merges_into_another_running_tool(self) -> None:
+        """并行/乱序检索只按 parent operation 合并，不使用最后运行工具猜测。"""
+
+        engine = TuiProjectionEngine(clock=lambda: 0.0)
+        engine.begin_round("问题")
+        engine.apply(_event("tool.started", tool_name="search_messages", tool_call_id="call-A"))
+        engine.apply(_event("tool.started", tool_name="semantic_search", tool_call_id="call-B"))
+        engine.apply(
+            _event(
+                "retrieval.completed",
+                tool_call_id="call-A",
+                result_summary={"candidate_count": 7},
+            )
+        )
+
+        blocks = {block.block_id: block for block in engine.blocks_for_debug(1)}
+        self.assertEqual(blocks["tool:call-A"].metrics.get("candidate_count"), 7)
+        self.assertNotIn("candidate_count", blocks["tool:call-B"].metrics)
+
+    def test_tool_summary_and_detail_update_the_same_identity_independently(self) -> None:
+        engine = TuiProjectionEngine(clock=lambda: 0.0)
+        engine.begin_round("问题")
+        started = engine.apply(_event("tool.started", tool_name="search_messages", tool_call_id="c1"))
+        assert started[0].block is not None
+        self.assertTrue(started[0].block.expanded)
+        engine.apply(
+            _event(
+                "tool.completed",
+                tool_name="search_messages",
+                tool_call_id="c1",
+                result_summary={"candidate_count": 3},
+                result_detail="[1]\nsender: 小明\ncontent: 结果正文",
+            )
+        )
+
+        tool = next(block for block in engine.blocks_for_debug(1) if block.kind == "tool")
+        self.assertFalse(tool.expanded)
+        self.assertEqual(tool.result_summary, {"candidate_count": 3})
+        self.assertIn("结果正文", tool.result_detail or "")
 
     def test_route_plan_and_usage_are_recorded_from_real_events_only(self) -> None:
         engine = TuiProjectionEngine(clock=lambda: 0.0)
@@ -230,7 +321,7 @@ class ProjectionAggregationTests(unittest.TestCase):
         changes = engine.apply(
             _event("plan.failed", error_code="PLANNER_PARSE_FAILED", error_message="bad json")
         )
-        created = changes[0]
+        created = next(change for change in changes if change.block is not None and change.block.kind == "error")
         assert created.block is not None
         self.assertEqual(created.block.kind, "error")
         self.assertTrue(created.block.expanded)
@@ -273,6 +364,23 @@ class ProjectionFoldingTests(unittest.TestCase):
         self.assertTrue(blocks["tool:t2"].manually_expanded)
         self.assertTrue(blocks["tool:t2"].expanded)
 
+    def test_thinking_manual_collapsed_and_expanded_values_both_survive_completion(self) -> None:
+        engine = TuiProjectionEngine(clock=lambda: 0.0)
+        engine.begin_round("问题")
+        engine.apply(_event("thinking.started"))
+        engine.apply(_event("thinking.delta", content="摘要", thinking_visibility="public_summary"))
+        engine.set_manual_expanded(1, "thinking:1", False)
+        engine.apply(_event("thinking.completed"))
+        first = engine.blocks_for_debug(1)[0]
+        self.assertFalse(first.expanded)
+
+        engine.apply(_event("thinking.started"))
+        engine.apply(_event("thinking.delta", content="第二段", thinking_visibility="public_summary"))
+        engine.set_manual_expanded(1, "thinking:2", True)
+        engine.apply(_event("thinking.completed"))
+        second = engine.blocks_for_debug(1)[1]
+        self.assertTrue(second.expanded)
+
     def test_failed_terminal_round_defaults_group_to_expanded(self) -> None:
         engine = TuiProjectionEngine(clock=lambda: 0.0)
         engine.begin_round("问题")
@@ -293,7 +401,7 @@ class ProjectionTerminalTests(unittest.TestCase):
         engine.begin_round("问题")
         engine.apply(_event("tool.started", tool_name="find_members", tool_call_id="t9"))
         changes = engine.finalize_interrupted(1)
-        created = changes[0]
+        created = next(change for change in changes if change.block is not None and change.block.kind == "error")
         assert created.block is not None
         self.assertEqual(created.block.kind, "error")
         self.assertTrue(created.block.expanded)
@@ -304,6 +412,7 @@ class ProjectionTerminalTests(unittest.TestCase):
         collapse = engine.drain_pending_collapse()
         assert collapse is not None and collapse.group is not None
         self.assertTrue(collapse.group.default_expanded)
+        self.assertFalse(any(block.status == "running" for block in collapse.group.blocks))
 
     def test_finalize_failed_outside_active_round_is_ignored(self) -> None:
         engine = TuiProjectionEngine(clock=lambda: 0.0)

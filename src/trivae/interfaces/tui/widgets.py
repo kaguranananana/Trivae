@@ -63,6 +63,8 @@ def render_summary_line(block: TuiBlock) -> Text:
     """三段式 Task Row：status glyph · display name · metric chips · duration。"""
 
     line = Text()
+    if _block_expandable(block):
+        line.append("▾ " if block.expanded else "▸ ", style="dim")
     step_prefix = f"{block.step_number}. " if block.step_number is not None and block.kind != "route" else ""
     if block.status == "failed":
         line.append("✗ ", style="bold red")
@@ -97,10 +99,11 @@ def render_summary_line(block: TuiBlock) -> Text:
 
 
 def render_tool_detail(block: TuiBlock) -> Text | None:
-    """L2 详情：参数与结果摘要分区，含完整性警告；不 dump 长正文。"""
+    """L2 详情：参数、统计摘要和 UI-safe 结果正文分别呈现。"""
 
     arguments = _mapping_lines("参数", block.arguments)
     results = _mapping_lines("结果摘要", block.result_summary)
+    detail = _indented_detail("结果明细", block.result_detail)
     warnings = []
     metrics = block.metrics or {}
     if bool(metrics.get("partial")):
@@ -109,7 +112,7 @@ def render_tool_detail(block: TuiBlock) -> Text | None:
         warnings.append(f"⚠ 结果已部分完成{suffix}")
     if bool(metrics.get("truncated")):
         warnings.append("⚠ 结果已截断")
-    sections = [section for section in (arguments, results) if section is not None]
+    sections = [section for section in (arguments, results, detail) if section is not None]
     if not sections and not warnings:
         return None
     output = Text()
@@ -121,6 +124,17 @@ def render_tool_detail(block: TuiBlock) -> Text | None:
         if output.plain:
             output.append("\n")
         output.append(f"  {warning}", style="yellow")
+    return output
+
+
+def _indented_detail(header: str, detail: str | None) -> Text | None:
+    """保持结果正文原有换行，只增加视觉缩进，不重新解释业务内容。"""
+
+    if not detail:
+        return None
+    output = Text(f"  {header}\n", style="bold")
+    for line in detail.splitlines():
+        output.append(f"  {line}\n")
     return output
 
 
@@ -247,7 +261,9 @@ class ProcessRow(Static, can_focus=True):
 
         self._block = block
         self.set_classes(f"process-row kind-{block.kind} status-{block.status}")
-        self.refresh()
+        # block 更新会让 Thinking/Plan/Tool 从单行变成多行。
+        # 仅 repaint 不会重算 auto height，必须显式让 Textual 重跑布局。
+        self.refresh(layout=True)
 
     def render(self) -> Text:
         line = render_summary_line(self._block)
@@ -256,7 +272,7 @@ class ProcessRow(Static, can_focus=True):
         detail = self._detail()
         if detail is None:
             return line
-        joined = Text("\n")
+        joined = Text()
         joined.append(line)
         joined.append("\n")
         joined.append(detail)
@@ -268,38 +284,48 @@ class ProcessRow(Static, can_focus=True):
         self.post_message(self.Toggled(self, self._block.block_id, not self._block.expanded))
 
     async def _on_click(self, event: events.Click) -> None:
-        """鼠标点击与 Enter/Space 语义一致。"""
+        """只有首行标题点击切换；详情区事件继续冒泡给 Textual 原生选择。"""
 
-        event.stop()
+        content_offset = event.get_content_offset(self)
+        if content_offset is None or content_offset.y != 0:
+            return
         if not self.expandable:
             return
+        event.stop()
         self.post_message(self.Toggled(self, self._block.block_id, not self._block.expanded))
 
     @property
     def expandable(self) -> bool:
-        if self._block.kind == "thinking":
-            # 有 public_summary 正文才可展开；纯时长行不做假详情。
-            return bool((self._block.streaming_text or "").strip())
-        if self._block.kind == "route":
-            return False
-        if self._block.kind == "tool":
-            return bool(
-                self._block.arguments
-                or self._block.result_summary
-                or any(chip.startswith("⚠") for chip in metric_chips(self._block.metrics))
-            )
-        if self._block.kind == "plan":
-            return render_plan_detail(self._block) is not None
-        return False
+        return _block_expandable(self._block)
 
     def _detail(self) -> Text | None:
-        if self._block.kind == "tool":
+        if self._block.kind in {"tool", "retrieval"}:
             return render_tool_detail(self._block)
         if self._block.kind == "plan":
             return render_plan_detail(self._block)
         if self._block.kind == "thinking":
             return render_thinking_detail(self._block)
         return None
+
+
+def _block_expandable(block: TuiBlock) -> bool:
+    """集中定义标题 disclosure 是否可用，避免渲染与交互判断漂移。"""
+
+    if block.kind == "thinking":
+        # 有 public_summary 正文才可展开；纯生命周期活动不伪造详情。
+        return bool((block.streaming_text or "").strip())
+    if block.kind == "route":
+        return False
+    if block.kind in {"tool", "retrieval"}:
+        return bool(
+            block.arguments
+            or block.result_summary
+            or block.result_detail
+            or any(chip.startswith("⚠") for chip in metric_chips(block.metrics))
+        )
+    if block.kind == "plan":
+        return render_plan_detail(block) is not None
+    return False
 
 
 class AnswerBlock(Vertical):
@@ -309,6 +335,10 @@ class AnswerBlock(Vertical):
     AnswerBlock {
         padding: 0;
         margin-top: 1;
+        /* 继承的 Vertical 默认 height: 1fr 会把本块变成弹性容器，
+           吞掉同行折叠释放的空间、在历史区留出成片空白；
+           答案高度必须严格由标题 + Markdown 正文驱动。 */
+        height: auto;
     }
     AnswerBlock > .answer-title {
         color: $accent;

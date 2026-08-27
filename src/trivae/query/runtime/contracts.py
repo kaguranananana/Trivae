@@ -258,6 +258,8 @@ class RuntimeEvent:
     tool_call: RuntimeToolCall | None = None
     tool_name: str | None = None
     tool_call_id: str | None = None
+    # Tool 完成事件携带同一调用的 canonical bounded record，供接口层生成安全明细。
+    tool_result: ToolResultRecord | None = None
     result: RuntimeResult | None = None
     tool_round: int | None = None
     usage: Mapping[str, int | float] | None = None

@@ -2,18 +2,26 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 from trivae.observability.contracts import NormalizedQueryEvent
+from trivae.query.evidence import ToolResultRecord
 from trivae.query.runtime.contracts import RuntimeEvent
+
+_TOOL_DETAIL_MAX_ITEMS = 20
+_TOOL_DETAIL_MAX_FIELD_CHARS = 800
+_TOOL_DETAIL_MAX_TOTAL_CHARS = 16_000
+_TOOL_DETAIL_FOOTER_RESERVE = 240
 
 QueryStreamEventType = Literal[
     "query.started",
     "route.completed",
     "plan.completed",
     "plan.failed",
+    "thinking.started",
     "thinking.delta",
     "thinking.completed",
     "tool.started",
@@ -47,16 +55,107 @@ class QueryStreamEvent:
     tool_call_id: str | None = None
     arguments: Mapping[str, object] | None = None
     result_summary: Mapping[str, object] | None = None
+    result_detail: str | None = None
     error_code: str | None = None
     error_message: str | None = None
     duration_ms: float | None = None
     usage: Mapping[str, int | float] | None = None
     source_operation: str | None = None
     source_sequence: int | None = None
+    parent_operation_id: str | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
 
 
 QueryStreamEventHandler = Callable[[QueryStreamEvent], None]
+
+
+def project_tool_result_detail(record: ToolResultRecord) -> str:
+    """把 canonical ToolResultRecord 投影为有界、provider-neutral 的 TUI 明细。"""
+
+    item_texts: list[tuple[str, bool]] = []
+    for index, item in enumerate(record.message_items, start=1):
+        message = item.message
+        sender = message.sender_name or message.sender_user_id or message.sender_platform_id or "未知发送者"
+        session = message.session_display or message.session_id
+        fields = (
+            ("source", record.message_source_handle(item)),
+            ("sender", sender),
+            ("time", message.timestamp),
+            ("session", session),
+            ("content", message.normalized_content),
+            ("hit", item.is_hit),
+            ("urls", item.urls),
+        )
+        item_texts.append(_detail_item_text(index, fields))
+
+    # field locator 是 row/aggregate 的可引用子项；TUI 结果列表展示完整父项即可，避免同一结果重复占位。
+    primary_structured = tuple(item for item in record.structured_items if item.locator_kind != "field")
+    for index, structured_item in enumerate(primary_structured, start=len(item_texts) + 1):
+        structured_fields = (
+            ("source", record.structured_source_handle(structured_item)),
+            ("locator", structured_item.locator),
+            ("kind", structured_item.locator_kind),
+            ("value", structured_item.value_snapshot),
+        )
+        item_texts.append(_detail_item_text(index, structured_fields))
+
+    available_count = len(item_texts)
+    selected: list[str] = []
+    used_chars = 0
+    field_truncated = False
+    body_budget = _TOOL_DETAIL_MAX_TOTAL_CHARS - _TOOL_DETAIL_FOOTER_RESERVE
+    for text, truncated in item_texts[:_TOOL_DETAIL_MAX_ITEMS]:
+        separator_chars = 2 if selected else 0
+        if used_chars + separator_chars + len(text) > body_budget:
+            break
+        selected.append(text)
+        used_chars += separator_chars + len(text)
+        field_truncated = field_truncated or truncated
+
+    displayed_count = len(selected)
+    omitted_count = available_count - displayed_count
+    sections = [*selected]
+    if record.limitations:
+        limitations = ", ".join(record.limitations)
+        bounded, limitations_truncated = _bounded_detail_value(limitations)
+        sections.append(f"限制: {bounded}")
+        field_truncated = field_truncated or limitations_truncated
+    if omitted_count:
+        sections.append(f"仅显示 {displayed_count} / {available_count} 条；{omitted_count} 条未在 TUI 展示")
+    if field_truncated:
+        sections.append(f"部分字段已按 {_TOOL_DETAIL_MAX_FIELD_CHARS} 字符上限截断")
+    if not sections:
+        # 双空 record（如聚合型工具）也必须给出可读正文；expanded 视图不允许空白。
+        sections.append(f"状态: {record.status}；结果无可展示正文（返回条目 0 条）")
+
+    detail = "\n\n".join(sections)
+    if len(detail) > _TOOL_DETAIL_MAX_TOTAL_CHARS:
+        raise ValueError("tool result detail exceeded the declared TUI character budget")
+    return detail
+
+
+def _detail_item_text(index: int, fields: tuple[tuple[str, object], ...]) -> tuple[str, bool]:
+    """逐字段限幅后生成一个稳定条目，并显式返回是否发生预览截断。"""
+
+    lines = [f"[{index}]"]
+    truncated = False
+    for name, value in fields:
+        bounded, was_truncated = _bounded_detail_value(value)
+        lines.append(f"{name}: {bounded}")
+        truncated = truncated or was_truncated
+    return "\n".join(lines), truncated
+
+
+def _bounded_detail_value(value: object) -> tuple[str, bool]:
+    """只序列化普通 canonical 值；截断是 UI 预览事实，不改写业务完整性字段。"""
+
+    if isinstance(value, (Mapping, list, tuple)):
+        rendered = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    else:
+        rendered = str(value)
+    if len(rendered) <= _TOOL_DETAIL_MAX_FIELD_CHARS:
+        return rendered, False
+    return f"{rendered[: _TOOL_DETAIL_MAX_FIELD_CHARS - 1]}…", True
 
 
 class AnswerDeltaParseError(ValueError):
@@ -438,6 +537,8 @@ class QueryStreamAdapter:
         self._saw_content_delta = False
         self._turn_had_tool = False
         self._pending_answer_fragments: list[str] = []
+        # Thinking 生命周期由 adapter 显式跟踪，确保每个模型回合形成独立过程段。
+        self._thinking_active = False
 
     def handle_runtime_event(self, event: RuntimeEvent) -> None:
         """投影 reasoning/content/usage；persistent Trace mapper仍独立忽略 token delta。"""
@@ -448,13 +549,24 @@ class QueryStreamAdapter:
             self._saw_content_delta = False
             self._turn_had_tool = False
             self._pending_answer_fragments = []
+            self._start_thinking(event.sequence)
             return
         if event.type in {"tool_started", "tool_completed"}:
             # 模型在发起 Tool 前可能先输出说明文字；这些不是最终答案，先标记后统一丢弃。
+            self._complete_thinking(event.sequence)
             self._turn_had_tool = True
+            if event.type == "tool_completed" and event.tool_result is not None:
+                self._emit(
+                    "tool.completed",
+                    tool_name=event.tool_name,
+                    tool_call_id=event.tool_call_id,
+                    result_detail=project_tool_result_detail(event.tool_result),
+                    source_sequence=event.sequence,
+                )
             return
         if event.type == "thinking_delta":
             if event.text:
+                self._start_thinking(event.sequence)
                 self._emit(
                     "thinking.delta",
                     content=event.text,
@@ -463,15 +575,12 @@ class QueryStreamAdapter:
                 )
             return
         if event.type == "thinking_completed":
-            self._emit(
-                "thinking.completed",
-                thinking_visibility="public_summary",
-                source_sequence=event.sequence,
-            )
+            self._complete_thinking(event.sequence)
             return
         if event.type == "content_delta":
             if not event.text:
                 return
+            self._complete_thinking(event.sequence)
             self._saw_content_delta = True
             content = self._answer_parser.feed(event.text)
             if content:
@@ -479,15 +588,34 @@ class QueryStreamAdapter:
                 self._pending_answer_fragments.append(content)
             return
         if event.type == "turn_completed":
+            self._complete_thinking(event.sequence)
             self._flush_answer_turn(event.sequence)
             return
         if event.type == "usage_update" and event.usage:
             self._emit("usage.updated", usage=dict(event.usage), source_sequence=event.sequence)
             return
-        if event.type == "completed" and self._saw_content_delta:
-            self._answer_parser.finish()
-            # SDK-independent injected runtimes may omit turn_completed；terminal boundary仍需 flush。
-            self._flush_answer_turn(event.sequence)
+        if event.type in {"completed", "failed", "aborted"}:
+            self._complete_thinking(event.sequence)
+            if event.type == "completed" and self._saw_content_delta:
+                self._answer_parser.finish()
+                # SDK-independent injected runtimes may omit turn_completed；terminal boundary仍需 flush。
+                self._flush_answer_turn(event.sequence)
+
+    def _start_thinking(self, source_sequence: int) -> None:
+        """在真实模型回合或公开摘要到达时只开启一个过程段。"""
+
+        if self._thinking_active:
+            return
+        self._thinking_active = True
+        self._emit("thinking.started", source_sequence=source_sequence)
+
+    def _complete_thinking(self, source_sequence: int) -> None:
+        """在 Tool、正文或终止边界关闭当前段，避免跨阶段粘连。"""
+
+        if not self._thinking_active:
+            return
+        self._thinking_active = False
+        self._emit("thinking.completed", source_sequence=source_sequence)
 
     def _flush_answer_turn(self, source_sequence: int) -> None:
         """只提交无 Tool turn 的正文；带 Tool 的模型说明保持在 provisional 边界内。"""
@@ -509,6 +637,7 @@ class QueryStreamAdapter:
             "duration_ms": event.duration_ms,
             "source_operation": event.operation,
             "source_sequence": event.sequence,
+            "parent_operation_id": event.parent_operation_id,
             "metadata": metadata,
         }
         payload = event.payload
@@ -522,6 +651,7 @@ class QueryStreamAdapter:
             self._emit_failure("plan.failed", event, common)
         elif event.operation == "tool.call.started":
             # normalized event 是跨 Runtime 的第二个事实来源，补记当前 turn 的 Tool 边界。
+            self._complete_thinking(event.sequence)
             self._turn_had_tool = True
             request = payload.get("request")
             self._emit(
@@ -552,6 +682,7 @@ class QueryStreamAdapter:
             query = payload.get("query")
             self._emit(
                 "retrieval.started",
+                tool_call_id=event.parent_operation_id,
                 arguments=dict(query) if isinstance(query, Mapping) else None,
                 **common,
             )
@@ -574,12 +705,23 @@ class QueryStreamAdapter:
             }
             if expanded_count is not None:
                 summary["expanded_count"] = expanded_count
-            self._emit("retrieval.completed", result_summary=summary, **common)
+            self._emit(
+                "retrieval.completed",
+                tool_call_id=event.parent_operation_id,
+                result_summary=summary,
+                **common,
+            )
         elif event.operation in {"retrieval.search.failed", "retrieval.search.skipped"}:
-            self._emit_failure("retrieval.failed", event, common)
+            self._emit_failure(
+                "retrieval.failed",
+                event,
+                {**common, "tool_call_id": event.parent_operation_id},
+            )
         elif event.operation == "answer.finalization.completed":
+            self._complete_thinking(event.sequence)
             self._emit("answer.completed", content=self._text(payload.get("answer_text")), **common)
         elif event.operation in {"query.completed", "query.failed", "query.aborted"}:
+            self._complete_thinking(event.sequence)
             terminal_type = cast(
                 QueryStreamEventType,
                 {

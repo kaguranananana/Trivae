@@ -88,9 +88,11 @@ class TuiBlock:
     metrics: Mapping[str, object] = field(default_factory=dict)
     arguments: Mapping[str, object] | None = None
     result_summary: Mapping[str, object] | None = None
+    # result_detail 是 UI-safe 有界正文，与 collapsed 行统计完全分离。
+    result_detail: str | None = None
     error_code: str | None = None
     error_message: str | None = None
-    # answer 专用；thinking 文本按仓库约定不进入 UI state。
+    # answer 与 public-summary thinking 共用；hidden reasoning 永不进入此字段。
     streaming_text: str | None = None
 
 
@@ -143,6 +145,7 @@ class TuiProjectionEngine:
         self._clock = clock
         self._next_round_id = 0
         self._next_step_number = 0
+        self._next_thinking_number = 0
         self._next_error_number = 0
         self._active: TuiRound | None = None
         self._finished: dict[int, TuiRound] = {}
@@ -205,6 +208,7 @@ class TuiProjectionEngine:
         self._next_round_id += 1
         round_id = self._next_round_id
         self._next_step_number = 0
+        self._next_thinking_number = 0
         self._active = TuiRound(round_id=round_id, query_text=query_text)
         return round_id, TuiChange(action="round_started", round_id=round_id)
 
@@ -217,6 +221,7 @@ class TuiProjectionEngine:
             "route.completed": self._apply_route,
             "plan.completed": self._apply_plan_completed,
             "plan.failed": self._apply_plan_failed,
+            "thinking.started": self._apply_thinking_started,
             "thinking.delta": self._apply_thinking_delta,
             "thinking.completed": self._apply_thinking_completed,
             "tool.started": self._apply_tool_started,
@@ -289,13 +294,14 @@ class TuiProjectionEngine:
 
         if not self._round_is_active(round_id):
             return ()
+        closed = self._close_running_process_blocks()
         changes = self._emit_error_row(
             title=title,
             error_code=error_code,
             error_message=message or "本轮执行已被用户中断。",
         )
         self._mark_terminal(failure=True)
-        return changes
+        return (*closed, *changes)
 
     def finalize_failed(
         self,
@@ -309,13 +315,14 @@ class TuiProjectionEngine:
 
         if not self._round_is_active(round_id):
             return ()
+        closed = self._close_running_process_blocks()
         changes = self._emit_error_row(
             title=title,
             error_code=error_code,
             error_message=message,
         )
         self._mark_terminal(failure=True)
-        return changes
+        return (*closed, *changes)
 
     def drain_pending_collapse(self) -> TuiChange | None:
         """terminal 轮次待消费的折叠变化；无 pending 时返回 None。"""
@@ -393,6 +400,23 @@ class TuiProjectionEngine:
     def _apply_plan_failed(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
         return self._emit_error_row(title="计划失败", error_code=event.error_code, error_message=event.error_message)
 
+    def _apply_thinking_started(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
+        """为每个真实模型回合创建独立 Thinking 段，即使没有公开摘要文本。"""
+
+        assert self._active is not None
+        running = self._running_thinking_block()
+        if running is not None:
+            return ()
+        self._next_thinking_number += 1
+        return self._emit_created(
+            block_id=f"thinking:{self._next_thinking_number}",
+            kind="thinking",
+            status="running",
+            title="正在思考",
+            expanded=True,
+            started_monotonic=self._clock(),
+        )
+
     def _apply_thinking_delta(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
         """只有 provider/runtime 明确标记 public_summary 的摘要才允许展示。
 
@@ -402,29 +426,24 @@ class TuiProjectionEngine:
         assert self._active is not None
         if event.thinking_visibility != "public_summary":
             return ()
-        existing = self._active.find_block("thinking")
+        existing = self._running_thinking_block()
         if existing is None:
-            created = TuiBlock(
-                block_id="thinking",
-                kind="thinking",
-                status="running",
-                title="正在思考",
-                expanded=True,
-                started_monotonic=self._clock(),
-                streaming_text=event.content,
-            )
-            self._active.blocks.append(created)
-            return (TuiChange(action="block_created", round_id=self._active.round_id, block=created),)
+            created_changes = self._apply_thinking_started(event)
+            existing = self._running_thinking_block()
+            assert existing is not None
+        else:
+            created_changes = ()
         merged = replace(
             existing,
             streaming_text=(existing.streaming_text or "") + (event.content or ""),
         )
         self._replace_block(merged)
-        return (TuiChange(action="block_updated", round_id=self._active.round_id, block=merged),)
+        updated = TuiChange(action="block_updated", round_id=self._active.round_id, block=merged)
+        return (*created_changes, updated)
 
     def _apply_thinking_completed(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
         assert self._active is not None
-        existing = self._active.find_block("thinking")
+        existing = self._running_thinking_block()
         if existing is None:
             return ()
         updated = replace(
@@ -432,8 +451,8 @@ class TuiProjectionEngine:
             status="completed",
             title="已思考",
             duration_ms=self._elapsed_ms(existing.started_monotonic),
-            # 完成后折叠收起正文；用户手动展开过的保持打开。
-            expanded=existing.manually_expanded,
+            # 手动选择保留其真实开合值；未交互的完成段默认收起。
+            expanded=existing.expanded if existing.manually_expanded else False,
         )
         self._replace_block(updated)
         return (TuiChange(action="block_updated", round_id=self._active.round_id, block=updated),)
@@ -441,13 +460,26 @@ class TuiProjectionEngine:
     def _apply_tool_started(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
         """以 tool_call_id 建立 identity；同 tool 多次调用互不影响。"""
 
+        assert self._active is not None
+        block_id = f"tool:{event.tool_call_id}"
+        existing = self._active.find_block(block_id)
+        if existing is not None:
+            # terminal/detail 可能先于 normalized start 到达；start 只补参数，不回退终态。
+            updated = replace(
+                existing,
+                title=tool_display_name(event.tool_name),
+                arguments=event.arguments if event.arguments is not None else existing.arguments,
+            )
+            self._replace_block(updated)
+            return (TuiChange(action="block_updated", round_id=self._active.round_id, block=updated),)
         self._next_step_number += 1
         return self._emit_created(
-            block_id=f"tool:{event.tool_call_id}",
+            block_id=block_id,
             kind="tool",
             status="running",
             title=tool_display_name(event.tool_name),
             started_monotonic=self._clock(),
+            expanded=True,
             arguments=event.arguments,
             step_number=self._next_step_number,
         )
@@ -459,25 +491,34 @@ class TuiProjectionEngine:
         if existing is None:
             # 缺 start 的完成事实仍应诚实出现，但不制造伪关联。
             self._next_step_number += 1
+            failed = event.type == "tool.failed"
             return self._emit_created(
                 block_id=block_id,
                 kind="tool",
-                status="completed",
+                status="failed" if failed else "completed",
                 title=tool_display_name(event.tool_name),
+                expanded=failed,
                 duration_ms=event.duration_ms,
                 metrics=dict(event.result_summary or {}),
                 result_summary=dict(event.result_summary or {}),
+                result_detail=event.result_detail,
+                error_code=event.error_code,
+                error_message=event.error_message,
                 step_number=self._next_step_number,
             )
         failed = event.type == "tool.failed"
-        expanded = True if failed else existing.manually_expanded
+        expanded = True if failed else existing.expanded if existing.manually_expanded else False
+        merged_summary = {**(existing.result_summary or {}), **(event.result_summary or {})}
         updated = replace(
             existing,
             status="aborted" if failed and existing.status == "aborted" else "failed" if failed else "completed",
-            duration_ms=event.duration_ms,
+            duration_ms=event.duration_ms if event.duration_ms is not None else existing.duration_ms,
             expanded=expanded,
+            metrics={**existing.metrics, **(event.result_summary or {})},
+            result_summary=merged_summary or None,
             error_code=event.error_code,
             error_message=event.error_message,
+            result_detail=event.result_detail or existing.result_detail,
         )
         self._replace_block(updated)
         return (TuiChange(action="block_updated", round_id=self._active.round_id, block=updated),)
@@ -488,11 +529,11 @@ class TuiProjectionEngine:
         return ()
 
     def _apply_retrieval_completed(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
-        """deterministic 聚合：结果并入唯一 running tool row，避免重复 UI。"""
+        """deterministic 聚合：只并入 `parent_operation_id` 对应的 tool row；无宿主则独立成行。"""
 
         assert self._active is not None
         summary = dict(event.result_summary or {})
-        host = self._running_tool_block()
+        host = self._active.find_block(f"tool:{event.tool_call_id}") if event.tool_call_id is not None else None
         if host is not None:
             merged_metrics = {**host.metrics, **summary}
             updated_host = replace(host, metrics=merged_metrics, result_summary={**(host.result_summary or {}), **summary})
@@ -569,35 +610,59 @@ class TuiProjectionEngine:
 
     def _apply_query_completed(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
         assert self._active is not None
+        closed = self._close_running_process_blocks()
         self._active.terminal = True
-        return ()
+        return closed
 
     def _apply_query_failed(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
+        closed = self._close_running_process_blocks()
         changes = self._emit_error_row(
             title="查询失败",
             error_code=event.error_code,
             error_message=event.error_message or "查询未完成；请检查 Trace 诊断。",
         )
         self._mark_terminal(failure=True)
-        return changes
+        return (*closed, *changes)
 
     def _apply_query_aborted(self, event: QueryStreamEvent) -> tuple[TuiChange, ...]:
+        closed = self._close_running_process_blocks()
         changes = self._emit_error_row(
             title="已中断",
             error_code=event.error_code,
             error_message=event.error_message or "本轮执行已被中断。",
         )
         self._mark_terminal(failure=True)
-        return changes
+        return (*closed, *changes)
 
     # ---------- internals ----------
 
-    def _running_tool_block(self) -> TuiBlock | None:
+    def _running_thinking_block(self) -> TuiBlock | None:
+        """只返回当前开放段；已完成段永不被后续 delta 复用。"""
+
         assert self._active is not None
         return next(
-            (block for block in reversed(self._active.blocks) if block.kind == "tool" and block.status == "running"),
+            (block for block in reversed(self._active.blocks) if block.kind == "thinking" and block.status == "running"),
             None,
         )
+
+    def _close_running_process_blocks(self) -> tuple[TuiChange, ...]:
+        """终止边界把未完成过程标为 aborted，保证界面不残留 spinner。"""
+
+        assert self._active is not None
+        changes: list[TuiChange] = []
+        for block in tuple(self._active.blocks):
+            if block.kind not in _PROCESS_BLOCK_KINDS or block.status != "running":
+                continue
+            updated = replace(
+                block,
+                status="aborted",
+                title="已思考" if block.kind == "thinking" else block.title,
+                duration_ms=self._elapsed_ms(block.started_monotonic),
+                expanded=block.expanded if block.manually_expanded else False,
+            )
+            self._replace_block(updated)
+            changes.append(TuiChange(action="block_updated", round_id=self._active.round_id, block=updated))
+        return tuple(changes)
 
     def _mark_terminal(self, *, failure: bool = False) -> None:
         assert self._active is not None

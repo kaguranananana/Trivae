@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,6 +23,8 @@ from trivae.config.settings import (
     SettingsError,
     load_settings,
 )
+from trivae.interfaces.tui.models import TuiProjectionEngine
+from trivae.query.contracts import QueryRequest
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContractError, RuntimeEvent
 from trivae.query.runtime.openai_adapter import (
     OpenAIAgentsRuntimeAdapter,
@@ -30,6 +34,7 @@ from trivae.query.runtime.openai_adapter import (
     _RuntimeHooks,
 )
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
+from trivae.query.streaming import QueryStreamEvent
 
 
 class _RecordingSearchTool:
@@ -879,3 +884,97 @@ class _ApplicationContext:
         import shutil
 
         shutil.rmtree(self.directory)
+
+
+class CrossSourceToolProjectionTests(unittest.TestCase):
+    """RuntimeEvent 与 normalized 双源同时到达时，一次真实 tool call 只能收敛为一个完整 block。
+
+    背景（handoff A2）：TUI 的 tool 行由两条流合并——runtime `tool_completed`
+    携带 result_detail，normalized `tool.call.started/completed` 携带 arguments 与
+    summary。若两条流给出不同的 identity 字符串，reducer 会拆成两个 block：
+    用户看到重复行，且每行各缺一半事实，展开后即"无内容"。
+    本测试端到端走真实 OpenAI adapter + registry tool + TraceCollector 双源，
+    不对 ID 字符串形状做任何假设。
+    """
+
+    def test_two_tool_calls_collapse_into_single_blocks_with_full_triad(self) -> None:
+        directory = Path(tempfile.mkdtemp())
+        raw = directory / "raw"
+        raw.mkdir()
+        write_export(
+            raw,
+            "runtime(100).json",
+            [make_message("m1", 1, 1_768_435_200_000, "alpha message"), make_message("m2", 2, 1_768_435_260_000, "beta message")],
+            chat_name="Runtime",
+            peer_uid=None,
+            version="5.5.64",
+        )
+        application = create_application(directory / "cross-source.sqlite3")
+        application.import_directory(raw)
+        application.rebuild_lexical_index()
+        try:
+            model = ScriptedModel(
+                [
+                    ModelStep(
+                        output=[
+                            function_call("lexical_search", {"keyword": "alpha", "limit": 5}, call_id="call-1")
+                        ]
+                    ),
+                    ModelStep(
+                        output=[
+                            function_call("lexical_search", {"keyword": "beta", "limit": 5}, call_id="call-2")
+                        ]
+                    ),
+                    ModelStep(output=[assistant_message("Alpha 与 beta 的检索结果已汇总。")]),
+                ]
+            )
+            runtime = OpenAIAgentsRuntimeAdapter(application.capability_registry, model=model, max_turns=6)
+            application._agent_runtime = runtime
+
+            events: list[QueryStreamEvent] = []
+            asyncio.run(
+                application.query(
+                    QueryRequest(
+                        "两次检索 alpha 和 beta",
+                        ExecutionScope(allowed_session_ids=("qq:100",)),
+                    ),
+                    on_event=events.append,
+                )
+            )
+        finally:
+            application.close()
+            shutil.rmtree(directory)
+
+        started_ids = {event.tool_call_id for event in events if event.type == "tool.started"}
+        terminal_ids = {event.tool_call_id for event in events if event.type == "tool.completed"}
+        retrieval_ids = {event.tool_call_id for event in events if event.type == "retrieval.completed"}
+        # runtime detail 终态与 normalized summary 终态必须指向同一 identity 集合，
+        # 且 retrieval 的宿主 identity 不能超出真实 tool 调用集合。
+        self.assertEqual(len(started_ids), 2)
+        self.assertEqual(terminal_ids, started_ids)
+        self.assertTrue(retrieval_ids.issubset(started_ids))
+        self.assertNotIn(None, started_ids | terminal_ids)
+
+        engine = TuiProjectionEngine()
+        round_id, _ = engine.begin_round("两次检索 alpha 和 beta")
+        for event in events:
+            engine.apply(event)
+
+        blocks = engine.blocks_for_debug(round_id)
+        tools = [block for block in blocks if block.kind == "tool"]
+        self.assertEqual(len(tools), 2)
+        for block in tools:
+            self.assertNotEqual(block.block_id, "tool:None")
+            self.assertIsNotNone(block.arguments)
+            assert block.arguments is not None
+            self.assertIn("keyword", block.arguments)
+            self.assertIsNotNone(block.result_summary)
+            self.assertIn("message", block.result_detail or "")
+        # 有宿主 tool 行时不得出现孤儿 kind="retrieval" 行。
+        orphan_retrievals = [block for block in blocks if block.kind == "retrieval"]
+        self.assertEqual(orphan_retrievals, [])
+        # 关键词参数必须归属各自的调用：一个含 alpha、一个含 beta。
+        keyword_values = sorted(
+            str(block.arguments.get("keyword", "")) for block in tools  # type: ignore[union-attr]
+        )
+        self.assertEqual(keyword_values, ["alpha", "beta"])

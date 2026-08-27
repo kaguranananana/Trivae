@@ -11,6 +11,7 @@ from trivae.capabilities import ExecutionScope
 from trivae.observability.collector import TraceCollector
 from trivae.observability.contracts import FailureInfo, NormalizedQueryEvent, TracePhase, TraceStage
 from trivae.query.contracts import QueryRequest
+from trivae.query.evidence import ToolMessageItem, ToolResultRecord
 from trivae.query.runtime.contracts import RuntimeEvent, RuntimeResult
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
 from trivae.query.streaming import (
@@ -19,6 +20,7 @@ from trivae.query.streaming import (
     QueryStreamAdapter,
     QueryStreamEvent,
 )
+from trivae.retrieval.structured import MessageProjection
 
 
 class _StreamingAnswerRuntime:
@@ -136,6 +138,7 @@ def _normalized_event(
     phase: TracePhase,
     payload: dict[str, object],
     operation_id: str | None = None,
+    parent_operation_id: str | None = None,
     failure: FailureInfo | None = None,
 ) -> NormalizedQueryEvent:
     """构造固定 normalized fact，测试 Query adapter 不依赖 Store replay。"""
@@ -152,6 +155,7 @@ def _normalized_event(
         operation=operation,
         phase=phase,
         operation_id=operation_id or operation,
+        parent_operation_id=parent_operation_id,
         outcome="error" if failure is not None else "ok",
         duration_ms=12.5,
         payload=payload,
@@ -251,6 +255,7 @@ class QueryStreamProjectionTests(unittest.TestCase):
                 "retrieval.search.completed",
                 stage="retrieval",
                 phase="completed",
+                parent_operation_id="tool:a",
                 payload={
                     "candidate_count": 2,
                     "total_hits": 3,
@@ -305,13 +310,146 @@ class QueryStreamProjectionTests(unittest.TestCase):
                 "tool.completed",
                 "tool.started",
                 "tool.failed",
+                "thinking.started",
                 "thinking.delta",
             ],
         )
-        self.assertEqual([event.sequence for event in events], list(range(1, 8)))
+        self.assertEqual([event.sequence for event in events], list(range(1, 9)))
         self.assertEqual(events[2].result_summary["expanded_count"], 5)
         self.assertEqual(events[5].error_code, "TOOL_FAILED")
-        self.assertEqual(events[6].thinking_visibility, "public_summary")
+        self.assertEqual(events[7].thinking_visibility, "public_summary")
+
+    def test_turn_tool_boundaries_form_distinct_thinking_segments(self) -> None:
+        """多 Tool 回合必须保留三个独立 Thinking 生命周期，不能回写第一段。"""
+
+        events: list[QueryStreamEvent] = []
+        adapter = QueryStreamAdapter(events.append)
+        for turn, tool_id in ((1, "tool:a"), (2, "tool:b")):
+            adapter.handle_runtime_event(RuntimeEvent("turn_started", "test", "model", turn * 10))
+            adapter.handle_runtime_event(
+                RuntimeEvent("thinking_delta", "test", "model", turn * 10 + 1, text=f"分析{turn}")
+            )
+            adapter.handle_normalized_event(
+                _normalized_event(
+                    turn * 10 + 2,
+                    "tool.call.started",
+                    stage="tool",
+                    phase="started",
+                    operation_id=tool_id,
+                    payload={"tool_name": f"tool_{turn}"},
+                )
+            )
+            adapter.handle_normalized_event(
+                _normalized_event(
+                    turn * 10 + 3,
+                    "tool.call.completed",
+                    stage="tool",
+                    phase="completed",
+                    operation_id=tool_id,
+                    payload={"tool_name": f"tool_{turn}", "status": "ok"},
+                )
+            )
+        adapter.handle_runtime_event(RuntimeEvent("turn_started", "test", "model", 30))
+        adapter.handle_runtime_event(RuntimeEvent("thinking_delta", "test", "model", 31, text="综合"))
+        adapter.handle_runtime_event(RuntimeEvent("content_delta", "test", "model", 32, text="最终答案"))
+        adapter.handle_runtime_event(RuntimeEvent("turn_completed", "test", "model", 33))
+
+        lifecycle = [event.type for event in events]
+        self.assertEqual(lifecycle.count("thinking.started"), 3)
+        self.assertEqual(lifecycle.count("thinking.completed"), 3)
+        engine_order = [event.type for event in events if event.type in {"thinking.started", "tool.started", "answer.delta"}]
+        self.assertEqual(
+            engine_order,
+            ["thinking.started", "tool.started", "thinking.started", "tool.started", "thinking.started", "answer.delta"],
+        )
+
+    def test_tool_result_detail_is_bounded_and_separate_from_business_completeness(self) -> None:
+        """TUI 省略只影响 result_detail，不伪造 partial/truncated 业务事实。"""
+
+        message_items = tuple(
+            ToolMessageItem(
+                result_item_id=f"result-{index}",
+                message=MessageProjection(
+                    internal_message_id=f"internal-{index}",
+                    session_id="session-1",
+                    source_message_id=None,
+                    sender_user_id=f"user-{index}",
+                    sender_platform_id=None,
+                    sender_uin=None,
+                    sender_name=f"成员{index}",
+                    timestamp=1_700_000_000 + index,
+                    seq=index,
+                    message_type="text",
+                    normalized_content="正文" * 450,
+                    reply_to_source_message_id=None,
+                    recalled=False,
+                    system=False,
+                    session_display="测试群",
+                ),
+            )
+            for index in range(25)
+        )
+        record = ToolResultRecord(
+            run_id="run-1",
+            tool_call_id="tool:a",
+            tool_result_id="tool:a/result",
+            tool_name="search_messages",
+            status="ok",
+            scope_snapshot={},
+            query_scope_snapshot={},
+            message_items=message_items,
+        )
+        events: list[QueryStreamEvent] = []
+        QueryStreamAdapter(events.append).handle_runtime_event(
+            RuntimeEvent(
+                "tool_completed",
+                "test",
+                "model",
+                1,
+                tool_name="search_messages",
+                tool_call_id="tool:a",
+                tool_result=record,
+            )
+        )
+
+        detail = events[0].result_detail or ""
+        self.assertLessEqual(len(detail), 16_000)
+        self.assertIn("仅显示", detail)
+        self.assertIn("25 条", detail)
+        self.assertIsNone(events[0].result_summary)
+
+    def test_empty_record_detail_states_no_displayable_body(self) -> None:
+        """message_items/structured_items 双空的 record 展开后必须有明确的"无可展示正文"文案。
+
+        背景（handoff A2）：聚合型工具可能产出双空 record；expanded 视图不能留空白，
+        至少要让用户看到状态事实与明确的空正文说明。
+        """
+
+        record = ToolResultRecord(
+            run_id="run-1",
+            tool_call_id="tool:a",
+            tool_result_id="tool:a/result",
+            tool_name="find_members",
+            status="ok",
+            scope_snapshot={},
+            query_scope_snapshot={},
+        )
+        events: list[QueryStreamEvent] = []
+        QueryStreamAdapter(events.append).handle_runtime_event(
+            RuntimeEvent(
+                "tool_completed",
+                "test",
+                "model",
+                1,
+                tool_name="find_members",
+                tool_call_id="tool:a",
+                tool_result=record,
+            )
+        )
+
+        detail = events[0].result_detail or ""
+        self.assertIn("结果无可展示正文", detail)
+        self.assertIn("状态: ok", detail)
 
     def test_trace_store_failure_still_notifies_same_normalized_event(self) -> None:
         observed: list[NormalizedQueryEvent] = []

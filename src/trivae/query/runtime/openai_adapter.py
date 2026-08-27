@@ -22,6 +22,7 @@ from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.model_capabilities import resolve_context_window
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
+from trivae.query.evidence import ToolResultRecord
 from trivae.query.runtime.budget import (
     ToolResultBudgetConfig,
     ToolResultBudgetError,
@@ -321,6 +322,7 @@ class _PendingEvent:
     tool_call: RuntimeToolCall | None = None
     tool_name: str | None = None
     tool_call_id: str | None = None
+    tool_result: ToolResultRecord | None = None
     tool_round: int | None = None
     usage: dict[str, int | float] | None = None
     model_visible_context: tuple[dict[str, object], ...] | None = None
@@ -636,6 +638,10 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         if tool_call is None:
             # adapter contract 应该已经记录调用；缺失时显式失败而不是伪造成功状态。
             raise RuntimeError("SDK tool completed without a Trivae tool call record")
+        tool_result = self._find_tool_result(runtime_context.tool_results, tool_call_id, tool_name)
+        if tool_result is None:
+            # Tool adapter 必须先落 canonical result；缺失时不能发出没有明细来源的成功事件。
+            raise RuntimeError("SDK tool completed without a Trivae tool result record")
 
         self._state.completed_tool_results += 1
         first_result_in_turn = self._state.completed_tool_results == 1
@@ -649,6 +655,7 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
                 tool_call=tool_call,
                 tool_name=tool_name,
                 tool_call_id=tool_call_id,
+                tool_result=tool_result,
                 tool_round=self._state.tool_rounds,
             )
         )
@@ -684,6 +691,19 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         for call in reversed(calls):
             if call.name == tool_name and (tool_call_id is None or call.tool_call_id == tool_call_id):
                 return call
+        return None
+
+    @staticmethod
+    def _find_tool_result(
+        records: list[ToolResultRecord],
+        tool_call_id: str | None,
+        tool_name: str,
+    ) -> ToolResultRecord | None:
+        """按同一 Trivae call identity 取得 canonical bounded Tool Result。"""
+
+        for record in reversed(records):
+            if record.tool_name == tool_name and (tool_call_id is None or record.tool_call_id == tool_call_id):
+                return record
         return None
 
 
@@ -921,6 +941,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                         tool_call=pending.tool_call,
                         tool_name=pending.tool_name,
                         tool_call_id=pending.tool_call_id,
+                        tool_result=pending.tool_result,
                         tool_round=pending.tool_round,
                         usage=pending.usage,
                         model_visible_context=pending.model_visible_context,
@@ -959,6 +980,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                     tool_call=pending.tool_call,
                     tool_name=pending.tool_name,
                     tool_call_id=pending.tool_call_id,
+                    tool_result=pending.tool_result,
                     tool_round=pending.tool_round,
                     usage=pending.usage,
                     model_visible_context=pending.model_visible_context,
@@ -1237,6 +1259,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         tool_call: RuntimeToolCall | None = None,
         tool_name: str | None = None,
         tool_call_id: str | None = None,
+        tool_result: ToolResultRecord | None = None,
         result: RuntimeResult | None = None,
         tool_round: int | None = None,
         usage: dict[str, int | float] | None = None,
@@ -1255,6 +1278,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             tool_call=tool_call,
             tool_name=tool_name,
             tool_call_id=tool_call_id,
+            tool_result=tool_result,
             result=result,
             tool_round=tool_round,
             usage=usage,

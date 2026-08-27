@@ -13,11 +13,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable
 
+from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical, VerticalScroll
+from textual.containers import Vertical, VerticalGroup, VerticalScroll
 from textual.message import Message
 from textual.screen import Screen
+from textual.scrollbar import ScrollTo
 from textual.widget import Widget
 from textual.widgets import Collapsible, Footer, Input, Label, ListItem, ListView, Static
 
@@ -121,9 +123,76 @@ class _Entry:
 class _RoundState:
     """ChatScreen 内单轮的 widget 登记簿。"""
 
-    container: Vertical
+    container: VerticalGroup
     entries: list[_Entry] = field(default_factory=list)
     rows: dict[str, Widget] = field(default_factory=dict)
+
+
+class FollowTailHistory(VerticalScroll):
+    """仅在用户仍位于底部时跟随新内容的会话视口。"""
+
+    def __init__(self, *, id: str) -> None:
+        super().__init__(id=id)
+        # 新会话初始跟随；所有用户向上导航都会显式解除。
+        self.follow_tail = True
+
+    def follow_new_content(self) -> None:
+        """内容更新后延迟到布局完成再决定是否滚到底部。"""
+
+        if self.follow_tail:
+            self.call_after_refresh(self._scroll_to_follow_tail)
+
+    def resume_follow_tail(self) -> None:
+        """用户提交新一轮时明确恢复跟随并滚到新轮起点。"""
+
+        self.follow_tail = True
+        self.call_after_refresh(self._scroll_to_follow_tail)
+
+    def _scroll_to_follow_tail(self) -> None:
+        if self.follow_tail:
+            self.scroll_end(animate=False, force=True)
+
+    def action_scroll_up(self) -> None:
+        self.follow_tail = False
+        super().action_scroll_up()
+
+    def action_page_up(self) -> None:
+        self.follow_tail = False
+        super().action_page_up()
+
+    def action_scroll_home(self) -> None:
+        self.follow_tail = False
+        super().action_scroll_home()
+
+    def action_scroll_down(self) -> None:
+        # 动画完成后再读取真实位置；提前读取会把“已回到底部”误判为仍脱离。
+        self.scroll_down(on_complete=self._sync_follow_tail_from_position)
+
+    def action_page_down(self) -> None:
+        self.scroll_page_down(on_complete=self._sync_follow_tail_from_position)
+
+    def action_scroll_end(self) -> None:
+        self.follow_tail = True
+        super().action_scroll_end()
+
+    def on_mouse_scroll_up(self, event: events.MouseScrollUp) -> None:
+        """滚轮向上立即解除跟随，避免同一帧的新 token 把视口拉回。"""
+
+        self.follow_tail = False
+
+    def on_mouse_scroll_down(self, event: events.MouseScrollDown) -> None:
+        """滚轮回到底部后恢复跟随。"""
+
+        self.call_after_refresh(self._sync_follow_tail_from_position)
+
+    def _on_scroll_to(self, message: ScrollTo) -> None:
+        """滚动条拖动后按真实位置更新状态，不依赖输入设备猜测。"""
+
+        super()._on_scroll_to(message)
+        self.call_after_refresh(self._sync_follow_tail_from_position)
+
+    def _sync_follow_tail_from_position(self) -> None:
+        self.follow_tail = self.is_vertical_scroll_end
 
 
 class ChatScreen(Screen[None]):
@@ -169,14 +238,14 @@ class ChatScreen(Screen[None]):
         self._rounds: dict[int, _RoundState] = {}
 
     def compose(self) -> ComposeResult:
-        yield VerticalScroll(id="history")
+        yield FollowTailHistory(id="history")
         with Vertical(id="prompt-bar"):
             yield Input(placeholder="You > 输入问题，/help 查看命令", id="prompt")
         yield Footer()
 
     @property
-    def history(self) -> VerticalScroll:
-        return self.query_one("#history", VerticalScroll)
+    def history(self) -> FollowTailHistory:
+        return self.query_one("#history", FollowTailHistory)
 
     @property
     def prompt(self) -> Input:
@@ -192,12 +261,14 @@ class ChatScreen(Screen[None]):
     def begin_round_view(self, round_id: int, query_text: str) -> None:
         """为一轮新问答建立容器与 You > 标题行。"""
 
-        container = Vertical(classes="round")
+        # 轮次是历史区的内容分组，高度必须由子元素驱动。
+        # Vertical 默认 height: 1fr，会把整轮压成一个视口并隐藏溢出。
+        container = VerticalGroup(classes="round")
         self._rounds[round_id] = _RoundState(container=container)
         bounded_query = query_text if len(query_text) <= 200 else f"{query_text[:199]}…"
         self.history.mount(container)
         container.mount(Static(f"You > {bounded_query}", classes="round-header"))
-        self.history.scroll_end(animate=False, force=True)
+        self.history.resume_follow_tail()
 
     def round_has_answer(self, round_id: int) -> bool:
         state = self._rounds.get(round_id)
@@ -223,7 +294,7 @@ class ChatScreen(Screen[None]):
         state.entries.append(_Entry(kind="answer", block_id=fallback.block_id, widget=widget))
         state.rows[fallback.block_id] = widget
         state.container.mount(widget)
-        self.history.scroll_end(animate=False, force=True)
+        self.history.follow_new_content()
 
     def append_note_lines(self, lines: list[str], *, classes: str = "note-line") -> None:
         """命令输出与系统提示追加到最近一轮容器或历史区底部。"""
@@ -236,7 +307,7 @@ class ChatScreen(Screen[None]):
             self.history.mount(*widgets)
         else:
             target_container.mount(*widgets)
-        self.history.scroll_end(animate=False, force=True)
+        self.history.follow_new_content()
 
     def append_collapsible_note(self, title: str, lines: list[str]) -> None:
         """折叠式备注块（如来源/证据），默认收起保证回答视觉权重。"""
@@ -253,7 +324,7 @@ class ChatScreen(Screen[None]):
             self.history.mount(block)
         else:
             target_container.mount(block)
-        self.history.scroll_end(animate=False, force=True)
+        self.history.follow_new_content()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         event.stop()
@@ -271,7 +342,7 @@ class ChatScreen(Screen[None]):
                 pending_answer_updates.append(update)
         for update in pending_answer_updates:
             await update
-        self.history.scroll_end(animate=False, force=True)
+        self.history.follow_new_content()
 
     def on_process_row_toggled(self, event: ProcessRow.Toggled) -> None:
         """用户开合请求 → engine 确认（手动标记）→ 回写快照。"""
@@ -337,7 +408,7 @@ class ChatScreen(Screen[None]):
         state.rows[anchor_group_id] = group_widget
         state.container.mount(group_widget, before=anchor)
 
-    def _latest_round_container(self) -> Vertical | None:
+    def _latest_round_container(self) -> VerticalGroup | None:
         states = list(self._rounds.values())
         return states[-1].container if states else None
 
@@ -348,7 +419,9 @@ class TrivaeChatApp(App[None]):
     TITLE = "Trivae"
 
     BINDINGS = [
-        Binding("ctrl+c", "interrupt_or_quit", priority=True),
+        Binding("ctrl+c", "copy_or_interrupt", priority=True),
+        # PRD R3：显式退出快捷键；/exit、/quit 命令路径保持不变。
+        Binding("ctrl+q", "quit_app", "退出", show=False),
     ]
 
     def __init__(
@@ -794,10 +867,18 @@ class TrivaeChatApp(App[None]):
 
     # ---------- global actions ----------
 
-    def action_interrupt_or_quit(self) -> None:
-        """run 活跃时中断当前 run；空闲时退出应用。"""
+    def action_quit_app(self) -> None:
+        """Ctrl+Q 显式退出；Textual exit 会一并终止运行中的 query worker。"""
+
+        self.exit()
+
+    def action_copy_or_interrupt(self) -> None:
+        """选择优先复制；无选择且 run 活跃时才中断，空闲时不退出。"""
+
+        selected_text = self.screen.get_selected_text()
+        if selected_text is not None:
+            self.copy_to_clipboard(selected_text)
+            return
 
         if self._active_worker is not None and self._active_worker.is_running:
             self._active_worker.cancel()
-            return
-        self.exit()

@@ -135,6 +135,9 @@ projection 后按实际 estimate 结算；dynamic context 未知时 per-call 和
 - `max_turns` 只作 SDK absolute backstop；撞上时 `termination == "max_turns_exceeded"`、error code `MAX_TURNS_EXCEEDED`、category `absolute_backstop`。
 - `completed` 只能在 SDK `stream_events()` 完整消费和 cleanup 后发出。abort 是 terminal intent：不启动新 model/tool work，不做 final synthesis，不发 `completed`；最终 termination 为 `aborted`。
 - M5 Tool Result 额外携带 Trivae-owned `run_id`、`tool_call_id`、`tool_result_id` 和 bounded source projections；Runtime 只传递 provenance，不选择 Evidence、不拥有 Citation State Machine。
+- `RuntimeEvent(tool_completed)` additive 携带同一 `tool_call_id` 的 `ToolResultRecord`；hook 找不到
+  call 或 result record 时显式失败。接口层只从该 canonical bounded record 生成 UI-safe detail，
+  不读取 provider raw result、Trace Store、数据库或 Capability。
 - Tool Result projection 的 dynamic budget 由一个 Runtime run policy 共享；Trace 必须同时保留 per-call effective/actual/remaining 与 terminal pool summary，不能把固定 retrieval limit 或一次调用上限当作累计预算。
 - 只有 `termination == "completed"` 的 RuntimeResult 才进入 QueryOrchestrator 的 Answer Finalizer；valid/degraded Answer Artifact 才能作为 Query 的正式 `final_answer`，trusted provenance/scope/canonical failure 仍显式失败。
 - Runtime 持有 model/provider client；`aclose()` 必须真实 await `model.close()` 和 `AsyncOpenAI.close()`（若存在），且幂等。Application `aclose()` 还要释放 lexical/read/store；同步 `close()` 在 running loop 中必须显式报错并要求调用 `await aclose()`。
@@ -145,13 +148,17 @@ projection 后按实际 estimate 结算；dynamic context 未知时 per-call 和
 
 ### Interactive streaming projection
 
-- Provider reasoning 只允许在 SDK / Runtime adapter 边界从公开 stream event 归一化为 `thinking_delta` / `thinking_completed`；接口层不识别 `reasoning_content` 或 provider name。没有或为空时不产生 Thinking 输出，禁止按执行状态伪造推理文字。
+- Provider reasoning 只允许在 SDK / Runtime adapter 边界从公开 stream event 归一化为 `thinking_delta` / `thinking_completed`；接口层不识别 `reasoning_content` 或 provider name。`turn_started` 作为真实生命周期可投影无正文 `thinking.started`；没有 public summary 时不得产生推理文字。
 - Reasoning 可见性由 `QueryStreamAdapter` 单点裁决（2026-08-27 起）：只有 adapter 显式附加
   `thinking_visibility="public_summary"` 的 delta 才可视，默认交互界面（Textual TUI）按此标记
   渲染思考正文；未标记的 reasoning 是私密 CoT，连 UI state 都不进入。`CliEventRenderer`
   （`--plain`/非 TTY）继续静默，避免平铺推理污染 CI 与日志重定向。
 - `content_delta` 承载的是 Answer Artifact JSON。实时投影只能增量提取 `content_blocks[*].text`；Finalizer 仍以完整 JSON 为唯一验证边界，Conversation 只提交一次完整 Assistant message。
 - Runtime event 与 Router / Planner / Tool / Retrieval 的 normalized event 由同一个进程内 `QueryStreamAdapter` 投影为 `QueryStreamEvent`；Trace Store 不是实时队列，CLI 不轮询 SQLite。
+- QueryStreamAdapter 为每个模型 turn 开闭独立 Thinking 段；Tool、Answer、turn terminal 都是幂等
+  关闭边界。Tool detail 与 normalized summary 可乱序到达，但必须按 `tool_call_id` 合并同一块。
+- normalized retrieval 的 `parent_operation_id` 是唯一 Tool correlation；缺关联时独立展示，禁止按
+  当前运行 Tool、事件相邻性或 tool name 猜测。
 - reasoning 与 answer token delta 是 ephemeral stream facts，不能写入 Normal/Debug Trace；Trace 继续排除 hidden reasoning / Chain-of-Thought。Tool、Retrieval、Route 与 Plan 只显示真实结构化 event facts。
 - Renderer 归 `interfaces` 所有，只负责 normal/verbose 格式、bounded 参数摘要、文本段换行和 terminal 恢复；Runtime、Tool、Retrieval、Router、Planner 内部不得加入 CLI print。
 
@@ -186,7 +193,7 @@ projection 后按实际 estimate 结算；dynamic context 未知时 per-call 和
 | Local invalid citation/metadata after completed runtime | 保留可读答案，丢弃局部 citation/字段并返回 `degraded`；不伪造 binding |
 | Trusted provenance/scope/canonical citation failure | Query 返回 `finalization_error`；不返回 Artifact、不自动修复 |
 | Closed runtime/application reused | 显式 lifecycle error；不得静默重建 provider/resource |
-| Provider 没有/返回空 reasoning | 不产生 Thinking；Tool、Answer 与 terminal event 正常继续 |
+| Provider 没有/返回空 reasoning | 可显示无正文 model-turn activity；不产生推理文字，Tool、Answer 与 terminal 正常继续 |
 | Provider stream 在 answer delta 后失败 | 关闭开放文本段、显示 normalized failure；不产生 answer.completed，不提交 Conversation |
 | 多轮 Tool Call | 按 Runtime/normalized event sequence 展示，不由 Renderer 推断或重排 |
 

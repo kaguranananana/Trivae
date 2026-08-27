@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import shlex
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -1441,6 +1442,9 @@ async def _run_interactive_chat(
 def _run_tui_chat(application: TrivaeApplication, *, verbose: bool) -> int:
     """以 Textual TUI 运行交互 chat；Runtime 仍由 Application 唯一执行。"""
 
+    # macOS 中文 IME 需要终端传递完整的组字序列；Kitty 全键盘协议会打断该序列。
+    # Textual 在首次 import 时读取此开关，因此必须在下方局部 import 之前固定协议选择。
+    os.environ["TEXTUAL_DISABLE_KITTY_KEY"] = "1"
     # 局部 import 保持 plain 路径不加载 Textual。
     from trivae.interfaces.tui.app import TrivaeChatApp
 

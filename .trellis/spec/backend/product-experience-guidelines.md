@@ -270,27 +270,35 @@ Sources: canonical message URLs
   不建第二套事件状态机。
 - Tool identity：start/complete/failed 以 `tool_call_id` 关联同一 block；同一 tool name 多次调用
   互不影响；缺 start 的完成事实按独立块诚实出现，不伪造关联。
-- Retrieval 聚合：存在 running tool 时，`retrieval.completed` 的 counts/partial/truncated 合并进该
-  tool block 的 metrics（deterministic UI 合并，不改 Retrieval 领域语义）；无 running tool 才独立成行。
+- Retrieval 聚合：`retrieval.completed.parent_operation_id` 必须与 Tool block 的 `tool_call_id`
+  精确相等才合并 counts/partial/truncated；关联块不存在时独立成行，禁止选择“最后一个 running tool”。
 - Thinking（2026-08-27 产品决策反转）：provider/runtime 明确标记 `thinking_visibility="public_summary"`
   的 reasoning 摘要进入 ThinkingBlock 正文，流式时自动展开、完成后折叠保留可展开查看；
   展开正文有界（尾部 1800 字符 + 省略标注）。无标记的 reasoning 是私密 CoT，
-  连 UI state 都不进入；仍禁止按间隔/工具名伪造思考内容。
+  连 UI state 都不进入；真实 `turn_started` 可以创建无正文 activity row。每个 turn 使用独立
+  `thinking:<ordinal>`，Tool/Answer/terminal 边界关闭当前段，仍禁止按间隔/工具名伪造思考内容。
 - 两阶段聚合：运行中 blocks 按事件顺序逐块出现；query terminal 后 process kinds
   （route/thinking/plan/tool/retrieval）冻结为单行 `执行过程 · N 步 · 总时长` 折叠组；
   answer 与 error 留在外层。失败/中断终态的组默认展开。
 - 折叠策略优先级：用户手动开合（`manually_expanded`）> 自动策略 > 默认。failed 块自动展开；
   answer 永远展开。
-- 输入回路：run 进行中 Input disabled；Ctrl+C 取消当前 query worker 并渲染中断 error row；
-  终态后 re-enable + focus 回输入框。`--plain` 或非 TTY 自动回退 stdout renderer，plain 测试零改动。
-- 长内容边界：详情区条目 ≤20、字段 ≤800 chars（超限追加省略提示）；`partial/truncated`
-  以 ⚠ chips 显示在 collapsed 行，不得隐藏完整性信息。
+- 输入回路：run 进行中 Input disabled；Ctrl+C 优先复制 Screen 原生 selection，无 selection 且
+  run 活跃时才取消 worker，空闲时 no-op；Ctrl+Q、`/exit`、`/quit` 负责退出。终态后 re-enable + focus
+  回输入框。`--plain` 或非 TTY 自动回退 stdout renderer，plain 测试零改动。
+- Follow Tail：新会话/新 round 默认跟随；PageUp/Home/滚轮向上或任何离开底部的用户滚动解除，
+  PageDown/滚轮向下回到真实底部后恢复，End 明确恢复。新增 block/note/delta 只有在跟随态才滚到底部。
+- 长内容边界：Tool `result_summary` 与 `result_detail` 分离；详情条目 ≤20、字段 ≤800 chars、总长
+  ≤16000 chars，并显示 UI preview omission。canonical `partial/truncated/coverage` 仍以 ⚠ chips 表达，
+  预览省略不得改写这些业务完整性事实。
+- ProcessRow 鼠标只在首行 header 切换；详情正文不 stop selection。键盘 Enter/Space 继续切换，
+  disclosure glyph 与实际 expandable state 保持一致。
 
 ### 3. Tests Required
 
 - Projection reducer：全事件类型 state 变换、tool identity 乱序、answer delta 累积与 authoritative
   替换、retrieval 合并/独立两分支、collapse 分组与默认展开条件、手动展开持久化、轮外事件忽略。
-- Pilot 应用测试：Enter/Space 切换、输入提交→streaming→折叠→输入恢复完整回路、Ctrl+C 中断恢复、多轮累积。
+- Pilot 应用测试：header/body 点击边界、原生选择/clipboard、Ctrl+C 三态、Follow Tail 的真实
+  `scroll_y/max_scroll_y`、输入提交→streaming→折叠→输入恢复与多轮累积。
 - Plain 回归零改动。
 
 ### 4. Wrong vs Correct
@@ -316,3 +324,43 @@ for change in changes:
 简单问题 5.76s（2 步）；单工具 63.97s（3 步，retrieval 已并入 tool 行）；
 多工具含失败 46s（7 步）；15 步大链路 76s 无静默期；provider 偶发 query.failed 正确收敛到 error row +
 输入恢复。数据存于对应 task `validation.md`。
+
+## 10. Terminal compatibility matrix — TUI mouse wheel（2026-08-27）
+
+### 1. Scope / Trigger
+
+- Trigger：真机反馈 `trivae chat`（Textual 8.2.8）滚轮无法滚动；诊断发现 app 与解析层均无故障。
+- Scope：仅记录分层诊断结论与待确认项；不引入任何终端特定 workaround。
+
+### 2. Verified facts（本仓库实测）
+
+| 层 | 结论 | 证据 |
+| --- | --- | --- |
+| Textual 8.2.8 输入协议解析（xterm SGR `\x1b[<64;x;yM` / `<65;…M`） | 正确解码为 MouseScrollUp/Down 且坐标符合 1-based 减一约定；同 chunk 多事件边界正确 | 任务 research/mouse-scroll-diagnosis.md 记录的一次性 `XTermParser` feed 脚本输出 |
+| App 内冒泡（悬停在 AnswerBlock Markdown 正文、ProcessGroupWidget 区域等 #history 后代上的滚轮） | 正确冒泡到 FollowTailHistory，`scroll_y` 真实移动，follow_tail 按位置翻转 | `tests/test_tui_app.py::test_wheel_bubbles_from_inner_children_to_history` |
+
+### 3. Pending user confirmation
+
+- 剩余解释是用户终端应用自身的鼠标事件直通限制（如 Warp 对 TUI mouse
+  reporting / wheel 直通的已知开放问题，见上游 issue tracker
+  https://github.com/warpdotdev/Warp/issues 检索 “mouse report” / “scroll passthrough”）。
+- 待用户提供实际终端型号/版本后：若确认受限，更新下表并把该诊断归档；
+  若在常见终端复现失败，则回到代码层重新排查。
+- 建议优先复核的 macOS 终端：iTerm2、Terminal.app、kitty、Alacritty
+  （均支持 xterm SGR mouse reporting；支持状态以各自 release notes 为准，本仓库未逐一代价真机验证，此处不声称已验证）。
+
+### 4. Wrong vs Correct
+
+#### Wrong
+
+```python
+# 为某个终端加 workaround（例如把方向键当滚轮、或注入伪造 scroll 事件）
+if terminal_is_warp(): ...
+```
+
+#### Correct
+
+```
+按协议层事实分层归因：driver bytes → XTermParser → widget 冒泡 → follow-tail state；
+每层各有可执行证据。终端限制如实记录在本矩阵，不改产品代码。
+```

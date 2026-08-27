@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import inspect
 import json
+import os
+import sys
 import tempfile
 import unittest
 from collections.abc import Callable
@@ -10,7 +13,7 @@ from contextlib import nullcontext, redirect_stdout
 from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 from tests.test_ingestion import make_message, write_export
@@ -155,6 +158,43 @@ class ChatCliTests(unittest.TestCase):
 
         env_file_args = cli.build_parser().parse_args(["chat", "--env-file", "custom.env"])
         self.assertEqual(env_file_args.env_file, Path("custom.env"))
+
+    def test_tui_disables_kitty_keyboard_protocol_before_textual_import(self) -> None:
+        """TUI 入口必须在 Textual 首次 import 前固定 IME 可用的协议。"""
+
+        application = _FakeApplication((_session("qq:100", "AI 群"),), [])
+        imported_with_protocol_disabled: list[bool] = []
+        real_import = builtins.__import__
+        fake_tui_module = ModuleType("trivae.interfaces.tui.app")
+
+        class _FakeTuiApp:
+            """只验证 CLI 启动边界，不启动真实 Textual event loop。"""
+
+            def __init__(self, *_: object, **__: object) -> None:
+                pass
+
+            def run(self) -> None:
+                pass
+
+        fake_tui_module.TrivaeChatApp = _FakeTuiApp  # type: ignore[attr-defined]
+
+        def recording_import(name: str, *args: object, **kwargs: object) -> object:
+            if name == "trivae.interfaces.tui.app":
+                imported_with_protocol_disabled.append(
+                    os.environ.get("TEXTUAL_DISABLE_KITTY_KEY") == "1"
+                )
+            return real_import(name, *args, **kwargs)
+
+        with (
+            patch.dict(os.environ, {}, clear=False),
+            patch.dict(sys.modules, {"trivae.interfaces.tui.app": fake_tui_module}),
+            patch.object(builtins, "__import__", side_effect=recording_import),
+        ):
+            os.environ.pop("TEXTUAL_DISABLE_KITTY_KEY", None)
+            exit_code = cli._run_tui_chat(application, verbose=False)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(imported_with_protocol_disabled, [True])
 
     def test_chat_parser_keeps_existing_import_trace_and_eval_commands(self) -> None:
         """新增子命令不能让原有入口失去 parser 识别能力。"""
