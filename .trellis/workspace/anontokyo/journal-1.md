@@ -1025,3 +1025,24 @@ smoke 必须断言时序/分布而不只是事件类型。
 ### Status
 
 [OK] **Completed**
+
+
+## Session 42: 修复 Web Scope、Coverage 与失败 Trace
+
+**Date**: 2026-08-28
+**Task**: 修复 Web Scope、Coverage 与失败 Trace
+**Branch**: `main`
+
+### Summary
+
+修复 Web 指定群聊未进入请求、独立 recent root 查询被误判为 coverage 倒退、失败/中止终态未关联 Trace；补齐回归测试、规范与真实 Failure Case 记录。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7dafb0b` | (see git log) |
+
+### Status
+
+[OK] **Completed**
