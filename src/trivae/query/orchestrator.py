@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Mapping
 from time import perf_counter
 from typing import TYPE_CHECKING, Iterable, Literal
 
 from trivae.observability.contracts import FailureInfo
 from trivae.query.contracts import QueryDiagnostic, QueryRequest, QueryResult
-from trivae.query.evidence import FinalizationErrorInfo, finalize_answer_gracefully
+from trivae.query.evidence import MAX_CONTENT_BLOCKS, FinalizationErrorInfo, finalize_answer_gracefully
 from trivae.query.planner import Planner, PlannerResult, render_plan_guidance
 from trivae.query.router import RouteDecision, Router
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeEvent, RuntimeResult
@@ -34,6 +35,33 @@ class QueryOrchestrator:
         self.router = router
         self.planner = planner
         self._capability_names = None if capability_names is None else tuple(capability_names)
+
+    @staticmethod
+    def _answer_candidate_observation(output: str | None) -> dict[str, object]:
+        """提取不含正文的 candidate 形状指标，供 Trace 定位答案深度层级。"""
+
+        if not isinstance(output, str) or not output.strip():
+            return {}
+        try:
+            decoded = json.loads(output)
+        except (TypeError, ValueError):
+            # 非 JSON 会由 finalizer 按既有 contract 处理；这里仅缺少 candidate 诊断，不改变结果。
+            return {}
+        if not isinstance(decoded, Mapping) or not isinstance(decoded.get("claims"), list):
+            return {}
+        claims = decoded["claims"]
+        # finalizer 对 claims 的业务上限是 MAX_CONTENT_BLOCKS；诊断只读取同一有界前缀。
+        bounded_claims = claims[:MAX_CONTENT_BLOCKS]
+        text_lengths = tuple(
+            len(item["text"])
+            if isinstance(item, Mapping) and isinstance(item.get("text"), str)
+            else None
+            for item in bounded_claims
+        )
+        return {
+            "candidate_claim_count": len(claims),
+            "candidate_claim_text_lengths": text_lengths,
+        }
 
     @staticmethod
     async def _run_with_abort(
@@ -514,6 +542,17 @@ class QueryOrchestrator:
                 outcome=finalization_outcome,
                 payload={
                     "answer_length": len(answer_artifact.answer_text),
+                    # 保持既有 Trace 正文快照位于 normal CapturePolicy 的有界字段前缀内。
+                    "answer_text": answer_artifact.answer_text,
+                    # candidate 指标只记录 claim 数和正文长度，不把模型原文复制到 Trace。
+                    # 将新诊断收进一个有界 mapping，避免新增顶层字段挤掉既有 Trace 字段。
+                    "answer_shape": {
+                        **self._answer_candidate_observation(runtime_result.final_answer),
+                        "content_block_count": len(answer_artifact.content_blocks),
+                        "content_block_text_lengths": tuple(
+                            len(block.text) for block in answer_artifact.content_blocks
+                        ),
+                    },
                     "limitation_count": len(answer_artifact.limitations),
                     "finalization_status": finalization_diagnostics.status,
                     "user_answer_preserved": finalization_diagnostics.user_answer_preserved,
@@ -527,8 +566,6 @@ class QueryOrchestrator:
                     "validated_citation_count": finalization_diagnostics.validated_citation_count,
                     "resolved_time_range": answer_artifact.resolved_time_range,
                     "retrieval_coverage": answer_artifact.retrieval_coverage,
-                    # 这是通过 finalization 校验后的 Debug execution snapshot；业务事实仍由 AnswerArtifact/Conversation Store 持有。
-                    "answer_text": answer_artifact.answer_text,
                 },
             )
         return QueryResult(

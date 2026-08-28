@@ -258,6 +258,62 @@ class EvidenceContractTests(unittest.TestCase):
         self.assertEqual(reference.internal_message_id, "qq:100:m1")
         self.assertIsNotNone(reference.snapshot)
 
+    def test_model_candidate_preserves_independent_answer_prose_and_citations(self) -> None:
+        """独立 finding 的用户正文保持完整，Evidence metadata 仍按 claim 分开绑定。"""
+
+        first_record = _record()
+        second_message = _message(
+            internal_message_id="qq:100:m2",
+            content="第二个独立主题的 canonical content",
+        )
+        record = replace(
+            first_record,
+            message_items=(
+                first_record.message_items[0],
+                ToolMessageItem("message/qq:100:m2", second_message),
+            ),
+        )
+        output = json.dumps(
+            {
+                "claims": [
+                    {
+                        "text": "主题一：说明参与者、起点和代表事实。",
+                        "finding": "主题一事实",
+                        "criterion": "第一条当前消息来源可解析",
+                        "sufficiency": "sufficient",
+                        "sources": ["m1-1"],
+                        "limitations": [],
+                    },
+                    {
+                        "text": "主题二：说明差异、后续发展和具体资源链接 https://example.com/repo。",
+                        "finding": "主题二事实",
+                        "criterion": "第二条当前消息来源可解析",
+                        "sufficiency": "sufficient",
+                        "sources": ["m1-2"],
+                        "limitations": [],
+                    },
+                ],
+                "limitations": [],
+            },
+            ensure_ascii=False,
+        )
+
+        # 同一 candidate 的正文与 metadata 分别验证：不能为压缩 evidence 而丢掉第二个 finding。
+        artifact = finalize_answer(
+            output,
+            run_id=record.run_id,
+            tool_results=(record,),
+            scope=ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=900, end_timestamp=1_100),
+        )
+
+        self.assertIn("主题一：说明参与者、起点和代表事实。", artifact.answer_text)
+        self.assertIn("主题二：说明差异、后续发展和具体资源链接", artifact.answer_text)
+        self.assertEqual(len(artifact.content_blocks), 2)
+        self.assertEqual(tuple(item.finding for item in artifact.evidence_items), ("主题一事实", "主题二事实"))
+        self.assertEqual(tuple(binding.content_block_id for binding in artifact.citation_bindings), ("claim-1", "claim-2"))
+        self.assertEqual(len(artifact.evidence_items[0].sources), 1)
+        self.assertEqual(len(artifact.evidence_items[1].sources), 1)
+
     def test_model_candidate_unknown_handle_fails_with_source_path(self) -> None:
         """未知 handle 必须显式失败，不能被 Host 删除或猜测成另一条来源。"""
 

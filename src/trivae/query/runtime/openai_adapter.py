@@ -1019,13 +1019,16 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
 
             final_output = getattr(streamed_result, "final_output", None)
             usage = self._project_usage(streamed_result)
-            if not isinstance(final_output, str):
+            if not isinstance(final_output, str) or not final_output.strip():
+                # Provider/compatibility repair 返回空正文时，必须在 Runtime 层标成失败；
+                # 不能把“completed + 空字符串”交给 Finalizer 再伪装成正常完成。
+                empty_output = isinstance(final_output, str)
                 result = self._failed_result(
                     context,
                     state,
                     "INVALID_FINAL_OUTPUT",
-                    "SDK final output was not text",
-                    diagnostic_type="invalid_final_output",
+                    "SDK final output was empty" if empty_output else "SDK final output was not text",
+                    diagnostic_type="empty_final_output" if empty_output else "invalid_final_output",
                     usage=usage,
                 )
                 yield self._event(state, "failed", result=result)

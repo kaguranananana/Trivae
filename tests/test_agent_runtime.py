@@ -450,8 +450,8 @@ class RuntimeAdapterTests(unittest.TestCase):
             )
         ]
 
-    def test_final_synthesis_prompt_requests_compact_artifact(self) -> None:
-        self.assertIn("Keep the JSON artifact compact", SYSTEM_PROMPT)
+    def test_final_synthesis_prompt_bounds_evidence_artifact(self) -> None:
+        self.assertIn("Keep the JSON artifact bounded", SYSTEM_PROMPT)
         self.assertIn("Do not repeat the same", SYSTEM_PROMPT)
         self.assertIn('exact keyword "github.com"', SYSTEM_PROMPT)
         self.assertIn("effective start and end", SYSTEM_PROMPT)
@@ -467,10 +467,19 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertIn("multiple categories", SYSTEM_PROMPT)
         self.assertIn("Semantic calls keep their own small", SYSTEM_PROMPT)
         self.assertIn("context_before` and\n`context_after` to 0", SYSTEM_PROMPT)
-        self.assertIn("at most eight representative URLs in\ntotal", SYSTEM_PROMPT)
         self.assertIn("`sources` array for every claim MUST contain no more than 20 handles", SYSTEM_PROMPT)
-        self.assertIn("at most 10 direct handles", SYSTEM_PROMPT)
         self.assertIn("claims array and closing JSON braces", SYSTEM_PROMPT)
+
+    def test_final_synthesis_prompt_adapts_answer_depth_without_compressing_prose(self) -> None:
+        """复杂问题应展开用户正文，但仍让 evidence/citation metadata 保持有界。"""
+
+        # 这些断言锁定职责边界：正文可以按问题复杂度展开，证据字段仍然单独受限。
+        self.assertIn("The claim text is user-facing answer prose", SYSTEM_PROMPT)
+        self.assertIn("adapt the amount of detail to the question", SYSTEM_PROMPT)
+        self.assertIn("Do not merge independent findings solely to reduce the claim count", SYSTEM_PROMPT)
+        self.assertIn("Evidence and citation metadata must stay bounded and concise", SYSTEM_PROMPT)
+        # 宽泛清单不能再被固定压成一个 grouped claim；是否分组应由问题和证据结构决定。
+        self.assertNotIn("exactly one grouped claim", SYSTEM_PROMPT)
 
     def test_provider_completion_uses_json_mode_and_explicit_budget(self) -> None:
         """Router/Planner completion 必须走 provider JSON contract 和有界预算。"""
@@ -625,6 +634,31 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(len(model.calls), 2)
         self.assertEqual(len(model.calls[0].tools), 1)
         self.assertNotIn("qq:100", str(model.calls[0].input))
+
+    def test_empty_sdk_final_output_is_an_explicit_runtime_failure(self) -> None:
+        """Provider 空正文不能以 completed 结果进入 Finalizer。"""
+
+        # 用真实 SDK ScriptedModel 模拟兼容修复后没有可见正文的 terminal response。
+        model = ScriptedModel([ModelStep(output=[assistant_message("")])])
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=model, max_turns=2)
+
+        result = asyncio.run(
+            runtime.run(
+                AgentRunRequest(
+                    query="What supports alpha?",
+                    scope=self.scope,
+                    available_capabilities=("search_messages",),
+                )
+            )
+        )
+
+        self.assertEqual(result.termination, "failed")
+        self.assertIsNone(result.final_answer)
+        self.assertIsNotNone(result.error)
+        assert result.error is not None
+        self.assertEqual(result.error.code, "INVALID_FINAL_OUTPUT")
+        self.assertEqual(result.error.message, "SDK final output was empty")
+        self.assertEqual(result.error.diagnostic_type, "empty_final_output")
 
     def test_model_visible_projector_keeps_tool_items_and_omits_reasoning(self) -> None:
         """模型输入投影保留真实 tool item，但不复制 hidden reasoning/SDK 字段。"""

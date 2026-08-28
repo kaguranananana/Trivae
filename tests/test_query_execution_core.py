@@ -268,6 +268,29 @@ class PlannerTests(unittest.TestCase):
 class OrchestratorTests(unittest.TestCase):
     """两路 route 只改变 soft guidance，runtime 和 capability boundary 不变。"""
 
+    def test_answer_candidate_observation_keeps_only_shape_metrics(self) -> None:
+        """答案深度诊断只记录 claim 数和正文长度，不泄露模型正文。"""
+
+        output = json.dumps(
+            {
+                "claims": [
+                    {"text": "主题一的完整说明"},
+                    {"text": "主题二的完整说明与链接"},
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+        # 通过长度而不是正文内容观测 candidate，避免 Trace 复制聊天或模型原文。
+        self.assertEqual(
+            QueryOrchestrator._answer_candidate_observation(output),
+            {
+                "candidate_claim_count": 2,
+                "candidate_claim_text_lengths": (8, 11),
+            },
+        )
+        self.assertEqual(QueryOrchestrator._answer_candidate_observation("not-json"), {})
+
     def test_standard_and_planned_use_same_runtime_and_preserve_scope(self) -> None:
         runtime = _RecordingRuntime()
         scope = ExecutionScope(allowed_session_ids=("qq:100",))

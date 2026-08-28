@@ -131,28 +131,33 @@ exactly this zero-result JSON shape and nothing else:
 The summary must only describe the absence of results and query metadata; it must not state any positive
 factual topic. This shape is accepted by the host only when the tool results genuinely contain no
 messages or rows; otherwise finalization fails. If any tool did return content, use normal claims with citations.
-Keep the JSON artifact compact: use one claim per distinct finding and only the smallest number of
-direct source handles needed to support it. Do not repeat the same
-source or copy message text into the artifact. For repository, Skill, or resource questions, include
-the concrete URL in the claim text when the returned message contains one, and distinguish observed
-chat mentions from independently verified value. If a category has both URL-bearing messages and
-name-only messages, list the URL-bearing items first and explicitly mark name-only items as having
-no link found in the retrieved evidence. State the effective time range when it is relevant.
-For a broad repository, Skill, or resource inventory, use exactly one grouped claim and one source
-set unless the user explicitly asks for separate analysis. List at most eight representative URLs in
-total across all categories; report the remaining hit count without enumerating every hit. The
-`sources` array for every claim MUST contain no more than 20 handles; for a broad inventory choose at most 10 direct handles
-and summarize the rest by the trusted returned/total count. Never copy every hit
-handle into one claim. The claims array and closing JSON braces are mandatory and take priority over
-adding more links: shorten the claim and finding text when needed, but never omit source handles to fit
-a longer inventory.
-When a retrieval result contains many resources, group them by category and list at most eight
-representative items per category; include the rest as a bounded count instead of emitting one
-giant claim or copying every hit. Semantic expanded messages are context unless they are direct
-range-core evidence; cite only the returned core message handles needed for the claim. Keep each claim to the smallest direct source set that
-supports its claim, and never repeat a URL/source across multiple evidence items unless the claims
-are materially different. The final JSON must close within the model output budget; concise claims
-with concrete URLs are preferred over exhaustive transcription.
+Keep the JSON artifact bounded for Evidence and Citation bookkeeping, but do not use that bookkeeping
+goal to compress the user-visible answer. The claim text is user-facing answer prose and is rendered
+verbatim; it is not a short label. adapt the amount of detail to the question: simple factual or yes/no
+questions may be concise, while broad overviews, comparisons, opinion summaries, timelines, and
+resource inventories should cover each materially distinct finding with an overview and concrete
+supporting details. Include participants, sequence, dates, differences, resource names, or URLs when
+the returned evidence contains them. Distinguish observed facts, reasonable synthesis, and evidence
+limitations. Do not merge independent findings solely to reduce the claim count, do not pad with
+unsupported background, and do not dump the transcript.
+Use one claim for each independently useful finding when that makes coverage clearer; grouping related
+facts is fine when they form one finding. Do not repeat the same source or copy message text into the
+artifact. For repository, Skill, or resource questions, include the concrete URL in the claim text
+when the returned message contains one, and distinguish observed chat mentions from independently
+verified value. If a category has both URL-bearing messages and name-only messages, list the URL-bearing
+items first and explicitly mark name-only items as having no link found in the retrieved evidence.
+State the effective time range when it is relevant.
+For a broad repository, Skill, or resource inventory, group related items by category and cover the
+categories supported by the returned evidence; do not enumerate every hit. Report remaining hit count
+when the result is partial, and choose representative items that preserve useful variety. The
+`sources` array for every claim MUST contain no more than 20 handles; for a broad inventory choose a
+bounded set of direct handles that supports the items actually listed rather than copying every hit
+handle. Keep finding, criterion, and limitation fields concise: these are Evidence metadata, not a
+length target for `claims[*].text`. The claims array and closing JSON braces are mandatory, and the
+final JSON must remain within the schema and model output budgets.
+Semantic expanded messages are context unless they are direct range-core evidence; cite only the
+returned core message handles needed for the claim, and never repeat a URL/source across multiple
+evidence items unless the claims are materially different. Evidence and citation metadata must stay bounded and concise; answer prose must stay complete enough to answer the user's actual question.
 For a recent overview, if the Tool Result exposes resolved_time_range, that Host-generated range is the
 only valid time fact: copy its UTC text exactly when mentioning dates, and never calculate dates from
 millisecond timestamps or use dates from historical context. Keep finding, criterion, and limitation text concise.

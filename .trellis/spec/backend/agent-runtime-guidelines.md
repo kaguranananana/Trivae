@@ -574,6 +574,20 @@ artifact IDs、排序/去重 URL、计算 archive-relative timestamp、决定 sc
 - Host projection 记录 `estimated_tokens` 只是 bounded byte-based estimate；provider input/tool-result/
   output token 没有返回时写 `unavailable`，不能把 estimate 冒充 provider usage。
 
+### User-visible answer depth boundary（2026-08-28）
+
+- `ModelAnswerClaim.text` 是用户可见的完整回答正文，并由 Host 原样编译为
+  `AnswerContentBlock.text`；它不是只能放一句话的 finding label。
+- Final Synthesis 应按问题复杂度自适应：简单事实问题可以简洁，宽泛概览、比较、观点、时间线和
+  资源清单应覆盖证据支持的独立 finding、代表性细节、参与者/顺序/名称/URL 与必要限制；不得为
+  追求 claim 数少而合并独立 finding，也不得用无证据背景填充正文。
+- `finding`、`criterion`、`limitation`、source handle 与 citation bookkeeping 仍保持 bounded；
+  “artifact compact” 只约束这些内部 metadata，不约束用户正文的充分程度。Trace 只记录有界的
+  candidate/content-block 数量与文本长度诊断，不复制 candidate 正文。
+- `AnswerArtifact` 的 current-run provenance、scope、partial/coverage、trusted hydration、
+  citation binding 和 invalid-candidate failure contract 不因回答展开而放宽；简单事实回归必须仍可
+  保持单一短内容块。
+
 ### Explicit non-decisions
 
 本轮不引入 Code Mode、不删除 Tool Calling、不公开 hidden CoT、不新增 retry/fallback/citation
