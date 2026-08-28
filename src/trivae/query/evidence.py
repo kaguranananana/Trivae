@@ -1298,7 +1298,7 @@ def _recent_record_coverage(record: ToolResultRecord) -> dict[str, object] | Non
 def _current_recent_coverage(
     tool_results: tuple[ToolResultRecord, ...],
 ) -> dict[str, object] | None:
-    """从当前 Run 的 recent pages 汇总唯一消息数与最终 coverage 状态。"""
+    """从当前 Run 的 recent records 汇总唯一消息数与最强 coverage 事实。"""
 
     observed: list[dict[str, object]] = []
     message_ids: set[str] = set()
@@ -1316,20 +1316,23 @@ def _current_recent_coverage(
     for item in observed[1:]:
         if any(item[field_name] != first[field_name] for field_name in invariant_fields):
             raise _model_error("COVERAGE_MISMATCH", "recent pages disagree on coverage scope")
-    covered_values = [item["covered_units"] for item in observed]
-    if any(
-        isinstance(previous, int)
-        and isinstance(current, int)
-        and current < previous
-        for previous, current in zip(covered_values, covered_values[1:])
-    ):
-        # 页级 covered_units 是 continuation 的单调事实；下降意味着重复起始页或错误 cursor。
-        raise _model_error("COVERAGE_MISMATCH", "recent page coverage moved backwards")
 
-    latest = dict(observed[-1])
-    latest["retrieved_count"] = len(message_ids)
+    # 同一时间窗允许多条独立 root 查询；后来的小样本不能覆盖此前已证明的完整 coverage。
+    strongest_observation = observed[0]
+    strongest_covered_units = strongest_observation["covered_units"]
+    assert isinstance(strongest_covered_units, int)
+    for item in observed[1:]:
+        covered_units = item["covered_units"]
+        assert isinstance(covered_units, int)
+        # 相同 coverage 选择后出现的记录，让合法 continuation 末页仍提供最终状态。
+        if covered_units >= strongest_covered_units:
+            strongest_observation = item
+            strongest_covered_units = covered_units
+
+    strongest = dict(strongest_observation)
+    strongest["retrieved_count"] = len(message_ids)
     try:
-        return _normalize_retrieval_coverage("retrieval_coverage", latest)
+        return _normalize_retrieval_coverage("retrieval_coverage", strongest)
     except AnswerContractError as exc:
         raise _model_error("COVERAGE_MISMATCH", str(exc)) from exc
 

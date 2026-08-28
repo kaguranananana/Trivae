@@ -111,3 +111,14 @@ Evidence / Answer Artifact: current-run citation validation and persisted covera
 Trace / UI: bounded diagnostic projection; never a second canonical message source.
 Agent: topic semantics and final wording; never trusted scope, dates, or coverage bookkeeping.
 ```
+
+## 2026-08-28 independent root aggregation amendment
+
+真实 Trace `trace-5e2ed5cddf674a6ebc3fc1d6f0a7c084` 先执行同窗 `2699/2699 complete`
+root recent 查询，随后又执行 `60/2699 partial` 的独立 root 查询。旧 finalizer 把全部 recent
+records 当作单一 continuation 顺序，因 `2699 → 60` 抛出虚假的 `COVERAGE_MISMATCH`。
+
+同一 Host-resolved window 的多个 root 查询现在按最大已证明 `covered_units` 汇总；后来的小样本
+不覆盖先前 complete 事实。时间窗、basis、unit、eligible units、单记录 count/status 与 current-run
+唯一 message ID union 校验保持不变，因此真实 coverage 冲突仍显式失败。回归用例位于
+`test_temporal_overview_coverage.py`，覆盖 complete root 后独立 smaller root 的真实调用形状。

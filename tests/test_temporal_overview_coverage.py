@@ -407,6 +407,104 @@ class TemporalOverviewContractTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "COVERAGE_MISMATCH")
 
+    def test_independent_smaller_root_query_does_not_reduce_complete_coverage(self) -> None:
+        """同窗独立 root 查询只能补充事实，不能覆盖更强的 complete 证明。"""
+
+        complete_envelope = self.tool.invoke(self._first_request(limit=1_000), self.scope)
+        smaller_envelope = self.tool.invoke(self._first_request(limit=3), self.scope)
+        complete_record = build_tool_result_record(
+            run_id="run-independent-root",
+            tool_call_id="run-independent-root/tool/1",
+            tool_result_id="run-independent-root/tool/1/result",
+            tool_name="get_recent_messages",
+            envelope=complete_envelope,
+            scope=self.scope,
+        )
+        smaller_record = build_tool_result_record(
+            run_id="run-independent-root",
+            tool_call_id="run-independent-root/tool/2",
+            tool_result_id="run-independent-root/tool/2/result",
+            tool_name="get_recent_messages",
+            envelope=smaller_envelope,
+            scope=self.scope,
+        )
+        source_id = complete_record.message_source_handle(complete_record.message_items[0])
+        output = json.dumps(
+            {
+                "claims": [
+                    {
+                        "text": "窗口内有消息",
+                        "finding": "完整 root 查询覆盖同一 Host 时间窗",
+                        "criterion": "引用来自已经完整读取的 canonical window",
+                        "sufficiency": "sufficient",
+                        "sources": [source_id],
+                        "limitations": [],
+                    }
+                ],
+                "limitations": [],
+            },
+            ensure_ascii=False,
+        )
+
+        artifact = finalize_answer(
+            output,
+            run_id="run-independent-root",
+            tool_results=(complete_record, smaller_record),
+            scope=self.scope,
+        )
+
+        self.assertEqual(
+            artifact.retrieval_coverage,
+            {
+                "status": "complete",
+                "basis": "canonical_store",
+                "covered_units": 12,
+                "eligible_units": 12,
+                "unit": "message",
+                "retrieved_count": 12,
+                "has_more": False,
+            },
+        )
+
+        # 最大 coverage 只解决独立 root 的调用顺序问题；Host scope 事实冲突仍必须显式失败。
+        conflicting_coverage = dict(smaller_record.query_scope_snapshot["coverage"])
+        conflicting_coverage["eligible_units"] = 13
+        conflicting_snapshot = {
+            **smaller_record.query_scope_snapshot,
+            "total_hits": 13,
+            "coverage": conflicting_coverage,
+        }
+        conflicting_record = replace(
+            smaller_record,
+            query_scope_snapshot=conflicting_snapshot,
+        )
+        with self.assertRaises(AnswerFinalizationError) as raised:
+            finalize_answer(
+                output,
+                run_id="run-independent-root",
+                tool_results=(complete_record, conflicting_record),
+                scope=self.scope,
+            )
+        self.assertEqual(raised.exception.code, "COVERAGE_MISMATCH")
+
+        conflicting_range = dict(smaller_record.query_scope_snapshot["resolved_time_range"])
+        conflicting_range["resolved_start_timestamp"] = BASE_TIMESTAMP + 1
+        conflicting_record = replace(
+            smaller_record,
+            query_scope_snapshot={
+                **smaller_record.query_scope_snapshot,
+                "resolved_time_range": conflicting_range,
+            },
+        )
+        with self.assertRaises(AnswerFinalizationError) as raised:
+            finalize_answer(
+                output,
+                run_id="run-independent-root",
+                tool_results=(complete_record, conflicting_record),
+                scope=self.scope,
+            )
+        self.assertEqual(raised.exception.code, "TIME_RANGE_MISMATCH")
+
     def test_recent_messages_cursor_rejects_modified_host_time_fact(self) -> None:
         cursor = self._page(None, limit=3).metadata.details["next_cursor"]
         assert isinstance(cursor, dict)

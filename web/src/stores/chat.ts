@@ -128,6 +128,20 @@ function createBuffer(key: string, scope: ScopeRequest | null, title = '新的�
   })
 }
 
+function selectableScopesEqual(left: ScopeRequest | null, right: ScopeRequest | null): boolean {
+  if (!left || !right) return left === right
+  if (left.mode !== right.mode) return false
+
+  // session_ids 按集合语义比较；用户改变勾选顺序不应创建一条新 conversation。
+  const leftSessionIds = [...new Set(left.session_ids ?? [])].sort()
+  const rightSessionIds = [...new Set(right.session_ids ?? [])].sort()
+  if (leftSessionIds.length !== rightSessionIds.length) return false
+  if (leftSessionIds.some((sessionId, index) => sessionId !== rightSessionIds[index])) return false
+
+  // selector 目前只表达 mode/session_ids；时间与容量沿用 conversation 的后端完整快照。
+  return true
+}
+
 export const useChatStore = defineStore('chat', () => {
   const buffers = reactive<Record<string, ConversationBuffer>>({})
   const currentKey = ref<string | null>(null)
@@ -319,7 +333,11 @@ export const useChatStore = defineStore('chat', () => {
   ): Promise<void> {
     const trimmed = query.trim()
     if (!trimmed || busy.value) return
-    const buffer = currentBuffer.value ?? ensureDraft(scope)
+    let buffer = currentBuffer.value
+    if (!buffer || !selectableScopesEqual(buffer.scope, scope)) {
+      // 已持久化 conversation 的 scope 不可修改；selector 变化时转入绑定新 scope 的草稿。
+      buffer = ensureDraft(scope)
+    }
     if (!buffer.scope && scope) buffer.scope = scope
 
     busy.value = true
@@ -402,7 +420,10 @@ export const useChatStore = defineStore('chat', () => {
     if (!bufferKey) return
     const buffer = buffers[bufferKey]
     if (!buffer) return
-    const assistant = lastRunningAssistant(buffer)
+    // stream.end 是权威终态；query.failed/query.aborted 可能已经先关闭 running 状态。
+    const assistant = event.type === 'stream.end'
+      ? lastAssistant(buffer)
+      : lastRunningAssistant(buffer)
     if (event.type === 'stream.end') {
       const envelope = event as StreamEnvelope
       if (assistant) {
@@ -417,12 +438,19 @@ export const useChatStore = defineStore('chat', () => {
               : envelope.status === 'failed'
                 ? 'failed'
                 : 'error'
-        if (envelope.status === 'failed' || envelope.status === 'error') {
-          assistant.blocks.push({
-            kind: 'error',
-            code: envelope.error_code ?? null,
-            message: envelope.error_message ?? null,
-          })
+        if (envelope.status === 'failed' || envelope.status === 'aborted' || envelope.status === 'error') {
+          const terminalError = lastErrorBlock(assistant)
+          if (terminalError) {
+            // stream.end 的错误字段是权威终态；缺失字段不擦除 live event 已记录的诊断。
+            terminalError.code = envelope.error_code ?? terminalError.code
+            terminalError.message = envelope.error_message ?? terminalError.message
+          } else {
+            assistant.blocks.push({
+              kind: 'error',
+              code: envelope.error_code ?? null,
+              message: envelope.error_message ?? null,
+            })
+          }
         }
       }
       return
@@ -431,12 +459,25 @@ export const useChatStore = defineStore('chat', () => {
     applyStreamEvent(assistant, event as StreamEvent)
   }
 
-  function lastRunningAssistant(buffer: ConversationBuffer): AssistantItem | null {
+  function lastAssistant(buffer: ConversationBuffer): AssistantItem | null {
     for (let index = buffer.items.length - 1; index >= 0; index -= 1) {
       const item: ChatItem | undefined = buffer.items[index]
-      if (item && item.role === 'assistant') return item.status === 'running' ? item : null
+      if (item && item.role === 'assistant') return item
     }
     return null
+  }
+
+  function lastRunningAssistant(buffer: ConversationBuffer): AssistantItem | null {
+    const assistant = lastAssistant(buffer)
+    return assistant?.status === 'running' ? assistant : null
+  }
+
+  function lastErrorBlock(assistant: AssistantItem): Extract<ProcessBlock, { kind: 'error' }> | undefined {
+    for (let index = assistant.blocks.length - 1; index >= 0; index -= 1) {
+      const block: ProcessBlock | undefined = assistant.blocks[index]
+      if (block?.kind === 'error') return block
+    }
+    return undefined
   }
 
   /** 将 UI-neutral QueryStreamEvent 应用到 running turn；只投影真实发生的过程。 */

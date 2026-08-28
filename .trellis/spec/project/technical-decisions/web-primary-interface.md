@@ -126,7 +126,12 @@ UI 与 API 显式区分两个概念：
 - **Source Session**（微信群/私聊）决定 Retrieval 数据范围 = `ExecutionScope`；Scope 选择器只允许 `all` / 指定 session_ids，由**后端**编译为 trusted `ExecutionScope`，不接受前端任意字段。
 - **AI Conversation**（多轮问答）= `conversation_id`；左侧 Sidebar 列出 Conversations，顶部展示 Scope。
 
-follow-up 的 scope 必须与 conversation.scope 严格相等：Web route 预检返回 409 `SCOPE_MISMATCH`，Application 层 `_conversation_for_request` 双保险再次校验。Web 永不把"选择某个群"误当"创建新对话"。
+conversation scope 是不可变的完整快照，follow-up 的 scope 必须与 conversation.scope 严格相等：
+Web route 预检返回 409 `SCOPE_MISMATCH`，Application 层 `_conversation_for_request` 双保险再次校验。
+顶部 selector 当前只表达 `mode/session_ids`；它与当前 conversation 的可表达部分相同时，前端继续发送
+conversation 保存的完整时间/容量快照；用户改变选择时，下一次发送转入绑定新 scope 的 draft/new
+conversation，不修改旧 conversation，也不等待后端拒绝后重试。Source Session 与 AI Conversation 仍是两个
+概念，但不可变 scope 要求不同选择使用不同 AI Conversation。
 
 ## 7. Failure Cases 与验证证据
 
@@ -138,6 +143,8 @@ follow-up 的 scope 必须与 conversation.scope 严格相等：Web route 预检
 | answer 流为空（生产 bug） | 发现 DeepSeek 走 claims schema 时 delta parser 取不到正文 → 修复 parser 支持 `claims[*].text` + 回归测试 |
 | Tool Result 撑爆 DOM/transport | transport 200 items 上限 + UI 默认 20 条 + `显示 20 / 100 条` 显式标记 + transport 截断标志 |
 | scope mismatch follow-up | 409 SCOPE_MISMATCH（web 预检）+ Application 层校验 |
+| 打开旧 conversation 后改变 Scope selector，Query 仍发送旧 scope | 发送入口比较 selector 可表达字段；不一致时创建新 scope conversation，同 scope follow-up 继续复用 |
+| `query.failed/query.aborted` 先关闭 assistant，`stream.end.trace_id` 消失 | 终态信封按 request owner buffer 更新最新 assistant，并更新而非重复追加终态错误块 |
 | 非法 trace_id / 路径穿越 | 404 TRACE_NOT_FOUND；URL 编码穿越被路由与 log_path 分隔符校验双重拒绝 |
 | 刷新丢历史 | mount 时 load conversations + 最近 conversation；运行中断显式标 `执行中断` |
 | TUI 回归 | test_tui_app/test_tui_projection/test_cli_renderer/test_cli 全绿（472 tests 全量通过） |

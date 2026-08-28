@@ -61,6 +61,9 @@ class RecentMessagesCapability:
   `projected_count/omitted_messages/model_projection.truncated`。
 - `AnswerArtifact` 由 Host 写入 `resolved_time_range` 与 `retrieval_coverage`；final answer
   不得从模型自行提交的日期或 coverage 取代这两个字段。
+- 同一 Host-resolved 时间窗允许多次独立 root recent 查询；最终 Artifact 选择已经证明的最大
+  `covered_units` 状态，较晚的小 root 样本不得降低更强 coverage。`retrieved_count` 仍按当前 Run
+  唯一 message ID union 计算，且 basis、unit、eligible units、时间窗与单记录内部事实继续校验。
 - `resolved_time_range` 保留 integer millisecond boundary、UTC 文本和 half-open interval；
   citation message timestamp 必须落在同一窗口内。
 
@@ -74,7 +77,7 @@ class RecentMessagesCapability:
 | cursor 的 resolved UTC 文本被修改 | Capability contract error；不得信任模型字段 |
 | recent page `count/read` 不一致 | Retrieval error；不得用 partial 掩盖 repository bug |
 | `total_hits > returned_count` 且无 next cursor | Retrieval/coverage error；不得标记 complete |
-| recent record 缺 coverage 或页之间 scope/count 回退 | `COVERAGE_MISMATCH`；不得进入 graceful recovery |
+| recent record 缺 coverage、同窗 eligible units 冲突、唯一消息 union 超过最大已证明 coverage 或单记录内部 count/status 冲突 | `COVERAGE_MISMATCH`；不得进入 graceful recovery |
 | citation 越过 Host half-open window | `TIME_RANGE_MISMATCH`；不得删除 citation 后继续提交 |
 | Tool Result token budget 不足 | projection 显式记录 omitted/truncated；canonical retrieval facts 保留 |
 | complete zero-result | 仅在成功、无 facts、无 incomplete limitation 时允许 `kind=no_result` |
@@ -96,7 +99,8 @@ class RecentMessagesCapability:
 - Capacity：`test_get_recent_messages_default_limit`、`test_get_recent_messages_hard_cap`、
   `test_recent_messages_does_not_reuse_structured_limit`，断言 `1000/5000/100` 三条边界。
 - Coverage：large/total/partial/complete、empty-window complete、Artifact
-  `retrieval_coverage` serialization，断言 total/returned/covered/eligible/has_more。
+  `retrieval_coverage` serialization、complete root 后独立 smaller root，断言
+  total/returned/covered/eligible/has_more 与唯一消息 union。
 - Continuation：`test_recent_messages_cursor_no_overlap`、`..._no_gap`、
   `..._same_timestamp_deterministic_order`、scope/window tampering，断言 keyset 页序列。
 - Projection：canonical 500/1000/2699 与 model projected/omitted/token estimate 分离；Trace

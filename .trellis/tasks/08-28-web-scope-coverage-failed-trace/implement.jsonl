@@ -1,0 +1,5 @@
+{"file":".trellis/spec/project/engineering-principles.md","reason":"遵守真实 Failure Case 驱动、根因优先、最小修复和证据化完成原则"}
+{"file":".trellis/spec/project/technical-decisions/web-primary-interface.md","reason":"实现 Web conversation scope、request owner stream routing 与 Trace 投影契约"}
+{"file":".trellis/spec/project/problems/temporal-overview-coverage.md","reason":"复现并修复 temporal overview coverage 的真实失败形状"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"添加回归测试并执行 Python/Web 完整质量门禁"}
+{"file":".trellis/spec/backend/temporal-overview-guidelines.md","reason":"保持 recent window、coverage、continuation 与 mismatch 契约"}

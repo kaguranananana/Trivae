@@ -1,0 +1,5 @@
+{"file":".trellis/spec/project/engineering-principles.md","reason":"核对根因优先、最小修复、错误透明与证据化完成原则"}
+{"file":".trellis/spec/project/technical-decisions/web-primary-interface.md","reason":"核对 Web conversation scope 不可变、request owner stream 路由与 Trace 展示契约"}
+{"file":".trellis/spec/project/problems/temporal-overview-coverage.md","reason":"核对真实 temporal coverage Failure Case、聚合决策与回归证据"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"核对重要修复的回归测试与全量质量门禁"}
+{"file":".trellis/spec/backend/temporal-overview-guidelines.md","reason":"核对 recent 时间窗、coverage、continuation 与显式 mismatch 契约"}
