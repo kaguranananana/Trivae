@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 42
-- **Last Active**: 2026-08-28
+- **Total Sessions**: 43
+- **Last Active**: 2026-08-29
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1048 | Active |
+| `journal-1.md` | ~1071 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 43 | 2026-08-29 | 完成 Trivae Web dogfooding 与 AQ3/AQ4 稳定性验证 | `e10dae4`, `d2512f2`, `8df3c6d` | `main` |
 | 42 | 2026-08-28 | 修复 Web Scope、Coverage 与失败 Trace | `7dafb0b` | `main` |
 | 41 | 2026-08-28 | Fix temporal overview coverage | `98180a3` | `main` |
 | 40 | 2026-08-27 | TUI interaction repair handoff: identity drift, detail, collapse layout, iTerm2 mouse diagnosis | `1447b76`, `ff93014` | `main` |

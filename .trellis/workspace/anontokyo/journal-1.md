@@ -1046,3 +1046,26 @@ smoke 必须断言时序/分布而不只是事件类型。
 ### Status
 
 [OK] **Completed**
+
+
+## Session 43: 完成 Trivae Web dogfooding 与 AQ3/AQ4 稳定性验证
+
+**Date**: 2026-08-29
+**Task**: 完成 Trivae Web dogfooding 与 AQ3/AQ4 稳定性验证
+**Branch**: `main`
+
+### Summary
+
+完成 AQ3 资源路径三次真实 Web 重跑与非 GitHub 学习资源泛化验证；修复资源检索边界和 SQL schema error taxonomy；Provider TLS/Router degradation 保留为透明 Trace；质量门通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e10dae4` | (see git log) |
+| `d2512f2` | (see git log) |
+| `8df3c6d` | (see git log) |
+
+### Status
+
+[OK] **Completed**
