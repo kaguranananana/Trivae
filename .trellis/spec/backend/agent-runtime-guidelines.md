@@ -615,3 +615,51 @@ repair，不把完整 provenance 删除出 Trace/Artifact，也不为了让样�
 remaining before/after、actual projected estimate、truncated 和 omitted hit/context。`128000` 是单次
 Tool 的 safety ceiling，不代表整个 Run 只能累计 `128000`；Run-level candidate 必须通过 synthetic
 和 real paired evidence 校准后再决定默认值。
+
+## 13. Resource inventory tool-selection boundary（2026-08-29）
+
+### 1. Scope / Trigger
+
+- Trigger：真实 AQ3 Web dogfooding 已证明，在 `lexical_search("github.com")` 返回完整 URL 证据后，模型仍可能调用宽范围 `get_recent_messages`，或重复发送失败的近似 SQL；这会增加 projection 成本、引入无关内容，甚至使 Run 失败。
+- Scope：资源清单与学习资料的 final synthesis prompt、`lexical_search`、`semantic_search`、`get_recent_messages`、`execute_sql` 的 tool guidance，以及 SQLite public schema error taxonomy。
+- Boundary：只约束证据发现路径和错误透明度；不改变 current-run provenance、scope enforcement、evidence sufficiency、partial coverage、trusted hydration 或 citation binding。
+
+### 2. Contracts
+
+- URL / repository / Skill / link inventory 必须优先使用有界 `lexical_search`；URL 证据的标准形态是 `keyword="github.com"`、trusted 最大 `limit`、`context_before=0`、`context_after=0`，并保留必要的时间范围。
+- 非空的 URL lexical 结果已经足以支持 URL-bearing resource recall；不得再用 `get_recent_messages` 或 `execute_sql` 发现、枚举或重算同一批资源。需要解释上下文时，只能基于已有命中按问题需要补充。
+- 泛化的学习资料问题（博客、文档、论文、课程、视频等）可以在 URL lexical 结果之外使用一次有界 `semantic_search` 补充非 URL 证据；不能因为问题宽泛就自动读取整段 recent archive。
+- `get_recent_messages` 只用于时间窗口本身是问题语义的 overview；它不是资源清单的默认扩展器。`execute_sql` 只用于结构化事实，不能用于重算检索结果；SQL 失败后不得重复相同或近似语句。
+- SQLite 对公开但不存在的 table/column/function 的解析错误必须映射为 `SQL_SCHEMA_VIOLATION`，不能因为 authorizer 尚未建立状态而误报为 `SQL_MALFORMED`；真正语法错误仍保持原有错误分类。
+- 这些边界通过 prompt/tool guidance 与 deterministic regression 固化，不通过 query-string 特判、retry、fallback、静默降级或放宽结果上限实现。
+
+### 3. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| URL lexical 返回非空且未截断 | 结束 URL 证据发现；不得出现同资源的 broad recent / SQL recount |
+| 泛化学习资料需要非 URL 证据 | 可追加有界 semantic；保留 partial/truncated 事实并在回答中反映限制 |
+| recent overview 是用户明确问题 | 才调用 bounded recent，并记录返回量、omitted/truncated 与 scope |
+| execute_sql 返回 schema 解析错误 | 返回 `SQL_SCHEMA_VIOLATION`；模型不得重复相同或近似 SQL |
+| Provider TLS/transport 在首个模型请求前失败 | Run 显式失败并保留 Trace；不添加盲目重试掩盖环境或 provider 根因 |
+
+### 4. Tests Required
+
+- `test_resource_inventory_guidance_separates_url_and_non_url_evidence` 必须验证 URL lexical 足够、generic learning 可 semantic 补充、recent/SQL 不承担资源枚举，以及 SQL 错误不重复。
+- Stage C schema tests 必须覆盖不存在的 public table/column/function 到 `SQL_SCHEMA_VIOLATION` 的映射，同时保留真实 malformed SQL 的原分类。
+- Real Web smoke 必须记录 Trace ID、router/tool sequence、retrieval returned/projected/omitted/truncated、provider outcome、final claims/citations、Sources DOM 与 browser errors；至少一个 URL inventory 和一个 generic learning inventory 需要有可审计结果。
+- Regression 不以回答字数单独判定；应检查独立资源/主题 finding、资源名称或 URL、limitation、citation provenance，以及不存在 broad recent / repeated SQL 的工具序列。
+
+### 5. Good / Base / Bad
+
+| Case | Expected behavior |
+| --- | --- |
+| Good：`github.com` lexical 非空、93/93、projection 无 omission | 直接 synthesis 具体项目/链接；不再补 recent 或 recount |
+| Base：学习资料同时命中 GitHub 与语义资料 | lexical + bounded semantic；区分仓库、文档、论文等类型并保留证据限制 |
+| Bad：lexical 已完整却读取 5000 条 recent，或 SQL 失败后原样重发 | 判定为 tool-selection / error-loop failure，依据 Trace 修 prompt/tool guidance，不扩大 token 或加 retry |
+
+### 6. Wrong vs Correct
+
+Wrong：收到非空 GitHub URL 结果后，为了“更完整”继续调用 `get_recent_messages(limit=5000)`，或用没有验证 schema 的 SQL 重新统计 URL。
+
+Correct：使用有界 URL lexical 结果完成资源回答；只有泛化学习资料缺少非 URL 证据时，补一次有界 semantic，并把 retrieval partial、scope 和 citation binding 交给 Host 保持。

@@ -57,11 +57,17 @@
 - [x] 核实 Trellis 脚本实际命令；当前版本没有 `task.py check`，使用
   `uv run python .trellis/scripts/task.py validate .trellis/tasks/08-28-web-ui-dogfooding-failure-fixes`，结果通过。
 - [x] 实现改变了项目长期契约，已更新 `.trellis/spec/backend/agent-runtime-guidelines.md`，明确用户正文深度与 Evidence/Citation metadata 的职责边界。
+- [x] 继续任务验证：在同一真实 Web 环境对 AQ3 运行三次，记录成功、重复 SQL Runtime failure、recent projection
+  truncation 和 Provider TLS Failure；未以重试覆盖任何失败。
+- [x] 继续任务修复：明确资源 URL 与非 URL 学习资料的检索边界，禁止资源清单用 recent/SQL 做重复发现或重算；
+  新增 prompt/tool surface regression，并补齐 SQLite 未知列的 schema error taxonomy regression。
+- [x] 重启 Web server 后重新执行 AQ3 三次和泛学习资料问题；成功运行保持 citations、coverage、Sources 和浏览器
+  error/warn 可审计，Provider `SSLError` 与 Router timeout degradation 透明保留。
 
 ## Phase 5 — handoff
 
 - [x] 汇总已修复 Failure、未修复但有证据的环境问题、真实查询覆盖和质量门结果。
-- [ ] 向用户展示最终变更/验证摘要；得到提交计划确认后再提交代码。
+- [x] 向用户展示最终变更/验证摘要；用户已明确授权提交、推送并完成当前 task 收尾。
 - [ ] 按 `trellis-finish-work` 收尾并归档任务；报告可回滚点和仍存在的明确限制。
 
 ## 预期验证命令

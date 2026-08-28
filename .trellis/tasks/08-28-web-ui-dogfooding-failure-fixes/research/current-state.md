@@ -1,5 +1,7 @@
 # Current state and baseline
 
+> 2026-08-29 continuation：完成 AQ3 三次 post-fix Web 重跑、泛学习资料语义边界验证，并记录 Provider TLS 方差。
+
 ## 运行环境
 
 - 日期：2026-08-28，时区 Asia/Shanghai。
@@ -45,6 +47,9 @@
 - `openai_adapter.py` 新增 bounded Provider transport/response-shape 观测：HTTP status、短 request/response
   标识、finish reason、stream completion、usage、output item shape 和 compatibility repair 前后 shape；不保存
   response 正文或 hidden reasoning。Runtime failure 额外携带 `exception_type`，便于区分 Provider/Runtime/Finalizer。
+- 本轮对资源清单 prompt/tool guidance 做了最小边界收紧：URL lexical 命中后不再建议用 recent/SQL 发现或重算同一
+  资源；泛学习资料可以使用 semantic_search 查找博客、文档、论文、课程和视频等非 URL 证据。SQLite 对不存在
+  public table/column/function 的解析错误现在投影为 `SQL_SCHEMA_VIOLATION`，不改变 read-only/scope enforcement。
 
 ## Answer Quality / Depth 补充审计
 
@@ -60,3 +65,18 @@
 - AQ3 资源修复后真实 Web Trace 为 `trace-11cea2531b6c4984b5c4dc2bf29c5456`：93/93 lexical hits、0 projection omission/truncation、Tool Result 约 17,070 tokens，最终 7 claims/1,999 字符/49 citations，valid。
 - AQ4 成员修复后真实 Web Trace 为 `trace-48410dcce379492c81dbcd2566524f14`：sender-scoped recent 52/52 条、0 projection omission/truncation，最终 5 claims/676 字符/36 citations，valid。
 - 修复后的质量门通过：Python 508 tests、Web 12 tests、typecheck、lint、build、Ruff、mypy、compileall、git diff check 和 Trellis validate；Trellis 校验命令为 `uv run python .trellis/scripts/task.py validate .trellis/tasks/08-28-web-ui-dogfooding-failure-fixes`。
+
+## Continuation Web evidence
+
+- 旧提示下 AQ3 三次分别出现：一次 local citation degraded、一次重复错误 SQL 导致 Runtime failure、一次额外
+  recent 5,000/73,863 导致 3,570 hit messages 未进入 model projection；这些 Trace 分别为
+  `trace-1459dfe5350d41ed9dcbc153d1ba6e88`、`trace-7b907a39f0ea45af9fb422c1ac244757`、
+  `trace-81653b24adac4a0d9a725b70cf2f80f2`。
+- 修复后 AQ3 三次分别为 Provider `SSLError`（`trace-872f8558d4384289a0dc1e34d917936c`）、valid lexical-only
+  运行（`trace-85e58058f29d4c93be693ec7c8ec44b9`、`trace-532ec0611c6d48c4a613c02e91dd0185`）；成功运行均
+  93/93、0 projection omission/truncation，且 UI Sources 与浏览器 error/warn 检查正常。第二次另有 Router
+  timeout degradation，仍由 Trace 显式记录。
+- 泛学习资料 `trace-863929206151429691d87b0d03bf6f4b` 实际执行 GitHub lexical + semantic non-URL evidence，最终
+  valid 6 claims/1,006 字符/14 citations；没有把 GitHub heuristic 扩展成全部资料，也没有发生 recent projection
+  截断。模型的冗余 weaviate/`SELECT 1` 调用保留为 planning observation。
+- 本轮新增定向测试 13 项全通过；完整质量门和 Trellis validate 在提交前重新执行。

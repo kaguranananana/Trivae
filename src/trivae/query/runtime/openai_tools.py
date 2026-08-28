@@ -115,6 +115,8 @@ class SearchMessagesSDKToolAdapter:
                 "Omit optional filters, or use null; do not send empty arrays. "
                 "limit must be a positive integer within the current trusted result limit. "
                 "For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. "
+                "For a resource inventory, a non-empty github.com result is sufficient for URL-bearing recall: do not call get_recent_messages or execute_sql to enumerate or recount the same resources. "
+                "A generic learning-material inventory may add one semantic_search for non-URL materials, but must not prefetch a broad recent window. "
                 "context_before and context_after must be non-negative integers. "
                 "Use the short source_id handle from the current Tool Result for each citation; do not copy full provenance."
             )
@@ -847,7 +849,7 @@ class ExecuteSQLSDKToolAdapter:
             "PRAGMA, internal tables, and scope escape are rejected. For sender statistics, filter "
             "messages.sender_user_id by canonical users.user_id; a QQ UIN belongs to users.platform_uin "
             "and must be resolved through users rather than compared directly to messages.sender_user_id. "
-            "No query rewrite or retrieval fallback is performed. Respect returned_rows and truncated in the result when citing rows."
+            "No query rewrite or retrieval fallback is performed. Never use this tool to recount URL/resource retrieval results. If a statement reports an error, do not repeat the same or a near-identical statement; use existing evidence or state the limitation. Respect returned_rows and truncated in the result when citing rows."
         )
         if trusted_max_results is not None:
             description += f" The current SQL result row limit is {min(trusted_max_results, MAX_SQL_RESULT_ROWS)}."
@@ -963,9 +965,11 @@ class GetRecentMessagesSDKToolAdapter:
             "Read the most recent messages inside a time range for temporal browsing: use it as the "
             "first call when the candidate set is determined mainly by time and the user asks for an "
             "overview, summary, topic discovery, or what people talked about recently (for example "
-            "'最近两天聊了什么', '昨天发生了什么'). For a repository, GitHub-link, Skill, or resource "
-            "inventory, even when it says '最近', use lexical_search with keyword 'github.com' as the "
-            "first retrieval call instead of prefetching this broad recent window. Do NOT guess topics and search "
+            "'最近两天聊了什么', '昨天发生了什么'). For a repository, GitHub-link, Skill, or URL-bearing "
+            "resource inventory, even when it says '最近', use lexical_search with keyword 'github.com' as the "
+            "first retrieval call instead of prefetching this broad recent window. For a generic learning-material "
+            "inventory, use lexical_search for links and semantic_search for non-URL materials; do not use this "
+            "tool merely to broaden an inventory after retrieval. Do NOT guess topics and search "
             "them with lexical_search or semantic_search for this kind of question; read the real "
             "recent window first, then analyze and cite. Calling it without any time argument defaults "
             "to the most recent 2 days anchored at archive_latest (never machine current time). The "

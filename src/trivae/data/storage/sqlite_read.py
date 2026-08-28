@@ -734,6 +734,11 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             raise SQLSchemaViolation("SQL accessed a table, column, function, or pragma outside the public schema") from exc
         # SQLite compilation errors are actionable model input errors; preserve only the bounded driver message.
         if isinstance(exc, (sqlite3.OperationalError, sqlite3.ProgrammingError)):
+            # SQLite 对不存在的列/表可能在 authorizer 回调前就失败，无法依赖 state 中的 schema code。
+            # 这些解析错误属于 public schema contract，而不是 SQL 语法本身错误。
+            schema_error_prefixes = ("no such table:", "no such column:", "no such function:")
+            if message.lower().startswith(schema_error_prefixes):
+                raise SQLSchemaViolation("SQL referenced a table, column, or function outside the public schema") from exc
             raise SQLMalformedError(message) from exc
         raise StructuredSQLError("read-only SQL execution failed") from exc
 

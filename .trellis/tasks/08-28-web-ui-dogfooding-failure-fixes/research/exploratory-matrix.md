@@ -115,3 +115,19 @@ AQ3/AQ4 独立 Failure 修复后重测：
 
 - AQ6：`trace-d664f68f13824ade8ab209e153ccaa0e`，Runtime completed，3 个 retrieval/tool calls，model-visible projection 156 条消息、0 omitted/truncated；`answer_shape` 为 4 claims/4 content blocks，文本长度 `[161, 143, 157, 193]`，finalization valid、19 citations。
 - 简单事实：`trace-461335012f294b14826ffb574041d53b`，1 lexical tool，1527 estimated tokens、0 omitted/truncated；`answer_shape` 为 1 claim/1 content block、224 字符，finalization valid、2 citations。
+
+## 本轮继续验证账本（AQ3 稳定性与资源类型边界）
+
+| Case | Trace | Retrieval / Tool Result | Answer / Web 观察 |
+| --- | --- | --- | --- |
+| AQ3 旧提示 run 1 | `trace-1459dfe5350d41ed9dcbc153d1ba6e88` | lexical 93/93，0 projection omission/truncation | completed/degraded；7 claims/3,124 字符/52 citations；Sources 可见，浏览器无 error/warn |
+| AQ3 旧提示 run 2 | `trace-7b907a39f0ea45af9fb422c1ac244757` | lexical 93/93；重复错误 SQL，未形成 final | UI `回答失败`；`SQL_MALFORMED` → `RUNTIME_ERROR`，保留 Trace |
+| AQ3 旧提示 run 3 | `trace-81653b24adac4a0d9a725b70cf2f80f2` | lexical 93/93；recent 5,000/73,863，遗漏 3,570，projection truncated | valid 8 claims/2,242 字符/45 citations，但 evidence over-fetch；Sources 可见 |
+| AQ3 post-fix run 1 | `trace-872f8558d4384289a0dc1e34d917936c` | 首个 Tool 前 Provider `SSLError`，tool_count=0 | UI 显式 `回答失败`；浏览器 error/warn 为空，不重试覆盖 |
+| AQ3 post-fix run 2 | `trace-85e58058f29d4c93be693ec7c8ec44b9` | 只有 lexical 93/93，0 omission/truncation | valid 7 claims/2,091 字符/52 citations；Sources 可见，浏览器无 error/warn |
+| AQ3 post-fix run 3 | `trace-532ec0611c6d48c4a613c02e91dd0185` | 只有 lexical 93/93，0 omission/truncation；Router timeout degradation | valid 10 claims/1,660 字符/39 citations；Sources 可见，浏览器无 error/warn |
+| 非 GitHub 学习资料 post-fix | `trace-863929206151429691d87b0d03bf6f4b` | lexical 93/93 + semantic 19 候选/100 expanded；后续 2 次 weaviate lexical + `SELECT 1`，无 projection omission/truncation | valid 6 claims/1,006 字符/14 citations；同时覆盖 URL/非 URL 资料，Sources 可见，浏览器无 error/warn |
+
+AQ3 三次 post-fix 均没有宽泛 recent 或 SQL 资源重算；泛学习资料实际走了 semantic 补充，因此没有新增 GitHub-only
+heuristic 代码。旧提示下的 Runtime/over-fetch 证据和 post-fix Provider 环境 TLS Failure 均保留在
+`failure-provider-runtime-boundary.md`。

@@ -96,6 +96,32 @@ class AgentToolSurfaceTests(unittest.TestCase):
         self.assertIn("find_members.candidates[]", SYSTEM_PROMPT)
         self.assertIn("never compare `messages.sender_user_id` directly to a QQ UIN", SYSTEM_PROMPT)
 
+    def test_resource_inventory_guidance_separates_url_and_non_url_evidence(self) -> None:
+        """资源清单的 URL 与非 URL 证据走不同检索路径，不回退到宽泛 recent/SQL。"""
+
+        registry = CapabilityRegistry()
+        for name in ("lexical_search", "semantic_search", "get_recent_messages", "execute_sql"):
+            registry.register(_RecordingTool(name))
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=ScriptedModel([]))
+        request = AgentRunRequest(
+            "最近有哪些 Agent 学习资源？",
+            ExecutionScope(max_results=100),
+            available_capabilities=("lexical_search", "semantic_search", "get_recent_messages", "execute_sql"),
+        )
+
+        agent = runtime._build_agent(request, runtime._build_context(request), object())
+        tools = {tool.name: tool for tool in agent.tools}
+
+        self.assertIn("non-empty github.com result is sufficient for URL-bearing recall", tools["lexical_search"].description)
+        self.assertIn("one semantic_search for non-URL materials", tools["lexical_search"].description)
+        self.assertIn("must not prefetch a broad recent window", tools["lexical_search"].description)
+        self.assertIn("resource inventory", tools["get_recent_messages"].description)
+        self.assertIn("get_recent_messages or execute_sql merely", SYSTEM_PROMPT)
+        self.assertIn("semantic_search may add that distinct conceptual evidence", SYSTEM_PROMPT)
+        self.assertIn("Never use this tool to recount URL/resource retrieval results", tools["execute_sql"].description)
+        self.assertIn("do not repeat the same or a near-identical statement", tools["execute_sql"].description)
+        self.assertIn("near-identical SQL statement again", SYSTEM_PROMPT)
+
     def test_temporal_selection_boundary_is_declared(self) -> None:
         """B6：temporal overview 必须由 description+prompt 引导优先 get_recent_messages。"""
 

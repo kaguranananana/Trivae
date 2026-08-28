@@ -208,6 +208,7 @@ class StageCToolsTests(unittest.TestCase):
             ("ATTACH DATABASE ':memory:' AS other", "SQL_READ_ONLY_VIOLATION"),
             ("PRAGMA table_info(messages)", "SQL_SCHEMA_VIOLATION"),
             ("SELECT raw_payload_json FROM messages", "SQL_SCHEMA_VIOLATION"),
+            ("SELECT content FROM messages", "SQL_SCHEMA_VIOLATION"),
             ("SELECT * FROM sources", "SQL_SCHEMA_VIOLATION"),
         )
         for sql, expected_code in statements:
