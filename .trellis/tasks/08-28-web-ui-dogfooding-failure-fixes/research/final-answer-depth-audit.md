@@ -18,7 +18,9 @@
 | AQ2 Agent / AI Coding | `trace-75d3506c55a44b069d1c415b240682e4` | 5000/15221，projection 1430，omitted 3570，partial/truncated | final 1536，7 个 evidence，62 citations，degraded；页面仍有多主题 | Retrieval partial，不能把遗漏全归因于 synthesis |
 | AQ3 资源 / GitHub（失败复测） | `trace-2e914390d13046c5a13c97f32f843d52` | recent 2699/2699 + lexical 347/347；projection 1441+347；约 189248 tokens | Provider compatibility observation 后无可见 final text；Runtime completed 但 finalizer `INVALID_FINAL_OUTPUT` | 独立 Provider/长输入故障，不是 E/F 截断 |
 | AQ3 资源 / GitHub（同条件成功重跑） | `trace-ceead8dc094d45918bc514498db11f22` | recent 2699/2699；projection 1441，omitted 1258；约 127882 tokens | final 1134，4 claims，19 citations，valid；页面列出项目、分类和链接 | 同问题结果有 Provider 方差；成功路径信息密度合格 |
+| AQ3 资源 / GitHub（资源优先修复后） | `trace-11cea2531b6c4984b5c4dc2bf29c5456` | lexical 93/93；projection 93，0 omitted/truncated；Tool Result 约 17070 tokens，synthesis 输入 21613 | final 1999，7 claims / 7 blocks，49 citations，valid；页面按类别展示项目名称、链接和限制 | 资源问题不再先泛取 recent；HTTP 200/stop、非空 candidate，长输入触发条件已避开 |
 | AQ4 成员近期主题 | `trace-2315d30f87b44a1d81307051afabb767` | find_members 完整；recent 5000/73863，projection 1430，omitted 3570 | 第二轮 Runtime failure，未进入 finalization | 成员检索后泛取 recent，触发独立 Runtime/Provider failure |
+| AQ4 成员近期主题（sender scope 修复后） | `trace-48410dcce379492c81dbcd2566524f14` | find_members 后 recent 52/52；projection 52，0 omitted/truncated | final 676，5 claims / 5 blocks，36 citations，valid；页面覆盖 AI 编程、工具可靠性、开源等主题 | canonical sender filter 贯穿 Tool/Trace/Retrieval，未再读取全体 recent |
 | AQ5 多方观点 | `trace-986e06c4e2334c2ba3e6de888e638e92` | lexical 50/36 + semantic 100/10；projection 无消息 omission；semantic partial | final 1228，5 个 evidence，21 citations，degraded；页面有多方观点与限制 | 有效覆盖尚可，partial 仍正确传播 |
 | AQ6 讨论来龙去脉（基线） | `trace-794897e44b5046b0b53edde0defe7336` | semantic 100/20 partial + lexical 10/2 + context 41；projection 无 omission | final 549，4 个 evidence，17 citations，valid；页面约 4 段，起因/立场/结果较压缩 | 证据足够但回答深度不足，核心 Failure |
 | AQ6 来龙去脉（修复后） | `trace-52f1fc16326b40759ea84597087cf71d` | semantic 100/10 + lexical 91/26 + 3 次 context；projection 无 omission | final 793，5 claims / 5 blocks，29 citations，valid；DOM 5 段长度与 Trace 一致 | 独立起因、双方立场、折中和旁证被展开，修复生效 |
@@ -45,7 +47,7 @@
 | D Answer Candidate / Evidence Contract 限制表达 | 结构性 contributing factor 已确认，但不是本轮实际硬截断：`ModelAnswerClaim.text` 直接进入 `AnswerContentBlock.text`，没有独立完整 prose 字段；字段上限和 40 block 上限均未命中。暂不重构 schema，避免无证据扩大契约。 |
 | E Finalizer 编译丢正文 | 未发现正常路径证据：AQ6/AQ7 的 candidate 长度和 content block 长度一致，`user_answer_preserved=true`、finalization valid。对坏 candidate 丢字段是既有透明 contract 行为。 |
 | F Web projection / renderer 截断 | 已排除：`chat.ts` 在 `answer.completed` 写入最终正文，`AssistantTurn.vue` 直接 Markdown 渲染；修复后 DOM 段落长度与 Trace content block 长度一致，没有 `slice`/`substring`。 |
-| G Provider 偶发过短/空输出 | 作为独立故障确认：资源查询一次在约 189248-token Tool Result 后经过 `provider_compatibility` 仍返回空 final；同条件重跑又成功。概览另有一次 candidate 缺少 3 个 `text`。这不应通过吞错、伪造正文或放宽 Citation contract 修复。 |
+| G Provider 偶发过短/空输出 | 作为独立故障确认：资源查询一次在约 189248-token Tool Result 后经过 `provider_compatibility` 仍返回空 final；同条件重跑又成功。修复后 Provider Trace 显示 200/stop 且 repair 前后均有非空 assistant message，说明资源优先检索避开了已证实的大输入触发条件；这不应通过吞错、伪造正文或放宽 Citation contract 修复。 |
 
 ## Prompt / Contract 调整
 
@@ -60,6 +62,11 @@ Evidence / Citation metadata：bounded、少量 source handles、可审计
 
 - 保留每条 evidence 的 source handle 上限、partial/truncated 事实、当前 run provenance、scope enforcement、trusted hydration 和“不复制 transcript”的要求。
 - 删除固定“exactly one grouped claim”、固定总 URL 数和“为了闭合 JSON 缩短 claim text”等会直接压缩用户正文的要求。
+- 增加资源库存与时间概览的选择边界：资源/GitHub/Skill/URL 清单即使带“最近”，也先用
+  `lexical_search(github.com)` 收集 URL-bearing evidence，避免先把宽泛 recent 结果塞入 synthesis；普通时间概览
+  仍使用 `get_recent_messages`。
+- 暴露 `get_recent_messages.sender_user_ids`，要求模型使用 `find_members` 返回的 canonical `user_id`；成员过滤
+  作为 typed query/cursor scope 进入 Trace，不改变 trusted session/time scope。
 - 允许按独立 finding 分 claim，也允许把同一 finding 的相关事实分组；不为增加长度补充没有 evidence 的背景。
 - 明确 `claim.text` 是用户正文，不是 finding label；`finding`、`criterion`、`limitation` 才是保持 concise 的 Evidence metadata。
 - 没有改变 max output tokens、temperature、Citation Binding 生成方式或 Web renderer。
@@ -103,7 +110,7 @@ ChatLab 的回答更长不是充分证据；本次 TDD 对照之所以记录为 
 
 资源类问题和成员类问题还暴露了两个不属于 brevity 的问题：
 
-1. 多个大结果合并后，OpenCode Go / DeepSeek V4 Flash 有时在 compatibility repair 后返回空 final 或不完整 candidate；同一问题重跑可成功，Trace 能看到 input/Tool Result 规模和 `provider_compatibility`。本轮没有通过放宽模型 contract 或压缩 evidence 来掩盖它。
-2. 成员查询在 `find_members` 后让模型泛取大 recent 窗口，AQ4 进入 Runtime failure。它需要单独的工具选择/Provider 复现任务；本轮只补了空 final 的透明错误映射，没有对成员语义增加特判。
+1. 多个大结果合并后，OpenCode Go / DeepSeek V4 Flash 有时在 compatibility repair 后返回空 final 或不完整 candidate；同一问题重跑可成功。修复后增加了 bounded Provider finish/response-shape Trace，并把资源库存的首选路径改为 lexical URL 检索，当前真实 Web 重测成功；没有通过放宽模型 contract 或全局压缩 evidence 来掩盖它。
+2. 成员查询在 `find_members` 后让模型泛取大 recent 窗口，AQ4 进入 Runtime failure。现在 Agent-facing tool 暴露 canonical sender filter，并由 Input、cursor、Structured query、Trace 一起约束；真实 Web 重测只返回 52 条成员消息并完成回答。
 
 这两个观察项保留为后续独立 Failure，不改变本轮已确认的 Answer Depth 根因和最小修复边界。

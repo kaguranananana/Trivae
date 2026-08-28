@@ -107,13 +107,17 @@ class RecentMessagesCapability:
 
     metadata = CapabilityMetadata(
         name="get_recent_messages",
-        description="Read the most recent canonical messages inside a time range for temporal browsing.",
+        description=(
+            "Read the most recent canonical messages inside a time range for temporal browsing; "
+            "sender_user_ids optionally restricts the query to canonical users.user_id values."
+        ),
         bounded=True,
         input_fields=(
             "time_range",
             "start_timestamp",
             "end_timestamp",
             "session_ids",
+            "sender_user_ids",
             "limit",
             "cursor",
         ),
@@ -158,6 +162,7 @@ class RecentMessagesCapability:
                 session_ids=scoped_sessions,
                 start_timestamp=scope.start_timestamp,
                 end_timestamp=scope.end_timestamp,
+                sender_user_ids=request.sender_user_ids,
             )
             latest_timestamp = self.retrieval.repository.latest_message_timestamp(anchor_scope)
             if latest_timestamp is None:
@@ -169,6 +174,7 @@ class RecentMessagesCapability:
                         session_ids=scoped_sessions,
                         start_timestamp=scope.start_timestamp,
                         end_timestamp=scope.end_timestamp,
+                        sender_user_ids=request.sender_user_ids,
                         limit=request.limit,
                     )
                 )
@@ -198,6 +204,7 @@ class RecentMessagesCapability:
             session_ids=scoped_sessions,
             start_timestamp=scoped_start,
             end_timestamp=scoped_end,
+            sender_user_ids=request.sender_user_ids,
             limit=request.limit,
             before_cursor=cursor,
         )

@@ -121,6 +121,10 @@ class AgentToolSurfaceTests(unittest.TestCase):
             recent.description,
         )
         self.assertIn("Zero results is a normal outcome", recent.description)
+        self.assertIn("sender_user_ids", recent.description)
+        self.assertIn("what one person recently discussed", recent.description)
+        self.assertIn("resource inventory", recent.description)
+        self.assertIn("instead of prefetching this broad recent window", recent.description)
         # prompt 层 tool selection boundary 与 zero-result 出口同样被锁定。
         self.assertIn(
             "Use get_recent_messages when the candidate set is determined mainly by time",
@@ -128,6 +132,10 @@ class AgentToolSurfaceTests(unittest.TestCase):
         )
         self.assertIn('{"kind": "no_result"', SYSTEM_PROMPT)
         self.assertIn("otherwise finalization fails", SYSTEM_PROMPT)
+        self.assertIn("canonical `user_id` in `sender_user_ids`", SYSTEM_PROMPT)
+        self.assertIn("topic-wide recent overview", SYSTEM_PROMPT)
+        self.assertIn("resource inventories", SYSTEM_PROMPT)
+        self.assertIn('"github.com" the FIRST retrieval call', SYSTEM_PROMPT)
 
     def test_agent_can_continue_from_lexical_to_semantic_in_one_runtime(self) -> None:
         lexical = _RecordingTool("lexical_search")

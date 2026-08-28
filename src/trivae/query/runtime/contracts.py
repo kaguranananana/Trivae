@@ -191,6 +191,8 @@ class RuntimeErrorInfo:
     stage: str = "runtime"
     category: str | None = None
     diagnostic_type: str | None = None
+    # 只记录异常类型名，便于 Trace 区分 provider/runtime 根因，不传播异常正文。
+    exception_type: str | None = None
 
 
 @dataclass(frozen=True)
@@ -275,6 +277,8 @@ class RuntimeEvent:
     model_visible_context: tuple[Mapping[str, object], ...] | None = None
     # 这是模型公开产生的 message/tool action，不包含 provider 内部 reasoning 或 SDK raw object。
     observable_output: tuple[Mapping[str, object], ...] | None = None
+    # Provider response 的 bounded shape/status/usage 诊断，正文和 hidden reasoning 永不进入这里。
+    provider_observation: Mapping[str, object] | None = None
 
 
 RuntimeStream = AsyncIterator[RuntimeEvent]

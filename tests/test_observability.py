@@ -92,6 +92,10 @@ class _StreamingRuntime:
                     "call_id": "provider-call-1",
                 },
             ),
+            provider_observation={
+                "transport_attempts": [{"status_code": 200, "finish_reason": "stop"}],
+                "output_shape": {"assistant_nonempty_text_parts": 1},
+            },
         )
         yield RuntimeEvent("content_delta", "stream-provider", "stream-model", 4, text="hidden delta")
         yield RuntimeEvent(
@@ -400,6 +404,10 @@ class ObservabilityTests(unittest.TestCase):
             self.assertEqual(turn.payload["model_visible_context"][0]["role"], "system")
             model_output = next(item for item in projection.timeline if item.operation == "model.output")
             self.assertEqual(model_output.payload["observable_output"][0]["type"], "function_call")
+            self.assertEqual(
+                model_output.payload["provider_observation"]["transport_attempts"][0]["finish_reason"],
+                "stop",
+            )
             self.assertEqual(projection.metrics.usage["total_tokens"], 7)
             self.assertEqual(projection.terminal_status, "completed")
             application.close()

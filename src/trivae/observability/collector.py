@@ -527,6 +527,9 @@ class TraceableAgentRuntime(AgentRuntime):
             payload["model_visible_context"] = [dict(item) for item in event.model_visible_context]
         if event.observable_output is not None:
             payload["observable_output"] = [dict(item) for item in event.observable_output]
+        if event.provider_observation is not None:
+            # Provider 诊断只落 shape/status/id/usage 等 bounded facts，不落正文或 hidden reasoning。
+            payload["provider_observation"] = dict(event.provider_observation)
 
         if event.type == "run_started":
             self.collector.emit(
@@ -703,6 +706,7 @@ class TraceableAgentRuntime(AgentRuntime):
             payload["error_code"] = result.error.code
             payload["error_category"] = result.error.category
             payload["diagnostic_type"] = result.error.diagnostic_type
+            payload["exception_type"] = result.error.exception_type
 
         if event.type == "completed":
             self.collector.emit(

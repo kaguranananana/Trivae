@@ -691,6 +691,8 @@ class _CapabilityTool:
                 "start_timestamp": request.start_timestamp,
                 "end_timestamp": request.end_timestamp,
                 "session_ids": request.session_ids,
+                # Trace 只投影模型请求的成员过滤，不把 trusted scope 混入 arguments。
+                "sender_user_ids": request.sender_user_ids,
                 "limit": request.limit,
                 "cursor": None if cursor is None else cursor.to_dict(),
             }

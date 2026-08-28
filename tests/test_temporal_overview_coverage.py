@@ -172,6 +172,8 @@ class TemporalOverviewContractTests(unittest.TestCase):
         limit_schema = tool.params_json_schema["properties"]["limit"]
         self.assertEqual(limit_schema["default"], DEFAULT_RECENT_MESSAGES_LIMIT)
         self.assertEqual(limit_schema["maximum"], MAX_RECENT_MESSAGES_LIMIT)
+        self.assertIn("sender_user_ids", tool.params_json_schema["properties"])
+        self.assertIn("sender_user_ids", RecentMessagesCapability.metadata.input_fields)
 
     def test_recent_messages_large_window(self) -> None:
         result = self._page(None, limit=3)
@@ -248,6 +250,47 @@ class TemporalOverviewContractTests(unittest.TestCase):
                 message.internal_message_id for message in first.messages
             }.isdisjoint(message.internal_message_id for message in second.messages)
         )
+
+    def test_recent_messages_sender_filter_is_preserved_by_cursor(self) -> None:
+        """成员分页必须继续使用第一页的 canonical sender scope。"""
+
+        first = self.capability.execute(
+            GetRecentMessagesInput(
+                start_timestamp=BASE_TIMESTAMP,
+                end_timestamp=WINDOW_END,
+                sender_user_ids=("qq:uid:u_a",),
+                limit=2,
+            ),
+            self.scope,
+        )
+        cursor = first.metadata.details["next_cursor"]
+        self.assertIsNotNone(cursor)
+        assert isinstance(cursor, dict)
+        self.assertEqual(cursor["sender_user_ids"], ("qq:uid:u_a",))
+
+        # continuation 不重复传 sender filter 时，Host 从 cursor 恢复原成员范围。
+        second = self.capability.execute(GetRecentMessagesInput(cursor=cursor, limit=2), self.scope)
+        self.assertEqual(second.query.sender_user_ids, ("qq:uid:u_a",))
+        self.assertTrue(all(message.sender_user_id == "qq:uid:u_a" for message in second.messages))
+
+        # 显式切换成员必须在输入 contract 层失败，不能改变 cursor 的分页集合。
+        with self.assertRaises(CapabilityContractError):
+            GetRecentMessagesInput(cursor=cursor, sender_user_ids=("qq:uid:u_b",), limit=2)
+
+    def test_legacy_cursor_without_sender_scope_remains_unfiltered(self) -> None:
+        """旧版不含 sender scope 的 cursor 仍按原有全成员窗口继续。"""
+
+        first = self._page(None, limit=3)
+        cursor = first.metadata.details["next_cursor"]
+        self.assertIsNotNone(cursor)
+        assert isinstance(cursor, dict)
+        legacy_cursor = dict(cursor)
+        legacy_cursor.pop("sender_user_ids", None)
+
+        second = self.capability.execute(GetRecentMessagesInput(cursor=legacy_cursor, limit=3), self.scope)
+        self.assertIsNone(second.query.sender_user_ids)
+        self.assertTrue(any(message.sender_user_id == "qq:uid:u_a" for message in second.messages))
+        self.assertTrue(any(message.sender_user_id == "qq:uid:u_b" for message in second.messages))
 
     def test_recent_messages_same_timestamp_deterministic_order(self) -> None:
         request = GetRecentMessagesInput(
@@ -638,18 +681,29 @@ class TemporalOverviewContractTests(unittest.TestCase):
                 request_id="request-temporal",
             )
             envelope = self.tool.invoke_with_trace(
-                self._first_request(limit=3),
+                GetRecentMessagesInput(
+                    start_timestamp=BASE_TIMESTAMP,
+                    end_timestamp=WINDOW_END,
+                    sender_user_ids=("qq:uid:u_a",),
+                    limit=3,
+                ),
                 self.scope,
                 collector.operation_context("query").child("tool:temporal-1"),
             )
             self.assertEqual(envelope.status, "partial")
             projection = project_trace(trace_store.read_trace("trace-temporal"))
+            started_event = next(
+                event
+                for event in projection.timeline
+                if event.operation == "tool.call.started"
+            )
+            self.assertEqual(started_event.payload["request"]["sender_user_ids"], ["qq:uid:u_a"])
             retrieval_event = next(
                 event
                 for event in projection.timeline
                 if event.operation == "structured.browse.completed"
             )
-            self.assertEqual(retrieval_event.payload["total_hits"], 12)
+            self.assertEqual(retrieval_event.payload["total_hits"], 6)
             self.assertEqual(retrieval_event.payload["retrieved_count"], 3)
             self.assertTrue(retrieval_event.payload["has_more"])
             self.assertEqual(retrieval_event.payload["coverage"]["status"], "partial")

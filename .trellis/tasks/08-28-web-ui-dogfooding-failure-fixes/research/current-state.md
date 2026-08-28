@@ -39,6 +39,12 @@
 - 前端的 stream owner 以 `request_id -> buffer` 归属，关键实现位于 `web/src/stores/chat.ts`；完成态以 `stream.end` 为权威。
 - 前端回答、过程块、Tool result、Sources、Trace 分别由 `AssistantTurn.vue`、`BlockTool.vue`、`SourcesBlock.vue`、`TraceFooter.vue` 展示。
 - 本任务已修改 final synthesis Prompt、candidate shape Trace 诊断和空 final output 的 Runtime 错误映射；真实 Provider 查询均通过 Web UI 发起。
+- 本轮继续修复了两条独立运行链：资源/GitHub 清单问题即使带“最近”也先走有界的
+  `lexical_search(github.com)`；成员近期主题问题由 `find_members` 的 canonical `user_id` 传入
+  `get_recent_messages.sender_user_ids`，并贯穿 cursor、Structured query 和 Trace。
+- `openai_adapter.py` 新增 bounded Provider transport/response-shape 观测：HTTP status、短 request/response
+  标识、finish reason、stream completion、usage、output item shape 和 compatibility repair 前后 shape；不保存
+  response 正文或 hidden reasoning。Runtime failure 额外携带 `exception_type`，便于区分 Provider/Runtime/Finalizer。
 
 ## Answer Quality / Depth 补充审计
 
@@ -51,3 +57,6 @@
 - 已在同一真实 Web 环境完成 AQ1–AQ7；AQ6/AQ7 已完成修复后回归，AQ1 概览和简单事实问题也完成修复后重测。AQ3 资源查询一次空 final、AQ4 成员查询一次 Runtime failure 被分别记录为独立 Provider/运行链观察，不归入 brevity 根因。
 - 最后一次代码重载后的 Web 复测为 AQ6 `trace-d664f68f13824ade8ab209e153ccaa0e`（4 claims/4 blocks/19 citations，0 projection omission/truncation）和简单事实 `trace-461335012f294b14826ffb574041d53b`（1 claim/224 字符/2 citations，0 omission/truncation）；Trace 同时保留 `answer_text` 与有界 `answer_shape`。
 - ChatLab 直接审计和真实对照已完成；实际对照使用与本机历史数据兼容的 `chatlab-cli@0.37.0`，结果与 Trivae 的差异按有效信息覆盖而非字数解释。
+- AQ3 资源修复后真实 Web Trace 为 `trace-11cea2531b6c4984b5c4dc2bf29c5456`：93/93 lexical hits、0 projection omission/truncation、Tool Result 约 17,070 tokens，最终 7 claims/1,999 字符/49 citations，valid。
+- AQ4 成员修复后真实 Web Trace 为 `trace-48410dcce379492c81dbcd2566524f14`：sender-scoped recent 52/52 条、0 projection omission/truncation，最终 5 claims/676 字符/36 citations，valid。
+- 修复后的质量门通过：Python 508 tests、Web 12 tests、typecheck、lint、build、Ruff、mypy、compileall、git diff check 和 Trellis validate；Trellis 校验命令为 `uv run python .trellis/scripts/task.py validate .trellis/tasks/08-28-web-ui-dogfooding-failure-fixes`。

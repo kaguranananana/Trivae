@@ -74,7 +74,7 @@
 
 ## 本轮实际执行账本
 
-以下是 20 个原始自然问题运行的 bounded 结果；AQ6/AQ7 后续又在修复后重跑，AQ1、AQ3 和简单事实问题也做了复测。Trace 中保留完整审计链，任务文档只列状态与关键计数。
+以下是 20 个原始自然问题运行的 bounded 结果；AQ6/AQ7 后续又在修复后重跑，AQ1、AQ3、AQ4 和简单事实问题也做了复测。Trace 中保留完整审计链，任务文档只列状态与关键计数。
 
 | Case | Trace | 结果摘要 |
 | --- | --- | --- |
@@ -105,6 +105,11 @@
 - AQ1：`trace-1c73b89e6cb44b0e87e94f47ea95d7d2`，7 claims/1295 final/39 citations；另有一次 `trace-90e32a6d328746579ef5dc4d4cae71b9` 因 candidate 缺少 3 个 `text` 而 degraded。
 - AQ3：`trace-ceead8dc094d45918bc514498db11f22` 成功重跑，4 claims/1134 final/19 citations；同问题另有空 final 失败，作为 Provider 方差记录。
 - 简单事实：`trace-5401abd68fe24b0f8b7d0022f2eb3737`，1 claim/219 final/2 citations，证明没有 universal verbose。
+
+AQ3/AQ4 独立 Failure 修复后重测：
+
+- AQ3：`trace-11cea2531b6c4984b5c4dc2bf29c5456`，资源问题先 lexical `github.com`，93/93 命中、0 projection omission/truncation，Tool Result 约 17,070 tokens，7 claims/1,999 final/49 citations，valid。
+- AQ4：`trace-48410dcce379492c81dbcd2566524f14`，成员 recent 带 canonical `sender_user_ids`，52/52 条、0 projection omission/truncation，5 claims/676 final/36 citations，valid。
 
 最后一次 Trace 字段布局修复后又在同一真实 Web server 重测：
 

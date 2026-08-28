@@ -148,6 +148,38 @@ class RecentMessagesCapabilityTests(unittest.TestCase):
         result = self.capability.execute(request, scope)
         self.assertEqual(result.total_hits, 1)
 
+    def test_sender_filter_restricts_recent_window(self) -> None:
+        """成员主题查询必须能在 temporal browse 中只读取该成员的消息。"""
+
+        scope = ExecutionScope(allowed_session_ids=("qq:920",))
+        request = GetRecentMessagesInput(
+            sender_user_ids=("qq:uid:u_a",),
+            limit=10,
+        )
+        result = self.capability.execute(request, scope)
+
+        # 过滤条件应同时留在 typed query 和返回结果中，供 Trace/证据复核实际范围。
+        self.assertEqual(result.query.sender_user_ids, ("qq:uid:u_a",))
+        self.assertEqual(result.total_hits, 1)
+        self.assertEqual([message.internal_message_id for message in result.messages], ["qq:920:r1"])
+
+    def test_relative_anchor_uses_sender_filtered_archive_latest(self) -> None:
+        """成员 recent 的 archive_latest 必须来自该成员，而不是全体成员。"""
+
+        scope = ExecutionScope(allowed_session_ids=("qq:920",))
+        request = GetRecentMessagesInput(
+            time_range={"kind": "relative", "amount": 1, "unit": "hour", "anchor": "archive_latest"},
+            sender_user_ids=("qq:uid:u_a",),
+            limit=10,
+        )
+        result = self.capability.execute(request, scope)
+
+        # u_b 的更晚消息不能把 u_a 的一小时窗口向后拖移。
+        sender_latest = self.latest - 86_400_000
+        self.assertEqual(result.total_hits, 1)
+        self.assertEqual(result.query.end_timestamp, sender_latest + 1)
+        self.assertEqual(result.metadata.details["resolved_time_range"]["anchor_timestamp"], sender_latest)
+
     def test_reversed_range_and_invalid_inputs_are_contract_errors(self) -> None:
         with self.assertRaises(CapabilityContractError):
             GetRecentMessagesInput(start_timestamp=200, end_timestamp=100)

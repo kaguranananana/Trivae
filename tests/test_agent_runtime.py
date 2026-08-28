@@ -27,8 +27,11 @@ from trivae.interfaces.tui.models import TuiProjectionEngine
 from trivae.query.contracts import QueryRequest
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContractError, RuntimeEvent
 from trivae.query.runtime.openai_adapter import (
+    _PROVIDER_RESPONSE_OBSERVER,
     OpenAIAgentsRuntimeAdapter,
+    _ObservedProviderStream,
     _OpenCodeGoChatCompletionsModel,
+    _provider_response_shape,
     _replace_model_call_tools,
     _response_needs_json_repair,
     _RuntimeHooks,
@@ -566,6 +569,93 @@ class RuntimeAdapterTests(unittest.TestCase):
                 "cached_input_tokens": 40,
             },
         )
+
+    def test_provider_response_shape_keeps_empty_text_and_output_kinds(self) -> None:
+        """Trace 应能区分空 assistant、reasoning、tool 和 metadata-only output。"""
+
+        shape = _provider_response_shape(
+            SimpleNamespace(
+                output=[
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [
+                            {"type": "output_text", "text": ""},
+                            {"type": "output_text", "text": "具体答案"},
+                        ],
+                    },
+                    {"type": "reasoning", "summary": []},
+                    {"type": "function_call", "name": "search_messages"},
+                    {"type": "provider_metadata"},
+                ]
+            )
+        )
+
+        self.assertEqual(shape["output_item_types"], ["message", "reasoning", "function_call", "provider_metadata"])
+        self.assertEqual(shape["assistant_message_count"], 1)
+        self.assertEqual(shape["assistant_content_part_count"], 2)
+        self.assertEqual(shape["assistant_empty_text_parts"], 1)
+        self.assertEqual(shape["assistant_nonempty_text_parts"], 1)
+        self.assertEqual(shape["assistant_text_chars"], 4)
+        self.assertEqual(shape["reasoning_item_count"], 1)
+        self.assertEqual(shape["tool_call_count"], 1)
+        self.assertEqual(shape["metadata_only_item_count"], 1)
+
+    def test_provider_stream_observation_keeps_finish_status_and_request_id(self) -> None:
+        """原始 stream 的 finish/status/request id 应进入 bounded provider observation。"""
+
+        class FakeStream:
+            response = SimpleNamespace(status_code=200, headers={"x-request-id": "req-provider"})
+
+            def __init__(self) -> None:
+                self.chunks = [
+                    SimpleNamespace(
+                        id="chat-response",
+                        choices=[SimpleNamespace(finish_reason=None)],
+                        usage=None,
+                    ),
+                    SimpleNamespace(
+                        id="chat-response",
+                        choices=[SimpleNamespace(finish_reason="length")],
+                        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=20, total_tokens=30),
+                    ),
+                ]
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                if not self.chunks:
+                    raise StopAsyncIteration
+                return self.chunks.pop(0)
+
+            async def aclose(self):
+                return None
+
+        observations: list[dict[str, object]] = []
+        token = _PROVIDER_RESPONSE_OBSERVER.set(observations.append)
+        try:
+            async def consume() -> None:
+                stream = _ObservedProviderStream(FakeStream())
+                async for _ in stream:
+                    pass
+
+            asyncio.run(consume())
+        finally:
+            _PROVIDER_RESPONSE_OBSERVER.reset(token)
+
+        self.assertEqual(observations, [
+            {
+                "transport": "chat_completions_stream",
+                "status_code": 200,
+                "request_id": "req-provider",
+                "response_id": "chat-response",
+                "finish_reason": "length",
+                "chunk_count": 2,
+                "stream_completed": True,
+                "usage": {"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+            }
+        ])
 
     def test_search_tool_schema_exposes_trusted_result_bound(self) -> None:
         """验证 provider schema 暴露本次 trusted result bound，但仍保留 Capability 校验。"""

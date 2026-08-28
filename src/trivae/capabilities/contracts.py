@@ -284,6 +284,7 @@ class GetRecentMessagesInput:
 
     无任何时间参数时契约等价于 relative recent 2 days（anchor=archive_latest），
     与 SDK schema 全参数可选的形状保持一致；不允许 machine current time 参与。
+    sender_user_ids 是 find_members 返回的 canonical users.user_id 过滤器。
     """
 
     time_range: RelativeTimeRange | Mapping[str, object] | None = None
@@ -292,9 +293,13 @@ class GetRecentMessagesInput:
     session_ids: tuple[str, ...] | None = None
     limit: int = DEFAULT_RECENT_MESSAGES_LIMIT
     cursor: RecentMessagesCursor | Mapping[str, object] | None = None
+    # 追加在旧 positional 参数之后，保持既有 GetRecentMessagesInput 调用签名稳定。
+    sender_user_ids: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "session_ids", _normalize_scope_sessions(self.session_ids))
+        # 成员过滤只接受 find_members 返回的 canonical users.user_id，保持与其他检索输入一致。
+        object.__setattr__(self, "sender_user_ids", _normalize_non_empty_strings("sender_user_ids", self.sender_user_ids))
         _validate_optional_timestamp("start_timestamp", self.start_timestamp)
         _validate_optional_timestamp("end_timestamp", self.end_timestamp)
         normalized_time_range = RelativeTimeRange.from_value(self.time_range)
@@ -316,7 +321,12 @@ class GetRecentMessagesInput:
                 object.__setattr__(self, name, cursor_value)
             if self.session_ids is not None and self.session_ids != normalized_cursor.session_ids:
                 raise CapabilityContractError("cursor session_ids do not match the request")
+            # cursor 已经固定了上一页的成员范围；继续请求不能借机切换或扩大 sender filter。
+            if self.sender_user_ids is not None and self.sender_user_ids != normalized_cursor.sender_user_ids:
+                raise CapabilityContractError("cursor sender_user_ids do not match the request")
             object.__setattr__(self, "session_ids", normalized_cursor.session_ids)
+            # 未传 sender filter 时，从 cursor 恢复第一页的 canonical 成员范围；旧 cursor 没有该字段时保持 None。
+            object.__setattr__(self, "sender_user_ids", normalized_cursor.sender_user_ids)
             normalized_time_range = None
         elif normalized_time_range is None and self.start_timestamp is None and self.end_timestamp is None:
             # SDK schema 与 Capability contract 的统一缺省：最近两天，archive_latest 锚定。

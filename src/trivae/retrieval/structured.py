@@ -145,7 +145,7 @@ class MessageQuery(ScopeFilters):
 
 @dataclass(frozen=True)
 class RecentMessagesCursor:
-    """recent browsing 的稳定 keyset 边界与原始查询窗口。"""
+    """recent browsing 的稳定 keyset 边界与原始查询窗口/成员过滤。"""
 
     # 这四个字段共同表达 canonical ordering 的一个严格位置，不依赖 offset 或时间唯一性。
     timestamp: int
@@ -156,6 +156,7 @@ class RecentMessagesCursor:
     end_timestamp: int | None
     session_ids: tuple[str, ...] | None = None
     resolved_time_range: Mapping[str, object] | None = None
+    sender_user_ids: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         """校验 cursor 只携带 canonical ordering 和 bounded scope 字段。"""
@@ -183,6 +184,8 @@ class RecentMessagesCursor:
             ):
                 raise InvalidRetrievalQuery("recent cursor session_ids must contain non-empty strings")
             object.__setattr__(self, "session_ids", tuple(self.session_ids))
+        # sender scope 与 session scope 一样属于 continuation identity，旧 cursor 缺失时保留 None。
+        object.__setattr__(self, "sender_user_ids", _normalize_filter("sender_user_ids", self.sender_user_ids))
         if self.resolved_time_range is not None and not isinstance(self.resolved_time_range, Mapping):
             raise InvalidRetrievalQuery("recent cursor resolved_time_range must be a mapping or None")
 
@@ -208,6 +211,7 @@ class RecentMessagesCursor:
                 end_timestamp=value["end_timestamp"],
                 session_ids=session_ids,
                 resolved_time_range=value.get("resolved_time_range"),
+                sender_user_ids=value.get("sender_user_ids"),
             )
         except KeyError as exc:
             raise InvalidRetrievalQuery(f"recent cursor is missing {exc.args[0]}") from exc
@@ -222,6 +226,7 @@ class RecentMessagesCursor:
         start_timestamp: int | None,
         end_timestamp: int | None,
         session_ids: tuple[str, ...] | None,
+        sender_user_ids: tuple[str, ...] | None = None,
         resolved_time_range: Mapping[str, object] | None = None,
     ) -> "RecentMessagesCursor":
         """从本批最早消息生成下一批所需的稳定位置。"""
@@ -234,6 +239,7 @@ class RecentMessagesCursor:
             end_timestamp=end_timestamp,
             session_ids=session_ids,
             resolved_time_range=resolved_time_range,
+            sender_user_ids=sender_user_ids,
         )
 
     def with_resolved_time_range(
@@ -254,6 +260,7 @@ class RecentMessagesCursor:
             "start_timestamp": self.start_timestamp,
             "end_timestamp": self.end_timestamp,
             "session_ids": self.session_ids,
+            "sender_user_ids": self.sender_user_ids,
             "resolved_time_range": (
                 None if self.resolved_time_range is None else dict(self.resolved_time_range)
             ),
@@ -277,6 +284,12 @@ class RecentMessagesQuery(MessageQuery):
             )
         if self.before_cursor is not None and not isinstance(self.before_cursor, RecentMessagesCursor):
             raise InvalidRetrievalQuery("before_cursor must be a RecentMessagesCursor or None")
+        if (
+            self.before_cursor is not None
+            and self.before_cursor.sender_user_ids != self.sender_user_ids
+        ):
+            # Retrieval 层再次锁定 continuation sender scope，避免绕过 Capability 直接改变分页集合。
+            raise InvalidRetrievalQuery("recent cursor sender_user_ids do not match query")
 
     def to_dict(self) -> dict[str, object]:
         """保存 recent scope、容量和 cursor，供 Trace/Evidence 重放。"""
@@ -642,6 +655,7 @@ class StructuredRetrieval:
                 start_timestamp=recent_query.start_timestamp,
                 end_timestamp=recent_query.end_timestamp,
                 session_ids=recent_query.session_ids,
+                sender_user_ids=recent_query.sender_user_ids,
             ).to_dict()
         latency_ms = (perf_counter() - started) * 1000
         return StructuredMessageResult(

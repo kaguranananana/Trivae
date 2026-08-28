@@ -41,6 +41,12 @@
 - [x] 对每个已处理修复更新对应 `research/failure-*.md` 的根因、变更和回归结果。
 - [x] Prompt 修复分离“bounded Evidence/Citation bookkeeping”与“自适应用户可见回答深度”；不强制固定 claim/section/字数，不把所有 query 改成 verbose。
 - [x] Candidate 结构耦合已确认但未命中硬上限，因此保持 current-run provenance、citation binding、scope enforcement、coverage、partial propagation 和 trusted hydration，不做无证据 schema 重构。
+- [x] AQ3 资源/GitHub 清单加入明确的 retrieval precedence：即使问题包含“最近”，也先用
+  `lexical_search(github.com)`，避免把宽泛 recent 快照与 URL 检索合并后送入超大 synthesis context。
+- [x] AQ4 暴露 `get_recent_messages.sender_user_ids`，并让 canonical sender scope 贯穿 Input、archive anchor、
+  cursor continuation、Structured retrieval、SDK schema、Trace projection 和 Prompt guidance。
+- [x] 为 Provider 边界补充 bounded response/transport shape Trace 和对应回归；记录 finish/status/usage/空文本
+  shape，而不保存 Provider 正文或 hidden reasoning。
 
 ## Phase 4 — verification
 
@@ -48,7 +54,8 @@
 - [x] 运行完整质量门：`uv run pytest -q`、`pnpm -C web test`、`pnpm -C web typecheck`、`pnpm -C web lint`、`uv run ruff check src tests`、`uv run mypy src`、`python3 -m compileall -q src tests`、`git diff --check`、`pnpm -C web build`。
 - [x] 重启真实 Web server，按原始 Failure 步骤在浏览器复测；确认 readiness、Trace、finalizer、answer.completed 和 DOM 一致。
 - [x] 复测原始 Answer Quality Case，并确认简单 yes/no 问题仍可简洁回答；报告调整前后实际回答的有效信息覆盖和 citation/limitation 变化。
-- [x] 核实 Trellis 脚本实际命令；当前版本没有 `task.py check`，改用 `python3 ./.trellis/scripts/task.py validate .trellis/tasks/08-28-web-ui-dogfooding-failure-fixes`，结果通过。
+- [x] 核实 Trellis 脚本实际命令；当前版本没有 `task.py check`，使用
+  `uv run python .trellis/scripts/task.py validate .trellis/tasks/08-28-web-ui-dogfooding-failure-fixes`，结果通过。
 - [x] 实现改变了项目长期契约，已更新 `.trellis/spec/backend/agent-runtime-guidelines.md`，明确用户正文深度与 Evidence/Citation metadata 的职责边界。
 
 ## Phase 5 — handoff

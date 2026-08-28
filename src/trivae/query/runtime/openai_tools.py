@@ -963,7 +963,9 @@ class GetRecentMessagesSDKToolAdapter:
             "Read the most recent messages inside a time range for temporal browsing: use it as the "
             "first call when the candidate set is determined mainly by time and the user asks for an "
             "overview, summary, topic discovery, or what people talked about recently (for example "
-            "'最近两天聊了什么', '最近有什么值得看的', '昨天发生了什么'). Do NOT guess topics and search "
+            "'最近两天聊了什么', '昨天发生了什么'). For a repository, GitHub-link, Skill, or resource "
+            "inventory, even when it says '最近', use lexical_search with keyword 'github.com' as the "
+            "first retrieval call instead of prefetching this broad recent window. Do NOT guess topics and search "
             "them with lexical_search or semantic_search for this kind of question; read the real "
             "recent window first, then analyze and cite. Calling it without any time argument defaults "
             "to the most recent 2 days anchored at archive_latest (never machine current time). The "
@@ -975,6 +977,10 @@ class GetRecentMessagesSDKToolAdapter:
             "by the host; the cursor keeps the original absolute window and session scope, and must not "
             "be edited or combined with a new time range. Do not repeat a cursor already used. The "
             "trusted session/time scope is enforced by the host and cannot be expanded by arguments. "
+            "For a question about what one person recently discussed, first use find_members when the "
+            "identity is ambiguous, then pass the returned canonical user_id in sender_user_ids; for "
+            "a topic-wide recent overview, omit sender_user_ids. Never pass a display name, nickname, "
+            "group card, or platform UIN as sender_user_ids. "
             "When the question contains a "
             "precise lexical target such as a URL, repository name, code identifier, error message, "
             "nickname, or exact phrase, use lexical_search instead; for concept paraphrases without "
@@ -993,6 +999,7 @@ class GetRecentMessagesSDKToolAdapter:
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
             session_ids: list[str] | None = None,
+            sender_user_ids: list[str] | None = None,
             cursor: dict[str, object] | None = None,
             limit: int = default_limit,
         ) -> dict[str, object]:
@@ -1007,6 +1014,8 @@ class GetRecentMessagesSDKToolAdapter:
                 end_timestamp: Optional integer exclusive upper bound in milliseconds;
                     cannot be combined with time_range.
                 session_ids: Optional non-empty session ID array; use null when unused.
+                sender_user_ids: Optional non-empty canonical user_id array from find_members; use
+                    null for a topic-wide query. Never pass a display name, nickname, group card, or UIN.
                 cursor: Optional host-issued continuation cursor. When present, pass it back exactly;
                     do not combine it with time_range or edit its scope/position.
                 limit: Positive message count no greater than the trusted result bound.
@@ -1022,6 +1031,8 @@ class GetRecentMessagesSDKToolAdapter:
                     start_timestamp=start_timestamp,
                     end_timestamp=end_timestamp,
                     session_ids=None if session_ids is None else tuple(session_ids),
+                    # sender_user_ids 只把 find_members 的 canonical identity 传给 Capability。
+                    sender_user_ids=None if sender_user_ids is None else tuple(sender_user_ids),
                     cursor=cursor,
                     limit=limit,
                 )

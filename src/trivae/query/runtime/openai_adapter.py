@@ -76,13 +76,291 @@ _PROVIDERS_WITHOUT_TOOL_JSON_MODE = frozenset({"opencode-go"})
 # DeepSeek V4 Flash 默认开启 high thinking；reasoning token 与最终 JSON 共用
 # max_output_tokens，真实长证据查询会在 JSON 闭合前耗尽 provider 输出预算。
 _LOW_REASONING_MODELS = frozenset({"deepseek-v4-flash"})
-_JSON_REPAIR_OBSERVER: ContextVar[Callable[[], None] | None] = ContextVar(
+_JSON_REPAIR_OBSERVER: ContextVar[Callable[[Any], None] | None] = ContextVar(
     "trivae_json_repair_observer",
+    default=None,
+)
+_PROVIDER_RESPONSE_OBSERVER: ContextVar[Callable[[Mapping[str, object]], None] | None] = ContextVar(
+    "trivae_provider_response_observer",
     default=None,
 )
 
 
-class _OpenCodeGoChatCompletionsModel(OpenAIChatCompletionsModel):
+def _safe_provider_identifier(value: object) -> str | None:
+    """只保留短的公开 provider 标识，拒绝把未知对象或异常正文写进 Trace。"""
+
+    if not isinstance(value, str) or not value or len(value) > 256:
+        return None
+    return value
+
+
+def _provider_headers(stream: object) -> Mapping[str, object] | None:
+    """读取底层 HTTP response headers 的普通 mapping，不访问响应正文。"""
+
+    response = getattr(stream, "response", None)
+    headers = getattr(response, "headers", None)
+    return headers if isinstance(headers, Mapping) else None
+
+
+def _provider_transport_observation(
+    stream: object,
+    *,
+    response_id: str | None,
+    finish_reason: str | None,
+    chunk_count: int,
+    usage: object,
+    completed: bool,
+    exception_type: str | None = None,
+) -> dict[str, object]:
+    """生成 Chat Completions transport 的 bounded 元数据，不复制 provider body。"""
+
+    headers = _provider_headers(stream)
+    request_id = None if headers is None else _safe_provider_identifier(headers.get("x-request-id"))
+    status_code = getattr(getattr(stream, "response", None), "status_code", None)
+    observation: dict[str, object] = {
+        "transport": "chat_completions_stream",
+        "status_code": status_code if isinstance(status_code, int) and not isinstance(status_code, bool) else None,
+        "request_id": request_id,
+        "response_id": _safe_provider_identifier(response_id),
+        "finish_reason": finish_reason,
+        "chunk_count": chunk_count,
+        "stream_completed": completed,
+        "usage": _project_usage_mapping(usage) or None,
+    }
+    if exception_type is not None:
+        observation["exception_type"] = exception_type
+    return observation
+
+
+class _ObservedProviderStream:
+    """透传 SDK stream，同时在结束边界保存 finish/status/id 的形状事实。"""
+
+    def __init__(self, stream: Any) -> None:
+        self._stream = stream
+        self._chunk_count = 0
+        self._response_id: str | None = None
+        self._finish_reason: str | None = None
+        self._usage: object = None
+        self._reported = False
+
+    @property
+    def response(self) -> object:
+        """保留 SDK 用来读取 x-request-id 的 response 属性。"""
+
+        return getattr(self._stream, "response", None)
+
+    def __aiter__(self) -> "_ObservedProviderStream":
+        return self
+
+    async def __anext__(self) -> Any:
+        try:
+            chunk = await self._stream.__anext__()
+        except StopAsyncIteration:
+            self._report(completed=True)
+            raise
+        except Exception as exc:
+            self._report(completed=False, exception_type=type(exc).__name__)
+            raise
+
+        self._chunk_count += 1
+        response_id = getattr(chunk, "id", None)
+        if isinstance(response_id, str) and response_id:
+            self._response_id = response_id
+        choices = getattr(chunk, "choices", ())
+        if isinstance(choices, (list, tuple)):
+            for choice in choices:
+                finish_reason = getattr(choice, "finish_reason", None)
+                if isinstance(finish_reason, str) and finish_reason:
+                    self._finish_reason = finish_reason
+        usage = getattr(chunk, "usage", None)
+        if usage is not None:
+            self._usage = usage
+        return chunk
+
+    async def aclose(self) -> Any:
+        """只关闭原始 stream；未完成时不猜测 finish_reason。"""
+
+        close = getattr(self._stream, "aclose", None)
+        if callable(close):
+            return await close()
+        return None
+
+    def _report(self, *, completed: bool, exception_type: str | None = None) -> None:
+        """每个 provider attempt 只上报一次 bounded transport observation。"""
+
+        if self._reported:
+            return
+        self._reported = True
+        observer = _PROVIDER_RESPONSE_OBSERVER.get()
+        if observer is not None:
+            observer(
+                _provider_transport_observation(
+                    self._stream,
+                    response_id=self._response_id,
+                    finish_reason=self._finish_reason,
+                    chunk_count=self._chunk_count,
+                    usage=self._usage,
+                    completed=completed,
+                    exception_type=exception_type,
+                )
+            )
+
+
+def _provider_response_shape(response: object) -> dict[str, object]:
+    """投影模型 output 的类型/数量/文本空值，不保存任何正文。"""
+
+    output = getattr(response, "output", ())
+    if not isinstance(output, (list, tuple)):
+        return {
+            "output_is_sequence": False,
+            "output_item_count": 0,
+            "output_item_types": [],
+            "assistant_message_count": 0,
+            "assistant_content_part_count": 0,
+            "assistant_nonempty_text_parts": 0,
+            "assistant_empty_text_parts": 0,
+            "assistant_text_chars": 0,
+            "reasoning_item_count": 0,
+            "tool_call_count": 0,
+            "tool_result_count": 0,
+            "metadata_only_item_count": 0,
+        }
+
+    item_types: list[str] = []
+    assistant_message_count = 0
+    assistant_content_part_count = 0
+    assistant_nonempty_text_parts = 0
+    assistant_empty_text_parts = 0
+    assistant_text_chars = 0
+    reasoning_item_count = 0
+    tool_call_count = 0
+    tool_result_count = 0
+    metadata_only_item_count = 0
+
+    for item in output:
+        item_type = _item_type(item)
+        if item_type is not None and item_type not in item_types and len(item_types) < 16:
+            item_types.append(item_type)
+        if item_type in _HIDDEN_ITEM_TYPES:
+            reasoning_item_count += 1
+            continue
+        if item_type in _MODEL_ACTION_ITEM_TYPES:
+            tool_call_count += 1
+            continue
+        if item_type in _MODEL_RESULT_ITEM_TYPES:
+            tool_result_count += 1
+            continue
+
+        item_mapping = _item_mapping(item)
+        role = item_mapping.get("role") if item_mapping is not None else getattr(item, "role", None)
+        if item_type == "message" and role == "assistant":
+            assistant_message_count += 1
+            content = (
+                item_mapping.get("content") if item_mapping is not None else getattr(item, "content", None)
+            )
+            parts = content if isinstance(content, (list, tuple)) else [content]
+            if content is None:
+                metadata_only_item_count += 1
+            for part in parts:
+                if part is None:
+                    continue
+                assistant_content_part_count += 1
+                part_mapping = _item_mapping(part)
+                text_value = (
+                    part_mapping.get("text")
+                    if part_mapping is not None
+                    else part
+                    if isinstance(part, str)
+                    else getattr(part, "text", None)
+                )
+                if not isinstance(text_value, str):
+                    text_value = (
+                        part_mapping.get("refusal")
+                        if part_mapping is not None
+                        else getattr(part, "refusal", None)
+                    )
+                if not isinstance(text_value, str):
+                    metadata_only_item_count += 1
+                elif text_value:
+                    assistant_nonempty_text_parts += 1
+                    assistant_text_chars += len(text_value)
+                else:
+                    assistant_empty_text_parts += 1
+            continue
+
+        metadata_only_item_count += 1
+
+    return {
+        "output_is_sequence": True,
+        "output_item_count": len(output),
+        "output_item_types": item_types,
+        "output_item_types_truncated": len(output) > len(item_types),
+        "assistant_message_count": assistant_message_count,
+        "assistant_content_part_count": assistant_content_part_count,
+        "assistant_nonempty_text_parts": assistant_nonempty_text_parts,
+        "assistant_empty_text_parts": assistant_empty_text_parts,
+        "assistant_text_chars": assistant_text_chars,
+        "reasoning_item_count": reasoning_item_count,
+        "tool_call_count": tool_call_count,
+        "tool_result_count": tool_result_count,
+        "metadata_only_item_count": metadata_only_item_count,
+    }
+
+
+def _provider_response_observation(response: object) -> dict[str, object]:
+    """合并 SDK response 的公开 identity、usage 和 output shape。"""
+
+    observation: dict[str, object] = {
+        "response_id": _safe_provider_identifier(getattr(response, "response_id", None)),
+        "request_id": _safe_provider_identifier(getattr(response, "request_id", None)),
+        "output_shape": _provider_response_shape(response),
+        "usage": _project_usage_mapping(getattr(response, "usage", None)) or None,
+    }
+    return observation
+
+
+def _chat_completion_transport_observation(response: object) -> dict[str, object]:
+    """投影非流式 Chat Completion 的公开 finish/status/id 字段。"""
+
+    choices = getattr(response, "choices", ())
+    first_choice = choices[0] if isinstance(choices, (list, tuple)) and choices else None
+    finish_reason = getattr(first_choice, "finish_reason", None)
+    return {
+        "transport": "chat_completions",
+        "status_code": (
+            getattr(response, "status_code", None)
+            if isinstance(getattr(response, "status_code", None), int)
+            else None
+        ),
+        "request_id": _safe_provider_identifier(getattr(response, "_request_id", None)),
+        "response_id": _safe_provider_identifier(getattr(response, "id", None)),
+        "finish_reason": finish_reason if isinstance(finish_reason, str) else None,
+        "chunk_count": None,
+        "stream_completed": True,
+        "usage": _project_usage_mapping(getattr(response, "usage", None)) or None,
+    }
+
+
+class _ObservedChatCompletionsModel(OpenAIChatCompletionsModel):
+    """在不改变 Agents SDK 行为的前提下捕获 provider response 边界。"""
+
+    async def _fetch_response(self, *args: Any, **kwargs: Any) -> Any:
+        """包装 SDK 的 raw response/stream，只增加 bounded 诊断回调。"""
+
+        response = await super()._fetch_response(*args, **kwargs)
+        stream = kwargs.get("stream")
+        if stream is None and len(args) > 8:
+            stream = args[8]
+        observer = _PROVIDER_RESPONSE_OBSERVER.get()
+        if stream is True and isinstance(response, tuple) and len(response) == 2:
+            initial_response, provider_stream = response
+            return initial_response, _ObservedProviderStream(provider_stream)
+        if observer is not None and stream is not True:
+            observer(_chat_completion_transport_observation(response))
+        return response
+
+
+class _OpenCodeGoChatCompletionsModel(_ObservedChatCompletionsModel):
     """处理 OpenCode Go 的 tool-turn JSON mode 限制，并保持 finalizer 可验证。"""
 
     async def get_response(self, *args: Any, **kwargs: Any) -> Any:
@@ -100,7 +378,7 @@ class _OpenCodeGoChatCompletionsModel(OpenAIChatCompletionsModel):
         # 而是在同一 provider、同一 Runtime、同一 model-visible input 上显式完成一次 JSON 回合。
         observer = _JSON_REPAIR_OBSERVER.get()
         if observer is not None:
-            observer()
+            observer(response)
         no_tools_args, no_tools_kwargs = _replace_model_call_tools(args, kwargs, [])
         return await super().get_response(*no_tools_args, **no_tools_kwargs)
 
@@ -145,7 +423,7 @@ class _OpenCodeGoChatCompletionsModel(OpenAIChatCompletionsModel):
                 # 不把第一次不合约的文本交给 Runner；只记录一次公开的 compatibility observation。
                 observer = _JSON_REPAIR_OBSERVER.get()
                 if observer is not None:
-                    observer()
+                    observer(response)
                 no_tools_args, no_tools_kwargs = _replace_model_call_tools(
                     original_args,
                     original_kwargs,
@@ -327,6 +605,7 @@ class _PendingEvent:
     usage: dict[str, int | float] | None = None
     model_visible_context: tuple[dict[str, object], ...] | None = None
     observable_output: tuple[dict[str, object], ...] | None = None
+    provider_observation: Mapping[str, object] | None = None
 
 
 @dataclass
@@ -348,6 +627,10 @@ class _RunState:
     settled: bool = False
     # reasoning 只在当前 SDK stream 中短暂存在；该标记仅用于产生一次 completed 边界。
     thinking_active: bool = False
+    # 每次 provider attempt 都只保存 shape/status/id 等 bounded facts，等 on_llm_end 统一归档。
+    provider_transport_observations: list[dict[str, object]] = field(default_factory=list)
+    # JSON compatibility repair 前的公开 output shape，和最终 response shape 配成一组对照。
+    json_repair_before_shape: dict[str, object] | None = None
 
 
 _HIDDEN_ITEM_TYPES = frozenset({"reasoning", "reasoning_item"})
@@ -572,12 +855,31 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         function_call_count = sum(1 for item in output if _item_type(item) in _MODEL_ACTION_ITEM_TYPES)
         self._state.expected_tool_results = function_call_count
         observable_output = _project_model_output(output)
-        if observable_output is not None:
+        provider_observation = _provider_response_observation(response)
+        if self._state.provider_transport_observations:
+            # 一次 model turn 可能先经历兼容性检测再进行无工具修复，保留每个 attempt 的顺序。
+            provider_observation["transport_attempts"] = [
+                dict(item) for item in self._state.provider_transport_observations
+            ]
+            self._state.provider_transport_observations.clear()
+        repair_before_shape = self._state.json_repair_before_shape
+        if repair_before_shape is not None:
+            # before/after 只保存形状和数量，明确区分 provider 首次输出与修复后输出。
+            provider_observation["compatibility_repair"] = {
+                "action": "json_finalization_repaired",
+                "reason": "non_json_final_output_after_tool_turn",
+                "tools_removed_for_finalization": True,
+                "before": repair_before_shape,
+                "after": provider_observation["output_shape"],
+            }
+            self._state.json_repair_before_shape = None
+        if observable_output is not None or provider_observation is not None:
             self._state.pending.append(
                 _PendingEvent(
                     "model_output",
                     tool_round=self._state.tool_rounds + 1,
                     observable_output=observable_output,
+                    provider_observation=provider_observation,
                 )
             )
         usage = self._project_model_usage(response)
@@ -841,7 +1143,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         model_type = (
             _OpenCodeGoChatCompletionsModel
             if settings.provider in _PROVIDERS_WITHOUT_TOOL_JSON_MODE
-            else OpenAIChatCompletionsModel
+            else _ObservedChatCompletionsModel
         )
         model = model_type(
             model=settings.model_name,
@@ -882,7 +1184,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         context: RuntimeContext | None = None
         streamed_result: Any | None = None
         abort_task: asyncio.Task[None] | None = None
-        repair_observer_token: Token[Callable[[], None] | None] | None = None
+        repair_observer_token: Token[Callable[[Any], None] | None] | None = None
+        provider_observer_token: Token[Callable[[Mapping[str, object]], None] | None] | None = None
 
         yield self._event(state, "run_started")
         if self._abort_is_set(abort_event):
@@ -897,26 +1200,19 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             # RunConfig 与全局 tracing 设置同时显式关闭，保证本地运行不依赖 tracing key。
             set_tracing_disabled(True)
 
-            def observe_json_repair() -> None:
-                """把 Provider compatibility repair 投影为公开 model observation。"""
+            def observe_json_repair(response: Any) -> None:
+                """保存 compatibility repair 前的 response shape，稍后和 after 配对。"""
 
-                state.pending.append(
-                    _PendingEvent(
-                        "model_output",
-                        tool_round=state.tool_rounds + 1,
-                        observable_output=(
-                            {
-                                "type": "provider_compatibility",
-                                "action": "json_finalization_repaired",
-                                "reason": "non_json_final_output_after_tool_turn",
-                                "tools_removed_for_finalization": True,
-                            },
-                        ),
-                    )
-                )
+                state.json_repair_before_shape = _provider_response_shape(response)
+
+            def observe_provider_response(observation: Mapping[str, object]) -> None:
+                """保存当前 provider attempt 的 bounded transport facts，不保存响应正文。"""
+
+                state.provider_transport_observations.append(dict(observation))
 
             # ContextVar 避免 Application 复用同一个 Runtime 时，不同 Query 之间串联 observer。
             repair_observer_token = _JSON_REPAIR_OBSERVER.set(observe_json_repair)
+            provider_observer_token = _PROVIDER_RESPONSE_OBSERVER.set(observe_provider_response)
             streamed_result = Runner.run_streamed(
                 agent,
                 cast(Any, self._build_input(request)),
@@ -946,6 +1242,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                         usage=pending.usage,
                         model_visible_context=pending.model_visible_context,
                         observable_output=pending.observable_output,
+                        provider_observation=pending.provider_observation,
                     )
                 if state.aborted:
                     continue
@@ -1000,6 +1297,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                     usage=pending.usage,
                     model_visible_context=pending.model_visible_context,
                     observable_output=pending.observable_output,
+                    provider_observation=pending.provider_observation,
                 )
 
             # reasoning 后若没有正文或 hook 事件，SDK stream 结束本身就是最后的真实边界。
@@ -1066,6 +1364,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 termination="max_turns_exceeded",
                 category="absolute_backstop",
                 diagnostic_type=type(exc).__name__,
+                exception_type=type(exc).__name__,
                 usage=self._project_usage(streamed_result),
             )
             yield self._event(state, "failed", result=result)
@@ -1078,6 +1377,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 "dynamic Tool Result run budget exhausted",
                 category="budget",
                 diagnostic_type=type(exc).__name__,
+                exception_type=type(exc).__name__,
                 usage=self._project_usage(streamed_result),
             )
             yield self._event(state, "failed", result=result)
@@ -1090,6 +1390,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 "Tool Result budget contract failed",
                 category="budget",
                 diagnostic_type=type(exc).__name__,
+                exception_type=type(exc).__name__,
                 usage=self._project_usage(streamed_result),
             )
             yield self._event(state, "failed", result=result)
@@ -1111,12 +1412,15 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 "agent runtime execution failed",
                 category="terminal",
                 diagnostic_type=type(exc).__name__,
+                exception_type=type(exc).__name__,
                 usage=self._project_usage(streamed_result),
             )
             yield self._event(state, "failed", result=result)
         finally:
             if repair_observer_token is not None:
                 _JSON_REPAIR_OBSERVER.reset(repair_observer_token)
+            if provider_observer_token is not None:
+                _PROVIDER_RESPONSE_OBSERVER.reset(provider_observer_token)
             if abort_task is not None:
                 abort_task.cancel()
                 await asyncio.gather(abort_task, return_exceptions=True)
@@ -1293,6 +1597,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         usage: dict[str, int | float] | None = None,
         model_visible_context: tuple[dict[str, object], ...] | None = None,
         observable_output: tuple[dict[str, object], ...] | None = None,
+        provider_observation: Mapping[str, object] | None = None,
     ) -> RuntimeEvent:
         """为每个事件分配进程内 sequence，不暴露 provider 原始 sequence。"""
 
@@ -1314,6 +1619,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             run_id=state.run_id,
             model_visible_context=model_visible_context,
             observable_output=observable_output,
+            provider_observation=provider_observation,
         )
 
     def _failed_result(
@@ -1326,6 +1632,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         termination: Literal["failed", "max_turns_exceeded"] = "failed",
         category: str | None = None,
         diagnostic_type: str | None = None,
+        exception_type: str | None = None,
         usage: dict[str, int | float] | None = None,
     ) -> RuntimeResult:
         """构造不含原始异常正文的 terminal result。"""
@@ -1342,6 +1649,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 message=message,
                 category=category,
                 diagnostic_type=diagnostic_type,
+                exception_type=exception_type,
             ),
             usage=usage,
             tool_rounds=state.tool_rounds,
