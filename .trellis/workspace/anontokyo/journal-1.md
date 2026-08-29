@@ -1069,3 +1069,24 @@ smoke 必须断言时序/分布而不只是事件类型。
 ### Status
 
 [OK] **Completed**
+
+
+## Session 44: 修复 Web UI URL 与 Sources
+
+**Date**: 2026-08-29
+**Task**: 修复 Web UI URL 与 Sources
+**Branch**: `main`
+
+### Summary
+
+修复 canonical URL 提取与 Web trusted-link 渲染，Sources 默认折叠；新增 Python/Web 回归测试，完成 513 个 Python 测试、23 个 Web 测试、typecheck/lint/build，以及真实 Web Trace 验收。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `58b9925` | (see git log) |
+
+### Status
+
+[OK] **Completed**
