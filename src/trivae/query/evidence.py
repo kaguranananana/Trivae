@@ -10,6 +10,7 @@ import math
 import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Mapping, TypeAlias
+from urllib.parse import urlsplit
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
 from trivae.config.limits import (
@@ -52,8 +53,16 @@ MAX_SOURCE_URL_CHARS = 2_000
 MAX_MODEL_MESSAGE_CHARS = 600
 MODEL_TOKEN_CHAR_RATIO = 3
 
-_URL_PATTERN = re.compile(r"https?://[^\s<>\"'，。；：！？、]+")
-_URL_TRAILING_PUNCTUATION = ".,;:!?，。；：！？、)]}"
+_URL_PATTERN = re.compile(
+    r"https?://[^\s<>\"'，。；：！？、（）【】《》“”‘’\u3400-\u4dbf\u4e00-\u9fff]+",
+    re.IGNORECASE,
+)
+_URL_TRAILING_PUNCTUATION = ".,;:!"
+_URL_BRACKET_PAIRS = {
+    ")": "(",
+    "]": "[",
+    "}": "{",
+}
 _MISSING_STRUCTURED_VALUE = object()
 
 
@@ -347,6 +356,46 @@ def _normalize_retrieval_coverage(
     return normalized
 
 
+def _trim_url_candidate(candidate: str) -> str:
+    """只裁掉句末标点和不成对的 Markdown 外层括号。"""
+
+    trimmed = candidate
+    while trimmed:
+        # 先处理明确的句末标点，避免它阻挡后续的括号边界判断。
+        punctuation_trimmed = trimmed.rstrip(_URL_TRAILING_PUNCTUATION)
+        if punctuation_trimmed != trimmed:
+            trimmed = punctuation_trimmed
+            continue
+
+        # URL 内部的成对括号属于地址本身，只有多出来的右括号才是 Markdown 外层括号。
+        closing = trimmed[-1]
+        opening = _URL_BRACKET_PAIRS.get(closing)
+        if opening is None or trimmed.count(closing) <= trimmed.count(opening):
+            break
+        trimmed = trimmed[:-1]
+    return trimmed
+
+
+def _is_valid_http_url(url: str) -> bool:
+    """校验 URL 的协议、主机、端口和 percent escape，拒绝模糊候选。"""
+
+    # URL 中的百分号必须后跟两个十六进制字符，避免把坏编码写入 trusted snapshot。
+    if re.search(r"%(?![0-9A-Fa-f]{2})", url):
+        return False
+
+    try:
+        # urlsplit 负责拆分标准 URL 结构，避免手写规则遗漏 netloc 边界。
+        parsed = urlsplit(url)
+        # hostname 属性会触发 IPv6/非法主机字符校验，port 属性会触发非法端口校验。
+        hostname = parsed.hostname
+        parsed.port
+    except ValueError:
+        return False
+
+    # 只有 HTTP(S) 且同时存在非空 netloc/hostname 的候选才进入来源列表。
+    return parsed.scheme.lower() in {"http", "https"} and bool(parsed.netloc) and bool(hostname)
+
+
 def extract_urls(value: object) -> tuple[str, ...]:
     """从可信 bounded projection 提取去重 URL，不把模型重新抄写的链接当作来源。"""
 
@@ -360,9 +409,16 @@ def extract_urls(value: object) -> tuple[str, ...]:
             return
         if isinstance(candidate, str):
             for match in _URL_PATTERN.findall(candidate):
-                url = match.rstrip(_URL_TRAILING_PUNCTUATION)
-                if not url or len(url) > MAX_SOURCE_URL_CHARS or url in seen:
+                # 扫描器只负责找候选，完整边界和合法性在进入 seen 之前统一确认。
+                url = _trim_url_candidate(match)
+                if (
+                    not url
+                    or len(url) > MAX_SOURCE_URL_CHARS
+                    or url in seen
+                    or not _is_valid_http_url(url)
+                ):
                     continue
+                # 只有已经通过校验的 canonical URL 才占用去重集合和数量上限。
                 seen.add(url)
                 urls.append(url)
                 if len(urls) >= MAX_SOURCE_URLS:

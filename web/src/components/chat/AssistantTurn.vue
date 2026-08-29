@@ -71,7 +71,18 @@ function segmentDuration(index: number): number {
   return segment?.type === 'process' ? getProcessSegmentDurationMs(segment, blockDuration) : 0
 }
 
-const answerHtml = computed(() => renderMarkdown(props.item.answer))
+const trustedUrls = computed(() => {
+  // trusted URL 只来自最终 Source snapshot，不从回答正文、excerpt 或相似文本猜测。
+  const urls = new Set<string>()
+  for (const source of props.item.sources) {
+    for (const url of source.snapshot?.urls ?? []) {
+      urls.add(url)
+    }
+  }
+  return [...urls]
+})
+
+const answerHtml = computed(() => renderMarkdown(props.item.answer, trustedUrls.value))
 const showAnswer = computed(() => props.item.answer.length > 0)
 
 const statusLabel = computed(() => {

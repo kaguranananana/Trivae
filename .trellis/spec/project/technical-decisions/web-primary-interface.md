@@ -3,8 +3,9 @@
 > 状态：**Confirmed / Implemented（2026-08-27，branch codex/web-ui）**
 >
 > 本 ADR 记录把 ChatLab 风格 Local Web UI 建成 Trivae primary interaction surface 的完整决策链，
-> 覆盖六个子决策：Web primary interface、QueryStreamEvent 保持 UI-neutral、Conversation history
-> 作为共享领域能力、provider reasoning visibility、local Trace Finder integration、Source Session ≠ AI Conversation。
+> 覆盖七个子决策：Web primary interface、QueryStreamEvent 保持 UI-neutral、Conversation history
+> 作为共享领域能力、provider reasoning visibility、local Trace Finder integration、Source Session ≠ AI Conversation、
+> trusted URL rendering 与 Sources collapsed presentation。
 > 所有决策均以真实实现与真实 provider smoke 为证据，不含未验证的设想。
 
 ---
@@ -133,7 +134,32 @@ conversation 保存的完整时间/容量快照；用户改变选择时，下一
 conversation，不修改旧 conversation，也不等待后端拒绝后重试。Source Session 与 AI Conversation 仍是两个
 概念，但不可变 scope 要求不同选择使用不同 AI Conversation。
 
-## 7. Failure Cases 与验证证据
+## 7. Trusted URL rendering 与 Sources 展示
+
+### Decision
+
+Web 正文的链接信任边界由最终 `SourceItem.snapshot.urls` 决定：`AssistantTurn` 只把每个来源
+snapshot 中的 URL 去重后传给 Markdown renderer；renderer 在 Markdown token 层对自动 URL、autolink
+和显式 `[label](href)` 做 HTTP(S) 与完整字符串匹配。没有对应 canonical snapshot URL 的正文 URL、
+相似 URL 或模型重新抄写的 URL 只作为普通文本显示，不生成 `<a href>`。renderer 不使用最终 HTML
+正则替换，也不读取 excerpt 或重新检索来源。
+
+`SourcesBlock` 默认显示 `▶ Sources · N`，使用当前组件实例内的真实 button 控制展开；展开后继续
+展示既有完整 source detail，空列表不渲染 block。展开状态不进入 Pinia、conversation payload 或
+backend artifact，因此多个 Assistant Turn 和历史 replay 互不共享状态，重新挂载默认折叠。
+
+### Source semantics
+
+Sources 是 Finalizer 通过 Evidence claim/source 绑定、current Tool Result provenance/scope/locator
+与 canonical metadata 校验后，经 `answer_source_summaries()` 按 Evidence 顺序投影并按 canonical
+identity 去重的可审计来源列表。它不是 Retrieval Top N、最近消息、excerpt 相似度或随机挑选。
+
+Host 校验确认“这个 source 是否来自当前 run 的可信结果、是否在 scope 内、是否能定位到 canonical
+metadata”；`validate_answer_artifact()` 不承担完整自然语言 semantic entailment judge。`supports`、
+`context`、`contradicts` 是 Evidence 与 finding 的语义关系标签，Web Sources 不宣称经过独立 LLM
+Judge 对回答做了强相关性认证。
+
+## 8. Failure Cases 与验证证据
 
 | Failure Case | 验证 |
 | --- | --- |
@@ -147,4 +173,6 @@ conversation，不修改旧 conversation，也不等待后端拒绝后重试。S
 | `query.failed/query.aborted` 先关闭 assistant，`stream.end.trace_id` 消失 | 终态信封按 request owner buffer 更新最新 assistant，并更新而非重复追加终态错误块 |
 | 非法 trace_id / 路径穿越 | 404 TRACE_NOT_FOUND；URL 编码穿越被路由与 log_path 分隔符校验双重拒绝 |
 | 刷新丢历史 | mount 时 load conversations + 最近 conversation；运行中断显式标 `执行中断` |
+| 正文中的相似或被模型扩展的 URL 被错误变成外链 | `tests/test_evidence.py`、`web/tests/markdown.test.ts`、`web/tests/AssistantTurn.test.ts` 与真实 Trace `trace-012be0958f9a404eb6c1aea943694e73`；只渲染最终 Source snapshot 中完全一致的 URL |
+| Sources 长列表默认撑开正文、多个回答共享展开状态 | `web/tests/SourcesBlock.test.ts` 与真实 Trace `trace-e9e15f4d3d2f499291271f011a18edd4`；每个实例默认 collapsed、展开后保留完整详情 |
 | TUI 回归 | test_tui_app/test_tui_projection/test_cli_renderer/test_cli 全绿（472 tests 全量通过） |

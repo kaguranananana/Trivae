@@ -16,6 +16,8 @@ from trivae.capabilities.contracts import ToolEnvelope
 from trivae.query.contracts import QueryRequest
 from trivae.query.evidence import (
     MAX_FIELD_CHARS,
+    MAX_SOURCE_URL_CHARS,
+    MAX_SOURCE_URLS,
     AnswerArtifact,
     AnswerContentBlock,
     AnswerContractError,
@@ -972,6 +974,62 @@ class ProvenanceValidationTests(unittest.TestCase):
         self.assertEqual(
             extract_urls("https://example.com/a, https://example.com/a。 https://github.com/a/b"),
             ("https://example.com/a", "https://github.com/a/b"),
+        )
+
+    def test_extract_urls_respects_chinese_and_fullwidth_boundaries(self) -> None:
+        """canonical URL 与中文正文、全角标点相邻时只保留 URL 本体。"""
+
+        text = (
+            "中文（https://github.com/example/repo）【https://example.net/a】"
+            "《https://example.org/b》“https://example.com/docs?x=a%20b#readme”，"
+            "资源https://example.org/path随后；https://example.org/c："
+            "https://example.org/d！https://example.org/e？结束。"
+        )
+        self.assertEqual(
+            extract_urls(text),
+            (
+                "https://github.com/example/repo",
+                "https://example.net/a",
+                "https://example.org/b",
+                "https://example.com/docs?x=a%20b#readme",
+                "https://example.org/path",
+                "https://example.org/c",
+                "https://example.org/d",
+                "https://example.org/e",
+            ),
+        )
+
+    def test_extract_urls_preserves_balanced_markdown_parentheses(self) -> None:
+        """Markdown 外层括号应被剥离，URL 自身成对括号必须保留。"""
+
+        self.assertEqual(
+            extract_urls("[说明](https://example.com/a_(nested))，以及 https://example.net/a"),
+            ("https://example.com/a_(nested)", "https://example.net/a"),
+        )
+
+    def test_extract_urls_rejects_malformed_and_non_http_urls(self) -> None:
+        """畸形候选不能进入 trusted URL，也不能阻止后续合法 URL 被提取。"""
+
+        self.assertEqual(
+            extract_urls(
+                "ftp://example.com/file https://? https:///path "
+                "https://example.com/%ZZ http://example.com:bad "
+                "http://example.com/valid"
+            ),
+            ("http://example.com/valid",),
+        )
+
+    def test_extract_urls_keeps_order_and_existing_bounds(self) -> None:
+        """提取结果保持首次出现顺序，并继续执行数量和字符上限。"""
+
+        candidates = " ".join(f"https://example.com/{index}" for index in range(MAX_SOURCE_URLS + 2))
+        self.assertEqual(
+            extract_urls(candidates),
+            tuple(f"https://example.com/{index}" for index in range(MAX_SOURCE_URLS)),
+        )
+        self.assertEqual(
+            extract_urls(f"https://example.com/{'x' * MAX_SOURCE_URL_CHARS}"),
+            (),
         )
 
     def test_tool_partial_and_evidence_sufficiency_remain_independent(self) -> None:
