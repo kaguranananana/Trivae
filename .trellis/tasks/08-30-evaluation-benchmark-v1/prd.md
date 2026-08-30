@@ -133,7 +133,7 @@
 ## Revision 2 变更摘要
 
 1. Coverage GT 拆为 `expected_coverage_status / expected_truncated / expected_zero_result` 三轴，对齐生产 `CoverageStatus` 词表与独立 truncated flag
-2. Variant 矩阵改为 A/B/C/C2/D：C 只恢复自动 expansion，C2 才加 get_message_context，保证 B−C、C−C2 单变量
+2. Variant 矩阵改为 A/B/C/C2/D：C 只恢复自动 expansion，C2 才加 get_message_context，保证 B−A / C−B / C2−C 单变量
 3. Holdout 改为 local-only 技术隔离 + v1 一次定稿；删除「失败降级 + reserve 补位重跑」流程，改为无效条目预声明规则 + 修复进 v2
 4. `DatasetSnapshot` 恢复原职责；新增 BenchmarkEnvironmentManifest 承载 index identity / commit / gate
 5. Semantic 类 GT 不再声称 exhaustive/corpus Recall；改 Target Recall@K；只有确定性可枚举 predicate 的 case 可 exhaustive
