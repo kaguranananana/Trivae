@@ -95,9 +95,47 @@ class BenchmarkOrchestrator:
         variant: ControlledVariant,
         repetitions: int,
     ) -> tuple[EvaluationRun, ...]:
-        """通过现有 Application.evaluate_suite 执行一个 variant × suite。"""
+        """逐 case 执行一个 variant × suite。
 
-        return await self._application.evaluate_suite(suite, cases, variant, repetitions=repetitions)
+        Runner 会把单 case 异常先落盘再向上抛；benchmark 编排层捕获后继续下一个
+        case（provider crash 不得杀死整个 variant），异常细节记入 stderr/日志，
+        已落盘的 exception run 会作为 provider_failure 进入报告。
+        """
+
+        all_runs: list[EvaluationRun] = []
+        for reference in suite.case_references:
+            case = cases.get(reference.case_id)
+            if case is None or case.identity != reference.identity:
+                raise EvaluationContractError(f"suite case cannot be resolved: {reference.identity}")
+            try:
+                all_runs.extend(
+                    await self._application.evaluate_case(case, variant, repetitions=repetitions)
+                )
+            except Exception as exc:  # noqa: BLE001 - 单 case 异常必须隔离，不终止 suite
+                print(
+                    json.dumps(
+                        {
+                            "status": "case_exception",
+                            "case_id": case.case_id,
+                            "variant_id": variant.variant_id,
+                            "exception": type(exc).__name__,
+                        },
+                        ensure_ascii=False,
+                    ),
+                    flush=True,
+                )
+                saved: list[EvaluationRun] = []
+                store = self._application.evaluation_store
+                list_runs = getattr(store, "list_runs", None)
+                if callable(list_runs):
+                    saved = [
+                        run
+                        for run in list_runs(case_id=case.case_id)
+                        if run.variant_id == variant.variant_id
+                    ]
+                if saved:
+                    all_runs.append(max(saved, key=lambda run: run.completed_at))
+        return tuple(all_runs)
 
     def score_variant_runs(
         self,
