@@ -1132,3 +1132,12 @@ Implemented Source Scope -> AI Conversation -> Turns web navigation: unselected 
 ### Status
 
 [OK] **Completed**
+
+## 2026-08-30 evaluation-benchmark-v1（夜间自主推进）
+
+- Stage 1 Measurement Substrate 全量落地：ExecutionOverride.context_window_limit（唯一生产契约扩展，evaluation-only）、retrieval_calls/evidence_sources/content_blocks/citation_bindings 分层投影、benchmark 包（gt/environment/retrieval/metrics/failures/report/orchestrator/judge）、`eval benchmark` CLI 六子命令、pytest 29 个新基准测试（全量 558 绿）。
+- Stage 1.5 校准 pilot（10 case × 5 variant）抓到 3 个真实 bug：trace_limitations 无界（628 hits → 511 字符串）、eval CLI 无 dotenv、AnswerDeltaParseError 逃逸 query 边界（生产 bug 已记 problem-records，修复排 v2）。
+- Stage 2：37 dev case（六类，全 provisional 待裁决）+ 10 calibration case + review pack + 确定性验证脚本。
+- Stage 3 dev 全量：185 真实 LLM run（5 variant × 37）全部落盘；配对比较 B−A evidence_recall +0.227；D completion 0.838。holdout 未生成（冻结后才建）。
+- Stage 4：Tier 2 judge 落地并在 D 上跑出 Grounded Claim Rate 0.750 / Citation Correctness 0.610（provisional）。
+- 关键待办（用户醒来后）：① 逐条裁决 dev GT（review pack 在 data/evaluation/benchmark/review-pack-dev.md）；② 冻结 commit 后生成 holdout；③ v2 修 streaming escape。
