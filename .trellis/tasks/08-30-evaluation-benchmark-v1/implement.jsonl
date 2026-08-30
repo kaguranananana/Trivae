@@ -1,0 +1,9 @@
+{"file": ".trellis/tasks/08-30-evaluation-benchmark-v1/research/evaluation-audit.md", "reason": "现状审计与两项确认（context_expansion_configuration 不贯穿 runtime；semantic identity 约束缺口）的代码证据，所有扩展决策依据"}
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "§5 Evaluation 硬规则：per-Finding completeness 三态、不压总分、pinned Variant baseline、质量轴与诊断轴分离"}
+{"file": ".trellis/spec/project/interview-defense.md", "reason": "记录原则与 measured fact/engineering expectation 边界；最终需新增 resume-benchmark-v1 事实索引章节"}
+{"file": ".trellis/spec/backend/temporal-overview-guidelines.md", "reason": "recent 1000/5000、keyset cursor、coverage 状态语义、COVERAGE_MISMATCH fatal 等 coverage contract，temporal_overview case 与 Coverage Status Accuracy 的契约基础"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "lexical/semantic index staleness 检查、五字段计数语义分离，snapshot manifest 与 pre-run gate 的依据"}
+{"file": ".trellis/spec/backend/agent-runtime-guidelines.md", "reason": "tool 行为边界（trusted limit、URL 检索优先级、truncated 保留），ExecutionOverride 钳制点所在的 runtime 层规则"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Failure Case → 测试集 → Regression 纪律；Evaluation 优先真实指标"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "错误显式暴露、无静默 fallback 的通用规则，指标 unavailable 语义需一致"}
+{"file": "evaluation/README.md", "reason": "现有 eval CLI 与 artifact 目录的使用约定与隐私边界"}

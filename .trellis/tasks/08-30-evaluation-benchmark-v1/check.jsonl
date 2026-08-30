@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/08-30-evaluation-benchmark-v1/prd.md", "reason": "验收标准与两档指标、GT 完备度策略、holdout 冻结纪律、不制造 baseline 的硬规则"}
+{"file": ".trellis/tasks/08-30-evaluation-benchmark-v1/design.md", "reason": "指标精确定义、投影 schema、ExecutionOverride 扩展边界、文件布局，检查实现是否与设计一致"}
+{"file": ".trellis/tasks/08-30-evaluation-benchmark-v1/implement.md", "reason": "四阶段 checklist 与 gate、验证命令、回滚点"}
+{"file": ".trellis/tasks/08-30-evaluation-benchmark-v1/research/evaluation-audit.md", "reason": "两项确认的代码证据，检查是否引入了未经确认的生产契约变更"}
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "检查 Evaluation 硬规则未被违反（unavailable 不伪零、不压总分、质量诊断分轴）"}
+{"file": ".trellis/spec/backend/temporal-overview-guidelines.md", "reason": "检查 coverage 相关指标与既有 contract 一致"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "检查测试覆盖与 regression 纪律"}
