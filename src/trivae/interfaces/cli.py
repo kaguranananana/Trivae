@@ -34,6 +34,8 @@ from trivae.evaluation import (
     build_retrieval_audit_queue,
     build_retrieval_metrics,
 )
+from trivae.evaluation.benchmark.environment import capture_environment
+from trivae.evaluation.benchmark.orchestrator import BenchmarkOrchestrator, run_benchmark
 from trivae.evaluation.review import M6_FAILURE_REGRESSION_MAP
 from trivae.evaluation.store import EvaluationStoreError
 from trivae.feedback.contracts import FeedbackError, FeedbackRecord
@@ -270,8 +272,34 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retrieval_metrics_parser = evaluation_subparsers.add_parser(
         "retrieval-metrics",
-        help="Compute lexical/semantic metrics from sealed metadata and relevance labels",
     )
+    benchmark_parser = evaluation_subparsers.add_parser(
+        "benchmark",
+        help="resume-benchmark orchestration: environment gate, end-to-end runs, scoring and report",
+    )
+    benchmark_subparsers = benchmark_parser.add_subparsers(dest="benchmark_command", required=True)
+    benchmark_gate_parser = benchmark_subparsers.add_parser(
+        "gate", help="Verify the pinned environment manifest against the live environment"
+    )
+    benchmark_gate_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_gate_parser.add_argument("--manifest", type=Path, required=True)
+    benchmark_capture_parser = benchmark_subparsers.add_parser(
+        "capture-environment", help="Capture and persist a BenchmarkEnvironmentManifest"
+    )
+    benchmark_capture_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_capture_parser.add_argument("--benchmark", required=True, help="Benchmark name, e.g. resume-benchmark-v1")
+    benchmark_capture_parser.add_argument("--output", type=Path, required=True)
+    benchmark_run_parser = benchmark_subparsers.add_parser(
+        "run", help="Run a benchmark suite across variants and write scoring outputs"
+    )
+    benchmark_run_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_run_parser.add_argument("--evaluation-database", type=Path, default=None)
+    benchmark_run_parser.add_argument("--manifest", type=Path, required=True)
+    benchmark_run_parser.add_argument("--suite", type=Path, required=True)
+    benchmark_run_parser.add_argument("--cases-dir", type=Path, required=True)
+    benchmark_run_parser.add_argument("--variant", type=Path, action="append", required=True)
+    benchmark_run_parser.add_argument("--output-dir", type=Path, required=True)
+    benchmark_run_parser.add_argument("--repeat", type=int, default=1)
     retrieval_metrics_parser.add_argument("--sealed", type=Path, required=True)
     retrieval_metrics_parser.add_argument("--annotations", type=Path, required=True)
     retrieval_metrics_parser.add_argument(
@@ -469,6 +497,67 @@ def _run_retrieval_metrics_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_benchmark_command(args: argparse.Namespace) -> int:
+    """Benchmark 编排 CLI：gate / capture-environment / run。"""
+
+    try:
+        if args.benchmark_command == "gate":
+            with create_application(args.database) as application:
+                orchestrator = BenchmarkOrchestrator(application=application, database_path=args.database)
+                manifest = orchestrator.load_manifest(args.manifest)
+                gate = orchestrator.preflight_gate(manifest)
+            print(json.dumps({"status": "passed" if gate.passed else "failed", "gate": gate.to_dict()}, ensure_ascii=False, indent=2))
+            return 0 if gate.passed else 1
+
+        if args.benchmark_command == "capture-environment":
+            with create_application(args.database) as application:
+                snapshot = application.materialize_evaluation_snapshot()
+                status = application.semantic_index_status()
+                persisted = status.persisted_identity
+                if persisted is None:
+                    raise EvaluationContractError("semantic index is missing; cannot capture environment")
+                manifest = capture_environment(
+                    benchmark=args.benchmark,
+                    database_path=args.database,
+                    snapshot=snapshot,
+                    semantic_index_identity=persisted.serialized,
+                )
+            manifest.to_json(args.output)
+            print(json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2))
+            return 0
+
+        if args.benchmark_command == "run":
+            suite = EvaluationSuite.from_json(args.suite)
+            variant_paths = tuple(args.variant)
+            with create_application(
+                args.database,
+                evaluation_database_path=args.evaluation_database,
+            ) as application:
+                outcome = run_benchmark(
+                    application=application,
+                    database_path=args.database,
+                    manifest_path=args.manifest,
+                    suite=suite,
+                    cases_dir=args.cases_dir,
+                    variant_paths=variant_paths,
+                    output_dir=args.output_dir,
+                    repetitions=args.repeat,
+                )
+            summary = {
+                "status": outcome["status"],
+                "gate": outcome.get("gate"),
+                "report_path": str(args.output_dir / "report.json"),
+                "markdown_path": str(args.output_dir / "report.md"),
+                "failures_path": str(args.output_dir / "failures" / "failures.json"),
+            }
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+            return 0 if outcome["status"] == "completed" else 1
+    except (EvaluationContractError, EvaluationStoreError, SettingsError) as exc:
+        print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False, indent=2))
+        return 1
+    raise EvaluationContractError("unsupported benchmark command")
+
+
 def _run_evaluation_command(args: argparse.Namespace) -> int:
     """Evaluation CLI 只调用 Application facade，不直接触碰 Runtime/Tool。"""
 
@@ -499,6 +588,9 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
 
         if args.evaluation_command == "retrieval-metrics":
             return _run_retrieval_metrics_command(args)
+
+        if args.evaluation_command == "benchmark":
+            return _run_benchmark_command(args)
 
         if args.evaluation_command == "run":
             suite = EvaluationSuite.from_json(args.suite)

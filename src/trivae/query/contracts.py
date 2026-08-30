@@ -29,9 +29,15 @@ ForcedRoute = Literal["standard_execution", "planned_execution"]
 
 @dataclass(frozen=True)
 class ExecutionOverride:
-    """Evaluation 使用的显式执行实验条件；None 表示完全保持生产路由行为。"""
+    """Evaluation 使用的显式执行实验条件；None 表示完全保持生产路由行为。
+
+    ``context_window_limit`` 是 evaluation-only 的 trusted context window 上限：
+    非 None 时 Runtime 会在构造 retrieval tool 输入前把 ``context_before``/
+    ``context_after`` 钳制到该值；None 表示完全保持生产默认行为。
+    """
 
     forced_route: ForcedRoute | None = None
+    context_window_limit: int | None = None
 
     def __post_init__(self) -> None:
         """拒绝未知实验路径，避免 Evaluation 静默进入未定义的第三条链路。"""
@@ -40,11 +46,20 @@ class ExecutionOverride:
             raise QueryContractError(
                 "forced_route must be null, standard_execution, or planned_execution"
             )
+        if self.context_window_limit is not None and (
+            isinstance(self.context_window_limit, bool)
+            or not isinstance(self.context_window_limit, int)
+            or self.context_window_limit < 0
+        ):
+            raise QueryContractError("context_window_limit must be a non-negative integer or null")
 
     def to_dict(self) -> dict[str, object]:
         """生成可进入 Trace/Run metadata 的普通值快照。"""
 
-        return {"forced_route": self.forced_route}
+        return {
+            "forced_route": self.forced_route,
+            "context_window_limit": self.context_window_limit,
+        }
 
 
 @dataclass(frozen=True)
@@ -159,6 +174,7 @@ class QueryRequest:
             plan_guidance=plan_guidance,
             request_id=self.request_id,
             trace_context=trace_context,
+            context_window_limit=self.execution_override.context_window_limit,
         )
 
 

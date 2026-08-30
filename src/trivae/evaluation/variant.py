@@ -185,7 +185,10 @@ class ControlledVariant:
             context_expansion_configuration=payload.get("context_expansion_configuration", {}),
             evidence_citation_version=payload.get("evidence_citation_version", "evidence-citation-unknown"),
             budget=payload.get("budget", {}),
-            execution_override=ExecutionOverride(override_payload.get("forced_route")),
+            execution_override=ExecutionOverride(
+                forced_route=override_payload.get("forced_route"),
+                context_window_limit=override_payload.get("context_window_limit"),
+            ),
             extra_configuration=payload.get("extra_configuration", {}),
         )
 

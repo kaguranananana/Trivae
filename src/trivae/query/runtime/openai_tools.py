@@ -51,6 +51,24 @@ def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
     )
 
 
+def _clamp_context_window(
+    runtime_context: RuntimeContext,
+    context_before: int,
+    context_after: int,
+) -> tuple[int, int]:
+    """按 trusted context window 上限钳制模型可控的邻居窗口。
+
+    ``context_window_limit`` 是 evaluation-only override（ExecutionOverride 传入）；
+    None 表示生产默认行为，不做任何修改。get_message_context 的显式 deepening
+    不走该钳制，其可用性由 available_capabilities 控制。
+    """
+
+    limit = runtime_context.context_window_limit
+    if limit is None:
+        return context_before, context_after
+    return min(context_before, limit), min(context_after, limit)
+
+
 def _model_projection_metrics(
     payload: dict[str, object],
 ) -> tuple[int | None, bool | None, int | None, int | None, int | None, int | None]:
@@ -178,6 +196,9 @@ class SearchMessagesSDKToolAdapter:
             runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
                 context,
                 self.tool_name,
+            )
+            context_before, context_after = _clamp_context_window(
+                runtime_context, context_before, context_after
             )
 
             try:
@@ -337,6 +358,9 @@ class SemanticSearchSDKToolAdapter:
             runtime_context, tool_call_id, trace_context, budget_call = _tool_runtime_context(
                 context,
                 "semantic_search",
+            )
+            context_before, context_after = _clamp_context_window(
+                runtime_context, context_before, context_after
             )
 
             try:

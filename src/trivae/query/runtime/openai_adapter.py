@@ -1448,6 +1448,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             abort_event=abort_event,
             trace_context=request.trace_context,
             tool_result_budget_policy=self._tool_result_budget_config.new_policy(),
+            context_window_limit=request.context_window_limit,
         )
 
     def _build_agent(self, request: AgentRunRequest, context: RuntimeContext, state: _RunState) -> Any:

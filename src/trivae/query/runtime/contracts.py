@@ -45,6 +45,8 @@ class AgentRunRequest:
     request_id: str | None = None
     # Query 只通过本地对象传递 Trace operation，不把 collector 序列化到 provider input。
     trace_context: object | None = None
+    # Evaluation-only trusted context window 上限；None 表示完全保持生产默认行为。
+    context_window_limit: int | None = None
 
     def __post_init__(self) -> None:
         """在 Runtime 边界一次性校验用户 query 与 capability 名称。"""
@@ -54,6 +56,14 @@ class AgentRunRequest:
         object.__setattr__(self, "query", self.query.strip())
         if not isinstance(self.scope, ExecutionScope):
             raise AgentRuntimeContractError("scope must be an ExecutionScope")
+        if self.context_window_limit is not None and (
+            isinstance(self.context_window_limit, bool)
+            or not isinstance(self.context_window_limit, int)
+            or self.context_window_limit < 0
+        ):
+            raise AgentRuntimeContractError(
+                "context_window_limit must be a non-negative integer or null"
+            )
         if not isinstance(self.available_capabilities, tuple):
             raise AgentRuntimeContractError("available_capabilities must be a tuple")
         if any(not isinstance(name, str) or not name for name in self.available_capabilities):
@@ -123,6 +133,9 @@ class RuntimeContext:
     current_tool_call_id: str | None = None
     # observability operation context 只存在进程内，Tool adapter 可选地消费它。
     trace_context: object | None = None
+    # Evaluation-only trusted context window 上限；None 表示完全保持生产默认行为。
+    # 非 None 时 retrieval tool adapter 在构造 typed input 前钳制 context_before/after。
+    context_window_limit: int | None = None
     # 每次 RuntimeContext 都拥有独立账本；直接构造 context 也遵循 dynamic unknown 的 16k shared fallback。
     tool_result_budget_policy: ToolResultBudgetPolicy = field(
         default_factory=lambda: ToolResultBudgetConfig().new_policy()

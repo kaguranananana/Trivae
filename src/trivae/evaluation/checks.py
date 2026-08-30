@@ -6,9 +6,10 @@ from typing import Mapping
 
 from trivae.observability.contracts import TraceProjection
 from trivae.query.contracts import QueryRequest, QueryResult
-from trivae.query.evidence import AnswerArtifact
+from trivae.query.evidence import AnswerArtifact, MessageSource, StructuredSource
 
 from .contracts import (
+    MAX_EVALUATION_TEXT_CHARS,
     DatasetSnapshot,
     DeterministicCheck,
     EvaluationCaseBundle,
@@ -18,6 +19,147 @@ from .contracts import (
 )
 from .quality import QUALITY_AXES
 from .variant import ControlledVariant
+
+# retrieval tool → benchmark 消费的 strategy 标签；非 retrieval tool 不进入 retrieval_calls。
+_RETRIEVAL_STRATEGY_BY_TOOL = {
+    "lexical_search": "lexical",
+    "search_messages": "lexical",
+    "semantic_search": "semantic",
+    "get_recent_messages": "recent",
+    "get_message_context": "context",
+}
+
+# 全 Run 累计落盘边界：per-call 与 per-run 双重 cap，超界以 count/omitted 表达。
+_MAX_RECORDED_DIRECT_HITS = 50
+_MAX_RECORDED_EXPANDED_IDS = 50
+_MAX_RECORDED_RETRIEVAL_CALLS = 8
+_MAX_RECORDED_EVIDENCE_SOURCES = 50
+_MAX_RECORDED_EVIDENCE_MESSAGE_IDS = 20
+
+
+# no_result final 的确定性 artifact 形态（compile_model_no_result_answer contract）：
+# 单一 "answer" block、无 evidence、无 citation；claims 路径的 block id 固定为 "claim-N"。
+_NO_RESULT_BLOCK_ID = "answer"
+
+
+def _answer_form(artifact: AnswerArtifact | None) -> str | None:
+    """返回 bounded answer 形态标签；no_result 形态是 zero-result 指标的判定输入。"""
+
+    if artifact is None:
+        return None
+    if (
+        len(artifact.content_blocks) == 1
+        and artifact.content_blocks[0].block_id == _NO_RESULT_BLOCK_ID
+        and not artifact.evidence_items
+        and not artifact.citation_bindings
+    ):
+        return "no_result_signature"
+    return "claims"
+
+
+def _answer_text_projection(result: QueryResult | None) -> str | None:
+    """保留 bounded answer 正文，供 Expected Fact Answer Coverage 确定性匹配。"""
+
+    if result is None or result.answer_artifact is None:
+        return None
+    return result.answer_artifact.answer_text[: MAX_EVALUATION_TEXT_CHARS]
+
+
+def _retrieval_calls_projection(result: QueryResult | None) -> dict[str, object]:
+    """分层落盘每次 retrieval call 的 direct hits 与 context expansion IDs。
+
+    direct_hits（is_hit=true，保持工具返回 rank 顺序）与 expanded_ids（is_hit=false）
+    分开记录，保证 Retrieval Recall 只看 direct 层、Evidence/Context Recovery 看
+    evidence 层时互不混合。coverage/partial/truncated 直接携带 ToolResultRecord
+    limitations 里的 Host 派生事实，不在此处重新计算 production coverage。
+    """
+
+    empty: dict[str, object] = {"calls": [], "total": 0, "omitted": 0}
+    if result is None:
+        return empty
+    calls: list[dict[str, object]] = []
+    omitted_calls = 0
+    for record in result.runtime_result.tool_results:
+        strategy = _RETRIEVAL_STRATEGY_BY_TOOL.get(record.tool_name)
+        if strategy is None:
+            continue
+        if len(calls) >= _MAX_RECORDED_RETRIEVAL_CALLS:
+            omitted_calls += 1
+            continue
+        direct_hits: list[dict[str, object]] = []
+        expanded_ids: list[str] = []
+        direct_count = 0
+        expanded_count = 0
+        for item in record.message_items:
+            if item.is_hit:
+                direct_count += 1
+                if direct_count <= _MAX_RECORDED_DIRECT_HITS:
+                    direct_hits.append(
+                        {"rank": direct_count, "internal_message_id": item.message.internal_message_id}
+                    )
+            else:
+                expanded_count += 1
+                if len(expanded_ids) < _MAX_RECORDED_EXPANDED_IDS:
+                    expanded_ids.append(item.message.internal_message_id)
+        coverage_status = next(
+            (
+                limitation.removeprefix("coverage:")
+                for limitation in record.limitations
+                if limitation.startswith("coverage:")
+            ),
+            None,
+        )
+        calls.append(
+            {
+                "tool_call_id": record.tool_call_id,
+                "tool_name": record.tool_name,
+                "strategy": strategy,
+                "status": record.status,
+                "coverage_status": coverage_status,
+                "partial": any(limitation in ("retrieval_partial", "tool_result_partial") for limitation in record.limitations),
+                "truncated": "retrieval_truncated" in record.limitations,
+                "direct_hit_count": direct_count,
+                "direct_hits": direct_hits,
+                "omitted_direct_ids": max(0, direct_count - _MAX_RECORDED_DIRECT_HITS),
+                "expanded_count": expanded_count,
+                "expanded_ids": expanded_ids,
+                "omitted_expanded_ids": max(0, expanded_count - _MAX_RECORDED_EXPANDED_IDS),
+            }
+        )
+    return {"calls": calls, "total": len(calls) + omitted_calls, "omitted": omitted_calls}
+
+
+def _evidence_sources_projection(result: QueryResult | None) -> dict[str, object]:
+    """按 evidence 分组落盘可追溯的 source message IDs / structured locator kinds。"""
+
+    empty: dict[str, object] = {"sources": [], "total": 0, "omitted": 0}
+    if result is None or not isinstance(result.answer_artifact, AnswerArtifact):
+        return empty
+    artifact = result.answer_artifact
+    sources: list[dict[str, object]] = []
+    omitted_sources = 0
+    for evidence in artifact.evidence_items:
+        if len(sources) >= _MAX_RECORDED_EVIDENCE_SOURCES:
+            omitted_sources += 1
+            continue
+        message_ids: list[str] = []
+        locator_kinds: list[str] = []
+        for evidence_source in evidence.sources:
+            reference = evidence_source.reference
+            if isinstance(reference, MessageSource):
+                if len(message_ids) < _MAX_RECORDED_EVIDENCE_MESSAGE_IDS:
+                    message_ids.append(reference.internal_message_id)
+            elif isinstance(reference, StructuredSource) and len(locator_kinds) < _MAX_RECORDED_EVIDENCE_MESSAGE_IDS:
+                locator_kinds.append(reference.locator_kind)
+        sources.append(
+            {
+                "evidence_id": evidence.evidence_id,
+                "sufficiency": evidence.sufficiency,
+                "message_ids": message_ids,
+                "structured_locator_kinds": locator_kinds,
+            }
+        )
+    return {"sources": sources, "total": len(sources) + omitted_sources, "omitted": omitted_sources}
 
 
 def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | None:
@@ -70,6 +212,13 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
             "code": result.finalization_error.code,
             "path": result.finalization_error.path,
         },
+        "answer_form": _answer_form(
+            result.answer_artifact if isinstance(result.answer_artifact, AnswerArtifact) else None
+        ),
+        "answer_text": _answer_text_projection(result),
+        "retrieval_coverage": None
+        if not isinstance(result.answer_artifact, AnswerArtifact)
+        else result.answer_artifact.retrieval_coverage,
         "finalization_diagnostics": (
             None
             if result.finalization_diagnostics is None
@@ -79,6 +228,8 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
         "conversation_id": result.conversation_id,
         "trace_id": result.trace_id,
         "diagnostic_codes": [diagnostic.code for diagnostic in result.diagnostics],
+        "retrieval_calls": _retrieval_calls_projection(result),
+        "evidence_sources": _evidence_sources_projection(result),
     }
 
 
@@ -636,6 +787,51 @@ def run_deterministic_checks(
                 checks.append(_check("execution_override", "failed", "hard", f"Forced route {forced_route} is not explicit in Trace"))
     else:
         checks.append(_check("execution_override", "unknown", "hard", "Trace is unavailable for override validation"))
+
+    _context_limit = request.execution_override.context_window_limit
+    if _context_limit is None:
+        checks.append(_check("context_expansion_override", "not_applicable", "hard", "No context window override requested"))
+    elif trace is None:
+        checks.append(_check("context_expansion_override", "unknown", "hard", "Trace is unavailable for context window override validation"))
+    else:
+        checked_calls = 0
+        violations: list[str] = []
+        for item in trace.timeline:
+            if item.operation != "retrieval.search.completed":
+                continue
+            query_payload = item.payload.get("query")
+            if not isinstance(query_payload, Mapping):
+                continue
+            checked_calls += 1
+            before = query_payload.get("context_before")
+            after = query_payload.get("context_after")
+            if (
+                isinstance(before, bool)
+                or isinstance(after, bool)
+                or not isinstance(before, int)
+                or not isinstance(after, int)
+                or before > _context_limit
+                or after > _context_limit
+            ):
+                violations.append(f"{item.operation_id}:context={before!r}/{after!r}")
+        if violations:
+            checks.append(
+                _check(
+                    "context_expansion_override",
+                    "failed",
+                    "hard",
+                    f"Executed retrieval context window exceeds override limit {_context_limit}: {violations[:3]!r}",
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "context_expansion_override",
+                    "passed",
+                    "hard",
+                    f"All {checked_calls} executed retrieval calls respect context window limit {_context_limit}",
+                )
+            )
 
     if result is None:
         checks.append(_check("limitation_preservation", "unknown", "diagnostic", "No RuntimeResult is available"))
