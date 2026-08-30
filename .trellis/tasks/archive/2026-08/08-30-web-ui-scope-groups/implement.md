@@ -12,7 +12,7 @@
 - [x] 8. 运行定向 Vitest，修复实现根因并确认新增 Failure Case 全绿。
 - [x] 9. 运行前端全量测试、typecheck、lint、build；运行 Web server/conversation Python 定向回归与 `git diff --check`。
 - [x] 10. 使用 `trellis-check` 做需求、架构、代码、测试和规范审查；根据真实实现更新 Web ADR。
-- [ ] 11. 完成 Trellis spec 更新、提交、归档与工作日志。
+- [x] 11. 完成 Trellis spec 更新、提交、归档与工作日志。
 
 ## 关键验证命令
 
