@@ -1090,3 +1090,24 @@ smoke 必须断言时序/分布而不只是事件类型。
 ### Status
 
 [OK] **Completed**
+
+
+## Session 45: Local Web UI Scope navigation and grouping
+
+**Date**: 2026-08-30
+**Task**: Local Web UI Scope navigation and grouping
+**Branch**: `codex/web-ui-scope-groups`
+
+### Summary
+
+Implemented authoritative Current Scope display, explicit selector-to-draft navigation, canonical Source Session scope grouping with date subgroups, legacy/unknown scope handling, lifecycle regression tests, and Web ADR updates; independent review fixed multi-select scope restoration and all frontend/backend gates passed.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `407d526` | (see git log) |
+
+### Status
+
+[OK] **Completed**

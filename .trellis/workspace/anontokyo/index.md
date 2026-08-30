@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 44
-- **Last Active**: 2026-08-29
+- **Total Sessions**: 45
+- **Last Active**: 2026-08-30
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1092 | Active |
+| `journal-1.md` | ~1113 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 45 | 2026-08-30 | Local Web UI Scope navigation and grouping | `407d526` | `codex/web-ui-scope-groups` |
 | 44 | 2026-08-29 | 修复 Web UI URL 与 Sources | `58b9925` | `main` |
 | 43 | 2026-08-29 | 完成 Trivae Web dogfooding 与 AQ3/AQ4 稳定性验证 | `e10dae4`, `d2512f2`, `8df3c6d` | `main` |
 | 42 | 2026-08-28 | 修复 Web Scope、Coverage 与失败 Trace | `7dafb0b` | `main` |
