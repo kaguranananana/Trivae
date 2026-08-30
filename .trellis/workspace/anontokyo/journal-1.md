@@ -1111,3 +1111,24 @@ Implemented authoritative Current Scope display, explicit selector-to-draft navi
 ### Status
 
 [OK] **Completed**
+
+
+## Session 46: Web Source Scope conversation navigation
+
+**Date**: 2026-08-30
+**Task**: Web Source Scope conversation navigation
+**Branch**: `codex/web-ui-scope-groups`
+
+### Summary
+
+Implemented Source Scope -> AI Conversation -> Turns web navigation: unselected navigation state (null never serialized into backend contracts), backend filter-before-limit via ConversationScopeSelector + exact scope-identity SQLite predicates (422/404 stable selector errors), generation-guarded A->B list race protection, scope-keyed draft buffers, detail-first URL restore with send(onCreated) promotion fix. Full regression: pytest 529, frontend 55/lint/typecheck/build, CLI/TUI 72. Real-browser E2E 32/32 steps (Cases A-F) with evidence; test conversations cleaned via official delete API. ADR web-primary-interface updated; validation.md/failure-cases.md recorded.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ab40b81` | (see git log) |
+
+### Status
+
+[OK] **Completed**
