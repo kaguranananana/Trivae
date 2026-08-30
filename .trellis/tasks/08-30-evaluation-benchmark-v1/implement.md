@@ -37,7 +37,7 @@
 
 ### 1.5 Calibration Pilot Gate（人工批量审核之前）
 - [ ] 构造 8~12 个 dev pilot case（覆盖全部六类各 ≥1；含 ≥1 个 exhaustive predicate case、≥1 个 target-set case、≥1 个 expected partial/truncated temporal case、≥1 个 true-empty case）
-- [ ] 走完全链路：GT parser → module-level retrieval 评分 → 4 variant end-to-end 单 case smoke → projection → metrics → report
+- [ ] 走完全链路：GT parser → module-level retrieval 评分 → A/B/C/C2/D 五 variant end-to-end 单 case smoke → projection → metrics → report
 - [ ] 校验点：GT 解析无误、projection 无界增长受控、指标 unavailable 语义正确、failure 分类链不误触发、report 可读
 - [ ] pilot 中发现的数据模型问题在本阶段修复（此时改 schema 成本最低）
 
@@ -58,14 +58,14 @@
 - [ ] 生成人工 review markdown（query + 候选摘要 + 建议 GT + 修改槽）
 - [ ] **用户逐条审核** → adjudicated=true；`why_relevant` 无正文泄漏检查
 
-### 2.3 冻结与隔离
+### 2.3 冻结
 - [ ] development cases（含已知 failure regression）→ `evaluation/cases/benchmark/dev/`（提交）
-- [ ] **holdout cases + suite → `data/evaluation/benchmark/holdout/`（gitignored，不进仓库）**；`.gitignore` 断言测试覆盖该目录
-- [ ] `evaluation/suites/resume-benchmark-dev-v1.json`（提交）；`resume-benchmark-v1.json` full 清单只含 dev 明细 + holdout 计数
-- [ ] 冻结记录：时间、dev 清单 hash、holdout 清单 hash（hash 提交，明文本地）
+- [ ] `evaluation/suites/resume-benchmark-dev-v1.json`（提交）
+- [ ] 冻结记录：时间、dev 清单 hash（提交）
+- [ ] **本阶段不创建任何 holdout 文件**（holdout 推迟到 Gate 3 冻结后的 Stage 4.0）
 - [ ] 无效条目预声明规则写入冻结记录：仅 (a) GT 与 Snapshot 事实矛盾 (b) 重复 (c) 数据损坏 三种情况允许替换，且必须记录原因
 
-**Gate 2（用户 review）**：GT 逐条审核完成；dev/holdout 冻结与隔离确认。
+**Gate 2（用户 review）**：dev GT 逐条审核完成；dev 集冻结确认。
 
 ---
 
@@ -94,6 +94,12 @@
 ---
 
 ## Stage 4: Judge + 冻结后 Holdout（一次定稿）
+
+### 4.0 Holdout 生成与审核（Gate 3 冻结之后，构造时序隔离）
+- [ ] 从冻结前未使用的问题池生成 holdout candidate（总规模 30~40%，六类分布，含新的真实问题）
+- [ ] 用户逐条人工审核 → adjudicated；存放 `data/evaluation/benchmark/holdout/`（gitignored）
+- [ ] holdout 清单 hash 补记入冻结记录
+- [ ] 无效条目替换仅限预声明三情形（GT 矛盾 / 重复 / 数据损坏），记录原因
 
 ### 4.1 Tier 2 Judge（dev 上先验证）
 - [ ] `benchmark/judge.py`：atomic claim 切分 + entailment（llm_assisted_provisional）；若不做 atomic 切分则输出 `Cited Content Block Support Rate`

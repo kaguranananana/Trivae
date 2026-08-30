@@ -57,7 +57,7 @@
   3. live lexical FTS count == canonical message count（复用现有 staleness 语义）
   任一失败 → 整个 benchmark 显式失败，不跑任何 variant。
 - 运行中期漂移由现有机制兜底：Runner 每 case 重解析 Snapshot；semantic 查询 identity 失配显式 `SemanticIndexStale`。
-- 同数据 + 不同 embedding 模型的未来比较 = 同 canonical snapshot + 不同 variant/index identity，由 manifest + variant fingerprint 正确建模，不再污染 Dataset 概念。
+- v1 Environment Manifest **pin 单一 serving semantic index**。未来若评测 embedding/index variant（如 Qwen vs BGE 同轮 A/B），应扩展为 per-variant index identity 或独立 environment matrix；v1 不解决该问题，不提前设计。
 
 ## 3. Ground Truth Schema（复用 ReferenceFinding，零 schema bump）
 
@@ -69,7 +69,7 @@
 | 必需上下文 | `criterion="gt.required_context"`，`relation="context"` | |
 | 期望 coverage 状态 | `criterion="gt.expected_coverage_status"`，`expected_semantics` ∈ `complete\|partial\|none\|unknown\|not_applicable`（**生产 CoverageStatus 词表**） | 只在 GT 可可靠预期时声明；无法预期则不声明该 finding |
 | 期望 truncation | `criterion="gt.expected_truncated"`，`expected_semantics` = `true\|false` | 独立轴；如 broad query 预期 `partial ∧ truncated=true` |
-| 期望 zero-result | `criterion="gt.expected_zero_result"`，`expected_semantics` = `true\|false` | 与 `gt.relevant` 互斥，gt.py 强制校验 |
+| 期望 zero-result | `criterion="gt.expected_zero_result"`，`expected_semantics` = `true\|false` | **单向蕴含**（gt.py 校验）：`expected_zero_result=true ⇒ 禁止 gt.relevant`；`expected_zero_result=false 时通常应存在 gt.relevant`（False Zero-Result Rate 的正例正依赖此组合）。不做双向互斥 |
 | 期望事实 | `criterion="gt.expected_fact"`，`expected_semantics` = 规范化 alias 列表（JSON 序列化），绑定出处消息 | 仅 extractive fact |
 
 **完备度声明规则（硬性）：**
@@ -135,7 +135,7 @@
 | MRR@K | 1/first-hit-rank，**cutoff=K 显式**（默认 MRR@10） | 同上；不宣称全库排序 |
 | Evidence Recall | `|evidence_message_ids ∩ (relevant ∪ required_context)| / |relevant ∪ required_context|` | evidence_sources + GT；scope 随 GT 声明 |
 | Context Recovery Success Rate | case 级布尔：`gt.required_context ⊆ evidence_message_ids`；无 required_context → not_applicable | 同上 |
-| Coverage Status Accuracy | GT `expected_coverage_status`（有声明时）vs artifact 实际 CoverageStatus（`retrieval_coverage.status`；no_result artifact → 实际状态取其各 retrieval call 的汇总规则，gt.py 记录映射）| 只比较 status，不混入 truncated |
+| Coverage Status Accuracy | GT `expected_coverage_status`（有声明时）vs actual。actual **只读 Host-owned `AnswerArtifact.retrieval_coverage`**（canonical actual，含既有的最大 covered_units 汇聚规则）；artifact coverage unavailable → 指标 unavailable + reason。**禁止 metrics.py 从 retrieval_calls 自行重算 production coverage**；no-result Artifact 若缺 coverage facts 属 Measurement Substrate 缺口，应补 projection 而非在 Evaluation 层推断 | 只比较 status，不混入 truncated |
 | Truncation Accuracy | GT `expected_truncated`（有声明时）vs 实际 truncated 事实 | 独立轴 |
 | Expected Fact Answer Coverage | 仅 extractive fact case：每个 `gt.expected_fact` 的规范化 alias 在 **answer_text** 中命中（大小写/空白归一）的比例；evidence 含有不算 | artifact.answer_text + GT；分母=声明了 expected_fact 的 case |
 | False Zero-Result Rate | GT 存在 relevant（expected_zero_result=false）∧ terminal completed 的 case 中，artifact 为 no_result 形态（单 answer block + 无 evidence/citation，Host contract 形态）比例 | artifact 投影 + GT |
@@ -226,9 +226,9 @@ class ExecutionOverride:
 - **Calibration pilot**：批量审核前，先取 8~12 个 dev case 走完 Stage 1 全链路（GT parser → runner → projection → metrics → report），验证数据模型后再扩展到 40~60。
 - **目录与隔离**：
   - `evaluation/cases/benchmark/dev/*.json`、`calibration/*.json` → version-controlled（无正文；`why_relevant` ≤200 字符）
-  - `evaluation/cases/benchmark/holdout/` → **不使用**；holdout JSON/Suite 一律 `data/evaluation/benchmark/holdout/`（gitignored），系统冻结前不进仓库
-  - Suite：`resume-benchmark-dev-v1.json`（提交）、`resume-benchmark-holdout-v1.json`（local-only）、`resume-benchmark-v1.json` full 清单（提交时只含 dev 引用 + holdout 计数，不含 holdout 明文）
-- 冻结记录：冻结时间、dev case 清单 hash、holdout case 清单 hash（hash 入库，明文本地）。
+  - **holdout 在 Gate 3 系统冻结之后才生成与人工审核（构造时序隔离，blind by construction）**：冻结前不存在任何 holdout 文件，不依赖「不可访问某目录」的纪律；gitignored 目录仅作本地存放位置，不声称技术不可见
+  - Suite：`resume-benchmark-dev-v1.json`（提交）、`resume-benchmark-holdout-v1.json`（Gate 3 后创建，local）、`resume-benchmark-v1.json` full 清单（提交 dev 明细；holdout 计数在 Stage 4 回填，不含 holdout 明文）
+- 冻结记录：冻结时间、dev case 清单 hash（Gate 3 入库）；holdout 清单 hash 在 Stage 4 生成时补记（hash 入库，明文本地）。
 
 ## 10. 兼容性与回滚
 
@@ -259,6 +259,6 @@ evaluation/variants/bench-*.json × 5             新增（A/B/C/C2/D）
 evaluation/cases/benchmark/{dev,calibration}/*.json  新增（审核后）
 evaluation/suites/resume-benchmark-dev-v1.json   新增
 evaluation/suites/resume-benchmark-v1.json       新增（dev 明细 + holdout 计数）
-data/evaluation/benchmark/                       本地（gitignored）：environment 完整版 / holdout cases+suite / 中间产物 / failure artifacts
+data/evaluation/benchmark/                       本地（gitignored）：environment 完整版 / holdout cases+suite（Gate 3 后生成）/ 中间产物 / failure artifacts
 tests/test_benchmark_*.py                        新增
 ```

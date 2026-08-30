@@ -29,11 +29,11 @@
 - **GT 完备度按 case 类型如实声明**：
   - 只有 question 可被独立确定性 predicate 枚举（如「包含某 URL 的消息」）的 case 才可标 `exhaustive`（用 SQL/LIKE 全库扫描证明）
   - semantic_paraphrase 类 GT 是人工确认的 target 集合，默认 `partial`，**不得声称 corpus Recall**（禁止用待评估的检索机制证明 GT 完备）
-- 拆分：约 60~70% development / 30~40% holdout
-- **Holdout 技术隔离 + 一次定稿**：
-  - holdout case JSON 与 Suite 在系统冻结前保持 local-only（`data/evaluation/benchmark/holdout/`，gitignored）；仓库只提交 development/calibration case
+- 拆分：约 60~70% development / 30~40% holdout（holdout 部分在 Gate 3 冻结后构造）
+- **Holdout 构造时序隔离 + 一次定稿**：
+  - **holdout 在 Gate 3 系统冻结之后才生成与人工审核**（构造上 blind：冻结前不存在任何 holdout 文件，不依赖「不可访问某目录」的纪律）；存放于 `data/evaluation/benchmark/holdout/`（gitignored）
   - 第一次正式 holdout 运行即 `resume-benchmark-v1` 最终结果；结果无论好坏**封存照报**
-  - 若暴露真实 Bug：v1 结果保留，修复进入 `resume-benchmark-v2`（全新未暴露 holdout）
+  - 若暴露真实 Bug：v1 结果保留，修复进入 `resume-benchmark-v2`（届时生成全新 holdout）
   - 仅允许按**预先声明**的无效条目规则替换 holdout case：(a) GT 与 Snapshot 事实矛盾；(b) 与其他 case 重复；(c) 数据损坏。替换必须记录原因；**禁止因系统答错而替换**
 - Semantic paraphrase 的 query 与 GT 原文表达必须有明显差异，不得构造只对 semantic 有利的人工题
 - GT 通过 ReferenceFinding criterion 约定表达（见 design §3），绑 canonical message ID
@@ -63,7 +63,8 @@
 - **Coverage 三轴分离**（对齐生产 contract：`CoverageStatus = complete|partial|none|unknown|not_applicable`，`truncated` 为独立 flag，`no_result` 是答案形态）：
   - `expected_coverage_status` ∈ 生产 CoverageStatus 词表 → `Coverage Status Accuracy` 只比较它
   - `expected_truncated`（bool）→ `Truncation Accuracy` 单独比较
-  - `expected_zero_result`（bool）→ zero-result 指标单独测
+  - `expected_zero_result`（bool）→ zero-result 指标单独测；GT 单向蕴含：`=true ⇒ 无 gt.relevant`，`=false ⇒ 通常应有 gt.relevant`
+- **Coverage actual 只读 Host-owned 事实**：`AnswerArtifact.retrieval_coverage` 为 canonical actual；unavailable → 指标 unavailable + reason；**禁止 metrics 层从 retrieval_calls 重算 production coverage**
 - **Expected Fact Answer Coverage（替代原 Complete Answer Rate）**：仅限有明确规范化 alias 的 extractive fact，且必须命中 `answer_text`（evidence 包含不算——那是 Evidence Recall 的职责）；不作为所有 temporal/summary case 的通用完整率；一般性回答完整性归 Tier 2 / 人工 Review
 - **Grounded Claim Rate 单位 = atomic factual claim**：Judge 先把 content block 切分为原子事实声明，再判 evidence 是否支持；若不做切分则指标改名 `Cited Content Block Support Rate`，不得混称
 - **条件指标必须伴随无条件指标**：报告同时给出 `Execution Completion Rate`（terminal completed / 全部 run）与 `Valid Answer Rate`（valid/degraded artifact / 全部 run），防止「排除 provider failure 后条件正确率虚高」
@@ -121,8 +122,8 @@
 ## Acceptance Criteria
 
 - [ ] `resume-benchmark-v1` canonical Snapshot + BenchmarkEnvironmentManifest 存在；pre-run gate 三查（snapshot/semantic identity/lexical count）通过；Runner 漂移拒绝验证
-- [ ] ≥40 条人工 adjudicated case（六类齐全，dev/holdout 拆分）；holdout local-only 隔离生效
-- [ ] A/B/C/C2/D 五 variant 定义完成且 diff 可追溯；context 钳制在 Trace 可验证；B−C 与 C−C2 构成真单变量
+- [ ] ≥40 条人工 adjudicated dev case（六类齐全，含 calibration pilot）；holdout 在 Gate 3 冻结后生成并审核（构造时序隔离）
+- [ ] A/B/C/C2/D 五 variant 定义完成且 diff 可追溯；context 钳制在 Trace 可验证；B−A / C−B / C2−C 构成真单变量
 - [ ] Calibration pilot（8~12 case）通过后才进入批量审核；指标引擎 + report 测试全绿，`pytest -q` 全绿
 - [ ] 真实 benchmark 跑完：冻结 commit 全 dev rerun + 同 commit holdout 一次性运行；结果 JSON + Markdown，holdout 单独封存报告
 - [ ] 每个指标带 scope/GT completeness/无条件分母；失败 case 有 acceptance-condition failure artifact
