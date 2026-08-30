@@ -9,6 +9,7 @@
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 import { api } from '@/api/client'
+import { selectableScopesEqual } from '@/utils/scope'
 import type {
   ProcessProjection,
   ScopeRequest,
@@ -126,20 +127,6 @@ function createBuffer(key: string, scope: ScopeRequest | null, title = '新的�
     items: [],
     loaded: false,
   })
-}
-
-function selectableScopesEqual(left: ScopeRequest | null, right: ScopeRequest | null): boolean {
-  if (!left || !right) return left === right
-  if (left.mode !== right.mode) return false
-
-  // session_ids 按集合语义比较；用户改变勾选顺序不应创建一条新 conversation。
-  const leftSessionIds = [...new Set(left.session_ids ?? [])].sort()
-  const rightSessionIds = [...new Set(right.session_ids ?? [])].sort()
-  if (leftSessionIds.length !== rightSessionIds.length) return false
-  if (leftSessionIds.some((sessionId, index) => sessionId !== rightSessionIds[index])) return false
-
-  // selector 目前只表达 mode/session_ids；时间与容量沿用 conversation 的后端完整快照。
-  return true
 }
 
 export const useChatStore = defineStore('chat', () => {

@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "检查关键行为测试、回归门禁与禁止特殊分支"}
+{"file": ".trellis/spec/project/technical-decisions/web-primary-interface.md", "reason": "审查 immutable scope、summary 数据源与执行链边界"}
+{"file": ".trellis/tasks/08-30-web-ui-scope-groups/research/current-state.md", "reason": "按已确认 Failure Case 与 ChatLab 适配结论复核实现"}

@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "约束根因优先、最小改动、ChatLab 继承边界与证据化验证"}
+{"file": ".trellis/spec/project/technical-decisions/web-primary-interface.md", "reason": "定义 Source Session 与 AI Conversation 分离、immutable scope、buffer/stream 主链路"}
+{"file": ".trellis/tasks/08-30-web-ui-scope-groups/research/current-state.md", "reason": "记录当前生命周期 Failure Case、现有 contract 与 ChatLab 交互基线"}

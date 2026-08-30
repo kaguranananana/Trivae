@@ -1,6 +1,6 @@
 # Web becomes primary interaction interface（Local Web UI 架构决策）
 
-> 状态：**Confirmed / Implemented（2026-08-27，branch codex/web-ui）**
+> 状态：**Confirmed / Implemented（2026-08-27；Scope 导航补充于 2026-08-30）**
 >
 > 本 ADR 记录把 ChatLab 风格 Local Web UI 建成 Trivae primary interaction surface 的完整决策链，
 > 覆盖七个子决策：Web primary interface、QueryStreamEvent 保持 UI-neutral、Conversation history
@@ -134,6 +134,19 @@ conversation 保存的完整时间/容量快照；用户改变选择时，下一
 conversation，不修改旧 conversation，也不等待后端拒绝后重试。Source Session 与 AI Conversation 仍是两个
 概念，但不可变 scope 要求不同选择使用不同 AI Conversation。
 
+### Current Scope 与历史导航
+
+Header 的“当前范围”读取当前 `ConversationBuffer.scope`，而不是 selector 临时状态；因此正式 Conversation
+显示 immutable scope，draft 显示 draft scope，legacy `scope=null` 明确显示“未标记范围”且不会被转换为
+`all`。打开正式 Conversation 后，UI 通过显式 action 恢复 selector 可表达的 `mode/session_ids`；用户改变
+selector 时立即切到相应 scope 的 draft，不使用双向 watch，也不原地修改旧 Conversation。
+
+Sidebar 复用 `ConversationSummaryDTO.scope` 与 `/api/source-sessions` catalog，在 Pinia computed projection 中
+按 `canonical Scope → 今天/昨天/更早 → Conversation` 展示。`sessions` identity 对 ID 去重、排序后按集合
+构造稳定 key；名称只负责 label，不参与 identity。`all` 和 legacy `null` 分别独立成组，未知历史 session
+ID 直接显示原 ID。所有 Scope/日期组保持展开，当前 buffer 对应 Scope Group 与当前 Conversation 分别使用
+轻量视觉强调；没有新增 grouping API、逐 Conversation detail 请求、数据库字段或折叠持久化。
+
 ## 7. Trusted URL rendering 与 Sources 展示
 
 ### Decision
@@ -173,6 +186,11 @@ Judge 对回答做了强相关性认证。
 | `query.failed/query.aborted` 先关闭 assistant，`stream.end.trace_id` 消失 | 终态信封按 request owner buffer 更新最新 assistant，并更新而非重复追加终态错误块 |
 | 非法 trace_id / 路径穿越 | 404 TRACE_NOT_FOUND；URL 编码穿越被路由与 log_path 分隔符校验双重拒绝 |
 | 刷新丢历史 | mount 时 load conversations + 最近 conversation；运行中断显式标 `执行中断` |
+| 打开历史 Conversation 后 Header/selector 仍显示旧范围 | Header 直接投影 buffer scope；App/Sidebar 生命周期测试验证打开后显式恢复 selector |
+| 双群/多群历史 Conversation 的 selector 只恢复一个可见选项 | 多选 selector 通过 computed `v-model` 投影完整 ID 集合；App 组件测试验证所有选项同时恢复 |
+| session ID 乱序或重复产生多个 Scope Group | canonical helper 单测与 conversations store 测试验证去重、排序和集合 identity |
+| selector 改变后旧 Conversation 看似被改 scope | App 组件测试验证 change 后立即进入新 scope draft，旧 buffer scope 保持不变 |
+| New Chat 或删除当前项意外回到 all | Sidebar 组件测试验证历史同步后 New Chat、rename、delete-current 均保持合法 selector scope |
 | 正文中的相似或被模型扩展的 URL 被错误变成外链 | `tests/test_evidence.py`、`web/tests/markdown.test.ts`、`web/tests/AssistantTurn.test.ts` 与真实 Trace `trace-012be0958f9a404eb6c1aea943694e73`；只渲染最终 Source snapshot 中完全一致的 URL |
 | Sources 长列表默认撑开正文、多个回答共享展开状态 | `web/tests/SourcesBlock.test.ts` 与真实 Trace `trace-e9e15f4d3d2f499291271f011a18edd4`；每个实例默认 collapsed、展开后保留完整详情 |
 | TUI 回归 | test_tui_app/test_tui_projection/test_cli_renderer/test_cli 全绿（472 tests 全量通过） |

@@ -9,6 +9,7 @@ import AssistantTurn from '@/components/chat/AssistantTurn.vue'
 import ChatComposer from '@/components/composer/ChatComposer.vue'
 import ConversationSidebar from '@/components/sidebar/ConversationSidebar.vue'
 import { useFollowTail } from '@/composables/useFollowTail'
+import { describeScope } from '@/utils/scope'
 
 const chat = useChatStore()
 const conversationsStore = useConversationsStore()
@@ -30,6 +31,23 @@ watch(
 )
 
 const readinessText = ref('')
+const currentScopeDisplay = computed(() => {
+  // currentBuffer 存在时必须保留 null；它代表 legacy 未标记范围，而不是 all。
+  const actualScope = currentBuffer.value ? currentBuffer.value.scope : scopeStore.scope()
+  return describeScope(actualScope, scopeStore.sessions)
+})
+const unknownSelectedSessionIds = computed(() => {
+  const catalogIds = new Set(scopeStore.sessions.map((session) => session.session_id))
+  return scopeStore.selectedSessionIds.filter((sessionId) => !catalogIds.has(sessionId))
+})
+const selectedSessionIdsModel = computed({
+  // 多选框通过 computed setter 统一进入 store action，恢复显示与用户导航共享同一规范化逻辑。
+  get: (): string[] => scopeStore.selectedSessionIds,
+  set: (sessionIds: string[]) => {
+    scopeStore.selectSessions(sessionIds)
+    navigateToSelectedScope()
+  },
+})
 
 onMounted(async () => {
   try {
@@ -44,7 +62,9 @@ onMounted(async () => {
     try {
       await chat.openConversation(latest.conversation_id)
       chat.markInterrupted(latest.conversation_id)
-    } catch {
+      scopeStore.restoreFromScope(chat.currentBuffer?.scope ?? null)
+    } catch (error) {
+      readinessText.value = error instanceof Error ? error.message : String(error)
       chat.newChat(scopeStore.scope())
     }
   } else {
@@ -61,6 +81,17 @@ async function handleSend(query: string): Promise<void> {
     void conversationsStore.refresh()
   })
 }
+
+/** selector 变化后立即进入对应 draft，避免旧 Conversation 与新范围同时显示。 */
+function navigateToSelectedScope(): void {
+  chat.newChat(scopeStore.scope())
+}
+
+function handleModeChange(event: Event): void {
+  const value = (event.target as HTMLSelectElement).value
+  scopeStore.selectMode(value === 'sessions' ? 'sessions' : 'all')
+  navigateToSelectedScope()
+}
 </script>
 
 <template>
@@ -73,28 +104,39 @@ async function handleSend(query: string): Promise<void> {
           <h1 class="text-lg font-semibold">Trivae</h1>
           <span class="text-xs text-dimmed">群聊情报分析 · 本地 Web</span>
         </div>
-        <div class="flex items-center gap-2 text-xs">
-          <span class="text-dimmed">Scope:</span>
+        <div class="flex items-center gap-3 text-xs">
+          <div class="flex items-center gap-1.5" data-testid="current-scope">
+            <span class="text-dimmed">当前范围:</span>
+            <span class="font-medium text-default" :title="currentScopeDisplay.title">
+              {{ currentScopeDisplay.label }}
+            </span>
+          </div>
+          <span class="h-4 w-px bg-default" aria-hidden="true"></span>
+          <span class="text-dimmed">切换范围:</span>
           <select
-            v-model="scopeStore.mode"
+            :value="scopeStore.mode"
             class="rounded border border-default bg-default px-2 py-1"
-            @change="scopeStore.selectedSessionIds = []"
+            aria-label="切换范围模式"
+            @change="handleModeChange"
           >
-            <option value="all">全部聊天</option>
-            <option value="sessions">指定会话</option>
+            <option value="all">全部群聊</option>
+            <option value="sessions">指定群聊</option>
           </select>
           <select
             v-if="scopeStore.mode === 'sessions'"
-            v-model="scopeStore.selectedSessionIds"
+            v-model="selectedSessionIdsModel"
             multiple
             size="1"
             class="max-w-64 rounded border border-default bg-default px-2 py-1"
+            aria-label="选择群聊"
           >
             <option v-for="session in scopeStore.sessions" :key="session.session_id" :value="session.session_id">
               {{ session.name }}
             </option>
+            <option v-for="sessionId in unknownSelectedSessionIds" :key="sessionId" :value="sessionId">
+              {{ sessionId }}（目录中不存在）
+            </option>
           </select>
-          <span class="text-dimmed">{{ scopeStore.describe() }}</span>
         </div>
       </header>
 
