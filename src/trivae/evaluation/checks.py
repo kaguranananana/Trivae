@@ -55,6 +55,32 @@ _MAX_RECORDED_EVIDENCE_MESSAGE_IDS = 20
 # 单一 "answer" block、无 evidence、无 citation；claims 路径的 block id 固定为 "claim-N"。
 _NO_RESULT_BLOCK_ID = "answer"
 
+# Tier 2 judge 消费的 block/citation 投影边界；数组仍受 MAX_EVALUATION_ITEMS 约束。
+_MAX_RECORDED_BLOCKS = 20
+_MAX_BLOCK_TEXT_CHARS = 2000
+
+
+def _content_blocks_projection(artifact: AnswerArtifact | None) -> list[dict[str, object]]:
+    """按 block 落盘 bounded 正文，供 atomic claim 切分与 citation 正确性判定。"""
+
+    if artifact is None:
+        return []
+    return [
+        {"block_id": block.block_id, "text": block.text[:_MAX_BLOCK_TEXT_CHARS]}
+        for block in artifact.content_blocks[:_MAX_RECORDED_BLOCKS]
+    ]
+
+
+def _citation_bindings_projection(artifact: AnswerArtifact | None) -> list[dict[str, object]]:
+    """落盘 block→evidence 绑定；citation 存在 ≠ citation 正确，后者由 Tier 2 判定。"""
+
+    if artifact is None:
+        return []
+    return [
+        {"content_block_id": binding.content_block_id, "evidence_ids": list(binding.evidence_ids)}
+        for binding in artifact.citation_bindings[:_MAX_RECORDED_BLOCKS]
+    ]
+
 
 def _answer_form(artifact: AnswerArtifact | None) -> str | None:
     """返回 bounded answer 形态标签；no_result 形态是 zero-result 指标的判定输入。"""
@@ -244,6 +270,12 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
         "diagnostic_codes": [diagnostic.code for diagnostic in result.diagnostics],
         "retrieval_calls": _retrieval_calls_projection(result),
         "evidence_sources": _evidence_sources_projection(result),
+        "content_blocks": _content_blocks_projection(
+            result.answer_artifact if isinstance(result.answer_artifact, AnswerArtifact) else None
+        ),
+        "citation_bindings": _citation_bindings_projection(
+            result.answer_artifact if isinstance(result.answer_artifact, AnswerArtifact) else None
+        ),
     }
 
 

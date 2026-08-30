@@ -27,6 +27,7 @@ from .metrics import (
     MetricOutcome,
     score_expansion,
     score_ranking,
+    score_ranking_with_ranges,
 )
 
 
@@ -94,10 +95,20 @@ def score_sealed_packet(
     ks: tuple[int, ...] = DEFAULT_RECALL_KS,
     mrr_k: int = DEFAULT_MRR_K,
 ) -> dict[str, object]:
-    """对 sealed packet 的每个 strategy run 做 GT 评分；不经盲标标签。"""
+    """对 sealed packet 的每个 strategy run 做 GT 评分；不经盲标标签。
+
+    语义检索单元是 canonical range（anchor + 范围恢复），不是单条消息：
+    semantic 命中判定为「target ∈ 该 rank anchor 的恢复范围」；lexical 的
+    candidate unit 是单条消息，按 anchor 精确匹配。
+    """
 
     if sealed.query_set.snapshot_id != sealed.snapshot.snapshot_id:
         raise EvaluationContractError("sealed packet snapshot does not match query set")
+    range_by_anchor: dict[tuple[str, str], frozenset[str]] = {}
+    for candidate in sealed.candidates:
+        range_by_anchor[(candidate.query_id, candidate.canonical_message_id)] = frozenset(
+            candidate.context_message_ids
+        )
     runs_by_query: dict[str, list] = {}
     for run in sealed.runs:
         runs_by_query.setdefault(run.query_id, []).append(run)
@@ -111,9 +122,22 @@ def score_sealed_packet(
         strategy_flags: dict[str, object] = {}
         for run in runs_by_query.get(query.query_id, ()):
             suffix = run.strategy
-            metrics.extend(
-                score_ranking(gt, run.ranked_candidate_ids, ks=ks, mrr_k=mrr_k, strategy_scope_suffix=suffix)
-            )
+            if run.strategy == "semantic":
+                metrics.extend(
+                    score_ranking_with_ranges(
+                        gt,
+                        run.ranked_candidate_ids,
+                        range_by_anchor,
+                        query.query_id,
+                        ks=ks,
+                        mrr_k=mrr_k,
+                        strategy_scope_suffix=suffix,
+                    )
+                )
+            else:
+                metrics.extend(
+                    score_ranking(gt, run.ranked_candidate_ids, ks=ks, mrr_k=mrr_k, strategy_scope_suffix=suffix)
+                )
             metrics.append(score_expansion(gt, run.expanded_message_ids, strategy_scope_suffix=suffix))
             strategy_flags[run.strategy] = {
                 "total_hits": run.total_hits,

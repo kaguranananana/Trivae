@@ -173,6 +173,81 @@ def score_expansion(
     )
 
 
+def score_ranking_with_ranges(
+    gt: CaseGroundTruth,
+    ranked_anchor_ids: Sequence[str],
+    range_by_anchor: Mapping[tuple[str, str], frozenset[str]],
+    query_id: str,
+    *,
+    ks: Sequence[int] = DEFAULT_RECALL_KS,
+    mrr_k: int = DEFAULT_MRR_K,
+    strategy_scope_suffix: str = "",
+) -> list[MetricOutcome]:
+    """semantic 的 range 级召回：target ∈ 该 rank anchor 的恢复范围即命中。
+
+    candidate unit 是 canonical range（anchor + 范围恢复），单消息 anchor 精确
+    匹配会系统性低估 semantic 召回。Recall@k = top-k 个 range 覆盖的 target
+    比例；MRR@k = 首个覆盖任一 target 的 rank 倒数。
+    """
+
+    prefix = f"{strategy_scope_suffix}:" if strategy_scope_suffix else ""
+    if gt.completeness == "unknown" or not gt.has_relevant:
+        reason = "gt_not_exhaustive_or_no_relevant"
+        unavailable_outcomes = [
+            _unavailable(f"{prefix}recall_at_k", k=k, scope=gt.recall_scope, reason=reason) for k in ks
+        ]
+        unavailable_outcomes.append(_unavailable(f"{prefix}hit_at_k", k=ks[0] if ks else None, scope=gt.recall_scope, reason=reason))
+        unavailable_outcomes.append(_unavailable(f"{prefix}mrr_at_k", k=mrr_k, scope=gt.recall_scope, reason=reason))
+        return unavailable_outcomes
+
+    relevant = set(gt.relevant_message_ids)
+    ranges: list[frozenset[str]] = [
+        range_by_anchor.get((query_id, anchor_id), frozenset({anchor_id})) for anchor_id in ranked_anchor_ids
+    ]
+
+    def covered_at_depth(depth: int) -> set[str]:
+        covered: set[str] = set()
+        for anchor_range in ranges[:depth]:
+            covered |= anchor_range & relevant
+        return covered
+
+    outcomes: list[MetricOutcome] = []
+    for k in ks:
+        covered = covered_at_depth(k)
+        outcomes.append(
+            _available(
+                f"{prefix}recall_at_k",
+                k=k,
+                scope=gt.recall_scope,
+                denominator=len(relevant),
+                hits=float(len(covered)),
+            )
+        )
+        outcomes.append(
+            _available(
+                f"{prefix}hit_at_k",
+                k=k,
+                scope=gt.recall_scope,
+                denominator=1,
+                hits=1.0 if covered else 0.0,
+            )
+        )
+    first_rank = next(
+        (rank for rank, anchor_range in enumerate(ranges[:mrr_k], start=1) if anchor_range & relevant),
+        None,
+    )
+    outcomes.append(
+        _available(
+            f"{prefix}mrr_at_k",
+            k=mrr_k,
+            scope=gt.recall_scope,
+            denominator=1,
+            hits=0.0 if first_rank is None else 1.0 / first_rank,
+        )
+    )
+    return outcomes
+
+
 def _evidence_message_ids(run_query_result: Mapping[str, object]) -> tuple[str, ...]:
     """从 run projection 的 evidence_sources 抽取去重 evidence message IDs。"""
 

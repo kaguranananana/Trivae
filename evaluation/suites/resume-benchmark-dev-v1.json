@@ -1,0 +1,157 @@
+{
+  "cases": [
+    {
+      "case_id": "dev-cite-archify",
+      "version": 1
+    },
+    {
+      "case_id": "dev-cite-comment-render",
+      "version": 1
+    },
+    {
+      "case_id": "dev-cite-lofisu",
+      "version": 1
+    },
+    {
+      "case_id": "dev-cite-meimei",
+      "version": 1
+    },
+    {
+      "case_id": "dev-cite-nanobot",
+      "version": 1
+    },
+    {
+      "case_id": "dev-cite-volcengine",
+      "version": 1
+    },
+    {
+      "case_id": "dev-context-archify",
+      "version": 1
+    },
+    {
+      "case_id": "dev-context-mattpocock-1",
+      "version": 1
+    },
+    {
+      "case_id": "dev-context-mattpocock-2",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-agentic-zh",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-chatlog-alpha",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-deepseek-harness",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-forge",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-mcp-switch",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-nanobot-wiki",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-resume-miner",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-siclaw",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-vibe-game",
+      "version": 1
+    },
+    {
+      "case_id": "dev-lexical-zenith",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-ai-interest",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-intern-hard-part",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-intern-owner",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-job-anxiety",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-resume-advice",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-ts-learning",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-webnovel",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-written-test",
+      "version": 1
+    },
+    {
+      "case_id": "dev-temporal-14d",
+      "version": 1
+    },
+    {
+      "case_id": "dev-temporal-1d",
+      "version": 1
+    },
+    {
+      "case_id": "dev-temporal-2d",
+      "version": 1
+    },
+    {
+      "case_id": "dev-temporal-30d",
+      "version": 1
+    },
+    {
+      "case_id": "dev-temporal-3d",
+      "version": 1
+    },
+    {
+      "case_id": "dev-temporal-7d",
+      "version": 1
+    },
+    {
+      "case_id": "dev-zero-empty-1",
+      "version": 1
+    },
+    {
+      "case_id": "dev-zero-empty-2",
+      "version": 1
+    },
+    {
+      "case_id": "dev-zero-empty-3",
+      "version": 1
+    },
+    {
+      "case_id": "dev-zero-excalidraw",
+      "version": 1
+    }
+  ],
+  "created_at": "2026-08-30T00:00:00+00:00",
+  "description": "resume-benchmark-v1 development set (provisional GT pending adjudication).",
+  "kind": "core",
+  "suite_id": "resume-benchmark-dev",
+  "version": 1
+}
