@@ -224,7 +224,7 @@ def evaluate_end_to_end_case(
             "metrics": [],
             "flags": {},
         }
-    terminal = run_query_result.get("terminal")
+    terminal = run_query_result.get("termination")
     is_successful = run_query_result.get("is_successful") is True
     answer_form = run_query_result.get("answer_form")
     answer_text = run_query_result.get("answer_text")

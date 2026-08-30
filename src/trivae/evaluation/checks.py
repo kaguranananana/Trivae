@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Mapping
 
 from trivae.observability.contracts import TraceProjection
@@ -9,6 +10,7 @@ from trivae.query.contracts import QueryRequest, QueryResult
 from trivae.query.evidence import AnswerArtifact, MessageSource, StructuredSource
 
 from .contracts import (
+    MAX_EVALUATION_ITEMS,
     MAX_EVALUATION_TEXT_CHARS,
     DatasetSnapshot,
     DeterministicCheck,
@@ -19,6 +21,18 @@ from .contracts import (
 )
 from .quality import QUALITY_AXES
 from .variant import ControlledVariant
+
+_INDEX_SUBSCRIPT = re.compile(r"\[\d+\]")
+
+
+def _normalize_limitation_name(name: str) -> str:
+    """把 projection-path limitation 的数组下标归一化为固定标记。
+
+    Trace 的 projection-path limitation（如 ``payload...hits[37]``）按条目生成；
+    归一化后同一路径只贡献一条 limitation，避免大结果集时无界膨胀。
+    """
+
+    return _INDEX_SUBSCRIPT.sub("[]", name)[:MAX_EVALUATION_TEXT_CHARS]
 
 # retrieval tool → benchmark 消费的 strategy 标签；非 retrieval tool 不进入 retrieval_calls。
 _RETRIEVAL_STRATEGY_BY_TOOL = {
@@ -323,7 +337,12 @@ def operational_measurements(
                 limitations.append("truncated")
             if item.payload.get("partial") is True:
                 limitations.append("partial")
-        measurements["trace_limitations"] = tuple(sorted(set(limitations)))
+        # Trace 的 projection-path limitations（如 payload...data.hits[37]）按条目生成，
+        # 大命中数时会无界膨胀；归一化下标后去重，并显式记录被截断的数量。
+        normalized = {_normalize_limitation_name(name) for name in limitations}
+        ordered = tuple(sorted(normalized))
+        measurements["trace_limitations"] = ordered[:MAX_EVALUATION_ITEMS]
+        measurements["trace_limitations_omitted"] = max(0, len(ordered) - MAX_EVALUATION_ITEMS)
         measurements["coverage_statuses"] = tuple(sorted(set(coverage_statuses)))
         # scope_enforcement 只汇总 Tool 已公开的 enforcement 摘要，不从 SQL 或数据库重新推断权限。
         measurements["scope_enforcement"] = tuple(

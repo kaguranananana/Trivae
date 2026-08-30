@@ -113,14 +113,14 @@ def evaluate_case_failure(
             variant_id=variant_id,
             run_id=run_id,
             category="provider_failure",
-            expected={"terminal": "completed"},
-            actual={"terminal": "exception"},
+            expected={"termination": "completed"},
+            actual={"termination": "exception"},
             trace_id=trace_id,
             detail="query executor raised before returning a QueryResult",
         )
 
-    terminal = run_query_result.get("terminal")
-    actual: dict[str, object] = {"terminal": terminal, "answer_form": run_query_result.get("answer_form")}
+    terminal = run_query_result.get("termination")
+    actual: dict[str, object] = {"termination": terminal, "answer_form": run_query_result.get("answer_form")}
 
     # 1. terminal failure：provider/runtime/aborted。
     if terminal != "completed":
@@ -129,7 +129,7 @@ def evaluate_case_failure(
             variant_id=variant_id,
             run_id=run_id,
             category="provider_failure",
-            expected={"terminal": "completed"},
+            expected={"termination": "completed"},
             actual=actual,
             trace_id=trace_id,
             detail=f"run terminated with {terminal}",

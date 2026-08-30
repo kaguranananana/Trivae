@@ -1,0 +1,35 @@
+{
+  "available_tools": [
+    "lexical_search"
+  ],
+  "budget": {},
+  "code_version": "009509baa0befa6caaf9876662ac8736af5b69d9",
+  "context_expansion_configuration": {
+    "context_window_limit": 0,
+    "implementation": "execution_override.context_window_limit"
+  },
+  "evidence_citation_version": "production-default",
+  "execution_override": {
+    "context_window_limit": 0,
+    "forced_route": null
+  },
+  "extra_configuration": {
+    "ablation_role": "A: lexical only, no auto context expansion",
+    "pinned_lexical_identity": "lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3"
+  },
+  "index_identity": "lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3",
+  "model": "deepseek-v4-flash",
+  "model_parameters": {},
+  "planner_configuration": {},
+  "prompt_identity": "production-default",
+  "provider": "opencode-go",
+  "retrieval_configuration": {
+    "surface": "agent-facing"
+  },
+  "role": "minimal_control",
+  "router_configuration": {},
+  "runtime_configuration": {
+    "trace_profile": "normal"
+  },
+  "variant_id": "bench-lexical-only-v1"
+}

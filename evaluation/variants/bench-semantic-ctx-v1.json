@@ -1,0 +1,36 @@
+{
+  "available_tools": [
+    "lexical_search",
+    "semantic_search"
+  ],
+  "budget": {},
+  "code_version": "009509baa0befa6caaf9876662ac8736af5b69d9",
+  "context_expansion_configuration": {
+    "context_window_limit": null,
+    "implementation": "execution_override.context_window_limit"
+  },
+  "evidence_citation_version": "production-default",
+  "execution_override": {
+    "context_window_limit": null,
+    "forced_route": null
+  },
+  "extra_configuration": {
+    "ablation_role": "C: B + production default auto context expansion (single variable vs B)",
+    "pinned_lexical_identity": "lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3"
+  },
+  "index_identity": "{\"chunker_config\":{\"child_max_chars\":480,\"child_max_messages\":10,\"child_min_chars\":96,\"child_overlap_messages\":1,\"embedding_max_chars\":6000,\"header_max_chars\":600,\"parent_gap_seconds\":1200,\"parent_max_chars\":6000,\"parent_max_messages\":100,\"semantic_void_skip_threshold\":24},\"chunker_version\":\"trivae-semantic-chunker-v1\",\"database_identity\":\"trivae.sqlite3\",\"embedding\":{\"dimension\":1024,\"model\":\"Qwen/Qwen3-Embedding-0.6B\",\"normalized\":true,\"pooling\":\"last_token\",\"provider\":\"sentence-transformers\",\"query_instruction\":\"Given a chat history search query, retrieve relevant conversation messages that answer the query\"}}",
+  "model": "deepseek-v4-flash",
+  "model_parameters": {},
+  "planner_configuration": {},
+  "prompt_identity": "production-default",
+  "provider": "opencode-go",
+  "retrieval_configuration": {
+    "surface": "agent-facing"
+  },
+  "role": "candidate",
+  "router_configuration": {},
+  "runtime_configuration": {
+    "trace_profile": "normal"
+  },
+  "variant_id": "bench-semantic-ctx-v1"
+}

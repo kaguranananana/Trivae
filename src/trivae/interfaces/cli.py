@@ -155,6 +155,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Model context detail for transcript view; full keeps every captured input per turn",
     )
     evaluation_parser = subparsers.add_parser("eval", help="Run local Evaluation against the production Query path")
+    evaluation_parser.add_argument(
+        "--env-file",
+        type=Path,
+        default=None,
+        help="Optional dotenv path; defaults to .env in the current directory when present",
+    )
     evaluation_subparsers = evaluation_parser.add_subparsers(dest="evaluation_command", required=True)
     eval_cases_parser = evaluation_subparsers.add_parser("cases", help="Validate versioned Evaluation Cases")
     eval_cases_subparsers = eval_cases_parser.add_subparsers(dest="cases_command", required=True)
@@ -300,6 +306,16 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run_parser.add_argument("--variant", type=Path, action="append", required=True)
     benchmark_run_parser.add_argument("--output-dir", type=Path, required=True)
     benchmark_run_parser.add_argument("--repeat", type=int, default=1)
+    benchmark_retrieval_score_parser = benchmark_subparsers.add_parser(
+        "retrieval-score", help="Deterministic module-level lexical/semantic scoring against benchmark GT"
+    )
+    benchmark_retrieval_score_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_retrieval_score_parser.add_argument("--manifest", type=Path, required=True)
+    benchmark_retrieval_score_parser.add_argument("--queries", type=Path, required=True)
+    benchmark_retrieval_score_parser.add_argument("--cases-dir", type=Path, required=True)
+    benchmark_retrieval_score_parser.add_argument("--lexical-variant", type=Path, required=True)
+    benchmark_retrieval_score_parser.add_argument("--semantic-variant", type=Path, required=True)
+    benchmark_retrieval_score_parser.add_argument("--output", type=Path, required=True)
     retrieval_metrics_parser.add_argument("--sealed", type=Path, required=True)
     retrieval_metrics_parser.add_argument("--annotations", type=Path, required=True)
     retrieval_metrics_parser.add_argument(
@@ -526,6 +542,23 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
             print(json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2))
             return 0
 
+        if args.benchmark_command == "retrieval-score":
+            from trivae.evaluation.benchmark.orchestrator import run_module_retrieval_scoring
+
+            with create_application(args.database) as application:
+                outcome = run_module_retrieval_scoring(
+                    application=application,
+                    database_path=args.database,
+                    manifest_path=args.manifest,
+                    query_set_path=args.queries,
+                    cases_dir=args.cases_dir,
+                    lexical_variant_path=args.lexical_variant,
+                    semantic_variant_path=args.semantic_variant,
+                    output_path=args.output,
+                )
+            print(json.dumps({"status": outcome["status"]}, ensure_ascii=False, indent=2))
+            return 0 if outcome["status"] == "completed" else 1
+
         if args.benchmark_command == "run":
             suite = EvaluationSuite.from_json(args.suite)
             variant_paths = tuple(args.variant)
@@ -562,6 +595,8 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
     """Evaluation CLI 只调用 Application facade，不直接触碰 Runtime/Tool。"""
 
     try:
+        # eval 的真实 provider run 同样需要凭据；dotenv 注入只发生在显式 CLI 边界。
+        load_environment_file(getattr(args, "env_file", None))
         if args.evaluation_command == "cases":
             if args.cases_command != "validate":
                 raise EvaluationContractError("unsupported eval cases command")

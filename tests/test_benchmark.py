@@ -276,7 +276,7 @@ def _end_to_end_projection(**overrides) -> dict[str, object]:
     """构造与 checks.query_result_snapshot 同形的 run projection。"""
 
     projection: dict[str, object] = {
-        "terminal": "completed",
+        "termination": "completed",
         "is_successful": True,
         "answer_form": "claims",
         "answer_text": "群里有讨论",
@@ -370,7 +370,7 @@ class EndToEndMetricTests(unittest.TestCase):
 
     def test_exception_run_excludes_conditional_metrics(self) -> None:
         truth = self._base_gt(findings=(_finding("relevant", "gt.relevant", "x", (_message_evidence("m1"),)),))
-        result = evaluate_end_to_end_case(truth, _end_to_end_projection(terminal="failed", is_successful=False))
+        result = evaluate_end_to_end_case(truth, _end_to_end_projection(termination="failed", is_successful=False))
         metrics = {item["name"]: item for item in result["metrics"]}
         self.assertEqual(metrics["execution_completed"]["value"], 0.0)
         self.assertEqual(metrics["evidence_recall"]["availability"], "unavailable")
@@ -818,3 +818,44 @@ class EnvironmentAndIntegrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TraceLimitationBoundTests(unittest.TestCase):
+    """大命中数下 trace_limitations 归一化且有界（pilot 发现的回归）。"""
+
+    def test_projection_path_limitations_are_normalized_and_bounded(self) -> None:
+        from trivae.evaluation.checks import operational_measurements
+
+        timeline = tuple(
+            TraceTimelineItem(
+                sequence=index,
+                stage="runtime",
+                operation="model.turn",
+                phase="completed",
+                operation_id=f"turn-{index}",
+                parent_operation_id=None,
+                outcome="ok",
+                duration_ms=1.0,
+                limitations=tuple(f"payload.model_visible_context[4].output_projection.data.hits[{i}].truncated" for i in range(300)),
+                payload={},
+            )
+            for index in range(1, 3)
+        )
+        trace = TraceProjection(
+            trace_id="trace:t",
+            request_id="request:test",
+            profile="normal",
+            started_at="2026-08-30T00:00:00+00:00",
+            terminal_at="2026-08-30T00:00:01+00:00",
+            terminal_status="completed",
+            completeness="complete",
+            timeline=timeline,
+            failures=(),
+            metrics=TraceMetrics(1.0, {}, (), (), {}, 0, 0),
+        )
+        measurements = operational_measurements(None, trace)
+        self.assertLessEqual(len(measurements["trace_limitations"]), 200)
+        self.assertEqual(
+            measurements["trace_limitations"],
+            ("payload.model_visible_context[].output_projection.data.hits[].truncated",),
+        )

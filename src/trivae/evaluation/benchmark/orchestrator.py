@@ -25,6 +25,7 @@ from .failures import BenchmarkFailure, evaluate_case_failure
 from .gt import CaseGroundTruth, build_ground_truth_index
 from .metrics import evaluate_end_to_end_case
 from .report import build_report, write_report_outputs
+from .retrieval import assert_benchmark_variants, score_sealed_packet
 
 
 @dataclass(frozen=True)
@@ -266,6 +267,39 @@ def run_benchmark(
         raw_records=tuple(all_records),
     )
     return {"status": "completed", "report": report}
+
+
+def run_module_retrieval_scoring(
+    *,
+    application: TrivaeApplication,
+    database_path: Path,
+    manifest_path: Path,
+    query_set_path: Path,
+    cases_dir: Path,
+    lexical_variant_path: Path,
+    semantic_variant_path: Path,
+    output_path: Path,
+) -> dict[str, object]:
+    """module-level 双策略确定性评分：现有 Workflow 执行 → GT 直接评分。"""
+
+    orchestrator = BenchmarkOrchestrator(application=application, database_path=database_path)
+    manifest = orchestrator.load_manifest(manifest_path)
+    gate = orchestrator.preflight_gate(manifest)
+    if not gate.passed:
+        return {"status": "gate_failed", "gate": gate.to_dict()}
+    from trivae.evaluation.retrieval_evaluation import RetrievalQuerySet
+
+    query_set = RetrievalQuerySet.from_json(query_set_path)
+    cases = load_cases_dir(cases_dir)
+    gt_index = build_ground_truth_index(cases)
+    lexical_variant = _load_variant(lexical_variant_path)
+    semantic_variant = _load_variant(semantic_variant_path)
+    assert_benchmark_variants(lexical_variant, semantic_variant)
+    sealed = application.generate_retrieval_annotation_packet(query_set, lexical_variant, semantic_variant)[1]
+    scores = score_sealed_packet(sealed, gt_index)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(scores, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return {"status": "completed", "scores": scores}
 
 
 def _count_by(records: list[dict[str, object]], key: str) -> dict[str, int]:
