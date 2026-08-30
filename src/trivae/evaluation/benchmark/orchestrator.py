@@ -363,7 +363,16 @@ def judge_records(
 
     cases = load_cases_dir(cases_dir)
     judge = LLMClaimJudge(settings)
-    judgments: list[dict[str, object]] = []
+    # 幂等续跑：已有判定结果的 run 跳过（provider 瞬时故障后可安全重试批次）。
+    existing: dict[str, dict[str, object]] = {}
+    if output_path.exists():
+        try:
+            for item in json.loads(output_path.read_text(encoding="utf-8")):
+                if isinstance(item, dict) and isinstance(item.get("run_id"), str):
+                    existing[str(item["run_id"])] = item
+        except json.JSONDecodeError:
+            existing = {}
+    judgments: list[dict[str, object]] = list(existing.values())
     for record in records:
         run_id = record.get("run_id")
         case_id = record.get("case_id")
@@ -374,6 +383,8 @@ def judge_records(
         if case is None:
             raise EvaluationContractError(f"judge record references unknown case {case_id}")
         run = application.read_evaluation_run(run_id)
+        if run_id in existing:
+            continue
         query_result = run.query_result or {}
         content_blocks = query_result.get("content_blocks") or []
         citation_bindings = query_result.get("citation_bindings") or []
@@ -411,16 +422,35 @@ def judge_records(
                 continue
             messages = getattr(envelope.data, "messages", ())
             excerpts[message_id] = messages[0].normalized_content if messages else ""
-        judgment = asyncio.run(
-            judge.judge(
-                run_id=run_id,
-                case_id=case_id,
-                variant_id=variant_id,
-                content_blocks=content_blocks,
-                citation_bindings=citation_bindings,
-                evidence_excerpts=excerpts,
+        try:
+            judgment = asyncio.run(
+                judge.judge(
+                    run_id=run_id,
+                    case_id=case_id,
+                    variant_id=variant_id,
+                    content_blocks=content_blocks,
+                    citation_bindings=citation_bindings,
+                    evidence_excerpts=excerpts,
+                )
             )
-        )
+        except Exception as exc:  # noqa: BLE001 - 单条判定失败显式记录，批次继续
+            judgments.append(
+                {
+                    "run_id": run_id,
+                    "case_id": case_id,
+                    "variant_id": variant_id,
+                    "status": "judge_failed",
+                    "exception": type(exc).__name__,
+                }
+            )
+            print(
+                json.dumps(
+                    {"status": "judge_failed", "run_id": run_id, "exception": type(exc).__name__},
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+            continue
         judgments.append(judgment.to_dict())
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(judgments, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
