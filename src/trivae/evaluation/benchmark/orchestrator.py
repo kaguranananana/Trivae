@@ -368,7 +368,12 @@ def judge_records(
     if output_path.exists():
         try:
             for item in json.loads(output_path.read_text(encoding="utf-8")):
-                if isinstance(item, dict) and isinstance(item.get("run_id"), str):
+                if (
+                    isinstance(item, dict)
+                    and isinstance(item.get("run_id"), str)
+                    # judge_failed/skipped 条目不阻断续跑：成功判定才算已处理。
+                    and item.get("status") not in ("judge_failed", "skipped_no_content_blocks")
+                ):
                     existing[str(item["run_id"])] = item
         except json.JSONDecodeError:
             existing = {}
