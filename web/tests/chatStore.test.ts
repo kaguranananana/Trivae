@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useChatStore, type ProcessBlock } from '@/stores/chat'
+import { useChatStore, draftBufferKey, type ProcessBlock } from '@/stores/chat'
 import type { StreamEnvelope, StreamEvent } from '@/types/contracts'
 
 function ndjsonResponse(lines: object[]): Response {
@@ -397,5 +397,130 @@ describe('chat store stream routing', () => {
       code: 'RUN_ABORTED',
       message: 'query aborted by user',
     }])
+  })
+
+  it('rejects sending without a selected source scope instead of falling back to all', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const chat = useChatStore()
+
+    await chat.send('问题', null)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(chat.sendingError).toBe('请先选择一个聊天范围，再发送问题')
+    expect(chat.buffers).toEqual({})
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps drafts isolated per scope key so switching scopes cannot overwrite another draft', () => {
+    const chat = useChatStore()
+
+    chat.newChat({ mode: 'all' })
+    expect(chat.currentKey).toBe(draftBufferKey({ mode: 'all' }))
+    expect(chat.currentBuffer?.scope).toEqual({ mode: 'all' })
+
+    chat.newChat({ mode: 'sessions', session_ids: ['s1'] })
+    expect(chat.currentKey).toBe(draftBufferKey({ mode: 'sessions', session_ids: ['s1'] }))
+    expect(chat.currentBuffer?.scope).toEqual({ mode: 'sessions', session_ids: ['s1'] })
+
+    // 两个 draft 独立存在；回到 all 时草稿内容与 scope 不被 session 草稿覆写。
+    chat.buffers[draftBufferKey({ mode: 'all' })]!.items.push({
+      id: 'user-1',
+      role: 'user',
+      content: 'all 范围的草稿内容',
+      createdAt: 0,
+    })
+    chat.newChat({ mode: 'all' })
+    expect(chat.currentKey).toBe(draftBufferKey({ mode: 'all' }))
+    expect(chat.buffers[draftBufferKey({ mode: 'all' })]?.items).toHaveLength(1)
+    expect(chat.buffers[draftBufferKey({ mode: 'sessions', session_ids: ['s1'] })]?.items).toHaveLength(0)
+  })
+
+  it('refuses to open a draft without a selected scope', () => {
+    const chat = useChatStore()
+    expect(() => chat.newChat(null)).toThrow('cannot open a draft without a selected source scope')
+    expect(chat.currentKey).toBeNull()
+  })
+
+  it('renames only the sending draft when the user switches scope during create await', async () => {
+    type Resolve = (response: Response) => void
+    let resolveCreate: Resolve | null = null
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/api/conversations') && init?.method === 'POST') {
+        return new Promise<Response>((resolve) => {
+          resolveCreate = resolve
+        })
+      }
+      if (url.endsWith('/api/query/stream')) {
+        return ndjsonResponse([
+          {
+            type: 'stream.end',
+            request_id: 'request-a',
+            status: 'completed',
+            conversation_id: 'conv-a',
+            trace_id: 'trace-a',
+          },
+        ])
+      }
+      return new Response('{}', { status: 404 })
+    }))
+    const chat = useChatStore()
+
+    chat.newChat({ mode: 'all' })
+    const sendPromise = chat.send('A 范围的问题', { mode: 'all' })
+    await vi.waitFor(() => expect(resolveCreate).not.toBeNull())
+
+    // create await 期间切到 session B：B 拿到自己的 draft，不受 A 的 create 影响。
+    chat.newChat({ mode: 'sessions', session_ids: ['s2'] })
+    expect(chat.currentKey).toBe(draftBufferKey({ mode: 'sessions', session_ids: ['s2'] }))
+    expect(chat.currentBuffer?.scope).toEqual({ mode: 'sessions', session_ids: ['s2'] })
+
+    resolveCreate!(new Response(JSON.stringify(createdConversation), { status: 201 }))
+    await sendPromise
+
+    // A 的 draft 被 rename 为正式 conversation buffer；B draft 保持原样。
+    expect(chat.buffers['conv-1']).toBeDefined()
+    expect(chat.buffers[draftBufferKey({ mode: 'sessions', session_ids: ['s2'] })]).toBeDefined()
+    expect(chat.buffers[draftBufferKey({ mode: 'all' })]).toBeUndefined()
+    expect(chat.currentKey).toBe(draftBufferKey({ mode: 'sessions', session_ids: ['s2'] }))
+    vi.unstubAllGlobals()
+  })
+
+  it('notifies onCreated with the new conversation id when the draft is promoted', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/api/conversations') && init?.method === 'POST') {
+        return new Response(JSON.stringify(createdConversation), { status: 201 })
+      }
+      if (url.endsWith('/api/query/stream')) {
+        return ndjsonResponse([
+          {
+            type: 'stream.end',
+            request_id: 'request-a',
+            status: 'completed',
+            conversation_id: 'conv-1',
+            trace_id: 'trace-a',
+          },
+        ])
+      }
+      return new Response('{}', { status: 404 })
+    }))
+    const chat = useChatStore()
+    const created: string[] = []
+
+    chat.newChat({ mode: 'all' })
+    await chat.send('第一条消息', { mode: 'all' }, undefined, (conversationId) => {
+      created.push(conversationId)
+    })
+
+    // create 转正后立刻回调，UI 可在 stream 结束前写入 URL。
+    expect(created).toEqual(['conv-1'])
+    // follow-up 复用同一 conversation，不再触发 onCreated。
+    await chat.send('第二条消息', { mode: 'all' }, undefined, (conversationId) => {
+      created.push(conversationId)
+    })
+    expect(created).toEqual(['conv-1'])
+    vi.unstubAllGlobals()
   })
 })

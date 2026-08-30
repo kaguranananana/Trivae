@@ -21,6 +21,7 @@ from .contracts import (
     ConversationMessage,
     ConversationNotFoundError,
     ConversationPersistenceError,
+    ConversationScopeSelector,
     ConversationSummary,
 )
 from .serialization import deserialize_answer_artifact, serialize_answer_artifact
@@ -114,20 +115,33 @@ class SQLiteConversationStore:
         self._ensure_open()
         return self._load_conversation(conversation_id)
 
-    def list_summaries(self, limit: int = 20) -> tuple[ConversationSummary, ...]:
-        """读取最近 conversation 的 bounded title/count/scope metadata。"""
+    def list_summaries(
+        self,
+        limit: int = 20,
+        selector: ConversationScopeSelector | None = None,
+    ) -> tuple[ConversationSummary, ...]:
+        """读取最近 conversation 的 bounded title/count/scope metadata。
+
+        ``selector`` 是正式 scope identity selector：scope 过滤必须在 SQL ``WHERE``
+        中先于 ``ORDER BY``/``LIMIT`` 完成，否则属于当前 scope、但排在全局 limit
+        之后的历史会被错误丢给客户端。``selector=None`` 保留既有全局列表行为。
+        """
 
         self._ensure_open()
         if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0 or limit > 100:
             raise ConversationPersistenceError("conversation history limit must be between 1 and 100")
+        if selector is not None and not isinstance(selector, ConversationScopeSelector):
+            raise ConversationPersistenceError("conversation scope selector has an unexpected type")
+        where_clause, selector_params = self._scope_identity_predicate(selector)
         rows = self.connection.execute(
-            """
+            f"""
             SELECT conversation_id, created_at, updated_at, scope_snapshot_json, title_override
             FROM conversations
+            {where_clause}
             ORDER BY updated_at DESC, conversation_id ASC
             LIMIT ?
             """,
-            (limit,),
+            (*selector_params, limit),
         ).fetchall()
         summaries: list[ConversationSummary] = []
         for row in rows:
@@ -174,6 +188,40 @@ class SQLiteConversationStore:
                 )
             )
         return tuple(summaries)
+
+    @staticmethod
+    def _scope_identity_predicate(
+        selector: ConversationScopeSelector | None,
+    ) -> tuple[str, tuple[object, ...]]:
+        """构造 exact scope identity predicate。
+
+        - all：snapshot 存在且 ``allowed_session_ids`` 是 JSON null（legacy SQL NULL
+          的 scope_snapshot_json 被排除，不会伪装成 all）。
+        - session 集合：snapshot 数组长度与 selector 集合大小相等，且不含集合之外
+          的元素。对单 session 这等价于“array 长度恰为 1 且 [0] == session id”，
+          因此 multi-session ``[A,B]`` 不会被归入 A 或 B 的 selector。
+        """
+
+        if selector is None:
+            return "", ()
+        sessions = selector.allowed_session_ids
+        if sessions is None:
+            return (
+                "WHERE scope_snapshot_json IS NOT NULL "
+                "AND json_type(scope_snapshot_json, '$.allowed_session_ids') = 'null'",
+                (),
+            )
+        placeholders = ", ".join("?" for _ in sessions)
+        return (
+            "WHERE scope_snapshot_json IS NOT NULL "
+            "AND json_type(scope_snapshot_json, '$.allowed_session_ids') = 'array' "
+            "AND (SELECT COUNT(*) FROM json_each(scope_snapshot_json, '$.allowed_session_ids')) = ? "
+            "AND NOT EXISTS ("
+            "SELECT 1 FROM json_each(scope_snapshot_json, '$.allowed_session_ids') "
+            f"WHERE value NOT IN ({placeholders})"
+            ")",
+            (len(sessions), *sessions),
+        )
 
     def _load_preview(self, conversation_id: str, last_ordinal: int | None) -> str | None:
         """读取最后一条 message 的 bounded preview，空 conversation 无 preview。"""

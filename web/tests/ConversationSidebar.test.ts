@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import ConversationSidebar from '@/components/sidebar/ConversationSidebar.vue'
-import { useChatStore, DRAFT_KEY } from '@/stores/chat'
+import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import { useScopeStore } from '@/stores/scope'
 import type { ConversationSummaryDTO } from '@/types/contracts'
@@ -16,6 +16,16 @@ const scopedSummary: ConversationSummaryDTO = {
   title: '产品讨论',
   message_count: 0,
   preview: '讨论下一版功能',
+  scope: { mode: 'sessions', session_ids: ['s1'], max_results: 5_000 },
+}
+
+const earlierSummary: ConversationSummaryDTO = {
+  conversation_id: 'conv-old',
+  created_at: '2026-08-20T08:00:00+08:00',
+  updated_at: '2026-08-20T08:00:00+08:00',
+  title: '更早的讨论',
+  message_count: 2,
+  preview: '历史内容',
   scope: { mode: 'sessions', session_ids: ['s1'], max_results: 5_000 },
 }
 
@@ -37,7 +47,7 @@ describe('ConversationSidebar scope lifecycle', () => {
       if (url === '/api/conversations/conv-s1') {
         return new Response(JSON.stringify({ ...scopedSummary, title: currentTitle, messages: [] }))
       }
-      if (url.startsWith('/api/conversations?')) {
+      if (url === '/api/conversations?scope_mode=sessions&session_id=s1&limit=100') {
         return new Response(JSON.stringify([{ ...scopedSummary, title: currentTitle }]))
       }
       return new Response('{}', { status: 404 })
@@ -46,31 +56,35 @@ describe('ConversationSidebar scope lifecycle', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  it('syncs selector on open and preserves scope across new, rename, and delete actions', async () => {
+  it('emits open with the immutable scope restore and keeps highlight/date groups/rename/delete', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-30T12:00:00+08:00'))
     const pinia = createPinia()
     const scopeStore = useScopeStore(pinia)
     scopeStore.sessions = [{ session_id: 's1', platform: 'wechat', name: '产品群', chat_type: 'group' }]
+    scopeStore.select({ kind: 'session', sessionId: 's1' })
     const conversationsStore = useConversationsStore(pinia)
-    conversationsStore.conversations = [scopedSummary]
+    conversationsStore.conversations = [scopedSummary, earlierSummary]
     conversationsStore.loaded = true
+    // rename 内部会 refresh 当前 selection；fixture 与真实导航流程保持一致。
+    conversationsStore.activeSelection = { kind: 'session', sessionId: 's1' }
     const chat = useChatStore(pinia)
-    chat.newChat({ mode: 'all' })
+    chat.newChat({ mode: 'sessions', session_ids: ['s1'] })
 
     const wrapper = mount(ConversationSidebar, { global: { plugins: [pinia] } })
-    const conversationItem = wrapper.find('section .group')
-    await conversationItem.trigger('click')
-    await flushPromises()
 
+    // today/earlier 日期分组保留。
+    const dateGroups = wrapper.findAll('[data-testid="date-group"]')
+    expect(dateGroups.map((group) => group.find('div').text())).toEqual(['今天', '更早'])
+
+    await wrapper.get('[data-testid="conversation-conv-s1"]').trigger('click')
+    expect(wrapper.emitted('open')).toEqual([['conv-s1']])
+
+    // 模拟父级已打开该 conversation：rename 与 delete-current 都发生在打开状态下。
+    await chat.openConversation('conv-s1')
+    await flushPromises()
     expect(chat.currentKey).toBe('conv-s1')
-    expect(scopeStore.scope()).toEqual({ mode: 'sessions', session_ids: ['s1'] })
-    expect(wrapper.get('section > div').classes()).toContain('bg-primary/8')
 
-    await wrapper.findAll('button').find((button) => button.text() === '+ New Chat')?.trigger('click')
-    expect(chat.currentKey).toBe(DRAFT_KEY)
-    expect(chat.currentBuffer?.scope).toEqual({ mode: 'sessions', session_ids: ['s1'] })
-
-    await wrapper.find('section .group').trigger('click')
-    await flushPromises()
     await wrapper.findAll('button').find((button) => button.text() === '重命名')?.trigger('click')
     const renameInput = wrapper.get('input')
     await renameInput.setValue('新版产品讨论')
@@ -81,8 +95,42 @@ describe('ConversationSidebar scope lifecycle', () => {
     await wrapper.findAll('button').find((button) => button.text() === '删除')?.trigger('click')
     await flushPromises()
     expect(conversationsStore.conversations).toEqual([])
-    expect(chat.currentKey).toBe(DRAFT_KEY)
-    expect(chat.currentBuffer?.scope).toEqual({ mode: 'sessions', session_ids: ['s1'] })
+    // 当前项被删除时通知父级清理 buffer 与 URL。
+    expect(wrapper.emitted('deleted')).toEqual([['conv-s1']])
+
+    // New Chat 继承当前 navigation selection 的 scope。
+    await wrapper.get('[data-testid="new-chat"]').trigger('click')
+    expect(wrapper.emitted('newChat')).toHaveLength(1)
+    vi.useRealTimers()
+    wrapper.unmount()
+  })
+
+  it('disables New Chat while no source scope is selected and shows the unselected hint', () => {
+    const pinia = createPinia()
+    const scopeStore = useScopeStore(pinia)
+    scopeStore.sessions = [{ session_id: 's1', platform: 'wechat', name: '产品群', chat_type: 'group' }]
+    const conversationsStore = useConversationsStore(pinia)
+    conversationsStore.conversations = [scopedSummary]
+
+    const wrapper = mount(ConversationSidebar, { global: { plugins: [pinia] } })
+    expect(wrapper.get('[data-testid="new-chat"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="unselected-hint"]').text()).toContain('选择一个聊天范围')
+    // 未选择时不渲染列表分组。
+    expect(wrapper.findAll('[data-testid="date-group"]')).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('shows an empty state once the selected scope has no conversations', () => {
+    const pinia = createPinia()
+    const scopeStore = useScopeStore(pinia)
+    scopeStore.select({ kind: 'all' })
+    const conversationsStore = useConversationsStore(pinia)
+    conversationsStore.conversations = []
+    conversationsStore.loaded = true
+
+    const wrapper = mount(ConversationSidebar, { global: { plugins: [pinia] } })
+    expect(wrapper.get('[data-testid="new-chat"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="empty-list"]').text()).toContain('该范围下还没有 AI 对话记录')
     wrapper.unmount()
   })
 })

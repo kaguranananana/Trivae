@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "检查项须对照项目工程原则：无 fallback/静默吞错/样例特殊分支"}
+{"file": ".trellis/spec/project/technical-decisions/web-primary-interface.md", "reason": "验证实现是否符合 Web 主接口 ADR 与 immutable scope snapshot 决策"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "验证 list_summaries 在 Store/SQLite 层的契约实现与测试覆盖"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "验证非法 selector/不存在 session 的错误信封稳定性"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "验证测试覆盖满足质量要求"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查 API/Store/Component/Database 跨层数据流一致性"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "检查 scope matching 是否单一来源、无重复实现"}

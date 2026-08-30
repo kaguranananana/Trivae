@@ -15,6 +15,12 @@ export interface StreamHandlers {
   onEvent: (event: StreamEvent | StreamEnvelope) => void
 }
 
+/** GET /api/conversations 的 bounded selector；与后端编译契约一一对应。 */
+export interface ConversationListSelector {
+  scopeMode: 'all' | 'sessions'
+  sessionId?: string
+}
+
 async function parseError(response: Response): Promise<string> {
   try {
     const detail = (await response.json())?.detail
@@ -41,7 +47,14 @@ export const api = {
 
   sessions: () => request<SessionDTO[]>('/api/source-sessions'),
 
-  conversations: (limit = 100) => request<ConversationSummaryDTO[]>(`/api/conversations?limit=${limit}`),
+  /** scope 过滤后的 conversation 列表：后端先过滤再排序、limit。 */
+  conversations: (selector: ConversationListSelector, limit = 100) => {
+    const params = new URLSearchParams()
+    params.set('scope_mode', selector.scopeMode)
+    if (selector.sessionId) params.set('session_id', selector.sessionId)
+    params.set('limit', String(limit))
+    return request<ConversationSummaryDTO[]>(`/api/conversations?${params.toString()}`)
+  },
 
   createConversation: (scope: ScopeRequest) =>
     request<ConversationDTO>('/api/conversations', { method: 'POST', body: JSON.stringify({ scope }) }),

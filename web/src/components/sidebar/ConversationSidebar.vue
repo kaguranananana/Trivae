@@ -1,30 +1,33 @@
 <script setup lang="ts">
+/**
+ * AI Conversation 侧栏：只展示当前 Source Scope 下的对话（today/yesterday/earlier）。
+ * 列表已由后端按 scope 过滤；这里不再做 scope 分组或客户端过滤。
+ */
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import { useScopeStore } from '@/stores/scope'
-import { scopeKey } from '@/utils/scope'
+
+const emit = defineEmits<{
+  open: [conversationId: string]
+  newChat: []
+  deleted: [conversationId: string]
+}>()
 
 const chat = useChatStore()
 const conversationsStore = useConversationsStore()
 const scopeStore = useScopeStore()
-const { currentBuffer, currentKey } = storeToRefs(chat)
-const { groups } = storeToRefs(conversationsStore)
-const currentScopeKey = computed(() => currentBuffer.value ? scopeKey(currentBuffer.value.scope) : null)
+const { currentKey } = storeToRefs(chat)
+const { dateGroups, conversations, loaded, loading } = storeToRefs(conversationsStore)
+const { scope, selectedSourceScope } = storeToRefs(scopeStore)
+
+/** 未选择 Source Scope 时列表区显示引导，而不是空的对话列表。 */
+const hasSelection = computed(() => selectedSourceScope.value !== null)
+const composerReady = computed(() => scope.value !== null)
 
 const renaming = ref<string | null>(null)
 const renameTitle = ref('')
-
-async function open(conversationId: string): Promise<void> {
-  await chat.openConversation(conversationId)
-  // 正式 Conversation 的 immutable scope 打开后，显式恢复 selector；不使用双向 watch。
-  scopeStore.restoreFromScope(chat.currentBuffer?.scope ?? null)
-}
-
-function newChat(): void {
-  chat.newChat(scopeStore.scope())
-}
 
 async function confirmRename(conversationId: string): Promise<void> {
   const title = renameTitle.value.trim()
@@ -38,10 +41,7 @@ async function confirmRename(conversationId: string): Promise<void> {
 async function remove(conversationId: string): Promise<void> {
   if (!window.confirm('删除该 AI 对话？不会影响任何群聊记录。')) return
   await conversationsStore.remove(conversationId)
-  if (currentKey.value === conversationId) {
-    chat.closeBuffer(conversationId)
-    chat.newChat(scopeStore.scope())
-  }
+  if (currentKey.value === conversationId) emit('deleted', conversationId)
 }
 
 function startRename(conversationId: string, title: string): void {
@@ -51,26 +51,21 @@ function startRename(conversationId: string, title: string): void {
 </script>
 
 <template>
-  <aside class="flex w-64 flex-col border-r border-default bg-elevated/30">
+  <aside class="flex w-64 flex-col border-r border-default bg-elevated/30" data-testid="conversation-sidebar">
     <div class="p-3">
       <button
-        class="w-full rounded-lg border border-default px-3 py-2 text-sm font-medium hover:bg-elevated"
-        @click="newChat"
+        class="w-full rounded-lg border border-default px-3 py-2 text-sm font-medium hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-40"
+        :disabled="!composerReady"
+        data-testid="new-chat"
+        @click="emit('newChat')"
       >
         + New Chat
       </button>
     </div>
 
     <nav class="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-      <section v-for="group in groups" :key="group.key" class="mb-4" :data-scope-key="group.key">
-        <div
-          class="rounded-md px-2 py-1.5 text-xs font-semibold text-default"
-          :class="{ 'bg-primary/8 text-primary': currentScopeKey === group.key }"
-          :title="group.title"
-        >
-          {{ group.label }}
-        </div>
-        <div v-for="dateGroup in group.dateGroups" :key="dateGroup.label" class="mt-1">
+      <template v-if="hasSelection">
+        <div v-for="dateGroup in dateGroups" :key="dateGroup.label" class="mb-3" data-testid="date-group">
           <div class="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-dimmed">
             {{ dateGroup.label }}
           </div>
@@ -79,7 +74,8 @@ function startRename(conversationId: string, title: string): void {
             :key="conversation.conversation_id"
             class="group cursor-pointer rounded-lg px-2 py-1.5 hover:bg-elevated"
             :class="{ 'bg-primary/10': currentKey === conversation.conversation_id }"
-            @click="open(conversation.conversation_id)"
+            :data-testid="`conversation-${conversation.conversation_id}`"
+            @click="emit('open', conversation.conversation_id)"
           >
             <template v-if="renaming === conversation.conversation_id">
               <input
@@ -114,15 +110,18 @@ function startRename(conversationId: string, title: string): void {
             </template>
           </div>
         </div>
-      </section>
 
-      <div v-if="conversationsStore.loaded && conversationsStore.conversations.length === 0" class="px-2 text-xs text-dimmed">
-        还没有 AI 对话记录。
+        <div v-if="loaded && conversations.length === 0" class="px-2 text-xs text-dimmed" data-testid="empty-list">
+          该范围下还没有 AI 对话记录。
+        </div>
+        <div v-else-if="loading" class="px-2 text-xs text-dimmed" data-testid="list-loading">加载中…</div>
+      </template>
+      <div v-else class="px-2 py-1.5 text-xs text-dimmed" data-testid="unselected-hint">
+        选择一个聊天范围以查看 AI 对话。
       </div>
     </nav>
 
     <div class="border-t border-default p-3 text-[11px] text-dimmed">
-      <div>Source Session ≠ AI Conversation</div>
       <div>Scope 决定检索范围；对话独立于会话。</div>
     </div>
   </aside>

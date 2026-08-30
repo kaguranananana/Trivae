@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useScopeStore } from '@/stores/scope'
 
@@ -7,46 +7,65 @@ const catalog = [
   { session_id: 's1', platform: 'wechat', name: '产品群', chat_type: 'group' },
 ]
 
-describe('scope store', () => {
+describe('scope store primary navigation', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(catalog))))
   })
 
-  afterEach(() => vi.unstubAllGlobals())
+  it('starts unselected and loading the catalog does not auto-select', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(catalog))))
+    const store = useScopeStore()
+    expect(store.selectedSourceScope).toBeNull()
+    expect(store.scope).toBeNull()
 
-  it('keeps selector scopes canonical and legal', async () => {
+    await store.load()
+    expect(store.sessions).toHaveLength(2)
+    expect(store.selectedSourceScope).toBeNull()
+    expect(store.scope).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('compiles explicit selections into legal ScopeRequests', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(catalog))))
     const store = useScopeStore()
     await store.load()
 
-    store.selectMode('sessions')
-    expect(store.scope()).toEqual({ mode: 'sessions', session_ids: ['s2'] })
+    store.select({ kind: 'all' })
+    expect(store.scope).toEqual({ mode: 'all' })
 
-    store.selectSessions(['s2', 's1', 's2'])
-    expect(store.scope()).toEqual({ mode: 'sessions', session_ids: ['s1', 's2'] })
-
-    store.selectSessions([])
-    expect(store.mode).toBe('all')
-    expect(store.scope()).toEqual({ mode: 'all' })
+    store.select({ kind: 'session', sessionId: 's1' })
+    expect(store.scope).toEqual({ mode: 'sessions', session_ids: ['s1'] })
+    vi.unstubAllGlobals()
   })
 
-  it('restores a formal conversation scope but preserves the last legal selector for null', () => {
+  it('restores legal conversation scopes and rejects multi/unknown/null for navigation', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(catalog))))
     const store = useScopeStore()
-    store.selectSessions(['s2'])
-    store.restoreFromScope({ mode: 'sessions', session_ids: ['s1', 's1'] })
-    expect(store.scope()).toEqual({ mode: 'sessions', session_ids: ['s1'] })
+    await store.load()
 
-    store.restoreFromScope(null)
-    expect(store.scope()).toEqual({ mode: 'sessions', session_ids: ['s1'] })
+    expect(store.restoreFromConversationScope({ mode: 'all' })).toEqual({ kind: 'all' })
+    expect(store.selectedSourceScope).toEqual({ kind: 'all' })
 
-    store.restoreFromScope({ mode: 'all', max_results: 5_000 })
-    expect(store.scope()).toEqual({ mode: 'all' })
+    expect(store.restoreFromConversationScope({ mode: 'sessions', session_ids: ['s2', 's2'] }))
+      .toEqual({ kind: 'session', sessionId: 's2' })
+
+    // multi-session、未知 session 与 legacy null 都不映射为合法 primary navigation。
+    expect(store.restoreFromConversationScope({ mode: 'sessions', session_ids: ['s1', 's2'] })).toBeNull()
+    expect(store.restoreFromConversationScope({ mode: 'sessions', session_ids: ['missing'] })).toBeNull()
+    expect(store.restoreFromConversationScope(null)).toBeNull()
+    expect(store.selectedSourceScope).toBeNull()
+    vi.unstubAllGlobals()
   })
 
-  it('keeps all when sessions mode is selected without a source-session catalog', () => {
+  it('surfaces catalog load failures explicitly instead of guessing a scope', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"detail":"boom"}', { status: 500 })))
     const store = useScopeStore()
-    store.selectMode('sessions')
-    expect(store.mode).toBe('all')
-    expect(store.scope()).toEqual({ mode: 'all' })
+    await store.load()
+
+    expect(store.catalogLoaded).toBe(false)
+    expect(store.catalogError).toBe('boom')
+    expect(store.selectedSourceScope).toBeNull()
+    expect(store.scope).toBeNull()
+    vi.unstubAllGlobals()
   })
 })

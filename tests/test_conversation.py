@@ -11,7 +11,10 @@ from pathlib import Path
 from trivae.bootstrap.application import create_application
 from trivae.capabilities.contracts import ExecutionScope
 from trivae.conversation import (
+    ConversationError,
     ConversationMessage,
+    ConversationPersistenceError,
+    ConversationScopeSelector,
     SQLiteConversationStore,
     deserialize_answer_artifact,
     serialize_answer_artifact,
@@ -305,6 +308,133 @@ class SQLiteConversationStoreTests(unittest.TestCase):
         self.assertEqual(restored.messages, ())
 
 
+class ConversationScopeSelectorTests(unittest.TestCase):
+    """selector 是最小不可变 scope identity，规范化集合并拒绝空 identity。"""
+
+    def test_all_identity_is_none(self) -> None:
+        self.assertIsNone(ConversationScopeSelector(allowed_session_ids=None).allowed_session_ids)
+
+    def test_session_identity_normalizes_order_and_duplicates(self) -> None:
+        selector = ConversationScopeSelector(allowed_session_ids=("b", "a", "b"))
+        self.assertEqual(selector.allowed_session_ids, ("a", "b"))
+
+    def test_rejects_empty_or_blank_session_identity(self) -> None:
+        with self.assertRaises(ConversationError):
+            ConversationScopeSelector(allowed_session_ids=())
+        with self.assertRaises(ConversationError):
+            ConversationScopeSelector(allowed_session_ids=("  ",))
+        with self.assertRaises(ConversationError):
+            ConversationScopeSelector(allowed_session_ids=("a", ""))
+
+
+class SQLiteConversationStoreScopeListTests(unittest.TestCase):
+    """filter-before-limit regression：scope identity predicate 必须先于 ORDER BY/LIMIT。
+
+    历史数据分布（updated_at 新 → 旧）：
+        a-new(A) → b-new(B) → all-new(all) → multi([A,B]) → a-mid(A) → legacy(NULL) → a-old(A)
+    """
+
+    def _prepare_store(self, store: SQLiteConversationStore) -> dict[str, str]:
+        """创建混合 scope 数据；返回 label → conversation_id 映射供断言使用。"""
+
+        scope_a = ExecutionScope(allowed_session_ids=("qq:a",), max_results=5)
+        scope_b = ExecutionScope(allowed_session_ids=("qq:b",), max_results=5)
+        scope_multi = ExecutionScope(allowed_session_ids=("qq:a", "qq:b"), max_results=5)
+        scope_all = ExecutionScope(allowed_session_ids=None, max_results=5)
+        plan = [
+            ("a-new", scope_a, "2026-08-30T01:00:00+00:00"),
+            ("b-new", scope_b, "2026-08-30T00:59:00+00:00"),
+            ("all-new", scope_all, "2026-08-30T00:58:00+00:00"),
+            ("multi", scope_multi, "2026-08-30T00:57:00+00:00"),
+            ("a-mid", scope_a, "2026-08-30T00:56:00+00:00"),
+            ("legacy", None, "2026-08-30T00:55:00+00:00"),
+            ("a-old", scope_a, "2026-08-29T00:54:00+00:00"),
+        ]
+        identity: dict[str, str] = {}
+        for label, scope, _ in plan:
+            conversation = store.create_conversation(scope)
+            identity[label] = conversation.conversation_id
+        store.connection.commit()
+        # create_conversation 的 updated_at 来自 utc_now；为了得到确定性的全局排序，
+        # 测试按创建顺序直接覆写 updated_at，identity 仍由 Store 生成。
+        for label, _, updated_at in plan:
+            store.connection.execute(
+                "UPDATE conversations SET updated_at = ? WHERE conversation_id = ?",
+                (updated_at, identity[label]),
+            )
+        store.connection.commit()
+        return identity
+
+    def test_session_selector_applies_scope_predicate_before_limit(self) -> None:
+        """A scope 的老 conversation 不能因为全局 limit 排名靠后而丢失。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteConversationStore(Path(directory) / "conversation.sqlite3")
+            identity = self._prepare_store(store)
+            selector = ConversationScopeSelector(allowed_session_ids=("qq:a",))
+            summaries = store.list_summaries(3, selector=selector)
+            store.close()
+
+        ids = [summary.conversation_id for summary in summaries]
+        # 过滤后 A scope 恰好有 3 个；若不过滤直接 limit，a-old 会被 b/all/multi 挤掉。
+        self.assertEqual(ids, [identity["a-new"], identity["a-mid"], identity["a-old"]])
+
+    def test_session_selector_matches_exact_identity_only(self) -> None:
+        """multi-session [A,B] 不得归入 A 或 B；legacy null 也不得伪装。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteConversationStore(Path(directory) / "conversation.sqlite3")
+            identity = self._prepare_store(store)
+            a_summaries = store.list_summaries(100, selector=ConversationScopeSelector(("qq:a",)))
+            b_summaries = store.list_summaries(100, selector=ConversationScopeSelector(("qq:b",)))
+            store.close()
+
+        self.assertEqual(
+            [summary.conversation_id for summary in a_summaries],
+            [identity["a-new"], identity["a-mid"], identity["a-old"]],
+        )
+        self.assertEqual(
+            [summary.conversation_id for summary in b_summaries],
+            [identity["b-new"]],
+        )
+
+    def test_multi_session_selector_requires_full_identity_match(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteConversationStore(Path(directory) / "conversation.sqlite3")
+            identity = self._prepare_store(store)
+            multi = store.list_summaries(100, selector=ConversationScopeSelector(("qq:b", "qq:a")))
+            store.close()
+
+        self.assertEqual([summary.conversation_id for summary in multi], [identity["multi"]])
+
+    def test_all_selector_excludes_session_and_legacy_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteConversationStore(Path(directory) / "conversation.sqlite3")
+            identity = self._prepare_store(store)
+            summaries = store.list_summaries(100, selector=ConversationScopeSelector(allowed_session_ids=None))
+            store.close()
+
+        self.assertEqual([summary.conversation_id for summary in summaries], [identity["all-new"]])
+
+    def test_selector_without_scope_filter_keeps_existing_global_behaviour(self) -> None:
+        """selector=None 是既有 CLI/TUI 全局列表行为，不被 scope predicate 影响。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteConversationStore(Path(directory) / "conversation.sqlite3")
+            self._prepare_store(store)
+            summaries = store.list_summaries(100)
+            store.close()
+
+        self.assertEqual(len(summaries), 7)
+
+    def test_rejects_selector_of_unexpected_type(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteConversationStore(Path(directory) / "conversation.sqlite3")
+            with self.assertRaises(ConversationPersistenceError):
+                store.list_summaries(10, selector=("qq:a",))  # type: ignore[arg-type]
+            store.close()
+
+
 class _SequenceRuntime:
     """按顺序返回预先构造的 RuntimeResult，测试 Application boundary 而不调用 provider。"""
 
@@ -330,6 +460,28 @@ def _successful_runtime_result(scope: ExecutionScope, run_id: str, message_id: s
         run_id=run_id,
         tool_results=(record,),
     )
+
+
+class ApplicationConversationSelectorBoundaryTests(unittest.TestCase):
+    """Application facade 只透传 selector，不复制 scope 匹配逻辑。"""
+
+    def test_application_forwards_selector_to_conversation_store(self) -> None:
+        scope_a = ExecutionScope(allowed_session_ids=("qq:a",), max_results=5)
+        with tempfile.TemporaryDirectory() as directory:
+            application = create_application(Path(directory) / "application.sqlite3")
+            try:
+                application.create_conversation(scope_a)
+                application.create_conversation(ExecutionScope(max_results=5))
+                scoped = application.list_conversations(
+                    20, selector=ConversationScopeSelector(("qq:a",))
+                )
+                unscoped = application.list_conversations(20)
+            finally:
+                application.close()
+
+        self.assertEqual(len(scoped), 1)
+        self.assertEqual(scoped[0].scope, scope_a)
+        self.assertEqual(len(unscoped), 2)
 
 
 class ApplicationConversationBoundaryTests(unittest.TestCase):

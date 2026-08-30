@@ -8,13 +8,16 @@ import { onKeyStroke } from '@vueuse/core'
 import AssistantTurn from '@/components/chat/AssistantTurn.vue'
 import ChatComposer from '@/components/composer/ChatComposer.vue'
 import ConversationSidebar from '@/components/sidebar/ConversationSidebar.vue'
+import SourceScopeSidebar from '@/components/sidebar/SourceScopeSidebar.vue'
 import { useFollowTail } from '@/composables/useFollowTail'
-import { describeScope } from '@/utils/scope'
+import { describeScope, navigationSelectionsEqual, type SelectedSourceScope } from '@/utils/scope'
+import { readConversationIdFromUrl, writeConversationIdToUrl } from '@/utils/url'
 
 const chat = useChatStore()
 const conversationsStore = useConversationsStore()
 const scopeStore = useScopeStore()
 const { currentBuffer, currentKey } = storeToRefs(chat)
+const { selectedSourceScope } = storeToRefs(scopeStore)
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const { following, scrollToBottom, onContentMutated } = useFollowTail(scrollContainer)
@@ -31,45 +34,38 @@ watch(
 )
 
 const readinessText = ref('')
+
+/**
+ * Header 只读摘要：读取当前 buffer 的 immutable scope（包括 legacy null 的
+ * 「未标记范围」）；无 buffer 时投影 navigation selection。
+ */
 const currentScopeDisplay = computed(() => {
-  // currentBuffer 存在时必须保留 null；它代表 legacy 未标记范围，而不是 all。
-  const actualScope = currentBuffer.value ? currentBuffer.value.scope : scopeStore.scope()
-  return describeScope(actualScope, scopeStore.sessions)
-})
-const unknownSelectedSessionIds = computed(() => {
-  const catalogIds = new Set(scopeStore.sessions.map((session) => session.session_id))
-  return scopeStore.selectedSessionIds.filter((sessionId) => !catalogIds.has(sessionId))
-})
-const selectedSessionIdsModel = computed({
-  // 多选框通过 computed setter 统一进入 store action，恢复显示与用户导航共享同一规范化逻辑。
-  get: (): string[] => scopeStore.selectedSessionIds,
-  set: (sessionIds: string[]) => {
-    scopeStore.selectSessions(sessionIds)
-    navigateToSelectedScope()
-  },
+  if (currentBuffer.value) return describeScope(currentBuffer.value.scope, scopeStore.sessions)
+  if (selectedSourceScope.value === null) return { label: '未选择范围', title: '未选择范围' }
+  return describeScope(scopeStore.scope, scopeStore.sessions)
 })
 
+/** Composer 只在绑定合法 scope 的 buffer 上可用；unselected 与 legacy/未知历史都禁用。 */
+const composerEnabled = computed(() => currentKey.value !== null && currentBuffer.value?.scope != null)
+
 onMounted(async () => {
-  try {
-    await Promise.all([conversationsStore.refresh(), scopeStore.load()])
-  } catch (error) {
-    readinessText.value = error instanceof Error ? error.message : String(error)
+  await scopeStore.load()
+  if (scopeStore.catalogError) {
+    readinessText.value = `聊天范围加载失败：${scopeStore.catalogError}`
   }
-  // 刷新恢复：打开最近 conversation；此时如有运行中的请求无法重新 attach，
-  // 第一阶段显示 execution interrupted。
-  const latest = conversationsStore.conversations[0]
-  if (latest) {
+  // 刷新恢复：先读 URL conversation detail、恢复合法 navigation scope，
+  // 再请求对应 scope 的列表；无 conversation id 时保持未选择，不自动打开最近项。
+  const conversationId = readConversationIdFromUrl()
+  if (conversationId) {
     try {
-      await chat.openConversation(latest.conversation_id)
-      chat.markInterrupted(latest.conversation_id)
-      scopeStore.restoreFromScope(chat.currentBuffer?.scope ?? null)
+      await openConversation(conversationId, { markInterrupted: true })
+      return
     } catch (error) {
       readinessText.value = error instanceof Error ? error.message : String(error)
-      chat.newChat(scopeStore.scope())
+      writeConversationIdToUrl(null)
     }
-  } else {
-    chat.newChat(scopeStore.scope())
   }
+  await conversationsStore.refresh(scopeStore.selectedSourceScope)
 })
 
 onKeyStroke('Escape', () => {
@@ -77,26 +73,62 @@ onKeyStroke('Escape', () => {
 })
 
 async function handleSend(query: string): Promise<void> {
-  await chat.send(query, scopeStore.scope(), () => {
-    void conversationsStore.refresh()
-  })
+  await chat.send(
+    query,
+    scopeStore.scope,
+    () => {
+      void conversationsStore.refresh(scopeStore.selectedSourceScope)
+    },
+    (conversationId) => writeConversationIdToUrl(conversationId),
+  )
 }
 
-/** selector 变化后立即进入对应 draft，避免旧 Conversation 与新范围同时显示。 */
-function navigateToSelectedScope(): void {
-  chat.newChat(scopeStore.scope())
+/** Source Scope 导航切换：先清主区与列表，再加载新范围；不自动打开其最近 conversation。 */
+async function handleScopeSelect(selection: SelectedSourceScope): Promise<void> {
+  if (navigationSelectionsEqual(selectedSourceScope.value, selection)) return
+  scopeStore.select(selection)
+  chat.clearDisplayed()
+  writeConversationIdToUrl(null)
+  await conversationsStore.refresh(selection)
+  // 进入新范围的 draft 空状态；A 的后台 stream 继续写 A buffer。
+  const scope = scopeStore.scope
+  if (scope !== null) chat.newChat(scope)
 }
 
-function handleModeChange(event: Event): void {
-  const value = (event.target as HTMLSelectElement).value
-  scopeStore.selectMode(value === 'sessions' ? 'sessions' : 'all')
-  navigateToSelectedScope()
+async function openConversation(
+  conversationId: string,
+  options?: { markInterrupted?: boolean },
+): Promise<void> {
+  const previousSelection = selectedSourceScope.value
+  await chat.openConversation(conversationId)
+  if (options?.markInterrupted) chat.markInterrupted(conversationId)
+  // 按 immutable scope 恢复合法导航；legacy null / multi / 未知 session 恢复为 null。
+  const restored = scopeStore.restoreFromConversationScope(chat.currentBuffer?.scope ?? null)
+  writeConversationIdToUrl(conversationId)
+  if (!navigationSelectionsEqual(previousSelection, restored)) {
+    await conversationsStore.refresh(restored)
+  }
+}
+
+function handleNewChat(): void {
+  const scope = scopeStore.scope
+  if (scope === null) return
+  chat.newChat(scope)
+  writeConversationIdToUrl(null)
+}
+
+function handleDeleted(conversationId: string): void {
+  if (chat.currentKey === conversationId) chat.closeBuffer(conversationId)
+  writeConversationIdToUrl(null)
+  const scope = scopeStore.scope
+  if (scope !== null) chat.newChat(scope)
 }
 </script>
 
 <template>
   <div class="flex h-full">
-    <ConversationSidebar />
+    <SourceScopeSidebar @select="handleScopeSelect" />
+    <ConversationSidebar @open="openConversation" @new-chat="handleNewChat" @deleted="handleDeleted" />
 
     <main class="flex min-w-0 flex-1 flex-col">
       <header class="flex items-center justify-between border-b border-default px-6 py-3">
@@ -104,39 +136,11 @@ function handleModeChange(event: Event): void {
           <h1 class="text-lg font-semibold">Trivae</h1>
           <span class="text-xs text-dimmed">群聊情报分析 · 本地 Web</span>
         </div>
-        <div class="flex items-center gap-3 text-xs">
-          <div class="flex items-center gap-1.5" data-testid="current-scope">
-            <span class="text-dimmed">当前范围:</span>
-            <span class="font-medium text-default" :title="currentScopeDisplay.title">
-              {{ currentScopeDisplay.label }}
-            </span>
-          </div>
-          <span class="h-4 w-px bg-default" aria-hidden="true"></span>
-          <span class="text-dimmed">切换范围:</span>
-          <select
-            :value="scopeStore.mode"
-            class="rounded border border-default bg-default px-2 py-1"
-            aria-label="切换范围模式"
-            @change="handleModeChange"
-          >
-            <option value="all">全部群聊</option>
-            <option value="sessions">指定群聊</option>
-          </select>
-          <select
-            v-if="scopeStore.mode === 'sessions'"
-            v-model="selectedSessionIdsModel"
-            multiple
-            size="1"
-            class="max-w-64 rounded border border-default bg-default px-2 py-1"
-            aria-label="选择群聊"
-          >
-            <option v-for="session in scopeStore.sessions" :key="session.session_id" :value="session.session_id">
-              {{ session.name }}
-            </option>
-            <option v-for="sessionId in unknownSelectedSessionIds" :key="sessionId" :value="sessionId">
-              {{ sessionId }}（目录中不存在）
-            </option>
-          </select>
+        <div class="flex items-center gap-3 text-xs" data-testid="current-scope">
+          <span class="text-dimmed">当前范围:</span>
+          <span class="font-medium text-default" :title="currentScopeDisplay.title">
+            {{ currentScopeDisplay.label }}
+          </span>
         </div>
       </header>
 
@@ -146,7 +150,19 @@ function handleModeChange(event: Event): void {
             {{ readinessText }}
           </div>
 
-          <div v-if="!currentBuffer || currentBuffer.items.length === 0" class="mt-24 text-center text-dimmed">
+          <div
+            v-if="currentBuffer && currentBuffer.scope === null"
+            class="mb-4 rounded-md bg-default p-3 text-xs text-dimmed"
+            data-testid="read-only-hint"
+          >
+            此对话未标记聊天范围；内容可回放，但不能继续发送。
+          </div>
+
+          <div v-if="!currentBuffer" class="mt-24 text-center text-dimmed" data-testid="unselected-state">
+            <p class="text-2xl font-semibold text-default">选择一个聊天范围</p>
+            <p class="mt-2 text-sm">选择一个聊天范围以查看 AI 对话；范围决定检索边界。</p>
+          </div>
+          <div v-else-if="currentBuffer.items.length === 0" class="mt-24 text-center text-dimmed">
             <p class="text-2xl font-semibold text-default">向 Trivae 提问</p>
             <p class="mt-2 text-sm">基于已导入的聊天记录检索、分析与回答，过程透明可追溯。</p>
           </div>
@@ -175,7 +191,7 @@ function handleModeChange(event: Event): void {
       </div>
 
       <ChatComposer
-        :disabled="currentKey === null"
+        :disabled="!composerEnabled"
         :running="chat.activeStreamRequestId !== null"
         @send="handleSend"
         @stop="chat.stopCurrent()"

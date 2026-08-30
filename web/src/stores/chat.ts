@@ -9,7 +9,7 @@
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 import { api } from '@/api/client'
-import { selectableScopesEqual } from '@/utils/scope'
+import { scopeKey, selectableScopesEqual } from '@/utils/scope'
 import type {
   ProcessProjection,
   ScopeRequest,
@@ -19,7 +19,12 @@ import type {
   ToolResultProjection,
 } from '@/types/contracts'
 
-export const DRAFT_KEY = '__draft__'
+export const DRAFT_PREFIX = '__draft__:'
+
+/** scope-keyed draft key：不同 Source Scope 的草稿互不覆写（如 __draft__:all、__draft__:session:<id>）。 */
+export function draftBufferKey(scope: ScopeRequest): string {
+  return `${DRAFT_PREFIX}${scopeKey(scope)}`
+}
 
 export interface PlanStep {
   goal?: string
@@ -121,7 +126,7 @@ function nextId(prefix: string): string {
 function createBuffer(key: string, scope: ScopeRequest | null, title = '新的对话'): ConversationBuffer {
   return reactive({
     key,
-    conversationId: key === DRAFT_KEY ? null : key,
+    conversationId: key.startsWith(DRAFT_PREFIX) ? null : key,
     title,
     scope,
     items: [],
@@ -154,21 +159,33 @@ export const useChatStore = defineStore('chat', () => {
     return null
   })
 
-  function ensureDraft(scope: ScopeRequest | null): ConversationBuffer {
-    let buffer = buffers[DRAFT_KEY]
+  function ensureDraft(scope: ScopeRequest): ConversationBuffer {
+    // 草稿按 exact scope key 隔离：A 的 create request await 期间切到 B，
+    // B 绑定另一份 draft，A 创建完成后只 rename A 自己的 draft。
+    const key = draftBufferKey(scope)
+    let buffer = buffers[key]
     if (!buffer) {
-      buffer = createBuffer(DRAFT_KEY, scope)
-      buffers[DRAFT_KEY] = buffer
-    } else if (scope) {
+      buffer = createBuffer(key, scope)
+      buffers[key] = buffer
+    } else {
       buffer.scope = scope
     }
-    currentKey.value = DRAFT_KEY
+    currentKey.value = key
     return buffer
   }
 
   function newChat(scope: ScopeRequest | null): void {
+    // 未选择合法 Source Scope 时不产生 draft；显式失败，不回退到 all。
+    if (scope === null) {
+      throw new Error('cannot open a draft without a selected source scope')
+    }
     // 已有草稿就复用；切换显示不影响后台 stream（它们写自己的 buffer）。
     ensureDraft(scope)
+  }
+
+  /** 切换 Source Scope 时只清除主区显示；buffer 与后台 stream context 全部保留。 */
+  function clearDisplayed(): void {
+    currentKey.value = null
   }
 
   function renameBufferKey(oldKey: string, newKey: string, conversationId: string): ConversationBuffer {
@@ -317,15 +334,21 @@ export const useChatStore = defineStore('chat', () => {
     query: string,
     scope: ScopeRequest | null,
     onFinished?: () => void,
+    onCreated?: (conversationId: string) => void,
   ): Promise<void> {
     const trimmed = query.trim()
     if (!trimmed || busy.value) return
+    // Store 级双保险：未选择合法 Source Scope 时显式拒绝，绝不 fallback 到 all。
+    if (scope === null) {
+      sendingError.value = '请先选择一个聊天范围，再发送问题'
+      return
+    }
     let buffer = currentBuffer.value
     if (!buffer || !selectableScopesEqual(buffer.scope, scope)) {
       // 已持久化 conversation 的 scope 不可修改；selector 变化时转入绑定新 scope 的草稿。
       buffer = ensureDraft(scope)
     }
-    if (!buffer.scope && scope) buffer.scope = scope
+    if (!buffer.scope) buffer.scope = scope
 
     busy.value = true
     sendingError.value = null
@@ -333,8 +356,12 @@ export const useChatStore = defineStore('chat', () => {
     // 草稿第一次发送时创建正式 conversation（ChatLab draft buffer rename 模式）。
     if (buffer.conversationId === null) {
       try {
-        const created = await api.createConversation(buffer.scope ?? { mode: 'all' })
+        const draftScope = buffer.scope
+        if (!draftScope) throw new Error('draft buffer is missing its scope')
+        const created = await api.createConversation(draftScope)
         renameBufferKey(buffer.key, created.conversation_id, created.conversation_id)
+        // Draft 转正即写入 URL：发送第一条消息后 reload 也能恢复当前 conversation。
+        onCreated?.(created.conversation_id)
       } catch (error) {
         busy.value = false
         sendingError.value = error instanceof Error ? error.message : String(error)
@@ -346,6 +373,11 @@ export const useChatStore = defineStore('chat', () => {
     if (!targetBuffer) {
       busy.value = false
       return
+    }
+    const targetScope = targetBuffer.scope
+    if (!targetScope) {
+      busy.value = false
+      throw new Error('conversation buffer is missing its scope')
     }
     targetBuffer.items.push({
       id: nextId('user'),
@@ -378,7 +410,7 @@ export const useChatStore = defineStore('chat', () => {
       await api.streamQuery(
         {
           query: trimmed,
-          scope: targetBuffer.scope ?? { mode: 'all' },
+          scope: targetScope,
           conversation_id: targetBuffer.conversationId,
           request_id: requestId,
         },
@@ -659,6 +691,7 @@ export const useChatStore = defineStore('chat', () => {
     hasRunningStream: () => streams.size > 0,
     ensureDraft,
     newChat,
+    clearDisplayed,
     openConversation,
     send,
     stopCurrent,

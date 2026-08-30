@@ -2,84 +2,72 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '@/api/client'
 import type { ScopeRequest, SessionDTO } from '@/types/contracts'
-import { describeScope, normalizeSessionIds } from '@/utils/scope'
+import {
+  compileNavigationScope,
+  describeScope,
+  restoreNavigationScope,
+  type SelectedSourceScope,
+} from '@/utils/scope'
 
-/** Source Session（=ExecutionScope）选择；决定 Retrieval 范围，与 AI Conversation 是不同概念。 */
+/**
+ * Source Scope 一级导航状态。
+ *
+ * `selectedSourceScope` 只是 Web navigation state，初始为 null（未选择）；
+ * catalog 加载不会自动选择。合法 ScopeRequest 只能由 navigation selection
+ * 编译得到；Source Session（=ExecutionScope）与 AI Conversation 是不同概念。
+ */
 
 export const useScopeStore = defineStore('scope', () => {
   const sessions = ref<SessionDTO[]>([])
-  const mode = ref<'all' | 'sessions'>('all')
-  const selectedSessionIds = ref<string[]>([])
+  const selectedSourceScope = ref<SelectedSourceScope>(null)
+  const catalogLoading = ref(false)
+  const catalogLoaded = ref(false)
+  const catalogError = ref<string | null>(null)
 
-  const selectorDisplay = computed(() => describeScope(scope(), sessions.value))
+  /** 当前 selection 编译出的合法 ScopeRequest；未选择时为 null，不存在 all fallback。 */
+  const scope = computed<ScopeRequest | null>(() => compileNavigationScope(selectedSourceScope.value))
 
+  const scopeDisplay = computed(() => describeScope(scope.value, sessions.value))
+
+  /** 加载 Source Session catalog；失败显式保存在 catalogError，由 Sidebar 呈现。 */
   async function load(): Promise<void> {
-    sessions.value = await api.sessions()
-    legalizeSelector()
-  }
-
-  function scope(): ScopeRequest {
-    const sessionIds = normalizeSessionIds(selectedSessionIds.value)
-    if (mode.value === 'sessions' && sessionIds.length > 0) {
-      return { mode: 'sessions', session_ids: sessionIds }
+    catalogLoading.value = true
+    catalogError.value = null
+    try {
+      sessions.value = await api.sessions()
+      catalogLoaded.value = true
+    } catch (error) {
+      catalogError.value = error instanceof Error ? error.message : String(error)
+    } finally {
+      catalogLoading.value = false
     }
-    return { mode: 'all' }
   }
 
-  /** 保证 selector 不会停在 sessions + 空集合这种不可表达状态。 */
-  function legalizeSelector(): void {
-    selectedSessionIds.value = normalizeSessionIds(selectedSessionIds.value)
-    if (mode.value !== 'sessions' || selectedSessionIds.value.length > 0) return
-
-    const firstSession = sessions.value[0]
-    if (firstSession) {
-      selectedSessionIds.value = [firstSession.session_id]
-      return
-    }
-    mode.value = 'all'
-  }
-
-  /** mode 切换是显式导航动作；进入 sessions 时选择第一个真实 Source Session。 */
-  function selectMode(nextMode: 'all' | 'sessions'): void {
-    mode.value = nextMode
-    if (nextMode === 'all') selectedSessionIds.value = []
-    legalizeSelector()
-  }
-
-  /** 多选清空时回到 all，不保留误导性的空 sessions 模式。 */
-  function selectSessions(sessionIds: readonly string[]): void {
-    selectedSessionIds.value = normalizeSessionIds(sessionIds)
-    mode.value = selectedSessionIds.value.length > 0 ? 'sessions' : 'all'
+  function select(selection: SelectedSourceScope): void {
+    selectedSourceScope.value = selection
   }
 
   /**
-   * 打开正式 Conversation 后只恢复 selector 可表达字段。
-   * legacy null 没有合法 selector 表达，因此明确保持用户最近一次合法选择。
+   * 打开正式 Conversation 后按 immutable scope 恢复合法 navigation selection。
+   * 返回恢复结果：legacy null / multi-session / 未知 session 恢复为 null，
+   * 历史 buffer 保持只读回放，不猜测合法 scope。
    */
-  function restoreFromScope(conversationScope: ScopeRequest | null): void {
-    if (conversationScope === null) return
-    if (conversationScope.mode === 'all') {
-      selectMode('all')
-      return
-    }
-    selectSessions(conversationScope.session_ids ?? [])
-  }
-
-  function describe(): string {
-    return selectorDisplay.value.label
+  function restoreFromConversationScope(conversationScope: ScopeRequest | null): SelectedSourceScope {
+    const restored = restoreNavigationScope(conversationScope, sessions.value)
+    selectedSourceScope.value = restored
+    return restored
   }
 
   return {
     sessions,
-    mode,
-    selectedSessionIds,
-    selectorDisplay,
-    load,
+    selectedSourceScope,
+    catalogLoading,
+    catalogLoaded,
+    catalogError,
     scope,
-    legalizeSelector,
-    selectMode,
-    selectSessions,
-    restoreFromScope,
-    describe,
+    scopeDisplay,
+    load,
+    select,
+    restoreFromConversationScope,
   }
 })

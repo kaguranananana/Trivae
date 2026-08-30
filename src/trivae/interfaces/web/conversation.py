@@ -15,6 +15,7 @@ from trivae.conversation.contracts import (
     ConversationNotFoundError,
     ConversationPersistenceError,
     ConversationScopeError,
+    ConversationScopeSelector,
 )
 from trivae.query.evidence import (
     MessageSource,
@@ -22,7 +23,7 @@ from trivae.query.evidence import (
     answer_source_summaries,
 )
 
-from .contracts import ConversationCreateRequest, ConversationRenameRequest
+from .contracts import ConversationCreateRequest, ConversationRenameRequest, WebScopeError
 from .projection import project_context_messages, project_conversation, project_conversation_summary
 
 MAX_CONVERSATION_CONTEXT_BEFORE = 5
@@ -35,11 +36,59 @@ def _conversation_http_error(exc: Exception, status_code: int, error_code: str) 
     return HTTPException(status_code=status_code, detail={"error_code": error_code, "message": str(exc)})
 
 
-def list_conversations(application: TrivaeApplication, limit: int) -> list[dict[str, object]]:
-    """侧栏 conversation 列表（按 updated_at 倒序、bounded metadata）。"""
+def compile_conversation_list_selector(
+    scope_mode: str | None,
+    session_id: str | None,
+) -> ConversationScopeSelector:
+    """把 GET /api/conversations 的 bounded selector 编译为 domain selector。
+
+    只接受 ``scope_mode``/``session_id``；start/end/max_results 等 ExecutionScope
+    字段不属于 list selector，无法通过 query params 穿透。
+    """
+
+    if scope_mode == "all":
+        if session_id is not None:
+            raise WebScopeError("scope_mode 'all' does not accept session_id")
+        return ConversationScopeSelector(allowed_session_ids=None)
+    if scope_mode == "sessions":
+        if session_id is None or not session_id.strip():
+            raise WebScopeError("scope_mode 'sessions' requires a non-empty session_id")
+        return ConversationScopeSelector(allowed_session_ids=(session_id,))
+    raise WebScopeError("scope_mode must be 'all' or 'sessions'")
+
+
+def list_conversations(
+    application: TrivaeApplication,
+    *,
+    scope_mode: str | None,
+    session_id: str | None,
+    limit: int,
+) -> list[dict[str, object]]:
+    """当前 scope 的侧栏 conversation 列表（filter → order → limit）。"""
 
     try:
-        summaries = application.list_conversations(limit)
+        selector = compile_conversation_list_selector(scope_mode, session_id)
+    except WebScopeError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"error_code": "CONVERSATION_SCOPE_SELECTOR_INVALID", "message": str(exc)},
+        ) from exc
+    if selector.allowed_session_ids is not None:
+        # selector 的 session 必须是 canonical catalog 中的真实 Source Session；
+        # 历史遗留的未知 ID 不能通过列表接口伪装成合法导航范围。
+        catalog_ids = {session.session_id for session in application.list_sessions()}
+        requested = selector.allowed_session_ids
+        missing = next((item for item in requested if item not in catalog_ids), None)
+        if missing is not None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error_code": "SOURCE_SESSION_NOT_FOUND",
+                    "message": f"source session does not exist: {missing}",
+                },
+            )
+    try:
+        summaries = application.list_conversations(limit, selector=selector)
     except ConversationPersistenceError as exc:
         raise _conversation_http_error(exc, 500, "CONVERSATION_STORE_ERROR") from exc
     return [project_conversation_summary(summary) for summary in summaries]

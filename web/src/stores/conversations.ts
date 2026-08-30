@@ -1,22 +1,20 @@
-/** Conversation 侧栏数据（list/rename/delete）；AI Conversation ≠ Source Session。 */
+/**
+ * Conversation 侧栏数据（list/rename/delete）。
+ *
+ * 列表请求是 selector-scoped：后端在 scope 过滤后再排序、limit；
+ * 前端不再对全局最近列表做客户端过滤。generation guard 保证 A→B 切换时
+ * 延迟到达的 A response 不能覆盖 B 的列表。
+ */
 
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '@/api/client'
-import type { ConversationSummaryDTO } from '@/types/contracts'
-import { useScopeStore } from '@/stores/scope'
-import { describeScope, scopeKey } from '@/utils/scope'
+import type { ConversationSummaryDTO, ScopeRequest } from '@/types/contracts'
+import { compileNavigationScope, normalizeSessionIds, type SelectedSourceScope } from '@/utils/scope'
 
 export interface ConversationGroup {
   label: string
   conversations: ConversationSummaryDTO[]
-}
-
-export interface ScopeConversationGroup {
-  key: string
-  label: string
-  title: string
-  dateGroups: ConversationGroup[]
 }
 
 const DATE_GROUP_ORDER = ['今天', '昨天', '更早'] as const
@@ -30,61 +28,71 @@ function groupLabel(updatedAtIso: string): string {
   return '更早'
 }
 
+/** 把合法 ScopeRequest 编译为 bounded list selector；primary navigation 只产生 all 或单 session。 */
+function toListSelector(scope: ScopeRequest): { scopeMode: 'all' | 'sessions'; sessionId?: string } {
+  if (scope.mode === 'all') return { scopeMode: 'all' }
+  const sessionIds = normalizeSessionIds(scope.session_ids)
+  if (sessionIds.length !== 1) {
+    throw new Error(`conversation list selector requires exactly one session, got ${sessionIds.length}`)
+  }
+  return { scopeMode: 'sessions', sessionId: sessionIds[0] }
+}
+
 export const useConversationsStore = defineStore('conversations', () => {
-  const scopeStore = useScopeStore()
   const conversations = ref<ConversationSummaryDTO[]>([])
   const loaded = ref(false)
   const loading = ref(false)
+  /** 最近一次 refresh 的 navigation selection；rename 后 scoped refresh 复用。 */
+  const activeSelection = ref<SelectedSourceScope>(null)
+  let generation = 0
 
-  const groups = computed<ScopeConversationGroup[]>(() => {
-    const grouped = new Map<string, ConversationSummaryDTO[]>()
+  const dateGroups = computed<ConversationGroup[]>(() => {
+    const dateBuckets = new Map<string, ConversationSummaryDTO[]>()
     for (const conversation of conversations.value) {
-      const key = scopeKey(conversation.scope)
-      const bucket = grouped.get(key) ?? []
+      const label = groupLabel(conversation.updated_at)
+      const bucket = dateBuckets.get(label) ?? []
       bucket.push(conversation)
-      grouped.set(key, bucket)
+      dateBuckets.set(label, bucket)
     }
-
-    const scopeGroups = [...grouped.entries()].map(([key, items]): ScopeConversationGroup => {
-      // 同一个 canonical key 中的 scope 等价，首项即可作为展示投影来源。
-      const display = describeScope(items[0]?.scope ?? null, scopeStore.sessions)
-      const dateBuckets = new Map<string, ConversationSummaryDTO[]>()
-      for (const conversation of items) {
-        const label = groupLabel(conversation.updated_at)
-        const bucket = dateBuckets.get(label) ?? []
-        bucket.push(conversation)
-        dateBuckets.set(label, bucket)
-      }
-      const dateGroups = DATE_GROUP_ORDER.flatMap((label) => {
-        const conversationsForDate = dateBuckets.get(label)
-        return conversationsForDate ? [{ label, conversations: conversationsForDate }] : []
-      })
-      return { key, label: display.label, title: display.title, dateGroups }
-    })
-
-    // all 固定在前、legacy 未标记固定在后；session groups 按可读文案和 key 稳定排序。
-    return scopeGroups.sort((left, right) => {
-      if (left.key === 'all') return right.key === 'all' ? 0 : -1
-      if (right.key === 'all') return 1
-      if (left.key === 'unmarked') return right.key === 'unmarked' ? 0 : 1
-      if (right.key === 'unmarked') return -1
-      return left.label.localeCompare(right.label) || left.key.localeCompare(right.key)
+    return DATE_GROUP_ORDER.flatMap((label) => {
+      const conversationsForDate = dateBuckets.get(label)
+      return conversationsForDate ? [{ label, conversations: conversationsForDate }] : []
     })
   })
 
-  async function refresh(): Promise<void> {
+  /**
+   * 按当前 navigation selection 请求 scope 过滤后的列表。
+   * selection=null 时不发请求：列表立即清空，显示未选择状态。
+   */
+  async function refresh(selection: SelectedSourceScope): Promise<void> {
+    generation += 1
+    const requestGeneration = generation
+    activeSelection.value = selection
+    // 立即清空：A→B 切换时 B 立即看到空列表，而不是 A 的旧数据。
+    conversations.value = []
+    loaded.value = false
+    const scopeRequest = compileNavigationScope(selection)
+    if (scopeRequest === null) {
+      loading.value = false
+      return
+    }
     loading.value = true
     try {
-      conversations.value = await api.conversations(100)
+      const results = await api.conversations(toListSelector(scopeRequest), 100)
+      // race guard：只有仍是最新请求时才提交 response。
+      if (requestGeneration !== generation) return
+      conversations.value = results
       loaded.value = true
     } finally {
-      loading.value = false
+      if (requestGeneration === generation) {
+        loading.value = false
+      }
     }
   }
 
   async function rename(conversationId: string, title: string): Promise<void> {
     await api.renameConversation(conversationId, title)
-    await refresh()
+    await refresh(activeSelection.value)
   }
 
   async function remove(conversationId: string): Promise<void> {
@@ -93,5 +101,5 @@ export const useConversationsStore = defineStore('conversations', () => {
     conversations.value = conversations.value.filter((item) => item.conversation_id !== conversationId)
   }
 
-  return { conversations, groups, loaded, loading, refresh, rename, remove }
+  return { conversations, dateGroups, loaded, loading, activeSelection, refresh, rename, remove }
 })

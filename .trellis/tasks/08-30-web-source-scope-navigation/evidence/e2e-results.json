@@ -1,0 +1,247 @@
+{
+  "apiCalls": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/conversations?scope_mode=all&limit=100"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/source-sessions"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/conversations/a039df7366b042d0835317037d9b3667"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/conversations?scope_mode=sessions&session_id=qq%3A831907794&limit=100"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/conversations"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/query/stream"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/conversations?scope_mode=sessions&session_id=qq%3A1028505110&limit=100"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/conversations?scope_mode=sessions&session_id=qq%3A831907794&limit=100"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/conversations?scope_mode=sessions&session_id=qq%3A831907794&limit=100"
+    }
+  ],
+  "consoleErrors": [],
+  "results": [
+    {
+      "step": 1,
+      "name": "A1-open-page",
+      "ok": true,
+      "detail": "48ms"
+    },
+    {
+      "step": 2,
+      "name": "A2-sidebar-unselected-hint",
+      "ok": true,
+      "detail": "2ms"
+    },
+    {
+      "step": 3,
+      "name": "A3-main-unselected-state",
+      "ok": true,
+      "detail": "1ms"
+    },
+    {
+      "step": 4,
+      "name": "A4-no-conversation-list",
+      "ok": true,
+      "detail": "2ms"
+    },
+    {
+      "step": 5,
+      "name": "A5-newchat-composer-disabled",
+      "ok": true,
+      "detail": "2ms"
+    },
+    {
+      "step": 6,
+      "name": "A6-header-unselected-scope",
+      "ok": true,
+      "detail": "1ms"
+    },
+    {
+      "step": 7,
+      "name": "A7-no-conversations-api-on-mount",
+      "ok": true,
+      "detail": "0ms"
+    },
+    {
+      "step": 8,
+      "name": "B1-select-session-A",
+      "ok": true,
+      "detail": "75ms"
+    },
+    {
+      "step": 9,
+      "name": "B2-scoped-list-request",
+      "ok": true,
+      "detail": "0ms"
+    },
+    {
+      "step": 10,
+      "name": "B3-A-list-rendered",
+      "ok": true,
+      "detail": "1ms"
+    },
+    {
+      "step": 11,
+      "name": "B4-newchat-draft-empty-state",
+      "ok": true,
+      "detail": "37ms"
+    },
+    {
+      "step": 12,
+      "name": "B5-send-real-question",
+      "ok": true,
+      "detail": "32ms"
+    },
+    {
+      "step": 13,
+      "name": "B6-stream-completes",
+      "ok": true,
+      "detail": "75041ms"
+    },
+    {
+      "step": 14,
+      "name": "B7-answer-rendered-in-A",
+      "ok": true,
+      "detail": "2ms"
+    },
+    {
+      "step": 15,
+      "name": "C1-switch-to-session-B",
+      "ok": true,
+      "detail": "69ms"
+    },
+    {
+      "step": 16,
+      "name": "C2-B-scoped-list-request",
+      "ok": true,
+      "detail": "0ms"
+    },
+    {
+      "step": 17,
+      "name": "C3-A-conversation-gone",
+      "ok": true,
+      "detail": "0ms"
+    },
+    {
+      "step": 18,
+      "name": "C4-B-draft-empty-state-no-A-content",
+      "ok": true,
+      "detail": "1ms"
+    },
+    {
+      "step": 19,
+      "name": "D1-select-all-scope",
+      "ok": true,
+      "detail": "68ms"
+    },
+    {
+      "step": 20,
+      "name": "D2-all-scope-request",
+      "ok": true,
+      "detail": "0ms"
+    },
+    {
+      "step": 21,
+      "name": "D3-A-conversation-not-in-all-list",
+      "ok": true,
+      "detail": "1ms"
+    },
+    {
+      "step": 22,
+      "name": "D4-header-all-scope",
+      "ok": true,
+      "detail": "1ms"
+    },
+    {
+      "step": 23,
+      "name": "E1-open-historical-via-URL",
+      "ok": true,
+      "detail": "19ms"
+    },
+    {
+      "step": 24,
+      "name": "E2-scope-restored-highlight-A",
+      "ok": true,
+      "detail": "7ms"
+    },
+    {
+      "step": 25,
+      "name": "E3-history-replay",
+      "ok": true,
+      "detail": "0ms"
+    },
+    {
+      "step": 26,
+      "name": "E4-composer-enabled-on-legal-scope",
+      "ok": true,
+      "detail": "0ms"
+    },
+    {
+      "step": 27,
+      "name": "F1-A-newchat-send-long-question",
+      "ok": true,
+      "detail": "57ms"
+    },
+    {
+      "step": 28,
+      "name": "F2-switch-to-B-midstream",
+      "ok": true,
+      "detail": "35ms"
+    },
+    {
+      "step": 29,
+      "name": "F3-B-main-no-A-content",
+      "ok": true,
+      "detail": "2ms"
+    },
+    {
+      "step": 30,
+      "name": "F4-wait-then-return-to-A",
+      "ok": true,
+      "detail": "6069ms"
+    },
+    {
+      "step": 31,
+      "name": "F5-open-F-conversation-stream-arrives",
+      "ok": true,
+      "detail": "148832ms"
+    },
+    {
+      "step": 32,
+      "name": "F6-B-conversation-untouched",
+      "ok": true,
+      "detail": "7ms"
+    }
+  ],
+  "createdConversations": [
+    {
+      "id": "a039df7366b042d0835317037d9b3667",
+      "scope": "session:qq:831907794",
+      "question": "这个群里最近讨论过哪些关于面试的话题？请简要总结要点。"
+    },
+    {
+      "id": "6d2e1473359b42e8b128ea261d296994",
+      "scope": "session:qq:831907794",
+      "question": "请详细总结这个群里最近两周讨论的主要话题，尽量完整地列出。"
+    }
+  ]
+}

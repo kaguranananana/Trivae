@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { describeScope, normalizeSessionIds, scopeKey, selectableScopesEqual } from '@/utils/scope'
+import {
+  compileNavigationScope,
+  describeScope,
+  navigationSelectionsEqual,
+  normalizeSessionIds,
+  restoreNavigationScope,
+  scopeKey,
+  selectableScopesEqual,
+} from '@/utils/scope'
 import type { SessionDTO } from '@/types/contracts'
 
 const sessions: SessionDTO[] = [
@@ -38,5 +46,37 @@ describe('scope helpers', () => {
   it('uses the original ID for an unknown historical session', () => {
     expect(describeScope({ mode: 'sessions', session_ids: ['missing-session'] }, sessions))
       .toEqual({ label: 'missing-session', title: 'missing-session' })
+  })
+})
+
+describe('navigation selection compilation', () => {
+  it('compiles unselected to null without an all fallback', () => {
+    expect(compileNavigationScope(null)).toBeNull()
+    expect(compileNavigationScope({ kind: 'all' })).toEqual({ mode: 'all' })
+    expect(compileNavigationScope({ kind: 'session', sessionId: 's1' }))
+      .toEqual({ mode: 'sessions', session_ids: ['s1'] })
+  })
+
+  it('restores legal navigation scopes from immutable conversation scopes', () => {
+    expect(restoreNavigationScope({ mode: 'all' }, sessions)).toEqual({ kind: 'all' })
+    expect(restoreNavigationScope({ mode: 'sessions', session_ids: ['s2'] }, sessions))
+      .toEqual({ kind: 'session', sessionId: 's2' })
+  })
+
+  it('keeps multi-session, unknown-session, and legacy scopes out of primary navigation', () => {
+    expect(restoreNavigationScope({ mode: 'sessions', session_ids: ['s1', 's2'] }, sessions)).toBeNull()
+    expect(restoreNavigationScope({ mode: 'sessions', session_ids: ['missing'] }, sessions)).toBeNull()
+    expect(restoreNavigationScope(null, sessions)).toBeNull()
+  })
+
+  it('compares navigation selections structurally', () => {
+    expect(navigationSelectionsEqual(null, null)).toBe(true)
+    expect(navigationSelectionsEqual(null, { kind: 'all' })).toBe(false)
+    expect(navigationSelectionsEqual({ kind: 'all' }, { kind: 'all' })).toBe(true)
+    expect(navigationSelectionsEqual({ kind: 'all' }, { kind: 'session', sessionId: 's1' })).toBe(false)
+    expect(navigationSelectionsEqual({ kind: 'session', sessionId: 's1' }, { kind: 'session', sessionId: 's1' }))
+      .toBe(true)
+    expect(navigationSelectionsEqual({ kind: 'session', sessionId: 's1' }, { kind: 'session', sessionId: 's2' }))
+      .toBe(false)
   })
 })

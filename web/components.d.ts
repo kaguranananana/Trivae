@@ -20,6 +20,7 @@ declare module 'vue' {
     ConversationSidebar: typeof import('./src/components/sidebar/ConversationSidebar.vue')['default']
     ProcessHeader: typeof import('./src/components/chat/ProcessHeader.vue')['default']
     SourcesBlock: typeof import('./src/components/chat/SourcesBlock.vue')['default']
+    SourceScopeSidebar: typeof import('./src/components/sidebar/SourceScopeSidebar.vue')['default']
     TraceFooter: typeof import('./src/components/chat/TraceFooter.vue')['default']
   }
 }

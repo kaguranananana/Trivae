@@ -46,6 +46,7 @@ from trivae.config.settings import SettingsError, load_settings
 from trivae.conversation import (
     Conversation,
     ConversationScopeError,
+    ConversationScopeSelector,
     ConversationStore,
     ConversationSummary,
     SQLiteConversationStore,
@@ -376,11 +377,19 @@ class TrivaeApplication:
         self._ensure_open()
         return self.conversation_store.get_conversation(conversation_id)
 
-    def list_conversations(self, limit: int = 20) -> tuple[ConversationSummary, ...]:
-        """通过 Application facade 读取 bounded conversation history metadata。"""
+    def list_conversations(
+        self,
+        limit: int = 20,
+        selector: ConversationScopeSelector | None = None,
+    ) -> tuple[ConversationSummary, ...]:
+        """通过 Application facade 读取 bounded conversation history metadata。
+
+        ``selector`` 原样透传给 Conversation Store；scope 匹配逻辑只存在于 Store
+        的 SQL predicate，Application 不复制第二份过滤实现。
+        """
 
         self._ensure_open()
-        return self.conversation_store.list_summaries(limit)
+        return self.conversation_store.list_summaries(limit, selector=selector)
 
     def rename_conversation(self, conversation_id: str, title: str) -> Conversation:
         """通过 Application facade 显式 rename 一个 AI conversation。"""

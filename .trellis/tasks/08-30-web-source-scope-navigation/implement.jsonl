@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "项目核心工程原则：根因优先、Failure-Case 驱动、证据化完成，实施全程必须遵守"}
+{"file": ".trellis/spec/project/technical-decisions/web-primary-interface.md", "reason": "Web 主接口 ADR：Conversation scope immutable、Source Session 与 AI Conversation 领域模型、本次需更新的 primary navigation 决策基线"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "M5b Conversation Store 与 SQLite 契约，list_summaries filter-before-limit 实现必须遵循"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "错误处理原则：非法 scope selector 与不存在 session 需稳定错误信封，不静默吞错"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "测试与质量要求：新增 backend/store/API 测试的组织方式"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "本任务横跨 API/Store/Component/Database 多层，需按跨层数据流检查"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "scope identity/matcher 必须单一实现，避免各 store/component 重复比较逻辑"}

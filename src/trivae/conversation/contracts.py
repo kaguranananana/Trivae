@@ -275,6 +275,31 @@ class ConversationSummary:
             raise ConversationError("scope must be an ExecutionScope or None")
 
 
+@dataclass(frozen=True)
+class ConversationScopeSelector:
+    """list_summaries 的最小不可变 scope identity selector。
+
+    它不是 ExecutionScope，也不携带时间/容量等 Retrieval 参数；只描述 persisted
+    scope snapshot 的 selectable identity：``allowed_session_ids=None`` 表示创建时
+    scope.mode=all，非空 tuple 表示精确的 session 集合 identity。
+    """
+
+    allowed_session_ids: tuple[str, ...] | None
+
+    def __post_init__(self) -> None:
+        if self.allowed_session_ids is None:
+            return
+        if isinstance(self.allowed_session_ids, (str, bytes)) or not isinstance(
+            self.allowed_session_ids, (tuple, list)
+        ):
+            raise ConversationError("selector session identity must be a tuple of session ids or None")
+        normalized = [_required_text("selector session id", item) for item in self.allowed_session_ids]
+        if not normalized:
+            raise ConversationError("selector session identity must be a non-empty tuple or None")
+        # 去重 + 排序保证集合 identity 与传入顺序无关。
+        object.__setattr__(self, "allowed_session_ids", tuple(sorted(set(normalized))))
+
+
 class ConversationStore(Protocol):
     """Application 使用的最小 Conversation Store 接口。"""
 
@@ -284,8 +309,16 @@ class ConversationStore(Protocol):
     def get_conversation(self, conversation_id: str) -> Conversation:
         """读取完整、稳定排序的 conversation。"""
 
-    def list_summaries(self, limit: int = 20) -> tuple[ConversationSummary, ...]:
-        """按更新时间读取 bounded history metadata。"""
+    def list_summaries(
+        self,
+        limit: int = 20,
+        selector: ConversationScopeSelector | None = None,
+    ) -> tuple[ConversationSummary, ...]:
+        """按更新时间读取 bounded history metadata。
+
+        ``selector`` 是正式 scope identity selector；None 表示既有全局列表行为
+        （CLI/TUI），Web 界面必须显式传入 selector，由 Store 在 SQL 层先过滤再 limit。
+        """
 
     def rename_conversation(self, conversation_id: str, title: str) -> Conversation:
         """显式 rename conversation title，不改变消息或 scope。"""

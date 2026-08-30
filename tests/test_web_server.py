@@ -14,6 +14,7 @@ from typing import Any, AsyncIterator
 
 import httpx
 
+from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import TrivaeApplication, create_application
 from trivae.interfaces.web.server import create_web_app
 from trivae.query.runtime.contracts import AgentRunRequest, RuntimeEvent, RuntimeResult
@@ -99,6 +100,18 @@ def _ndjson_lines(raw: bytes) -> list[dict[str, Any]]:
     return [json.loads(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
 
 
+def _scope_all() -> Any:
+    from trivae.capabilities.contracts import ExecutionScope
+
+    return ExecutionScope(allowed_session_ids=None, max_results=5)
+
+
+def _scope_session(session_id: str) -> Any:
+    from trivae.capabilities.contracts import ExecutionScope
+
+    return ExecutionScope(allowed_session_ids=(session_id,), max_results=5)
+
+
 class WebApiTests(unittest.TestCase):
     """覆盖 API contract 的核心行为。"""
 
@@ -147,7 +160,7 @@ class WebApiTests(unittest.TestCase):
                         ).json()
                         self.assertEqual(renamed["scope"]["mode"], "all")
 
-                        listing = (await client.get("/api/conversations")).json()
+                        listing = (await client.get("/api/conversations?scope_mode=all")).json()
                         self.assertEqual(listing[0]["title"], "自定义名")
 
                         deleted = (await client.delete(f"/api/conversations/{conversation_id}")).json()
@@ -213,7 +226,7 @@ class WebApiTests(unittest.TestCase):
                         # 测试 runtime 不产生 tool/evidence，sources 为空列表而不是伪造。
                         self.assertEqual(end.get("sources"), [])
                         # conversation 已在 backend 持久化一问一答。
-                        listing = (await client.get("/api/conversations")).json()
+                        listing = (await client.get("/api/conversations?scope_mode=all")).json()
                         self.assertEqual(listing[0]["message_count"], 2)
                 finally:
                     await application.aclose()
@@ -374,6 +387,162 @@ class WebApiTests(unittest.TestCase):
                         self.assertEqual(calls[0][0], "open")
                         self.assertEqual(calls[0][1], "-R")
                         self.assertTrue(calls[0][2].endswith(f"{trace_id}.log"))
+                finally:
+                    await application.aclose()
+
+        self._run(scenario())
+
+
+class ConversationListSelectorApiTests(unittest.TestCase):
+    """GET /api/conversations 的 bounded selector contract：filter-before-limit + 稳定错误信封。"""
+
+    def _run(self, coroutine: Any) -> Any:
+        return asyncio.run(coroutine)
+
+    def _app_with_sessions_and_conversations(self, database: Path) -> TrivaeApplication:
+        """canonical catalog 提供真实 session qq:100；conversation 混合三种 scope。"""
+
+        application = create_application(database)
+        raw_directory = database.parent / "raw"
+        raw_directory.mkdir(parents=True, exist_ok=True)
+        write_export(
+            raw_directory,
+            "web-selector(100).json",
+            [make_message("m1", 1, 1_768_435_200_000, "selector fixture")],
+            chat_name="Web Selector",
+            peer_uid=None,
+            version="5.5.64",
+        )
+        application.import_directory(raw_directory)
+        application.create_conversation(_scope_all())
+        application.create_conversation(_scope_session("qq:100"))
+        application.create_conversation(_scope_session("qq:100"))
+        return application
+
+    def _list(self, client: httpx.AsyncClient, query: str) -> httpx.Response:
+        return client.get(f"/api/conversations{query}")
+
+    def test_missing_scope_mode_returns_stable_selector_error(self) -> None:
+        async def scenario() -> None:
+            with tempfile.TemporaryDirectory() as directory:
+                application = self._app_with_sessions_and_conversations(Path(directory) / "web.sqlite3")
+                try:
+                    app = create_web_app(application, host="127.0.0.1")
+                    transport = httpx.ASGITransport(app=app)
+                    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                        response = await self._list(client, "")
+                        self.assertEqual(response.status_code, 422)
+                        self.assertEqual(
+                            response.json()["detail"]["error_code"],
+                            "CONVERSATION_SCOPE_SELECTOR_INVALID",
+                        )
+                finally:
+                    await application.aclose()
+
+        self._run(scenario())
+
+    def test_all_mode_returns_only_all_scope_conversations(self) -> None:
+        async def scenario() -> None:
+            with tempfile.TemporaryDirectory() as directory:
+                application = self._app_with_sessions_and_conversations(Path(directory) / "web.sqlite3")
+                try:
+                    app = create_web_app(application, host="127.0.0.1")
+                    transport = httpx.ASGITransport(app=app)
+                    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                        response = await self._list(client, "?scope_mode=all&limit=100")
+                        self.assertEqual(response.status_code, 200)
+                        listing = response.json()
+                        self.assertEqual(len(listing), 1)
+                        self.assertEqual(listing[0]["scope"]["mode"], "all")
+                finally:
+                    await application.aclose()
+
+        self._run(scenario())
+
+    def test_single_session_mode_returns_exact_identity(self) -> None:
+        async def scenario() -> None:
+            with tempfile.TemporaryDirectory() as directory:
+                application = self._app_with_sessions_and_conversations(Path(directory) / "web.sqlite3")
+                try:
+                    app = create_web_app(application, host="127.0.0.1")
+                    transport = httpx.ASGITransport(app=app)
+                    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                        response = await self._list(client, "?scope_mode=sessions&session_id=qq:100&limit=100")
+                        self.assertEqual(response.status_code, 200)
+                        listing = response.json()
+                        self.assertEqual(len(listing), 2)
+                        for item in listing:
+                            self.assertEqual(item["scope"]["mode"], "sessions")
+                            self.assertEqual(item["scope"]["session_ids"], ["qq:100"])
+                finally:
+                    await application.aclose()
+
+        self._run(scenario())
+
+    def test_invalid_selector_combinations_return_stable_error(self) -> None:
+        async def scenario() -> None:
+            with tempfile.TemporaryDirectory() as directory:
+                application = self._app_with_sessions_and_conversations(Path(directory) / "web.sqlite3")
+                try:
+                    app = create_web_app(application, host="127.0.0.1")
+                    transport = httpx.ASGITransport(app=app)
+                    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                        for query in (
+                            "?scope_mode=all&session_id=qq:100",
+                            "?scope_mode=sessions",
+                            "?scope_mode=sessions&session_id=%20%20",
+                            "?scope_mode=everything",
+                        ):
+                            response = await self._list(client, query)
+                            self.assertEqual(response.status_code, 422, query)
+                            self.assertEqual(
+                                response.json()["detail"]["error_code"],
+                                "CONVERSATION_SCOPE_SELECTOR_INVALID",
+                                query,
+                            )
+                finally:
+                    await application.aclose()
+
+        self._run(scenario())
+
+    def test_unknown_session_returns_stable_error(self) -> None:
+        async def scenario() -> None:
+            with tempfile.TemporaryDirectory() as directory:
+                application = self._app_with_sessions_and_conversations(Path(directory) / "web.sqlite3")
+                try:
+                    app = create_web_app(application, host="127.0.0.1")
+                    transport = httpx.ASGITransport(app=app)
+                    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                        response = await self._list(client, "?scope_mode=sessions&session_id=qq:missing")
+                        self.assertEqual(response.status_code, 404)
+                        self.assertEqual(
+                            response.json()["detail"]["error_code"],
+                            "SOURCE_SESSION_NOT_FOUND",
+                        )
+                finally:
+                    await application.aclose()
+
+        self._run(scenario())
+
+    def test_execution_scope_query_fields_cannot_penetrate(self) -> None:
+        """start/end/max_results 不是 list selector 字段：不被读取，也不改变结果。"""
+
+        async def scenario() -> None:
+            with tempfile.TemporaryDirectory() as directory:
+                application = self._app_with_sessions_and_conversations(Path(directory) / "web.sqlite3")
+                try:
+                    app = create_web_app(application, host="127.0.0.1")
+                    transport = httpx.ASGITransport(app=app)
+                    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                        plain = (await self._list(client, "?scope_mode=all&limit=100")).json()
+                        penetrated = (
+                            await self._list(
+                                client,
+                                "?scope_mode=all&limit=100&start_timestamp=1&end_timestamp=2&max_results=1",
+                            )
+                        ).json()
+                        self.assertEqual(plain, penetrated)
+                        self.assertEqual(len(penetrated), 1)
                 finally:
                     await application.aclose()
 

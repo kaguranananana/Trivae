@@ -45,9 +45,20 @@ def create_api_router(
         return project_sessions(application.list_sessions())
 
     @router.get("/conversations")
-    async def conversations(limit: int = 50) -> list[dict[str, object]]:
+    async def conversations(
+        scope_mode: str | None = None,
+        session_id: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, object]]:
+        # 只接受 scope_mode/session_id/limit；其他 query params 不被读取，
+        # ExecutionScope 的时间/容量字段无法从列表接口穿透。
         bounded = max(1, min(limit, MAX_CONVERSATION_LIST_LIMIT))
-        return conversation_routes.list_conversations(application, bounded)
+        return conversation_routes.list_conversations(
+            application,
+            scope_mode=scope_mode,
+            session_id=session_id,
+            limit=bounded,
+        )
 
     @router.post("/conversations", status_code=201)
     async def create_conversation(payload: ConversationCreateRequest) -> dict[str, object]:

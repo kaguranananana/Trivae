@@ -147,6 +147,40 @@ Sidebar 复用 `ConversationSummaryDTO.scope` 与 `/api/source-sessions` catalog
 ID 直接显示原 ID。所有 Scope/日期组保持展开，当前 buffer 对应 Scope Group 与当前 Conversation 分别使用
 轻量视觉强调；没有新增 grouping API、逐 Conversation detail 请求、数据库字段或折叠持久化。
 
+### Primary Source Scope navigation（2026-08-30）
+
+信息层级调整为 `Source Scope → AI Conversation → Turns` 三栏：`SourceScopeSidebar`（全部范围 + 真实
+Source Session）→ `ConversationSidebar`（当前 scope 下 today/yesterday/earlier）→ 主区 Turns。顶部不再
+保留第二套可写 selector，Header 只读投影当前 buffer 的 immutable scope（无 buffer 时投影 navigation
+selection）。
+
+Web 增加 navigation-only 的 unselected 状态：`selectedSourceScope = null`（`null | {kind:'all'} |
+{kind:'session', sessionId}`）。它是纯 UI 状态，唯一编译函数 `compileNavigationScope()` 对 null 返回
+`null`，任何 New Chat / Send 调用点必须先得到非 null `ScopeRequest`；`chat.send()` store 层对 null 显式
+拒绝，不存在 unselected→all fallback。初始打开不请求、不展示任何 Conversation，也不自动打开最近项。
+
+Conversation 列表改为后端 filter-before-limit：`GET /api/conversations` 只接受 `scope_mode`、
+`session_id`、`limit`；缺失/未知 mode 或非法组合返回 422 `CONVERSATION_SCOPE_SELECTOR_INVALID`，不存在
+的 session 返回 404 `SOURCE_SESSION_NOT_FOUND`，其他 query params（含 ExecutionScope 的
+start/end/max_results）不读取。Web 层编译为 Conversation domain 的 `ConversationScopeSelector`
+（最小不可变 identity selector，不是新的 ExecutionScope）；Application 纯透传；`SQLiteConversationStore.
+list_summaries` 先构造 exact scope identity JSON predicate（all：snapshot 非 null 且
+`allowed_session_ids` 为 JSON null；session：JSON array 长度恰为该集合且元素精确相等），再
+`ORDER BY updated_at DESC, conversation_id ASC`，最后 `LIMIT`。
+
+Scope identity 保持精确：`sessions:[A,B]` 不归入 A 或 B；legacy `scope=NULL` 不归入 `all`；不在当前
+catalog 的 unknown session 不归属任何主导航。三者都不可从主导航恢复为合法 selection，只读回放、Composer
+禁用、历史 scope 不修改。切换 Source Scope 时先 `clearDisplayed()`（currentKey 置 null，buffer 与后台
+stream context 全保留）并清空列表，再加载数据进入新 scope 的 draft 空态；列表请求带 generation race
+guard，延迟到达的旧 scope response 不得写入新 scope。draft 按 exact scope key 隔离（key 为
+`__draft__:` + canonical `scopeKey()`，如 `__draft__:all`、单 session 为 `__draft__:sessions:["<id>"]`），
+create await 期间切换 scope 不会覆写 A 的 draft。
+
+URL 恢复不引入 Vue Router：窄 helper 只管理 `conversation_id` query。mount 先 load session catalog，
+有 ID 时先读 detail，按 immutable scope 恢复合法 navigation selection，再请求该 scope 的列表；无 ID
+保持 unselected。draft 第一次发送经 `POST /api/conversations` 转正时通过 `send()` 的 `onCreated` 回调
+立即写入 URL，保证流式过程中 reload 也能恢复当前 conversation。
+
 ## 7. Trusted URL rendering 与 Sources 展示
 
 ### Decision
@@ -193,4 +227,11 @@ Judge 对回答做了强相关性认证。
 | New Chat 或删除当前项意外回到 all | Sidebar 组件测试验证历史同步后 New Chat、rename、delete-current 均保持合法 selector scope |
 | 正文中的相似或被模型扩展的 URL 被错误变成外链 | `tests/test_evidence.py`、`web/tests/markdown.test.ts`、`web/tests/AssistantTurn.test.ts` 与真实 Trace `trace-012be0958f9a404eb6c1aea943694e73`；只渲染最终 Source snapshot 中完全一致的 URL |
 | Sources 长列表默认撑开正文、多个回答共享展开状态 | `web/tests/SourcesBlock.test.ts` 与真实 Trace `trace-e9e15f4d3d2f499291271f011a18edd4`；每个实例默认 collapsed、展开后保留完整详情 |
-| TUI 回归 | test_tui_app/test_tui_projection/test_cli_renderer/test_cli 全绿（472 tests 全量通过） |
+| 某 scope 的历史排在全局最近 100 之后，Sidebar 客户端过滤后丢失 | SQLite exact identity predicate → order → limit 回归（`test_session_selector_applies_scope_predicate_before_limit`）；真实 E2E Case B/C/D 验证三个 scope 列表彼此隔离 |
+| mount 即展示全部历史 Conversation、无 unselected 状态 | 真实 E2E Case A：0 个 `/api/conversations` 请求、New Chat/Composer disabled、主区与 sidebar 双引导 |
+| A→B 切换后延迟到达的 A 列表覆盖 B | conversations store generation race guard 测试；E2E Case C |
+| unselected 状态 send/New Chat 静默 fallback 到 all | `compileNavigationScope` 返回 null + store 级显式拒绝测试；E2E Case A 步骤 5 |
+| A 的 create await 期间切到 B，draft scope 被覆写 | scope-keyed draft buffer + create-await race store 测试 |
+| draft 转正后 URL 缺失 conversation_id，流式中 reload 丢定位 | `send()` `onCreated` 回调 + store 测试；E2E Case B 步骤 12 与 Case E 恢复验证 |
+| legacy null / unknown session / `sessions:[A,B]` 被误归入合法主导航 | SQLite predicate（array length + exact set）与 `restoreNavigationScope` 拒绝映射测试；真实库 smoke 56/57 归属核对 |
+| TUI 回归 | test_tui_app/test_tui_projection/test_cli_renderer/test_cli 全绿（472 tests 全量通过）；`list_conversations()` 无参调用保留全局列表行为 |
