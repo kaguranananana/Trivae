@@ -316,6 +316,14 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_retrieval_score_parser.add_argument("--lexical-variant", type=Path, required=True)
     benchmark_retrieval_score_parser.add_argument("--semantic-variant", type=Path, required=True)
     benchmark_retrieval_score_parser.add_argument("--output", type=Path, required=True)
+    benchmark_judge_parser = benchmark_subparsers.add_parser(
+        "judge", help="Tier 2 atomic-claim/citation judgment over persisted benchmark runs"
+    )
+    benchmark_judge_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_judge_parser.add_argument("--evaluation-database", type=Path, default=None)
+    benchmark_judge_parser.add_argument("--records", type=Path, required=True, help="raw-records.json from a benchmark run")
+    benchmark_judge_parser.add_argument("--cases-dir", type=Path, required=True)
+    benchmark_judge_parser.add_argument("--output", type=Path, required=True)
     retrieval_metrics_parser.add_argument("--sealed", type=Path, required=True)
     retrieval_metrics_parser.add_argument("--annotations", type=Path, required=True)
     retrieval_metrics_parser.add_argument(
@@ -558,6 +566,25 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
                 )
             print(json.dumps({"status": outcome["status"]}, ensure_ascii=False, indent=2))
             return 0 if outcome["status"] == "completed" else 1
+
+        if args.benchmark_command == "judge":
+            from trivae.evaluation.benchmark.orchestrator import judge_records
+
+            records = json.loads(Path(args.records).read_text(encoding="utf-8"))
+            settings = load_settings()
+            with create_application(
+                args.database,
+                evaluation_database_path=args.evaluation_database,
+            ) as application:
+                outcome = judge_records(
+                    application=application,
+                    records=records,
+                    cases_dir=args.cases_dir,
+                    settings=settings,
+                    output_path=args.output,
+                )
+            print(json.dumps(outcome, ensure_ascii=False, indent=2))
+            return 0
 
         if args.benchmark_command == "run":
             suite = EvaluationSuite.from_json(args.suite)

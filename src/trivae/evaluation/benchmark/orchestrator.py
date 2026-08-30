@@ -10,8 +10,10 @@ import asyncio
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping, Sequence
 
 from trivae.bootstrap.application import TrivaeApplication
+from trivae.config.settings import ModelSettings
 from trivae.evaluation.contracts import (
     EvaluationCaseBundle,
     EvaluationContractError,
@@ -300,6 +302,115 @@ def run_module_retrieval_scoring(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(scores, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return {"status": "completed", "scores": scores}
+
+
+def judge_records(
+    *,
+    application: TrivaeApplication,
+    records: Sequence[Mapping[str, object]],
+    cases_dir: Path,
+    settings: ModelSettings,
+    output_path: Path,
+) -> dict[str, object]:
+    """Tier 2 judge：对已落盘的 benchmark runs 做 atomic claim / citation 判定。
+
+    evidence 摘要通过现有 get_message_context Tool facade 读取（bounded）；
+    判定产物只写本地（data/evaluation/benchmark/），不含聊天正文。
+    """
+
+    import asyncio
+
+    from trivae.capabilities.contracts import GetMessageContextInput
+    from trivae.evaluation.benchmark.judge import LLMClaimJudge
+
+    cases = load_cases_dir(cases_dir)
+    judge = LLMClaimJudge(settings)
+    judgments: list[dict[str, object]] = []
+    for record in records:
+        run_id = record.get("run_id")
+        case_id = record.get("case_id")
+        variant_id = record.get("variant_id")
+        if not (isinstance(run_id, str) and isinstance(case_id, str) and isinstance(variant_id, str)):
+            raise EvaluationContractError("benchmark record identity fields are invalid")
+        case = cases.get(case_id)
+        if case is None:
+            raise EvaluationContractError(f"judge record references unknown case {case_id}")
+        run = application.read_evaluation_run(run_id)
+        query_result = run.query_result or {}
+        content_blocks = query_result.get("content_blocks") or []
+        citation_bindings = query_result.get("citation_bindings") or []
+        if not isinstance(content_blocks, Sequence) or isinstance(content_blocks, str):
+            content_blocks = []
+        if not isinstance(citation_bindings, Sequence) or isinstance(citation_bindings, str):
+            citation_bindings = []
+        if not content_blocks:
+            # 旧 projection 或 no_result 形态：无 block 可判，显式跳过。
+            judgments.append(
+                {
+                    "run_id": run_id,
+                    "case_id": case_id,
+                    "variant_id": variant_id,
+                    "status": "skipped_no_content_blocks",
+                }
+            )
+            continue
+        evidence_sources = query_result.get("evidence_sources") or {}
+        message_ids: list[str] = []
+        for source in evidence_sources.get("sources", ()) if isinstance(evidence_sources, Mapping) else ():
+            if isinstance(source, Mapping):
+                for message_id in source.get("message_ids", ()):
+                    if isinstance(message_id, str) and message_id not in message_ids:
+                        message_ids.append(message_id)
+        excerpts: dict[str, str] = {}
+        for message_id in message_ids[:20]:
+            envelope = application.invoke_tool(
+                "get_message_context",
+                GetMessageContextInput(message_id=message_id, context_before=0, context_after=0),
+                case.data_access_scope,
+            )
+            if envelope.error is not None or envelope.data is None:
+                excerpts[message_id] = ""
+                continue
+            messages = getattr(envelope.data, "messages", ())
+            excerpts[message_id] = messages[0].normalized_content if messages else ""
+        judgment = asyncio.run(
+            judge.judge(
+                run_id=run_id,
+                case_id=case_id,
+                variant_id=variant_id,
+                content_blocks=content_blocks,
+                citation_bindings=citation_bindings,
+                evidence_excerpts=excerpts,
+            )
+        )
+        judgments.append(judgment.to_dict())
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(judgments, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def _collect_rate(name: str) -> list[float]:
+        values: list[float] = []
+        for item in judgments:
+            if not isinstance(item, dict):
+                continue
+            value = item.get(name)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                values.append(float(value))
+        return values
+
+    grounded = _collect_rate("grounded_claim_rate")
+    citation = _collect_rate("citation_correctness")
+    judged_count = sum(1 for item in judgments if isinstance(item, dict) and "grounded_claim_rate" in item)
+    skipped_count = sum(
+        1 for item in judgments if isinstance(item, dict) and item.get("status") == "skipped_no_content_blocks"
+    )
+    return {
+        "status": "completed",
+        "judged": judged_count,
+        "skipped": skipped_count,
+        "grounded_claim_rate_macro": sum(grounded) / len(grounded) if grounded else None,
+        "citation_correctness_macro": sum(citation) / len(citation) if citation else None,
+        "output": str(output_path),
+    }
 
 
 def _count_by(records: list[dict[str, object]], key: str) -> dict[str, int]:
