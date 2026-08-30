@@ -872,3 +872,33 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - Q：时间错配如何定位？
   Evidence：`archive_latest` Host resolution、UTC/millisecond assertions、`TIME_RANGE_MISMATCH`
   regression、Artifact/Conversation round-trip。
+
+## resume-benchmark-v1 Measurement Substrate 事实索引（2026-08-30）
+
+### Recorded facts（所有数字来自真实运行，可由 Evaluation Store + Trace 复查）
+
+- **固定 Snapshot + Environment Lock**：canonical snapshot `snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14`；`BenchmarkEnvironmentManifest` pin canonical snapshot_id + lexical（unicode61+cjk-bigram-v2, 473236 rows）+ semantic `SemanticIndexIdentity`（Qwen3-Embedding-0.6B/1024d/last_token/normalized + chunker v1 config）；pre-run gate 三查不过整体失败。DatasetSnapshot 契约零改动——同一数据不同 embedding 模型的比较属于 per-variant index identity，v1 不解决。
+- **数据集（当前状态）**：calibration 10 case + development 37 case，六类覆盖（exact_lexical 10 / citation_evidence 6 / semantic_paraphrase 8 / context_recovery 3 / temporal_overview 6 / zero_result 4）；全部 provisional（adjudicated=false，等待人工 review）。exhaustive 声明均由确定性 LIKE 全库扫描/SQL COUNT 证明；paraphrase/context 如实标 partial（target 集合）。holdout 在系统冻结后才生成（构造时序隔离），当前不存在。
+- **Ablation Matrix**：A lexical-only（context_window_limit=0）/ B +semantic（0）/ C +自动 expansion（唯一差异轴）/ C2 +get_message_context / D 七工具 full-system。context 关闭经 `ExecutionOverride.context_window_limit` 在 runtime 工具输入构造点钳制，`context_expansion_override` hard check 验证 Trace 中执行值 ≤ limit。
+- **Tier 1 dev 结果（37 case × 5 variant = 185 真实 LLM run，1 rep）**：
+  - execution_completed：A 0.595 / B 0.784 / C 0.757 / C2 0.784 / D 0.838（无条件指标；provider_failure 是最大失败源，A=15、D=6）
+  - valid_answer：A 0.459 / B 0.730 / C 0.703 / C2 0.784 / D 0.811
+  - evidence_recall（条件指标，分母=双方完成的同 case 配对才可比）：B−A paired mean +0.227（11 common，5 up/1 down/5 tie）；C−B −0.017；C2−C −0.046；D−A +0.139（9 common）
+  - false_zero_result：A 1.0 / B 1.0 / C 0.963 / C2 1.0 / D 1.0——no_result positive-proof contract 在真实运行中基本杜绝了"没拿到结果就说没有"
+  - expected_fact_answer_coverage（answer_text 命中）：B/C 0.93-1.0，A 0.889
+  - context_recovery：全线 ≤0.5（n 极小）——回复语境恢复是真实系统性弱点
+- **Module-level（确定性，不调 LLM）**：exact_lexical 类 lexical Recall@10=1.0/MRR=1.0（corpus scope），semantic 0.14-0.52；semantic_paraphrase 类 semantic MRR@10 0.25 vs lexical 0.0——semantic 的收益在 paraphrase 类显现，URL 精确谓词 lexical 完胜。semantic 命中按 range（anchor+恢复范围）判定——anchor 精确匹配会系统性低估 semantic。
+- **Tier 2（D 系统，llm_assisted_provisional，29 judged/7 skipped）**：Grounded Claim Rate（atomic claim 单位）0.750；Citation Correctness 0.610。citation 存在≠citation 正确：finalizer 只保证可解析，蕴含判定靠 judge+人工抽查升级。
+- **Benchmark 抓到的真实 Bug（before/after）**：
+  1. `trace_limitations` 收集逐条目 projection-path 标记（628-hit run 产生 511 个"不同"字符串）突破 200 上限 → 归一化下标 + 有界截断（commit eb96e16）。
+  2. `AnswerDeltaParseError` 未分类异常逃逸 query 边界 → problem record 记录，benchmark 编排层 per-case 隔离（commit b74c7c3）；生产修复排入 v2。
+  3. `eval` CLI 缺 dotenv 加载，真实 provider 无法认证 → 补 `--env-file`（commit eb96e16）。
+
+### Interview Defense Notes
+
+- Q：为什么需要固定 Snapshot？→ 相对时间锚 archive_latest（非机器时钟）；Runner 每 case 重解析拒绝漂移；2699/100 的回归固定进 dev set。
+- Q：Ground Truth 怎么保证不是编的？→ 只有确定性 predicate（URL/精确 token/窗口 COUNT）可 exhaustive；semantic 类如实标 partial/target；全部 provisional 待人工裁决；review pack 逐条列出验证方式。
+- Q：Semantic 到底有没有用？→ 分类型回答：URL 精确谓词 lexical 完胜（Recall@10 1.0 vs ≤0.52）；paraphrase 类 semantic MRR 0.25 vs lexical 0.0；系统级 B−A evidence_recall 配对 +0.227。semantic 不是全面优于 lexical，是互补。
+- Q：Context Expansion 有没有用？→ module 层 expansion 能恢复 reply（ui-skill case recovery=1.0）但 bounded 窗口够不着远距离回复；end-to-end context_recovery 全线≤0.5——显式 deepening tool 的使用是当前短板，这是 benchmark 暴露的产品迭代方向，不是遮掩项。
+- Q：怎么防止 Evaluation Overfit？→ dev/holdout 时序隔离（holdout 冻结后才存在）；dev 修复全部走通用机制（两个 substrate bug 修复即证据）；holdout 一次定稿不换题。
+- Q：数字会不会是调出来的？→ 每个数字可复查：Evaluation Store runs（run_id/trace_id）→ Trace → 逐层 retrieval_calls/evidence_sources 投影；报告 JSON 带 unavailable reasons 与分母；provider_failure 不进条件分母但无条件完成率并列呈现。
