@@ -15,6 +15,10 @@ class AgentRuntimeContractError(ValueError):
     """Runtime 请求违反公开契约。"""
 
 
+class ModelBehaviorError(ValueError):
+    """模型公开输出违反 Runtime 约定，必须被归类为可见的失败终态。"""
+
+
 @dataclass(frozen=True)
 class ModelContextMessage:
     """模型可见的有限历史消息；trusted scope 不允许通过这个类型传入。"""

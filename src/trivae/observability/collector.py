@@ -19,11 +19,15 @@ from trivae.observability.contracts import (
     TraceStage,
     TraceStore,
 )
+from trivae.query.evidence import ToolResultRecord
 from trivae.query.runtime.contracts import (
     AgentRunRequest,
     AgentRuntime,
+    ModelBehaviorError,
+    RuntimeErrorInfo,
     RuntimeEvent,
     RuntimeResult,
+    RuntimeToolCall,
 )
 
 
@@ -450,11 +454,37 @@ class TraceableAgentRuntime(AgentRuntime):
         """逐条映射非 delta RuntimeEvent，并保留底层 terminal result。"""
 
         terminal: RuntimeResult | None = None
+        # 记录 observer 失败前已经观察到的 canonical provenance，确保失败终态不丢失真实进度。
+        observed_tool_calls: list[RuntimeToolCall] = []
+        observed_tool_results: list[ToolResultRecord] = []
+        last_usage: Mapping[str, int | float] | None = None
+        last_tool_round = 0
+        last_event: RuntimeEvent | None = None
         stream_iterator = stream(request) if abort_event is None else stream(request, abort_event)
         try:
             async for event in stream_iterator:
                 if not isinstance(event, RuntimeEvent):
                     raise TypeError("runtime stream must yield RuntimeEvent values")
+                # 先保存当前事件及其 terminal 快照，再调用 live observer；parser 可能在 observer 内失败。
+                last_event = event
+                if event.tool_call is not None and event.tool_call not in observed_tool_calls:
+                    observed_tool_calls.append(event.tool_call)
+                if event.tool_result is not None and event.tool_result not in observed_tool_results:
+                    observed_tool_results.append(event.tool_result)
+                if event.result is not None:
+                    for tool_call in event.result.tool_calls:
+                        if tool_call not in observed_tool_calls:
+                            observed_tool_calls.append(tool_call)
+                    for tool_result in event.result.tool_results:
+                        if tool_result not in observed_tool_results:
+                            observed_tool_results.append(tool_result)
+                    if event.result.usage is not None:
+                        last_usage = event.result.usage
+                    last_tool_round = max(last_tool_round, event.result.tool_rounds)
+                if event.usage is not None:
+                    last_usage = event.usage
+                if event.tool_round is not None:
+                    last_tool_round = max(last_tool_round, event.tool_round)
                 if self._runtime_event_observer is not None:
                     # 同一 RuntimeEvent 先进入 live projection，再由 persistent mapper选择可落盘事实。
                     self._runtime_event_observer(event)
@@ -464,6 +494,42 @@ class TraceableAgentRuntime(AgentRuntime):
             if terminal is None:
                 raise RuntimeError("runtime stream ended without a terminal result")
             return terminal
+        except ModelBehaviorError as exc:
+            # 模型输出解析失败是 Runtime 的已知行为错误：保留稳定 type，转换为失败 terminal，禁止裸异常穿透 Query。
+            if last_event is None:
+                raise
+            result = RuntimeResult(
+                final_answer=None,
+                provider=last_event.provider,
+                model=last_event.model,
+                termination="failed",
+                tool_calls=tuple(observed_tool_calls),
+                error=RuntimeErrorInfo(
+                    code="RUNTIME_ERROR",
+                    message="agent runtime execution failed",
+                    category="model_behavior",
+                    diagnostic_type=type(exc).__name__,
+                    exception_type=type(exc).__name__,
+                ),
+                usage=last_usage,
+                tool_rounds=last_tool_round,
+                run_id=last_event.run_id or (last_event.result.run_id if last_event.result else None),
+                tool_results=tuple(observed_tool_results),
+            )
+            failed_event = RuntimeEvent(
+                type="failed",
+                provider=result.provider,
+                model=result.model,
+                sequence=last_event.sequence + 1,
+                result=result,
+                run_id=result.run_id,
+                usage=result.usage,
+            )
+            if self._runtime_event_observer is not None:
+                # failed event 不再携带 content delta；live adapter 可以明确关闭开放段并展示失败。
+                self._runtime_event_observer(failed_event)
+            self._map_runtime_event(failed_event)
+            return result
         except Exception as exc:
             # 先记录稳定异常类型，再原样抛出，业务层仍能看到真实根因。
             self._emit_runtime_exception(exc)

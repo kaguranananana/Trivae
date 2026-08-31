@@ -126,6 +126,24 @@ class _StreamingRuntime:
         )
 
 
+class _MalformedAnswerStreamRuntime:
+    """模拟 provider 在 answer delta 阶段输出非法 JSON。"""
+
+    async def stream(self, request):
+        """只产生触发 parser 的 delta，验证 Runtime 自己发出 failed terminal。"""
+
+        yield RuntimeEvent("run_started", "test-provider", "test-model", 1, run_id="malformed-run")
+        yield RuntimeEvent("turn_started", "test-provider", "test-model", 2, run_id="malformed-run")
+        yield RuntimeEvent(
+            "content_delta",
+            "test-provider",
+            "test-model",
+            3,
+            text='{"content_blocks":[],}',
+            run_id="malformed-run",
+        )
+
+
 class _ClosableRuntime:
     """用于验证 live observer 失败时 async generator 仍会显式关闭。"""
 
@@ -457,6 +475,28 @@ class ObservabilityTests(unittest.TestCase):
             projection = application.read_trace(result.trace_id)
             self.assertEqual(projection.terminal_status, "failed")
             self.assertTrue(any(item.failure.error_code == "RUNTIME_TEST_FAILURE" for item in projection.failures))
+            self.assertEqual(len(application.read_conversation(result.conversation_id).messages), 0)
+            application.close()
+
+    def test_answer_delta_parse_error_becomes_runtime_terminal(self) -> None:
+        """流式答案解析异常必须归类为 Runtime failure，而不是裸异常。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            application = create_application(
+                Path(directory) / "malformed-answer.sqlite3",
+                agent_runtime=_MalformedAnswerStreamRuntime(),
+            )
+            result = asyncio.run(application.query(QueryRequest("malformed", ExecutionScope())))
+            self.assertFalse(result.is_successful)
+            self.assertEqual(result.runtime_result.termination, "failed")
+            self.assertIsNotNone(result.runtime_result.error)
+            assert result.runtime_result.error is not None
+            self.assertEqual(result.runtime_result.error.code, "RUNTIME_ERROR")
+            self.assertEqual(result.runtime_result.error.category, "model_behavior")
+            self.assertEqual(result.runtime_result.error.exception_type, "AnswerDeltaParseError")
+            projection = application.read_trace(result.trace_id)
+            self.assertEqual(projection.terminal_status, "failed")
+            self.assertTrue(any(item.failure.error_code == "RUNTIME_ERROR" for item in projection.failures))
             self.assertEqual(len(application.read_conversation(result.conversation_id).messages), 0)
             application.close()
 

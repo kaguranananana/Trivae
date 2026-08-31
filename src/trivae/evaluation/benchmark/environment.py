@@ -196,6 +196,7 @@ def verify_environment(
     database_path: Path,
     snapshot: DatasetSnapshot,
     semantic_index_identity: str,
+    git_commit: str | None = None,
 ) -> EnvironmentGateResult:
     """pre-run gate：逐项对比 live 环境与 pinned manifest，任一不匹配即整体失败。"""
 
@@ -230,6 +231,18 @@ def verify_environment(
             "passed": semantic_match,
             "expected": manifest.semantic_index,
             "actual": semantic_index_identity,
+        }
+    )
+
+    # 默认读取当前仓库 HEAD；测试或离线验证可显式传入待比较的 commit。
+    actual_git_commit = git_commit if git_commit is not None else _git_commit()
+    git_match = actual_git_commit == manifest.git_commit
+    checks.append(
+        {
+            "name": "git_commit",
+            "passed": git_match,
+            "expected": manifest.git_commit,
+            "actual": actual_git_commit,
         }
     )
 

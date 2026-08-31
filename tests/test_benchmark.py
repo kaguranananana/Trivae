@@ -7,6 +7,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from trivae.bootstrap.application import create_application
@@ -18,14 +19,17 @@ from trivae.evaluation.benchmark.environment import (
     verify_environment,
 )
 from trivae.evaluation.benchmark.failures import evaluate_case_failure
+from trivae.evaluation.benchmark.freeze import capture_freeze_record, verify_freeze_record
 from trivae.evaluation.benchmark.gt import build_case_ground_truth
 from trivae.evaluation.benchmark.metrics import evaluate_end_to_end_case, score_expansion, score_ranking
 from trivae.evaluation.benchmark.report import aggregate_metric_records, render_markdown
 from trivae.evaluation.checks import query_result_snapshot, run_deterministic_checks
 from trivae.evaluation.contracts import (
+    CaseReference,
     DatasetSnapshot,
     EvaluationCaseBundle,
     EvaluationContractError,
+    EvaluationSuite,
     ReferenceEvidence,
     ReferenceFinding,
     ReferenceProvenance,
@@ -775,6 +779,7 @@ class EnvironmentAndIntegrationTests(unittest.TestCase):
                 database_path=database_path,
                 snapshot=DatasetSnapshot.from_database(database_path),
                 semantic_index_identity="semantic-index:test",
+                git_commit=loaded.git_commit,
             )
             self.assertTrue(passed.passed)
             failed = verify_environment(
@@ -782,6 +787,7 @@ class EnvironmentAndIntegrationTests(unittest.TestCase):
                 database_path=database_path,
                 snapshot=DatasetSnapshot.from_database(database_path),
                 semantic_index_identity="semantic-index:other",
+                git_commit=loaded.git_commit,
             )
             self.assertFalse(failed.passed)
 
@@ -815,6 +821,79 @@ class EnvironmentAndIntegrationTests(unittest.TestCase):
                 asyncio.run(application.evaluate_case(case, variant))
             self.assertEqual(runtime.requests[0].context_window_limit, 0)
             self.assertEqual(runtime.requests[0].available_capabilities, ("search_messages",))
+
+    def test_gate_two_freeze_records_case_and_variant_identity(self) -> None:
+        """冻结记录必须能发现 Case GT 或 Variant 配置的漂移。"""
+
+        finding = _finding("relevant", "gt.relevant", "x", (_message_evidence("m1"),))
+        adjudicated_provenance = replace(_provenance(), adjudicated=True)
+        adjudicated_evidence = replace(finding.reference_evidence[0], provenance=adjudicated_provenance)
+        adjudicated_finding = replace(
+            finding,
+            provenance=adjudicated_provenance,
+            reference_evidence=(adjudicated_evidence,),
+        )
+        case = _case((adjudicated_finding,))
+        case = replace(case, provenance=replace(case.provenance, notes="human adjudication: Accept"))
+        suite = EvaluationSuite(
+            suite_id="resume-benchmark-test",
+            version=1,
+            kind="core",
+            case_references=(CaseReference(case.case_id, case.version),),
+            description="test suite",
+            created_at="2026-08-31T00:00:00+00:00",
+        )
+        variant = ControlledVariant(
+            variant_id="bench-test",
+            code_version="commit:test",
+            provider="test",
+            model="test-model",
+        )
+        variants = tuple(replace(variant, variant_id=f"bench-test-{index}") for index in range(5))
+        environment = BenchmarkEnvironmentManifest(
+            benchmark="resume-benchmark-test",
+            canonical_snapshot_id=_SNAPSHOT.snapshot_id,
+            lexical_index={"present": True, "message_count": 3},
+            semantic_index="semantic-index:test",
+            git_commit="commit:test",
+            created_at="2026-08-31T00:00:00+00:00",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            holdout_dir = Path(directory) / "holdout"
+            record = capture_freeze_record(
+                benchmark="resume-benchmark-test",
+                execution_commit="commit:test",
+                frozen_at="2026-08-31T00:00:00+00:00",
+                suite=suite,
+                dev_cases={case.case_id: case},
+                calibration_cases={},
+                variants=variants,
+                environment=environment,
+                holdout_dir=holdout_dir,
+            )
+            self.assertEqual(record.ordered_dev_case_identities, (case.identity,))
+            self.assertEqual(record.gt_adjudication["accept"], 1)
+            passed = verify_freeze_record(
+                record,
+                suite=suite,
+                dev_cases={case.case_id: case},
+                calibration_cases={},
+                variants=variants,
+                environment=environment,
+                holdout_dir=holdout_dir,
+            )
+            self.assertTrue(passed.passed)
+            drifted_case = replace(case, query="drifted query")
+            drifted = verify_freeze_record(
+                record,
+                suite=suite,
+                dev_cases={drifted_case.case_id: drifted_case},
+                calibration_cases={},
+                variants=variants,
+                environment=environment,
+                holdout_dir=holdout_dir,
+            )
+            self.assertFalse(drifted.passed)
 
 
 if __name__ == "__main__":

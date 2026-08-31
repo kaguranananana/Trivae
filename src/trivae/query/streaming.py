@@ -9,7 +9,7 @@ from typing import Any, Literal, cast
 
 from trivae.observability.contracts import NormalizedQueryEvent
 from trivae.query.evidence import ToolResultRecord
-from trivae.query.runtime.contracts import RuntimeEvent
+from trivae.query.runtime.contracts import ModelBehaviorError, RuntimeEvent
 
 _TOOL_DETAIL_MAX_ITEMS = 20
 _TOOL_DETAIL_MAX_FIELD_CHARS = 800
@@ -289,7 +289,7 @@ def _bounded_detail_value(value: object) -> tuple[str, bool]:
     return f"{rendered[: _TOOL_DETAIL_MAX_FIELD_CHARS - 1]}…", True
 
 
-class AnswerDeltaParseError(ValueError):
+class AnswerDeltaParseError(ModelBehaviorError):
     """Provider 正文流不符合 final answer 的 JSON/plain-text lexical contract。"""
 
 
