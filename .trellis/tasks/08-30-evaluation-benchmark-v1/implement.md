@@ -4,17 +4,16 @@
 > 四阶段：Measurement Substrate → Benchmark Dataset → 干净 Ablation → Judge + 冻结后 holdout。
 > 每阶段末尾有 review gate；gate 未过不进入下一阶段。
 >
-> **当前状态（2026-08-31，第二次更新）**：**Human GT Adjudication Gate 已完成**——47/47 case
-> 人工裁决（Accept 26 / Modify 21 / Reject 0，calibration 6+4 / development 20+17），全部
-> gt finding 与 evidence 的 `provenance.adjudicated=true`；deterministic audit 重跑 green
-> （47 cases / 47 adjudicated / 0 error / 0 warning，`data/evaluation/benchmark/gt-audit.json`）。
-> 21 个 Modify case `version→2`（run identity 含 case version，旧 provisional run 保持 v1 身份），
-> 两个 suite `version→2` 并同步 case 引用；review pack 已重生成为裁决后存档（local-only）。
-> audit contract 按裁决修正：exact_lexical/citation_evidence 允许 partial/target（target URL
-> exhaustive ≠ query corpus exhaustive）+ occurrence set 重扫等值校验；带日期 zero-result query
-> 必须显式 UTC（生产唯一正式日历语义）；token 零命中证明重扫；adjudication 完整性 warning。
-> **停在 Gate 2 freeze 之前**：正式 dev rerun（37×5）须待 freeze commit / environment /
-> variant fingerprint 确认后进行；holdout 仍未生成（有意，时序隔离）。不要 archive 本任务。
+> **当前状态（2026-09-01，Stage 3 收口）**：**Human GT Adjudication Gate、Gate 2
+> Development Freeze、Module Retrieval、Failure-driven iteration、最终 clean 37×5 和 Tier 1
+> / Tier 2 Development Evaluation 均已完成**。47/47 case 已人工裁决（Accept 26 / Modify 21 /
+> Reject 0；calibration 10 / development 37），deterministic audit 为 green（47 cases / 47
+> adjudicated / 0 error / 0 warning，`data/evaluation/benchmark/gt-audit-stage3-final.json`）。
+> Gate 2 使用 ordered versioned Case identities + canonical Variant configuration text 作为可复现
+> identity；execution commit 为 `b1f7b78...`，最终 clean execution commit 为
+> `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`。最终 headline 只使用 Development 37×5=185
+> runs；calibration 排除，holdout 尚不存在。当前 **Stage 3 Complete / Ready for Gate 3**，不
+> 进入 Gate 3，不生成 holdout；不要 archive 本任务。
 
 ---
 
@@ -73,10 +72,10 @@
 ### 2.3 冻结
 - [x] development cases（含已知 failure regression）→ `evaluation/cases/benchmark/dev/`（提交）
 - [x] `evaluation/suites/resume-benchmark-dev-v1.json`（提交；裁决后 suite version→2）
-- [ ] 冻结记录：时间、dev 清单 hash（提交）
+- [x] 冻结记录：时间、ordered versioned dev identity、canonical Variant configuration text（提交：`evaluation/snapshots/resume-benchmark-v1-freeze.json`）
 - [x] **本阶段不创建任何 holdout 文件**（holdout 推迟到 Gate 3 冻结后的 Stage 4.0）
-- [ ] 无效条目预声明规则写入冻结记录：仅 (a) GT 与 Snapshot 事实矛盾 (b) 重复 (c) 数据损坏 三种情况允许替换，且必须记录原因
-- [ ] 数量口径：calibration（10）不计入最终 benchmark 分母；final split = dev 37 + holdout 16~23 = 53~60
+- [x] 无效条目预声明规则写入冻结记录：仅 (a) GT 与 Snapshot 事实矛盾 (b) 重复 (c) 数据损坏 三种情况允许替换，且必须记录原因
+- [x] 数量口径：Development headline = 37 cases；calibration（10）排除；holdout absent，不生成 53~60 的 full split
 
 **Gate 2（用户 review）**：dev GT 逐条审核完成；dev 集冻结确认。
 
@@ -85,22 +84,39 @@
 ## Stage 3: 干净 Ablation（只看 dev）
 
 ### 3.1 Retrieval-only（确定性，不调 LLM）
-- [ ] Type A/B case × {lexical, semantic} 全量跑 → Recall@5/10、Hit@K、MRR@10（exhaustive→corpus scope；target→Target Recall）
-- [ ] context ablation（module 层 before/after 0 vs 生产默认）→ Context Recovery（retrieval 侧）
+- [x] Type A/B case × {lexical, semantic} 全量跑 → Recall@5/10、Hit@K、MRR@10（exhaustive→corpus scope；target→Target Recall；`data/evaluation/benchmark/stage3-module-retrieval.json`）
+- [x] context ablation（module 层 before/after 0 vs 生产默认）→ Context Recovery（retrieval 侧；无 required context 的 query 显式记为 not applicable）
 
 ### 3.2 End-to-End（真实 LLM，1 rep，dev only）
-- [ ] pre-run gate → dev case × A/B/C/C2/D 五 variant
-- [ ] Evidence Recall / Context Recovery / Coverage Status Accuracy / Truncation Accuracy / Expected Fact Answer Coverage / False+Verified Zero-Result / completion rates
-- [ ] latency / tool calls / tokens 诊断聚合
-- [ ] 跨 Variant 归因（B−A / C−B / C2−C）在 report 层产出
+- [x] pre-run gate → dev case × A/B/C/C2/D 五 variant（最终 clean = 185 runs）
+- [x] Evidence Recall / Context Recovery / Coverage Status Accuracy / Truncation Accuracy / Expected Fact Answer Coverage / False+Verified Zero-Result / completion rates
+- [x] latency / tool calls / tokens 诊断聚合
+- [x] 跨 Variant 归因（B−A / C−B / C2−C）在 report 层产出；D 与其他 Variant 明确为多变量差异
 
 ### 3.3 迭代纪律（只允许 dev）
-- [ ] 每修复：保存 failure artifact → root cause → 通用机制修复 → 重跑同 case → before/after 留档
-- [ ] 禁止针对单 case 特殊逻辑；禁止查看 holdout（目录隔离 + 纪律）
+- [x] 每修复：保存 failure artifact → root cause → 通用机制修复 → 重跑同 case → before/after 留档（first / targeted / final artifacts 已保留）
+- [x] 禁止针对单 case 特殊逻辑；禁止查看 holdout（目录隔离 + 纪律）
 
 ### 3.4 冻结 Rerun
-- [ ] 末次修复后：**在冻结 commit 上完整重跑整个 dev suite**（全部 variant），作为最终 dev 数字
-- [ ] 记录冻结 commit；此后任何代码/参数变更都将使本次 full/house 数字作废并需重新 Gate 3
+- [x] 末次修复后：**在 `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f` 上完整重跑整个 dev suite**（全部 variant），作为最终 dev 数字
+- [x] 记录最终 execution commit、环境、Variant identity 和 final rerun identity；后续仅增加 report/documentation artifact，不改变 production behavior
+
+### 3.5 Tier 2 Development Judge
+- [x] D full-system 37 条完成 atomic claim / citation judge；Grounded Claim Rate 与 Citation Correctness 按 `benchmark-judge-v1` 输出
+- [x] 所有 judge item 保持 `llm_assisted_provisional`；8 条有 provisional 判定、29 条 `judge_failed` 显式保留、0 条人工 adjudicated
+- [x] 生成 `data/evaluation/benchmark/stage3-final-judge-audit-queue.json`；未进入人工逐条 adjudication，不把 Tier 2 数字写成 human verified
+
+## Stage 3 completion evidence（2026-09-01）
+
+- **Gate 2 freeze**：`evaluation/snapshots/resume-benchmark-v1-freeze.json`；freeze verification 12/12 passed，environment gate 4/4 passed；`holdout` absent。
+- **Module retrieval**：`data/evaluation/benchmark/stage3-module-retrieval.json`，27 个 Development query，lexical / semantic 均保留 corpus 与 target scope、Recall@5/10、Hit@K、MRR@10 和 context applicability。
+- **First real run**：`data/evaluation/benchmark/stage3-first-real/`，185 条 provisional run；failure artifact 112 条，分类和旧结果不进入 final headline。
+- **Failure-driven iteration**：streaming/provider terminal observation、finalization projection、失败分类和 report denominator/operational/pair aggregation 已修复并有 regression；context recovery / temporal partial coverage 的剩余限制已通过 targeted rerun 复核并显式保留。
+- **Targeted reruns**：`data/evaluation/benchmark/stage3-targeted/`，包含 stream A/C、C2 context 和 D temporal classification 的真实 production Query path 复核。
+- **Final clean**：`data/evaluation/benchmark/stage3-final-real/` + `data/evaluation/benchmark/stage3-final-evaluation.sqlite3`；A/B/C/C2/D 各 37 条，合计 185，final report 只使用这批数据。
+- **Tier 1 report**：`data/evaluation/benchmark/stage3-final-real/report.json` / `report.md`，包含分子/分母/rate/macro、unavailable reason、operational、B−A/C−B/C2−C、failure analysis、freeze/environment identity。
+- **Tier 2 report**：`data/evaluation/benchmark/stage3-final-judge-d.json` 和 audit queue；结果是 LLM-assisted provisional，仍待人工 adjudication。
+- **停止边界**：当前为 **Stage 3 Complete / Ready for Gate 3**；Gate 3、holdout generation、holdout evaluation、full benchmark 尚未执行。
 
 **Gate 3（用户 review）**：dev 最终结果面审 + 系统冻结声明（commit pin + variant fingerprint 记录）。
 

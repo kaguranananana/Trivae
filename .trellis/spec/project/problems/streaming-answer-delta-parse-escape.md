@@ -5,7 +5,7 @@
 - 发现时间：2026-08-30
 - 发现渠道：resume-benchmark-v1 校准 pilot 与 dev 全量运行（`eval benchmark run`）
 - 严重级别：High（单次 provider 行为异常即可终止整个 benchmark variant；生产交互链路同样暴露）
-- 当前状态：**未修复**（记录于 benchmark 运行期间；修复排入下一迭代，修复前 benchmark 如实把该异常计为 provider_failure）
+- 当前状态：**已修复**（最终 execution commit `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`；历史失败仍保留在 first-run artifact）
 
 ## Failure
 
@@ -18,9 +18,10 @@ File "src/trivae/query/streaming.py", line 429, in _feed_object
     raise AnswerDeltaParseError("answer JSON object expected a string key")
 ```
 
-Benchmark 侧证据：`evaluation_runs` 中出现 `terminal_status=exception` 的 run，
-`exception_type` 为 `AnswerDeltaParseError` 的直接传播（run 已由 Runner 落盘，
-异常继续向调用方暴露）。
+Benchmark 侧证据：首轮真实运行曾出现 `AnswerDeltaParseError` 直接传播；修复后
+`AnswerDeltaParseError` 已进入统一的 `ModelBehaviorError` 终态路径，最终 clean
+run 只保留可审计的 completed/failed terminal projection，provider observation 不再
+被后续 content delta 覆盖。历史首轮 run 与最终 clean run 均保留，不覆盖。
 
 ## Root Cause
 
@@ -34,16 +35,22 @@ answer delta 解析是漏网路径——本质是错误分类边界不完整，�
 
 ## Fix
 
-（待实施）在 runtime/adapter 边界把 `AnswerDeltaParseError` 归类为
-`RUNTIME_ERROR / ModelBehaviorError` 终态（与其他 ModelBehaviorError 同一处理），
-不新增 fallback、不重试、不静默吞掉；修复后以同一 case 的 before/after run 留证。
+在 runtime/adapter 边界把 `AnswerDeltaParseError` 归类为
+`RUNTIME_ERROR / ModelBehaviorError` 终态（与其他 ModelBehaviorError 同一处理）；
+同时由 `TraceableAgentRuntime` 保留最近的 provider observation，并由 OpenAI-compatible
+adapter 在 stream 提前结束时将 pending transport facts 附到终态事件。修复不新增
+fallback、不重试、不静默吞掉；真实错误仍显式进入 failed run 和 failure artifact。
 
 ## Impact
 
 - Benchmark：单 case 崩溃曾终止整个 variant（已在 benchmark 编排层隔离为
   per-case provider_failure；该隔离是测量层韧性，不是生产修复）。
-- 生产：交互链路在相同 provider 行为下会把异常直接抛给 interface 层。
+- 生产：相同 provider 行为现在由 query 边界返回分类后的失败终态；interface 层仍可
+  从 Runtime error / Trace observation 定位 provider 或模型行为。
 
 ## Regression
 
-（待修复后补充）用回放 delta 序列的 contract test 断言 query 边界只产出已分类终态。
+- `tests/test_agent_runtime.py` 回归断言 fake provider stream failure 的 failed
+  `RuntimeEvent` 保留 `status_code=502` 与 `exception_type=OSError`；真实 targeted
+  rerun 的 A/C stream case 均无 failure artifact。`tests/test_benchmark.py` 同时覆盖
+  finalization failure 的显式 projection，防止错误再次被误归类为 coverage。

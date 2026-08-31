@@ -1150,3 +1150,40 @@ Implemented Source Scope -> AI Conversation -> Turns web navigation: unselected 
 - identity 纪律：Modify case version→2（run_id 含 case version，旧 185 次 provisional run 保持 v1）；两 suite version→2 + 引用同步（解析校验无 unresolved）。
 - 重跑 audit：47 cases / 47 adjudicated / 0 error / 0 warning / passed。pytest 566 绿、ruff/mypy 干净、gate 三查通过、holdout 不存在。review pack 重生成为裁决后存档（local-only）。
 - 停在 Gate 2 freeze 之前：正式 dev rerun（37×5）待 freeze commit / environment / variant fingerprint；应用脚本 `scripts/apply_gt_adjudication.py`（幂等 + 落库前复核）入库。
+
+
+## Session 47: Complete resume-benchmark-v1 Stage 3 Development Evaluation
+
+**Date**: 2026-09-01
+**Task**: Complete resume-benchmark-v1 Stage 3 Development Evaluation
+**Branch**: `main`
+
+### Summary
+
+完成 Gate 2 freeze 后的真实 Development Evaluation、failure-driven iteration、最终 clean 37x5、Tier 1 report 和 Tier 2 provisional judge；停在 Ready for Gate 3。
+
+### Main Changes
+
+- 完成 module retrieval packet 与 lexical/semantic corpus-target scope 汇总。
+- 完成首轮 185 runs、failure analysis、通用 streaming/finalization/report 修复及 targeted real reruns。
+- 完成最终 clean A/B/C/C2/D 各 37 条，生成 Tier 1 report、freeze/environment verification 与 Tier 2 audit queue。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f` | (see git log) |
+
+### Testing
+
+- [OK] GT audit: 47 cases / 47 adjudicated / 0 error / 0 warning。
+- [OK] Final integrity: 185 distinct runs，5 variants 各 37 case。
+- [OK] Tier 2: 8 provisional judged，29 judge_failed 显式记录，0 human adjudicated。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 等待 Gate 3 review；不生成 holdout，不进入 Stage 4。

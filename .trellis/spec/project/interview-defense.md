@@ -875,6 +875,10 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 
 ## resume-benchmark-v1 Measurement Substrate 事实索引（2026-08-30）
 
+> 本节保留 2026-08-30 的 Measurement Substrate / GT-freeze 前 provisional 记录。其
+> 185-run 数字、旧版 pair 结果和旧 Failure 描述不代表 Stage 3 final；最终 Development
+> Evaluation 只见下一节的 final clean 37×5 结果。
+
 ### Recorded facts（所有数字来自真实运行，可由 Evaluation Store + Trace 复查）
 
 - **固定 Snapshot + Environment Lock**：canonical snapshot `snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14`；`BenchmarkEnvironmentManifest` pin canonical snapshot_id + lexical（unicode61+cjk-bigram-v2, 473236 rows）+ semantic `SemanticIndexIdentity`（Qwen3-Embedding-0.6B/1024d/last_token/normalized + chunker v1 config）；pre-run gate 三查不过整体失败。DatasetSnapshot 契约零改动——同一数据不同 embedding 模型的比较属于 per-variant index identity，v1 不解决。
@@ -911,3 +915,66 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - Q：Context Expansion 有没有用？→ module 层 expansion 能恢复 reply（ui-skill case recovery=1.0）但 bounded 窗口够不着远距离回复；end-to-end context_recovery 全线≤0.5——显式 deepening tool 的使用是当前短板，这是 benchmark 暴露的产品迭代方向，不是遮掩项。
 - Q：怎么防止 Evaluation Overfit？→ dev/holdout 时序隔离（holdout 冻结后才存在）；dev 修复全部走通用机制（两个 substrate bug 修复即证据）；holdout 一次定稿不换题。
 - Q：数字会不会是调出来的？→ 每个数字可复查：Evaluation Store runs（run_id/trace_id）→ Trace → 逐层 retrieval_calls/evidence_sources 投影；报告 JSON 带 unavailable reasons 与分母；provider_failure 不进条件分母但无条件完成率并列呈现。
+
+## resume-benchmark-v1 Stage 3 Development Evaluation 事实索引（2026-09-01）
+
+### Scope / identity
+
+- **Measured fact**：Human GT 为 47/47 adjudicated（Accept 26 / Modify 21 / Reject 0）；其中 Development 37、calibration 10。calibration 不进入 headline 分母，holdout 未生成、未查看、未评测。
+- **Measured fact**：最终 clean rerun 为 `resume-benchmark-dev@v2` 的 37 cases × A/B/C/C2/D 五个 Variant × 1 repetition = **185 runs**；每个 Variant 都有 37 条 EvaluationRun，运行使用真实 `opencode-go / deepseek-v4-flash` provider 和 production `TrivaeApplication.query()` path。
+- **Identity**：Gate 2 freeze record 为 `evaluation/snapshots/resume-benchmark-v1-freeze.json`；freeze execution commit 为 `b1f7b78ba802f853f9cd1cbf7433fe07b2f895c1`，freeze metadata commit 为 `e34c6985a734eb2169e0a48e12a512270ca0c353`，最终 clean execution commit 为 `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`。Case identity 使用 ordered versioned Case identities，Variant identity 使用 canonical configuration text；本仓库不使用 cryptographic digest。
+- **Environment**：canonical Snapshot 为 `snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14`，lexical FTS 为 473236 rows，semantic 为 Qwen/Qwen3-Embedding-0.6B、1024d、last_token、normalized、chunker v1。freeze verification 12/12、environment gate 4/4、GT audit 47/47 且 0 error / 0 warning。
+- **Evidence**：Tier 1 机器报告为 `data/evaluation/benchmark/stage3-final-real/report.json` / `report.md`；raw records、failures、module packet、freeze verification 和 final evaluation database 均保留在 `data/evaluation/benchmark/` 下的对应 artifact。
+
+### Tier 1 final clean results
+
+下表中的 `rate (numerator/denominator; macro; n)` 同时保留加权事实条目 rate 与 case 等权 macro；`n` 是该指标可用的 case 数。`unavailable` 不进入分母，原因保留在机器报告中。
+
+| Variant | completion | valid answer | evidence recall | context recovery | expected fact coverage | false zero / verified zero | coverage / truncation |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A lexical-only | .811 (30/37; 0.811; n=37) | .757 (28/37; 0.757; n=37) | .800 (44/55; macro .733; n=20) | .000 (0/3; .000; n=3) | 1.000 (14/14; 1.000; n=14) | 1.000 (26/26) / .000 (0/4) | unavailable（6）；.333 (2/6) |
+| B lexical+semantic | .973 (36/37; 0.973; n=37) | .919 (34/37; 0.919; n=37) | .738 (48/65; macro .641; n=26) | .000 (0/2; .000; n=2) | .875 (14/16; .875; n=16) | 1.000 (32/32) / 1.000 (4/4) | unavailable（6）；.500 (3/6) |
+| C + auto context | .973 (36/37; 0.973; n=37) | .946 (35/37; .946; n=37) | .742 (49/66; macro .638; n=26) | .333 (1/3; .333; n=3) | .938 (15/16; .938; n=16) | .969 (31/32) / 1.000 (4/4) | unavailable（6）；.500 (3/6) |
+| C2 + explicit context tool | 1.000 (37/37; 1.000; n=37) | .973 (36/37; .973; n=37) | .642 (43/67; macro .574; n=27) | .000 (0/3; .000; n=3) | .750 (12/16; .750; n=16) | .970 (32/33) / 1.000 (4/4) | unavailable（6）；.500 (3/6) |
+| D full-system | 1.000 (37/37; 1.000; n=37) | 1.000 (37/37; 1.000; n=37) | .731 (49/67; macro .694; n=27) | .000 (0/3; .000; n=3) | .938 (15/16; .938; n=16) | 1.000 (33/33) / 1.000 (4/4) | .667 (4/6)；.667 (4/6) |
+
+`coverage_status_accuracy` 在 A/B/C/C2 因 `get_recent_messages` coverage artifact unavailable 而为 unavailable（各 6 条）；D 有 4/6。Temporal GT 的 1d/2d 是 complete，3d/7d/14d/30d 是 partial；系统保留实际 coverage mismatch，不把它改写为通过。
+
+### Module-level retrieval
+
+- `stage3-module-retrieval.json` 包含 27 个 Development retrieval query，并按 exhaustive→corpus、partial→target 分开报告。
+- **Lexical**：corpus Recall@10 = **1.000 (33/33; macro 1.000; n=10)**、Hit@10 = 1.000 (10/10)、MRR@10 = 1.000 (10/10)；target Recall@10 = **.742 (23/31; macro .529; n=17)**、Hit@10 = .529 (9/17)、MRR@10 = .426 (7.25/17)。
+- **Semantic**：corpus Recall@10 = **.364 (12/33; macro .327; n=10)**、Hit@10 = .600 (6/10)、MRR@10 = .550 (5.5/10)；target Recall@10 = **.323 (10/31; macro .284; n=17)**、Hit@10 = .412 (7/17)、MRR@10 = .281 (4.778/17)。
+- Module packet 的 context-expansion observation 为 0/3 positive recovery for lexical 和 semantic；没有 required context 的 query 仍按 not applicable 处理，不能从该 packet 推导 production context uplift。
+
+### Ablation comparison
+
+- **B−A（semantic uplift）**：execution completion +.162（36/37 vs 30/37）；valid answer +.162（34/37 vs 28/37）；evidence recall paired rate **−.075**、macro **−.079**（paired n=19）。因此 semantic 是互补通道，不是对所有 Development query 的全面提升。
+- **C−B（auto context expansion）**：context recovery paired rate **+.500**（paired n=2）；valid answer +.027（35/37 vs 34/37）；evidence recall paired rate 0.000、macro −.023（paired n=25）。样本很小，不能外推总体 uplift。
+- **C2−C（explicit `get_message_context`）**：valid answer +.027（36/37 vs 35/37）；context recovery paired rate **−.333**（paired n=3）；evidence recall paired rate **−.091**、macro −.042（paired n=26）。本轮数据没有支持显式 context tool 的稳定 uplift。
+- **D** 是 full-system candidate；D 与 A/B/C/C2 的差异是多变量 full-system 差异，不能把 D−A 归因给单个组件。
+
+### Operational measurements
+
+- D latency：mean 23,597 ms，P50 **18,658 ms**，P95 **58,174 ms**；tool calls mean 1.84，P50 2，P95 5；tool rounds mean 1.35，P50 1，P95 3。
+- D token usage：input total 961,413（P50 20,150 / P95 91,147），output total 47,215（P50 1,205 / P95 2,144），total tokens 1,008,628（P50 20,821 / P95 92,934）。这些是本地 Snapshot、当前 provider/model 和本次 Development run 的 measured facts，不是生产 SLA。
+
+### Failure-driven iteration and remaining limits
+
+- 首轮真实 185 runs 的 failure artifact 为 112 条：provider_failure 19、coverage_error 17、context_missing 12、zero_result_error 6、retrieval_miss 4、not_observed_within_recorded_depth 54。最终 clean failure artifact 为 108 条：provider_failure 9、coverage_error 18、context_missing 13、answer_generation_error 6、retrieval_miss 3、zero_result_error 2、not_observed_within_recorded_depth 57。
+- 通用修复包含：stream parse/provider transport observation 的终止投影与 `ModelBehaviorError` 边界（`70e1b473...` / `7bac928...`，`tests/test_agent_runtime.py`）；finalization failure 的显式状态/分类及 report 的 denominator、operational、paired comparison 保留（`7bac928...`，`tests/test_benchmark.py`）。targeted artifacts 对 stream A/C 回归通过，对 context/temporal 剩余限制保持显式。
+- 剩余 Failure 主要是 provider/model stochastic output、required context 未被最终 evidence 保留、temporal pagination/coverage 未完整结束，以及 recorded depth 内未观察到 GT relevance。低 Recall/MRR 本身仍是质量结果，不自动归类为 infrastructure failure；本轮未观察到 ranking_failure、router_tool_selection_error 或 evaluation_infrastructure artifact。
+
+### Tier 2 judge boundary
+
+- D 的 37 条 final run 完成 Tier 2 judge：8 条得到 `benchmark-judge-v1` 的 atomic claim / citation 判定，29 条为显式 `judge_failed`（`EvaluationContractError`），0 条 skipped，0 条人工 adjudicated。
+- 8 条 provisional 的 Grounded Claim Rate：case-macro **.278**；事实条目加权 **32/70 = .457**。Citation Correctness：case-macro **.167**；citation 条目加权 **2/10 = .200**。这些数字全部是 **LLM-assisted provisional**，不是 human verified。
+- Judge artifact 为 `data/evaluation/benchmark/stage3-final-judge-d.json`，人工复核队列为 `data/evaluation/benchmark/stage3-final-judge-audit-queue.json`。严格 JSON contract 的失败项被保留，未引入宽松 parser、fallback 或静默降级。
+
+### Interview Defense Notes
+
+- Q：为什么 final 只用这 185 条？→ 因为 first run 是 provisional，targeted run 只用于定位；final clean identity 明确为 `resume-benchmark-dev@v2:37x5:repeat=1`，每个 Variant 37 条，report metadata 固定 execution commit、Snapshot、semantic identity 和 Variant configuration。
+- Q：Semantic 是否提升？→ Module 结果显示 lexical 在 exact/corpus predicate 上 Recall@10=1.0，semantic corpus Recall@10=.364；最终 B−A completion/valid answer 上升，但 paired evidence recall 下降，所以结论是互补而非全面提升。
+- Q：Context tool 是否已证明有效？→ 没有。C−B 只在 paired n=2 的 context recovery 上出现 +.500，C2−C 为 −.333；样本小且 final evidence 仍有 context missing，不能包装为稳定收益。
+- Q：为什么不把 Tier 2 数字写成 citation quality？→ 当前仅 8/37 成功得到 LLM-assisted provisional 判定，且 0 item 人工确认；报告与 audit queue 直接保留未判定和 adjudication 边界。
+- Q：Stage 3 是否等于最终 benchmark？→ 不是。本节是 Development benchmark result；Gate 3、holdout generation/evaluation 和 full benchmark 都未执行。
