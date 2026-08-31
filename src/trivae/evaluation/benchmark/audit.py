@@ -1,15 +1,21 @@
-"""Benchmark GT 机器审计：人工裁决前的确定性一致性检查。
+"""Benchmark GT 机器审计：人工裁决前后的确定性一致性检查。
 
 审计是裁决的前置，不替代裁决；所有检查都是确定性的，结果按 case 汇总。
 检查项（prd §3/§5）：
 - case_id 唯一、全部绑定同一 canonical snapshot
 - GT 引用的 message id 存在于 canonical DB
-- zero_result 单向蕴含（复用 gt.py 校验）+ 空窗口/零 token 的 canonical 空证明复核
-- exhaustive relevant 的确定性证明复核（expected_fact alias 作 predicate 重新 LIKE 扫描，
-  集合必须与 GT 一致）
+- zero_result 单向蕴含（复用 gt.py 校验）+ 空窗口/零 token 的 canonical 空证明复核；
+  带日历日期的 zero-result query 必须显式声明 UTC（生产系统唯一正式日历语义是 UTC，
+  裸日期 + UTC proof 属于 query/proof 边界歧义，2026-08-31 人工裁决禁止）
+- relevant 集合的确定性证明复核（expected_fact alias 作 predicate 重新 LIKE 扫描，
+  集合必须与 GT 一致；exhaustive = corpus 谓词完备，partial = target repo 出现集合完备，
+  两者都要求 declared 集合 == alias 全库出现集合，不得声称语义类 corpus 穷举）
 - temporal 窗口计数与 archive_latest 一致（复核 provenance 中记录的 count）
 - expected_fact alias 非空且规范化后唯一
-- category 与 GT 形态一致
+- category 与 GT 形态一致（exact_lexical/citation_evidence 允许 exhaustive 或 partial/target；
+  "target URL exhaustive" 不等价于 "query semantic corpus exhaustive"，故 partial 合法）
+- 裁决完整性：gt finding/evidence provenance.adjudicated 未全置 true → warning
+  （裁决前审计允许 provisional；最终 gate 目标是 0 warning）
 - version-controlled case 文件无正文泄露（字符串值不得命中任何消息内容）
 - holdout 目录不存在（构造时序隔离）
 """
@@ -30,6 +36,23 @@ from trivae.evaluation.retrieval_evaluation import RETRIEVAL_PACKET_SCHEMA_VERSI
 from .gt import CaseGroundTruth, build_case_ground_truth
 
 _ESCAPE_TABLE = str.maketrans({"%": r"\%", "_": r"\_", "\\": "\\\\"})
+
+# query 中的日历日期（中文年月日 / ISO）；zero-result 空窗口证明按 UTC 日复核。
+_DATE_PATTERNS = (
+    re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日"),
+    re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})"),
+)
+# zero-token 证明的 method 约定：LIKE scan for token '<token>' = 0
+_TOKEN_ZERO_PATTERN = re.compile(r"LIKE scan for token '([^']+)' = 0")
+_UTC_DAY_MS = 24 * 60 * 60 * 1000
+
+
+def _extract_query_date(query: str) -> tuple[int, int, int] | None:
+    for pattern in _DATE_PATTERNS:
+        match = pattern.search(query)
+        if match:
+            return int(match.group(1)), int(match.group(2)), int(match.group(3))
+    return None
 
 
 def _escape_like(value: str) -> str:
@@ -120,6 +143,7 @@ class CaseAudit:
 
         archive_latest = self._archive_latest()
         category_counts: dict[str, int] = {}
+        adjudicated_cases = 0
         for case_id in sorted(cases):
             case = cases[case_id]
             category = next(
@@ -134,6 +158,17 @@ class CaseAudit:
                 findings.append(_finding("error", case_id, f"gt_contract: {exc}"))
                 continue
 
+            # 裁决完整性：gt finding 与其 evidence 的 provenance.adjudicated 必须全部置 true
+            # （裁决前 provisional 属正常，最终 gate 目标 0 warning）。
+            gt_findings = [f for f in case.reference_findings if f.criterion.startswith("gt.")]
+            if all(
+                f.provenance.adjudicated and all(e.provenance.adjudicated for e in f.reference_evidence)
+                for f in gt_findings
+            ):
+                adjudicated_cases += 1
+            else:
+                findings.append(_finding("warning", case_id, "case_not_adjudicated"))
+
             # message id 存在性
             for message_id in truth.evidence_target_ids:
                 if not self._message_exists(message_id):
@@ -142,8 +177,11 @@ class CaseAudit:
             # category ↔ GT 形态一致性
             findings.extend(self._category_shape(case_id, category, truth))
 
-            # exhaustive 证明复核：expected_fact alias 作 predicate 重新扫描
-            if truth.completeness == "exhaustive" and truth.has_relevant and truth.expected_facts:
+            # 出现集合证明复核：expected_fact alias 作 predicate 重新扫描。
+            # exhaustive（corpus 谓词）与 partial（target repo 出现集合）都要求
+            # declared relevant 集合 == alias 全库出现集合；partial 只是额外声明
+            # "query 语义类不穷举 corpus"，不豁免 target 集合的确定性证明。
+            if truth.has_relevant and truth.expected_facts:
                 alias = truth.expected_facts[0][0]
                 scanned = self._like_message_ids(alias)
                 declared = set(truth.relevant_message_ids)
@@ -154,25 +192,40 @@ class CaseAudit:
                         _finding(
                             "error",
                             case_id,
-                            f"exhaustive_proof_mismatch: missing={missing} extra={extra}",
+                            f"occurrence_set_mismatch: missing={missing} extra={extra}",
                         )
                     )
 
             # zero_result 空证明复核：query 中的 UTC 日期窗口必须为 0
             if truth.expected_zero_result is True:
-                date_match = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", case.query)
-                token_zero = not date_match
-                if date_match:
-                    day = datetime.date(int(date_match.group(1)), int(date_match.group(2)), int(date_match.group(3)))
-                    start = int(datetime.datetime.fromisoformat(day.isoformat()).replace(tzinfo=datetime.timezone.utc).timestamp() * 1000)
-                    if self._window_count(start, start + 24 * 60 * 60 * 1000) != 0:
-                        findings.append(_finding("error", case_id, "zero_result_window_not_empty"))
+                date_parts = _extract_query_date(case.query)
+                token_zero = date_parts is None
+                if date_parts is not None:
+                    year, month, day = date_parts
+                    try:
+                        day_date = datetime.date(year, month, day)
+                    except ValueError:
+                        findings.append(_finding("error", case_id, f"zero_result_invalid_date: {year}-{month}-{day}"))
+                    else:
+                        start = int(
+                            datetime.datetime.fromisoformat(day_date.isoformat())
+                            .replace(tzinfo=datetime.timezone.utc)
+                            .timestamp()
+                            * 1000
+                        )
+                        if self._window_count(start, start + _UTC_DAY_MS) != 0:
+                            findings.append(_finding("error", case_id, "zero_result_window_not_empty"))
+                        # 生产系统唯一正式日历语义是 UTC；裸日期与 UTC proof 的组合
+                        # 存在边界歧义，人工裁决（2026-08-31）要求 query 显式声明 UTC。
+                        if "UTC" not in case.query.upper():
+                            findings.append(_finding("warning", case_id, "zero_result_bare_date_without_utc"))
                 elif truth.has_relevant:
                     findings.append(_finding("error", case_id, "zero_result_true_with_relevant"))
                 if token_zero and not truth.has_relevant:
                     # token 级零命中 case：expected_fact 不应存在（无 extractive fact 可答）。
                     if truth.expected_facts:
                         findings.append(_finding("warning", case_id, "zero_result_case_declares_expected_fact"))
+                    findings.extend(self._token_zero_check(case_id, case))
 
             # temporal 窗口计数复核：provenance method 内记录的 count 与当前 DB 重算一致
             if category == "temporal_overview":
@@ -198,12 +251,27 @@ class CaseAudit:
         return {
             "schema_version": "benchmark-gt-audit-v1",
             "case_count": len(cases),
+            "adjudicated_case_count": adjudicated_cases,
             "category_counts": dict(sorted(category_counts.items())),
             "snapshot_ids": sorted(snapshot_ids),
             "archive_latest": archive_latest,
             "findings": findings,
             "passed": not any(item["severity"] == "error" for item in findings),
         }
+
+    def _token_zero_check(self, case_id: str, case: EvaluationCaseBundle) -> list[dict[str, object]]:
+        """token 级零命中证明复核：method 声明 'LIKE scan for token X = 0' 时重新扫描。"""
+        findings: list[dict[str, object]] = []
+        zero = next((f for f in case.reference_findings if f.criterion == "gt.expected_zero_result"), None)
+        if zero is None:
+            return findings
+        match = _TOKEN_ZERO_PATTERN.search(zero.provenance.method)
+        if match is None:
+            return findings
+        token = match.group(1)
+        if self._like_message_ids(token):
+            findings.append(_finding("error", case_id, f"zero_result_token_hit_present: {token}"))
+        return findings
 
     def _category_shape(self, case_id: str, category: str | None, gt: CaseGroundTruth) -> list[dict[str, object]]:
         findings: list[dict[str, object]] = []
@@ -212,8 +280,13 @@ class CaseAudit:
         if category == "temporal_overview" and gt.expected_coverage_status is None:
             findings.append(_finding("error", case_id, "category_shape: temporal without expected_coverage_status"))
         if category in ("exact_lexical", "citation_evidence"):
-            if gt.completeness != "exhaustive":
-                findings.append(_finding("error", case_id, "category_shape: predicate case not exhaustive"))
+            # exhaustive = query 等价于可枚举 predicate；partial = 语义类 query +
+            # target repo 出现集合（"target URL exhaustive" ≠ "query corpus exhaustive"，
+            # 2026-08-31 人工裁决确立两者都合法，unknown 仍拒绝）。
+            if gt.completeness not in ("exhaustive", "partial"):
+                findings.append(
+                    _finding("error", case_id, "category_shape: predicate case must declare exhaustive or partial/target")
+                )
             if not gt.expected_facts:
                 findings.append(_finding("error", case_id, "category_shape: predicate case without expected_fact"))
         if category == "semantic_paraphrase" and gt.completeness == "exhaustive":

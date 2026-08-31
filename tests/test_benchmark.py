@@ -924,14 +924,15 @@ class CaseAuditTests(unittest.TestCase):
         path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         return path
 
-    def _finding(self, finding_id: str, criterion: str, semantics: str, evidence_ids=(), completeness="exhaustive"):
+    def _finding(self, finding_id: str, criterion: str, semantics: str, evidence_ids=(), completeness="exhaustive", adjudicated=False, method="deterministic LIKE scan; hit_count=1"):
         from trivae.evaluation.benchmark.gt import build_case_ground_truth  # noqa: F401
         from trivae.evaluation.contracts import ReferenceEvidence, ReferenceFinding, ReferenceProvenance
 
         provenance = ReferenceProvenance(
-            source="t", created_at="2026-08-31T00:00:00+00:00", method="deterministic LIKE scan; hit_count=1",
+            source="t", created_at="2026-08-31T00:00:00+00:00", method=method,
             snapshot_id="snapshot:audit-test",
             scope_identity='{"allowed_session_ids":null,"end_timestamp":null,"max_results":20,"start_timestamp":null}',
+            adjudicated=adjudicated,
         )
         evidence = tuple(
             ReferenceEvidence(
@@ -1034,3 +1035,130 @@ class CaseAuditTests(unittest.TestCase):
             result = audit.audit()
             audit.close()
             self.assertTrue(any("paraphrase must not claim exhaustive" in item["detail"] for item in result["findings"]))
+
+    def test_partial_target_predicate_case_passes(self) -> None:
+        """语义类 query + target repo 出现集合：partial 合法且 occurrence set 必须重扫一致。"""
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            self._case_file(
+                cases_dir, "partial-target",
+                (
+                    self._finding("relevant", "gt.relevant", "target repo occurrence set", ["m-1"], completeness="partial", adjudicated=True),
+                    self._finding("zero", "gt.expected_zero_result", "false", adjudicated=True),
+                    self._finding("fact", "gt.expected_fact", '["example/repo"]', adjudicated=True),
+                ),
+                query="有没有人分享过 example/repo 这类好项目？",
+            )
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            self.assertEqual(result["findings"], [])
+            self.assertEqual(result["adjudicated_case_count"], 1)
+            self.assertTrue(result["passed"])
+
+    def test_partial_target_occurrence_mismatch_detected(self) -> None:
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            self._case_file(
+                cases_dir, "partial-mismatch",
+                (
+                    self._finding("relevant", "gt.relevant", "target set drift", ["m-1"], completeness="partial", adjudicated=True),
+                    self._finding("zero", "gt.expected_zero_result", "false", adjudicated=True),
+                    self._finding("fact", "gt.expected_fact", '["zzz-unknown-token"]', adjudicated=True),
+                ),
+                query="有没有人分享过 zzz-unknown-token？",
+            )
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            self.assertTrue(any(item["detail"].startswith("occurrence_set_mismatch") for item in result["findings"]))
+            self.assertFalse(result["passed"])
+
+    def test_zero_result_iso_date_requires_explicit_utc(self) -> None:
+        """ISO 日期 zero-result：窗口重扫 + 裸日期（未声明 UTC）出 warning。"""
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            # fixture 消息在 2025-06-15 UTC；2024-01-01 UTC 是真实空窗。
+            self._case_file(
+                cases_dir, "zero-utc",
+                (self._finding("zero", "gt.expected_zero_result", "true", adjudicated=True),),
+                query="按 UTC 时间算，2024-01-01 这天有没有消息？",
+                tags=("category:zero_result",),
+            )
+            self._case_file(
+                cases_dir, "zero-bare",
+                (self._finding("zero", "gt.expected_zero_result", "true", adjudicated=True),),
+                query="2024年1月1日当天有没有消息？",
+                tags=("category:zero_result",),
+            )
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            warnings = {item["case_id"]: item["detail"] for item in result["findings"] if item["severity"] == "warning"}
+            self.assertNotIn("zero-utc", warnings)
+            self.assertEqual(warnings.get("zero-bare"), "zero_result_bare_date_without_utc")
+            self.assertTrue(result["passed"])
+
+    def test_zero_result_token_rescan(self) -> None:
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            finding = self._finding(
+                "zero", "gt.expected_zero_result", "true", adjudicated=True,
+                method="LIKE scan for token 'example' = 0 (deterministic)",
+            )
+            self._case_file(
+                cases_dir, "zero-token-hit",
+                (finding,),
+                query="有没有人提到过 example？",
+                tags=("category:zero_result",),
+            )
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            self.assertTrue(any(item["detail"].startswith("zero_result_token_hit_present") for item in result["findings"]))
+            self.assertFalse(result["passed"])
+
+    def test_unadjudicated_case_warns(self) -> None:
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            self._case_file(
+                cases_dir, "not-adjudicated",
+                (
+                    self._finding("relevant", "gt.relevant", "x", ["m-1"]),
+                    self._finding("zero", "gt.expected_zero_result", "false"),
+                    self._finding("fact", "gt.expected_fact", '["example/repo"]'),
+                ),
+                query="谁分享过 example/repo？",
+            )
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            self.assertEqual(result["adjudicated_case_count"], 0)
+            self.assertTrue(any(item["detail"] == "case_not_adjudicated" for item in result["findings"]))
+            # 裁决前审计允许 provisional：warning 不使 audit 失败。
+            self.assertTrue(result["passed"])
