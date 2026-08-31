@@ -4,11 +4,17 @@
 > 四阶段：Measurement Substrate → Benchmark Dataset → 干净 Ablation → Judge + 冻结后 holdout。
 > 每阶段末尾有 review gate；gate 未过不进入下一阶段。
 >
-> **当前状态（2026-08-31）**：停在 Gate 2 之前——47 个 case（10 calibration + 37 dev）已完成机器 GT 审计
-> （0 findings，`data/evaluation/benchmark/gt-audit.json`），enriched review pack 已就绪
-> （`data/evaluation/benchmark/review-pack-dev.md`，建议 Accept 27 / Modify 20 / Reject 0），
-> **等待用户逐条人工裁决**。holdout 未生成（有意）；dev 数字均为 development/provisional；
-> 不要 archive 本任务。
+> **当前状态（2026-08-31，第二次更新）**：**Human GT Adjudication Gate 已完成**——47/47 case
+> 人工裁决（Accept 26 / Modify 21 / Reject 0，calibration 6+4 / development 20+17），全部
+> gt finding 与 evidence 的 `provenance.adjudicated=true`；deterministic audit 重跑 green
+> （47 cases / 47 adjudicated / 0 error / 0 warning，`data/evaluation/benchmark/gt-audit.json`）。
+> 21 个 Modify case `version→2`（run identity 含 case version，旧 provisional run 保持 v1 身份），
+> 两个 suite `version→2` 并同步 case 引用；review pack 已重生成为裁决后存档（local-only）。
+> audit contract 按裁决修正：exact_lexical/citation_evidence 允许 partial/target（target URL
+> exhaustive ≠ query corpus exhaustive）+ occurrence set 重扫等值校验；带日期 zero-result query
+> 必须显式 UTC（生产唯一正式日历语义）；token 零命中证明重扫；adjudication 完整性 warning。
+> **停在 Gate 2 freeze 之前**：正式 dev rerun（37×5）须待 freeze commit / environment /
+> variant fingerprint 确认后进行；holdout 仍未生成（有意，时序隔离）。不要 archive 本任务。
 
 ---
 
@@ -58,17 +64,17 @@
 - [ ] DatasetSnapshot 本体保持零改动（绑定仍走 case.dataset_snapshot.snapshot_id）
 
 ### 2.2 Case 构造
-- [ ] 汇总真实问题来源：dogfooding 历史问题、归档 failure cases（2699/100、CJK 0-hit、合法空窗等）、数据挖掘候选
-- [ ] LLM 辅助生成 candidate question + candidate evidence（三路检索）→ provisional Case
-- [ ] exhaustive 证明仅对 predicate 可枚举类执行（FTS+LIKE 全库扫描）；semantic/target 类如实标 partial
-- [ ] 生成人工 review markdown（query + 候选摘要 + 建议 GT + 修改槽）
-- [ ] **用户逐条审核** → adjudicated=true；`why_relevant` 无正文泄漏检查
+- [x] 汇总真实问题来源：dogfooding 历史问题、归档 failure cases（2699/100、CJK 0-hit、合法空窗等）、数据挖掘候选
+- [x] LLM 辅助生成 candidate question + candidate evidence（三路检索）→ provisional Case
+- [x] exhaustive 证明仅对 predicate 可枚举类执行（FTS+LIKE 全库扫描）；semantic/target 类如实标 partial
+- [x] 生成人工 review markdown（query + 候选摘要 + 建议 GT + 修改槽）
+- [x] **用户逐条审核** → adjudicated=true（2026-08-31 完成：47/47，Accept 26 / Modify 21 / Reject 0）；`why_relevant` 无正文泄漏检查
 
 ### 2.3 冻结
-- [ ] development cases（含已知 failure regression）→ `evaluation/cases/benchmark/dev/`（提交）
-- [ ] `evaluation/suites/resume-benchmark-dev-v1.json`（提交）
+- [x] development cases（含已知 failure regression）→ `evaluation/cases/benchmark/dev/`（提交）
+- [x] `evaluation/suites/resume-benchmark-dev-v1.json`（提交；裁决后 suite version→2）
 - [ ] 冻结记录：时间、dev 清单 hash（提交）
-- [ ] **本阶段不创建任何 holdout 文件**（holdout 推迟到 Gate 3 冻结后的 Stage 4.0）
+- [x] **本阶段不创建任何 holdout 文件**（holdout 推迟到 Gate 3 冻结后的 Stage 4.0）
 - [ ] 无效条目预声明规则写入冻结记录：仅 (a) GT 与 Snapshot 事实矛盾 (b) 重复 (c) 数据损坏 三种情况允许替换，且必须记录原因
 - [ ] 数量口径：calibration（10）不计入最终 benchmark 分母；final split = dev 37 + holdout 16~23 = 53~60
 

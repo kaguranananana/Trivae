@@ -1141,3 +1141,12 @@ Implemented Source Scope -> AI Conversation -> Turns web navigation: unselected 
 - Stage 3 dev 全量：185 真实 LLM run（5 variant × 37）全部落盘；配对比较 B−A evidence_recall +0.227；D completion 0.838。holdout 未生成（冻结后才建）。
 - Stage 4：Tier 2 judge 落地并在 D 上跑出 Grounded Claim Rate 0.750 / Citation Correctness 0.610（provisional）。
 - 关键待办（用户醒来后）：① 逐条裁决 dev GT（review pack 在 data/evaluation/benchmark/review-pack-dev.md）；② 冻结 commit 后生成 holdout；③ v2 修 streaming escape。
+
+## 2026-08-31 evaluation-benchmark-v1（Human GT Adjudication Gate 完成）
+
+- 应用用户人工 GT 裁决：47/47 case（Accept 26 / Modify 21 / Reject 0；calibration 6+4、development 20+17），全部 gt finding 与 evidence `provenance.adjudicated=true`。
+- 21 个 Modify：6 个 broad-query exact_lexical/citation case exhaustive→partial/target（target URL exhaustive ≠ query corpus exhaustive）；4 个空窗 case query 显式"按 UTC 时间算"（调研结论：生产唯一正式日历语义是 UTC，无本地时区/裸日期解析器）；cal-context-ts-docs relevant/required_context 角色互换（reply 直接回答 query）；ui-skill/mattpocock-1 query 改写使回复成为必要 evidence；hello-agents/chatlog-alpha/siclaw 去 sender 维度；zenith 改"被分享或讨论过"；ai-interest 去"谋生"推断；temporal-1d/30d 边界显式化；excalidraw 收窄为显式提及。
+- audit contract 按裁决修正 + 5 regression：category_shape 允许 partial/target、occurrence set 重扫等值（不豁免 partial）、ISO/年月日 UTC 窗口重扫、裸日期无 UTC warning、token 零命中重扫（method 约定解析）、adjudication 完整性 warning + `adjudicated_case_count`。
+- identity 纪律：Modify case version→2（run_id 含 case version，旧 185 次 provisional run 保持 v1）；两 suite version→2 + 引用同步（解析校验无 unresolved）。
+- 重跑 audit：47 cases / 47 adjudicated / 0 error / 0 warning / passed。pytest 566 绿、ruff/mypy 干净、gate 三查通过、holdout 不存在。review pack 重生成为裁决后存档（local-only）。
+- 停在 Gate 2 freeze 之前：正式 dev rerun（37×5）待 freeze commit / environment / variant fingerprint；应用脚本 `scripts/apply_gt_adjudication.py`（幂等 + 落库前复核）入库。

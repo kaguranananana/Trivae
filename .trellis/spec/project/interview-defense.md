@@ -878,7 +878,7 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 ### Recorded facts（所有数字来自真实运行，可由 Evaluation Store + Trace 复查）
 
 - **固定 Snapshot + Environment Lock**：canonical snapshot `snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14`；`BenchmarkEnvironmentManifest` pin canonical snapshot_id + lexical（unicode61+cjk-bigram-v2, 473236 rows）+ semantic `SemanticIndexIdentity`（Qwen3-Embedding-0.6B/1024d/last_token/normalized + chunker v1 config）；pre-run gate 三查不过整体失败。DatasetSnapshot 契约零改动——同一数据不同 embedding 模型的比较属于 per-variant index identity，v1 不解决。
-- **数据集（当前状态）**：calibration 10 case + development 37 case，六类覆盖（exact_lexical 10 / citation_evidence 6 / semantic_paraphrase 8 / context_recovery 3 / temporal_overview 6 / zero_result 4）；全部 provisional（adjudicated=false，等待人工 review）。exhaustive 声明均由确定性 LIKE 全库扫描/SQL COUNT 证明；paraphrase/context 如实标 partial（target 集合）。holdout 在系统冻结后才生成（构造时序隔离），当前不存在。
+- **数据集（当前状态）**：calibration 10 case + development 37 case，六类覆盖（exact_lexical 10 / citation_evidence 6 / semantic_paraphrase 8 / context_recovery 3 / temporal_overview 6 / zero_result 4）；**47/47 人工裁决完成（2026-08-31，Accept 26 / Modify 21 / Reject 0），全部 gt finding 与 evidence `provenance.adjudicated=true`**；deterministic audit green（47 cases / 47 adjudicated / 0 error / 0 warning）。exhaustive 声明均由确定性 LIKE 全库扫描/SQL COUNT 证明并机器重扫等值复核；paraphrase/context 如实标 partial（target 集合）。holdout 在系统冻结后才生成（构造时序隔离），当前不存在。
 - **Ablation Matrix**：A lexical-only（context_window_limit=0）/ B +semantic（0）/ C +自动 expansion（唯一差异轴）/ C2 +get_message_context / D 七工具 full-system。context 关闭经 `ExecutionOverride.context_window_limit` 在 runtime 工具输入构造点钳制，`context_expansion_override` hard check 验证 Trace 中执行值 ≤ limit。
 - **Tier 1 dev 结果（37 case × 5 variant = 185 真实 LLM run，1 rep）**：
   - execution_completed：A 0.595 / B 0.784 / C 0.757 / C2 0.784 / D 0.838（无条件指标；provider_failure 是最大失败源，A=15、D=6）
@@ -894,10 +894,19 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
   2. `AnswerDeltaParseError` 未分类异常逃逸 query 边界 → problem record 记录，benchmark 编排层 per-case 隔离（commit b74c7c3）；生产修复排入 v2。
   3. `eval` CLI 缺 dotenv 加载，真实 provider 无法认证 → 补 `--env-file`（commit eb96e16）。
 
+### GT 人工裁决确立的 contract（2026-08-31，47/47 adjudicated）
+
+- **target URL exhaustive ≠ query corpus exhaustive**：query 问语义类（"这类工具/资源/项目"）而 GT 只是某个 repo URL 的出现集合时，`gt.relevant` 必须标 partial/target——LIKE 只证明该 repo 出现集合完整，不证明语义类 corpus 穷举。6 个 broad-query case（dev-cite-meimei、dev-lexical-agentic-zh/mcp-switch/nanobot-wiki/resume-miner/vibe-game）由 exhaustive 改 partial。audit 同步修正：exact_lexical/citation_evidence 允许 partial（unknown 仍拒绝），且 occurrence set 重扫等值校验不豁免 partial（target 集合仍要求 == alias 全库出现集合）；5 个 regression 锁定。
+- **UTC 是全系统唯一正式日历语义**：canonical timestamp 为无时区 epoch 毫秒；Host `format_timestamp_utc`、CLI/TUI 显示、prompt 指引全部只产 UTC 文本；不存在本地时区解释与裸日期解析器（`grep localtime/ZoneInfo` 为空）。因此带日历日期的 zero-result query 必须显式写"按 UTC 时间算"（4 个空窗 case 改写）；audit 对裸日期 zero-result query 出 warning（`zero_result_bare_date_without_utc`），ISO 与年月日两种日期格式都做 UTC 日窗口重扫。
+- **temporal behavior contract（人工裁定）**：窗口消息数 ≤ trusted capacity 5000 → 系统应通过 continuation 完整读取窗口后才有资格声明 `complete`（1d=911、2d=2699 → complete/truncated=false）；>5000 → 无法全读时必须如实 `partial`+`truncated=true`（3d/7d/14d/30d）。`coverage=complete` 描述 evidence coverage，不描述"答案听起来够不够像总结"。
+- **query↔GT 一致性硬规则**：query 不得引入 GT 消息没有的事实（dev-para-ai-interest 去掉"为了谋生"推断）；exact lexical case 不混入 sender 提取维度（hello-agents/chatlog-alpha/siclaw 改写）；URL occurrence set ≠ sharer set（zenith 改写为"被分享或讨论过"）；"昨天"≠trailing 24h（dev-temporal-1d 改"最近24小时"）、"一个月"≠固定 30d（dev-temporal-30d 改"最近30天"）；context_recovery 的角色方向以"谁直接回答 query"为准（cal-context-ts-docs 的 relevant/required_context 互换：reply 直接回答提问，parent 恢复"这个"=Vercel AI SDK）；required_context 必须真是必要 evidence（ui-skill/mattpocock-1 的 query 改写让另一位群友的回复成为回答所必需）；zero-token 证明不得外推概念类（excalidraw query 收窄为显式提及，token 重扫入 audit）。
+- **identity 纪律**：21 个 Modify case `version→2`（run_id 含 case version，旧 185 次 provisional run 保持 v1 身份不被覆盖/删除），两个 suite `version→2` 且 case 引用同步（v1/v2 混合引用经 suite 解析校验无 unresolved）；应用脚本 `scripts/apply_gt_adjudication.py` 幂等且内置落库前复核（reply 链接、零窗口、token 零命中、temporal 计数、出现集合）。
+
 ### Interview Defense Notes
 
 - Q：为什么需要固定 Snapshot？→ 相对时间锚 archive_latest（非机器时钟）；Runner 每 case 重解析拒绝漂移；2699/100 的回归固定进 dev set。
-- Q：Ground Truth 怎么保证不是编的？→ 只有确定性 predicate（URL/精确 token/窗口 COUNT）可 exhaustive；semantic 类如实标 partial/target；全部 provisional 待人工裁决；review pack 逐条列出验证方式。
+- Q：Ground Truth 怎么保证不是编的？→ 只有确定性 predicate（URL/精确 token/窗口 COUNT）可 exhaustive；语义类 query 的 repo-target GT 如实标 partial（target URL exhaustive ≠ corpus exhaustive）；47/47 已人工裁决（2026-08-31，Accept 26 / Modify 21 / Reject 0），review pack 逐条列出验证方式与裁决记录，audit 机器重扫 occurrence set / 窗口计数 / token 零命中。
+- Q：人工裁决修改了 GT，旧的 185 次 dev 结果还算数吗？→ 不算最终数字：21 个 Modify case version→2、suite version→2，旧 run 保持 v1 provisional 身份（不删除不覆盖）；正式 dev 数字只能来自 Gate 2/3 freeze 后同 commit 的新鲜 rerun。
 - Q：Semantic 到底有没有用？→ 分类型回答：URL 精确谓词 lexical 完胜（Recall@10 1.0 vs ≤0.52）；paraphrase 类 semantic MRR 0.25 vs lexical 0.0；系统级 B−A evidence_recall 配对 +0.227。semantic 不是全面优于 lexical，是互补。
 - Q：Context Expansion 有没有用？→ module 层 expansion 能恢复 reply（ui-skill case recovery=1.0）但 bounded 窗口够不着远距离回复；end-to-end context_recovery 全线≤0.5——显式 deepening tool 的使用是当前短板，这是 benchmark 暴露的产品迭代方向，不是遮掩项。
 - Q：怎么防止 Evaluation Overfit？→ dev/holdout 时序隔离（holdout 冻结后才存在）；dev 修复全部走通用机制（两个 substrate bug 修复即证据）；holdout 一次定稿不换题。
