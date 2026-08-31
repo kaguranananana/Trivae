@@ -1,0 +1,1635 @@
+{
+  "benchmark": "resume-benchmark-v1",
+  "calibration_case_identities": [
+    "cal-context-ts-docs@v2",
+    "cal-context-ui-skill@v2",
+    "cal-lexical-hello-agents@v2",
+    "cal-lexical-token-monitor@v1",
+    "cal-lexical-tupu@v1",
+    "cal-paraphrase-agent-memory@v1",
+    "cal-paraphrase-subagent@v1",
+    "cal-temporal-last-2d@v1",
+    "cal-temporal-last-7d@v1",
+    "cal-zero-empty-window@v2"
+  ],
+  "calibration_excluded": true,
+  "case_snapshots": [
+    {
+      "case_id": "dev-cite-archify",
+      "case_identity": "dev-cite-archify@v1",
+      "case_version": 1,
+      "category": "citation_evidence",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "tt-a1i/archify"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-cite-archify",
+        "category": "citation_evidence",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "tt-a1i/archify"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:1039179741:7665652181386089161",
+          "qq:1039179741:7670742957499269309",
+          "qq:1039179741:7673819648921352381"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+      "relevant_message_ids": [
+        "qq:1039179741:7665652181386089161",
+        "qq:1039179741:7670742957499269309",
+        "qq:1039179741:7673819648921352381"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:citation_evidence",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-cite-comment-render",
+      "case_identity": "dev-cite-comment-render@v1",
+      "case_version": 1,
+      "category": "citation_evidence",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "ifeichuan/commentmarkdownrender"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-cite-comment-render",
+        "category": "citation_evidence",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "ifeichuan/commentmarkdownrender"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:1028505110:7620085175248840192",
+          "qq:1028505110:7625927087180372397",
+          "qq:1028505110:7633731837464597271"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "CommentMarkdownRender 这个项目是谁分享的？用途是什么？",
+      "relevant_message_ids": [
+        "qq:1028505110:7620085175248840192",
+        "qq:1028505110:7625927087180372397",
+        "qq:1028505110:7633731837464597271"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:citation_evidence",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-cite-lofisu",
+      "case_identity": "dev-cite-lofisu@v1",
+      "case_version": 1,
+      "category": "citation_evidence",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "lofisu/lofisu"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-cite-lofisu",
+        "category": "citation_evidence",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "lofisu/lofisu"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:1028505110:7643364542074446572",
+          "qq:1028505110:7643444600614903716",
+          "qq:1028505110:7643446005371077930"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "LofiSu 这个仓库里的 offer.md 被谁分享过？聊了什么？",
+      "relevant_message_ids": [
+        "qq:1028505110:7643364542074446572",
+        "qq:1028505110:7643444600614903716",
+        "qq:1028505110:7643446005371077930"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:citation_evidence",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-cite-meimei",
+      "case_identity": "dev-cite-meimei@v2",
+      "case_version": 2,
+      "category": "citation_evidence",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "87789771/meimei-nestjs-admin"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-cite-meimei",
+        "category": "citation_evidence",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "87789771/meimei-nestjs-admin"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:1039179741:7643850471469905093",
+          "qq:1039179741:7643850840259025702",
+          "qq:1039179741:7643854479613009953"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人分享过 Java/NestJS 方向的管理后台模板或学习资源？",
+      "relevant_message_ids": [
+        "qq:1039179741:7643850471469905093",
+        "qq:1039179741:7643850840259025702",
+        "qq:1039179741:7643854479613009953"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:citation_evidence",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-cite-nanobot",
+      "case_identity": "dev-cite-nanobot@v1",
+      "case_version": 1,
+      "category": "citation_evidence",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "nanobot-llm-wiki"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-cite-nanobot",
+        "category": "citation_evidence",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "nanobot-llm-wiki"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:750807478:7663131408680200147",
+          "qq:1028505110:7663131408680200224",
+          "qq:1028505110:7663137198325449381",
+          "qq:750807478:7663139967391018395"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "nanobot 的 llm-wiki 知识库插件是给谁/什么项目做的？群里怎么介绍的？",
+      "relevant_message_ids": [
+        "qq:750807478:7663131408680200147",
+        "qq:1028505110:7663131408680200224",
+        "qq:1028505110:7663137198325449381",
+        "qq:750807478:7663139967391018395"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:citation_evidence",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-cite-volcengine",
+      "case_identity": "dev-cite-volcengine@v1",
+      "case_version": 1,
+      "category": "citation_evidence",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "volcengine/volcengine-python-sdk"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-cite-volcengine",
+        "category": "citation_evidence",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "volcengine/volcengine-python-sdk"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:750807478:7664548069830447091",
+          "qq:1028505110:7664554915603359664",
+          "qq:1028505110:7664556393765433519",
+          "qq:1028505110:7664556473949344439",
+          "qq:677019167:7665193148341879035"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "volcengine 的 python sdk 相关 issue 有没有人在群里发过？",
+      "relevant_message_ids": [
+        "qq:750807478:7664548069830447091",
+        "qq:1028505110:7664554915603359664",
+        "qq:1028505110:7664556393765433519",
+        "qq:1028505110:7664556473949344439",
+        "qq:677019167:7665193148341879035"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:citation_evidence",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-context-archify",
+      "case_identity": "dev-context-archify@v1",
+      "case_version": 1,
+      "category": "context_recovery",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-context-archify",
+        "category": "context_recovery",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:1039179741:7665652181386089161"
+        ],
+        "required_context_message_ids": [
+          "qq:1039179741:7665654465962176057"
+        ]
+      },
+      "query": "archify 这个工具有人用过吗？反馈如何？",
+      "relevant_message_ids": [
+        "qq:1039179741:7665652181386089161"
+      ],
+      "required_context_message_ids": [
+        "qq:1039179741:7665654465962176057"
+      ],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:context_recovery",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-context-mattpocock-1",
+      "case_identity": "dev-context-mattpocock-1@v2",
+      "case_version": 2,
+      "category": "context_recovery",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-context-mattpocock-1",
+        "category": "context_recovery",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:677019167:7664449865363143940"
+        ],
+        "required_context_message_ids": [
+          "qq:677019167:7664449865363143925"
+        ]
+      },
+      "query": "有人推荐过 mattpocock 的 skills 仓库吗？怎么使用，群里有没有人反馈它好用？",
+      "relevant_message_ids": [
+        "qq:677019167:7664449865363143940"
+      ],
+      "required_context_message_ids": [
+        "qq:677019167:7664449865363143925"
+      ],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:context_recovery",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-context-mattpocock-2",
+      "case_identity": "dev-context-mattpocock-2@v1",
+      "case_version": 1,
+      "category": "context_recovery",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-context-mattpocock-2",
+        "category": "context_recovery",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:677019167:7666849111367864709"
+        ],
+        "required_context_message_ids": [
+          "qq:677019167:7666849111367864725"
+        ]
+      },
+      "query": "mattpocock 的 skills 仓库用起来怎么样？有反馈吗？",
+      "relevant_message_ids": [
+        "qq:677019167:7666849111367864709"
+      ],
+      "required_context_message_ids": [
+        "qq:677019167:7666849111367864725"
+      ],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:context_recovery",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-agentic-zh",
+      "case_identity": "dev-lexical-agentic-zh@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "wenyuchiou/awesome-agentic-ai-zh"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-agentic-zh",
+        "category": "exact_lexical",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "wenyuchiou/awesome-agentic-ai-zh"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:750807478:7638834142901770067",
+          "qq:750807478:7638834388514356694",
+          "qq:750807478:7638835092666099281",
+          "qq:750807478:7638835323402993431"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "群里有没有人分享过中文的 Agentic AI 资源合集仓库？",
+      "relevant_message_ids": [
+        "qq:750807478:7638834142901770067",
+        "qq:750807478:7638834388514356694",
+        "qq:750807478:7638835092666099281",
+        "qq:750807478:7638835323402993431"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-chatlog-alpha",
+      "case_identity": "dev-lexical-chatlog-alpha@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "teest114514/chatlog_alpha"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-chatlog-alpha",
+        "category": "exact_lexical",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "teest114514/chatlog_alpha"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:1039179741:7641513975025272000",
+          "qq:1039179741:7641514409533959400"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "teest114514/chatlog_alpha 这个聊天记录相关的仓库在群里被分享过吗？",
+      "relevant_message_ids": [
+        "qq:1039179741:7641513975025272000",
+        "qq:1039179741:7641514409533959400"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-deepseek-harness",
+      "case_identity": "dev-lexical-deepseek-harness@v1",
+      "case_version": 1,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "deepseek-ai/deepseek-harness"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-deepseek-harness",
+        "category": "exact_lexical",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "deepseek-ai/deepseek-harness"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:383550736:7673500859319861182",
+          "qq:677019167:7673500859319860940",
+          "qq:831907794:7674452921250218897"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "deepseek 官方的 harness 仓库在群里被分享过吗？",
+      "relevant_message_ids": [
+        "qq:383550736:7673500859319861182",
+        "qq:677019167:7673500859319860940",
+        "qq:831907794:7674452921250218897"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-forge",
+      "case_identity": "dev-lexical-forge@v1",
+      "case_version": 1,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "anhuozhe/forge"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-forge",
+        "category": "exact_lexical",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "anhuozhe/forge"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:831907794:7662993011264974100",
+          "qq:831907794:7663409236248407977",
+          "qq:831907794:7667213431772110119"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人分享过一个把需求拆成任务并生成文档的 agent 项目 forge？",
+      "relevant_message_ids": [
+        "qq:831907794:7662993011264974100",
+        "qq:831907794:7663409236248407977",
+        "qq:831907794:7667213431772110119"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-mcp-switch",
+      "case_identity": "dev-lexical-mcp-switch@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "asashiki/mcp-switch"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-mcp-switch",
+        "category": "exact_lexical",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "asashiki/mcp-switch"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:831907794:7657809317904897203",
+          "qq:831907794:7659670623449309813"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人分享过统一管理 MCP 的工具？",
+      "relevant_message_ids": [
+        "qq:831907794:7657809317904897203",
+        "qq:831907794:7659670623449309813"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-nanobot-wiki",
+      "case_identity": "dev-lexical-nanobot-wiki@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "yu-xin-c/nanobot-llm-wiki"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-nanobot-wiki",
+        "category": "exact_lexical",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "yu-xin-c/nanobot-llm-wiki"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:750807478:7663131408680200147",
+          "qq:1028505110:7663131408680200224",
+          "qq:1028505110:7663137198325449381",
+          "qq:750807478:7663139967391018395"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人给 nanobot 做过知识库插件？分享过仓库吗？",
+      "relevant_message_ids": [
+        "qq:750807478:7663131408680200147",
+        "qq:1028505110:7663131408680200224",
+        "qq:1028505110:7663137198325449381",
+        "qq:750807478:7663139967391018395"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-resume-miner",
+      "case_identity": "dev-lexical-resume-miner@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "auberginewly/resume-project-miner"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-resume-miner",
+        "category": "exact_lexical",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "auberginewly/resume-project-miner"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:750807478:7662661909059919056",
+          "qq:750807478:7662661994759881060",
+          "qq:750807478:7662662101585409213",
+          "qq:750807478:7662662118489864781"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人分享过能把项目经历整理到简历上的工具？",
+      "relevant_message_ids": [
+        "qq:750807478:7662661909059919056",
+        "qq:750807478:7662661994759881060",
+        "qq:750807478:7662662101585409213",
+        "qq:750807478:7662662118489864781"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-siclaw",
+      "case_identity": "dev-lexical-siclaw@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "scitix/siclaw"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-siclaw",
+        "category": "exact_lexical",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "scitix/siclaw"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:1028505110:7635338408104154143",
+          "qq:1028505110:7635488435400101266",
+          "qq:1028505110:7640524887417167496"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "群里有没有人给 scitix/siclaw 这个项目求过 star？",
+      "relevant_message_ids": [
+        "qq:1028505110:7635338408104154143",
+        "qq:1028505110:7635488435400101266",
+        "qq:1028505110:7640524887417167496"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-vibe-game",
+      "case_identity": "dev-lexical-vibe-game@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "asashiki/vibe-game"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-vibe-game",
+        "category": "exact_lexical",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "asashiki/vibe-game"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:831907794:7659929515486582290",
+          "qq:831907794:7666847325021216192",
+          "qq:677019167:7662705052369926405"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "想了解 AI 做游戏，群里有人推荐过相关仓库吗？",
+      "relevant_message_ids": [
+        "qq:831907794:7659929515486582290",
+        "qq:831907794:7666847325021216192",
+        "qq:677019167:7662705052369926405"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-lexical-zenith",
+      "case_identity": "dev-lexical-zenith@v2",
+      "case_version": 2,
+      "category": "exact_lexical",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [
+        [
+          "wumingdao/zenith-image-generator"
+        ]
+      ],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-lexical-zenith",
+        "category": "exact_lexical",
+        "completeness": "exhaustive",
+        "expected_coverage_status": null,
+        "expected_facts": [
+          [
+            "wumingdao/zenith-image-generator"
+          ]
+        ],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "corpus",
+        "relevant_message_ids": [
+          "qq:1028505110:7616444410509017616",
+          "qq:1028505110:7620085175248840208",
+          "qq:1028505110:7633732335355525639",
+          "qq:1028505110:7633739903513250904"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "zenith-image-generator 这个图片生成项目在群里被分享或讨论过吗？",
+      "relevant_message_ids": [
+        "qq:1028505110:7616444410509017616",
+        "qq:1028505110:7620085175248840208",
+        "qq:1028505110:7633732335355525639",
+        "qq:1028505110:7633739903513250904"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:exact_lexical",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-ai-interest",
+      "case_identity": "dev-para-ai-interest@v2",
+      "case_version": 2,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-ai-interest",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:831907794:7674452964454943926"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人坦白过自己其实对 Agent/AI 提不起兴趣，每天只是为了工作而工作？",
+      "relevant_message_ids": [
+        "qq:831907794:7674452964454943926"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-intern-hard-part",
+      "case_identity": "dev-para-intern-hard-part@v1",
+      "case_version": 1,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-intern-hard-part",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:750807478:7672077881178122777"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有人聊过实习里最难的部分是什么吗？",
+      "relevant_message_ids": [
+        "qq:750807478:7672077881178122777"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-intern-owner",
+      "case_identity": "dev-para-intern-owner@v1",
+      "case_version": 1,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-intern-owner",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:1040412855:7673849331665371920"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "群里怎么看待让实习生一个人从头负责一个内部项目？",
+      "relevant_message_ids": [
+        "qq:1040412855:7673849331665371920"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-job-anxiety",
+      "case_identity": "dev-para-job-anxiety@v1",
+      "case_version": 1,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-job-anxiety",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:383550736:7673532419201245493"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "快到招聘季了心里很慌、准备方向很散，群里有人有同样的状态吗？",
+      "relevant_message_ids": [
+        "qq:383550736:7673532419201245493"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-resume-advice",
+      "case_identity": "dev-para-resume-advice@v1",
+      "case_version": 1,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-resume-advice",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:750807478:7672997189707493185"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "简历上没有亮眼数据怎么办？有人给过建议吗？",
+      "relevant_message_ids": [
+        "qq:750807478:7672997189707493185"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-ts-learning",
+      "case_identity": "dev-para-ts-learning@v1",
+      "case_version": 1,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-ts-learning",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:831907794:7672993271365395321"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人分享过跟着视频项目入门全栈的学习路子？",
+      "relevant_message_ids": [
+        "qq:831907794:7672993271365395321"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-webnovel",
+      "case_identity": "dev-para-webnovel@v1",
+      "case_version": 1,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-webnovel",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:677019167:7673445910938235654"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有没有人聊过写网文赚钱为什么不划算？",
+      "relevant_message_ids": [
+        "qq:677019167:7673445910938235654"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-para-written-test",
+      "case_identity": "dev-para-written-test@v1",
+      "case_version": 1,
+      "category": "semantic_paraphrase",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-para-written-test",
+        "category": "semantic_paraphrase",
+        "completeness": "partial",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [
+          "qq:831907794:7671498185377818633"
+        ],
+        "required_context_message_ids": []
+      },
+      "query": "有人遇到过笔试需要自己构造测试数据的情况吗？",
+      "relevant_message_ids": [
+        "qq:831907794:7671498185377818633"
+      ],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:semantic_paraphrase",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-temporal-14d",
+      "case_identity": "dev-temporal-14d@v1",
+      "case_version": 1,
+      "category": "temporal_overview",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": "partial",
+      "expected_facts": [],
+      "expected_truncated": true,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-temporal-14d",
+        "category": "temporal_overview",
+        "completeness": "unknown",
+        "expected_coverage_status": "partial",
+        "expected_facts": [],
+        "expected_truncated": true,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "最近两周大家主要在聊什么方向的内容？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:temporal_overview",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-temporal-1d",
+      "case_identity": "dev-temporal-1d@v2",
+      "case_version": 2,
+      "category": "temporal_overview",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": "complete",
+      "expected_facts": [],
+      "expected_truncated": false,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-temporal-1d",
+        "category": "temporal_overview",
+        "completeness": "unknown",
+        "expected_coverage_status": "complete",
+        "expected_facts": [],
+        "expected_truncated": false,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "最近24小时大家都聊了些什么？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:temporal_overview",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-temporal-2d",
+      "case_identity": "dev-temporal-2d@v1",
+      "case_version": 1,
+      "category": "temporal_overview",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": "complete",
+      "expected_facts": [],
+      "expected_truncated": false,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-temporal-2d",
+        "category": "temporal_overview",
+        "completeness": "unknown",
+        "expected_coverage_status": "complete",
+        "expected_facts": [],
+        "expected_truncated": false,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "最近两天大家都在聊什么？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:temporal_overview",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-temporal-30d",
+      "case_identity": "dev-temporal-30d@v2",
+      "case_version": 2,
+      "category": "temporal_overview",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": "partial",
+      "expected_facts": [],
+      "expected_truncated": true,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-temporal-30d",
+        "category": "temporal_overview",
+        "completeness": "unknown",
+        "expected_coverage_status": "partial",
+        "expected_facts": [],
+        "expected_truncated": true,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "最近30天群里的主要话题有哪些？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:temporal_overview",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-temporal-3d",
+      "case_identity": "dev-temporal-3d@v1",
+      "case_version": 1,
+      "category": "temporal_overview",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": "partial",
+      "expected_facts": [],
+      "expected_truncated": true,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-temporal-3d",
+        "category": "temporal_overview",
+        "completeness": "unknown",
+        "expected_coverage_status": "partial",
+        "expected_facts": [],
+        "expected_truncated": true,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "最近三天群里的热门话题有哪些？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:temporal_overview",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-temporal-7d",
+      "case_identity": "dev-temporal-7d@v1",
+      "case_version": 1,
+      "category": "temporal_overview",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": "partial",
+      "expected_facts": [],
+      "expected_truncated": true,
+      "expected_zero_result": false,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-temporal-7d",
+        "category": "temporal_overview",
+        "completeness": "unknown",
+        "expected_coverage_status": "partial",
+        "expected_facts": [],
+        "expected_truncated": true,
+        "expected_zero_result": false,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "过去一周有哪些值得关注的讨论？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:temporal_overview",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-zero-empty-1",
+      "case_identity": "dev-zero-empty-1@v2",
+      "case_version": 2,
+      "category": "zero_result",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": true,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-zero-empty-1",
+        "category": "zero_result",
+        "completeness": "unknown",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": true,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "按 UTC 时间算，2025-08-11 这天大家有没有发言？都在聊什么？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:zero_result",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-zero-empty-2",
+      "case_identity": "dev-zero-empty-2@v2",
+      "case_version": 2,
+      "category": "zero_result",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": true,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-zero-empty-2",
+        "category": "zero_result",
+        "completeness": "unknown",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": true,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "按 UTC 时间算，2025-08-23 这天大家有没有发言？都在聊什么？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:zero_result",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-zero-empty-3",
+      "case_identity": "dev-zero-empty-3@v2",
+      "case_version": 2,
+      "category": "zero_result",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": true,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-zero-empty-3",
+        "category": "zero_result",
+        "completeness": "unknown",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": true,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "按 UTC 时间算，2025-08-26 这天大家有没有发言？都在聊什么？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:zero_result",
+        "benchmark:development"
+      ]
+    },
+    {
+      "case_id": "dev-zero-excalidraw",
+      "case_identity": "dev-zero-excalidraw@v2",
+      "case_version": 2,
+      "category": "zero_result",
+      "dataset_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "difficulty": null,
+      "expected_coverage_status": null,
+      "expected_facts": [],
+      "expected_truncated": null,
+      "expected_zero_result": true,
+      "ground_truth": {
+        "benchmark_split": "development",
+        "case_id": "dev-zero-excalidraw",
+        "category": "zero_result",
+        "completeness": "unknown",
+        "expected_coverage_status": null,
+        "expected_facts": [],
+        "expected_truncated": null,
+        "expected_zero_result": true,
+        "recall_scope": "target",
+        "relevant_message_ids": [],
+        "required_context_message_ids": []
+      },
+      "query": "群里有没有人明确提到过 excalidraw？",
+      "relevant_message_ids": [],
+      "required_context_message_ids": [],
+      "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+      "suite_tags": [
+        "category:zero_result",
+        "benchmark:development"
+      ]
+    }
+  ],
+  "environment": {
+    "benchmark": "resume-benchmark-v1",
+    "canonical_snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+    "git_commit": "b1f7b78ba802f853f9cd1cbf7433fe07b2f895c1",
+    "lexical_index": {
+      "message_count": 473236,
+      "present": true
+    },
+    "semantic_index": "{\"chunker_config\":{\"child_max_chars\":480,\"child_max_messages\":10,\"child_min_chars\":96,\"child_overlap_messages\":1,\"embedding_max_chars\":6000,\"header_max_chars\":600,\"parent_gap_seconds\":1200,\"parent_max_chars\":6000,\"parent_max_messages\":100,\"semantic_void_skip_threshold\":24},\"chunker_version\":\"trivae-semantic-chunker-v1\",\"database_identity\":\"trivae.sqlite3\",\"embedding\":{\"dimension\":1024,\"model\":\"Qwen/Qwen3-Embedding-0.6B\",\"normalized\":true,\"pooling\":\"last_token\",\"provider\":\"sentence-transformers\",\"query_instruction\":\"Given a chat history search query, retrieve relevant conversation messages that answer the query\"}}"
+  },
+  "execution_commit": "b1f7b78ba802f853f9cd1cbf7433fe07b2f895c1",
+  "frozen_at": "2026-08-31T15:44:35.142+00:00",
+  "gt_adjudication": {
+    "accept": 26,
+    "case_count": 47,
+    "modify": 21,
+    "reject": 0
+  },
+  "holdout_absent": true,
+  "identity_method": "ordered versioned Case identities plus canonical variant configuration text; cryptographic digests are not used by this repository",
+  "invalid_case_replacement_reasons": [
+    "GT/Snapshot contradiction",
+    "duplicate",
+    "corruption"
+  ],
+  "ordered_dev_case_identities": [
+    "dev-cite-archify@v1",
+    "dev-cite-comment-render@v1",
+    "dev-cite-lofisu@v1",
+    "dev-cite-meimei@v2",
+    "dev-cite-nanobot@v1",
+    "dev-cite-volcengine@v1",
+    "dev-context-archify@v1",
+    "dev-context-mattpocock-1@v2",
+    "dev-context-mattpocock-2@v1",
+    "dev-lexical-agentic-zh@v2",
+    "dev-lexical-chatlog-alpha@v2",
+    "dev-lexical-deepseek-harness@v1",
+    "dev-lexical-forge@v1",
+    "dev-lexical-mcp-switch@v2",
+    "dev-lexical-nanobot-wiki@v2",
+    "dev-lexical-resume-miner@v2",
+    "dev-lexical-siclaw@v2",
+    "dev-lexical-vibe-game@v2",
+    "dev-lexical-zenith@v2",
+    "dev-para-ai-interest@v2",
+    "dev-para-intern-hard-part@v1",
+    "dev-para-intern-owner@v1",
+    "dev-para-job-anxiety@v1",
+    "dev-para-resume-advice@v1",
+    "dev-para-ts-learning@v1",
+    "dev-para-webnovel@v1",
+    "dev-para-written-test@v1",
+    "dev-temporal-14d@v1",
+    "dev-temporal-1d@v2",
+    "dev-temporal-2d@v1",
+    "dev-temporal-30d@v2",
+    "dev-temporal-3d@v1",
+    "dev-temporal-7d@v1",
+    "dev-zero-empty-1@v2",
+    "dev-zero-empty-2@v2",
+    "dev-zero-empty-3@v2",
+    "dev-zero-excalidraw@v2"
+  ],
+  "schema_version": "benchmark-freeze-v1",
+  "split": "development",
+  "suite_identity": "resume-benchmark-dev@v2",
+  "variant_fingerprints": {
+    "bench-full-system-v1": "{\"available_tools\":[\"lexical_search\",\"semantic_search\",\"get_recent_messages\",\"get_message_context\",\"find_members\",\"get_schema\",\"execute_sql\"],\"budget\":{},\"code_version\":\"70e1b4736a75f269f4ec20e474b1eb4df6b71559\",\"context_expansion_configuration\":{\"context_window_limit\":null,\"implementation\":\"execution_override.context_window_limit\"},\"evidence_citation_version\":\"production-default\",\"execution_override\":{\"context_window_limit\":null,\"forced_route\":null},\"extra_configuration\":{\"ablation_role\":\"D: full seven-tool surface (multi-variable full system)\",\"pinned_lexical_identity\":\"lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3\"},\"index_identity\":\"{\\\"chunker_config\\\":{\\\"child_max_chars\\\":480,\\\"child_max_messages\\\":10,\\\"child_min_chars\\\":96,\\\"child_overlap_messages\\\":1,\\\"embedding_max_chars\\\":6000,\\\"header_max_chars\\\":600,\\\"parent_gap_seconds\\\":1200,\\\"parent_max_chars\\\":6000,\\\"parent_max_messages\\\":100,\\\"semantic_void_skip_threshold\\\":24},\\\"chunker_version\\\":\\\"trivae-semantic-chunker-v1\\\",\\\"database_identity\\\":\\\"trivae.sqlite3\\\",\\\"embedding\\\":{\\\"dimension\\\":1024,\\\"model\\\":\\\"Qwen/Qwen3-Embedding-0.6B\\\",\\\"normalized\\\":true,\\\"pooling\\\":\\\"last_token\\\",\\\"provider\\\":\\\"sentence-transformers\\\",\\\"query_instruction\\\":\\\"Given a chat history search query, retrieve relevant conversation messages that answer the query\\\"}}\",\"model\":\"deepseek-v4-flash\",\"model_parameters\":{},\"planner_configuration\":{},\"prompt_identity\":\"production-default\",\"provider\":\"opencode-go\",\"retrieval_configuration\":{\"surface\":\"agent-facing\"},\"role\":\"candidate\",\"router_configuration\":{},\"runtime_configuration\":{\"trace_profile\":\"normal\"}}",
+    "bench-lexical-only-v1": "{\"available_tools\":[\"lexical_search\"],\"budget\":{},\"code_version\":\"70e1b4736a75f269f4ec20e474b1eb4df6b71559\",\"context_expansion_configuration\":{\"context_window_limit\":0,\"implementation\":\"execution_override.context_window_limit\"},\"evidence_citation_version\":\"production-default\",\"execution_override\":{\"context_window_limit\":0,\"forced_route\":null},\"extra_configuration\":{\"ablation_role\":\"A: lexical only, no auto context expansion\",\"pinned_lexical_identity\":\"lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3\"},\"index_identity\":\"lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3\",\"model\":\"deepseek-v4-flash\",\"model_parameters\":{},\"planner_configuration\":{},\"prompt_identity\":\"production-default\",\"provider\":\"opencode-go\",\"retrieval_configuration\":{\"surface\":\"agent-facing\"},\"role\":\"minimal_control\",\"router_configuration\":{},\"runtime_configuration\":{\"trace_profile\":\"normal\"}}",
+    "bench-lexical-semantic-v1": "{\"available_tools\":[\"lexical_search\",\"semantic_search\"],\"budget\":{},\"code_version\":\"70e1b4736a75f269f4ec20e474b1eb4df6b71559\",\"context_expansion_configuration\":{\"context_window_limit\":0,\"implementation\":\"execution_override.context_window_limit\"},\"evidence_citation_version\":\"production-default\",\"execution_override\":{\"context_window_limit\":0,\"forced_route\":null},\"extra_configuration\":{\"ablation_role\":\"B: lexical+semantic, no auto context expansion\",\"pinned_lexical_identity\":\"lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3\"},\"index_identity\":\"{\\\"chunker_config\\\":{\\\"child_max_chars\\\":480,\\\"child_max_messages\\\":10,\\\"child_min_chars\\\":96,\\\"child_overlap_messages\\\":1,\\\"embedding_max_chars\\\":6000,\\\"header_max_chars\\\":600,\\\"parent_gap_seconds\\\":1200,\\\"parent_max_chars\\\":6000,\\\"parent_max_messages\\\":100,\\\"semantic_void_skip_threshold\\\":24},\\\"chunker_version\\\":\\\"trivae-semantic-chunker-v1\\\",\\\"database_identity\\\":\\\"trivae.sqlite3\\\",\\\"embedding\\\":{\\\"dimension\\\":1024,\\\"model\\\":\\\"Qwen/Qwen3-Embedding-0.6B\\\",\\\"normalized\\\":true,\\\"pooling\\\":\\\"last_token\\\",\\\"provider\\\":\\\"sentence-transformers\\\",\\\"query_instruction\\\":\\\"Given a chat history search query, retrieve relevant conversation messages that answer the query\\\"}}\",\"model\":\"deepseek-v4-flash\",\"model_parameters\":{},\"planner_configuration\":{},\"prompt_identity\":\"production-default\",\"provider\":\"opencode-go\",\"retrieval_configuration\":{\"surface\":\"agent-facing\"},\"role\":\"candidate\",\"router_configuration\":{},\"runtime_configuration\":{\"trace_profile\":\"normal\"}}",
+    "bench-semantic-ctx-tool-v1": "{\"available_tools\":[\"lexical_search\",\"semantic_search\",\"get_message_context\"],\"budget\":{},\"code_version\":\"70e1b4736a75f269f4ec20e474b1eb4df6b71559\",\"context_expansion_configuration\":{\"context_window_limit\":null,\"implementation\":\"execution_override.context_window_limit\"},\"evidence_citation_version\":\"production-default\",\"execution_override\":{\"context_window_limit\":null,\"forced_route\":null},\"extra_configuration\":{\"ablation_role\":\"C2: C + explicit deepening tool (single variable vs C)\",\"pinned_lexical_identity\":\"lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3\"},\"index_identity\":\"{\\\"chunker_config\\\":{\\\"child_max_chars\\\":480,\\\"child_max_messages\\\":10,\\\"child_min_chars\\\":96,\\\"child_overlap_messages\\\":1,\\\"embedding_max_chars\\\":6000,\\\"header_max_chars\\\":600,\\\"parent_gap_seconds\\\":1200,\\\"parent_max_chars\\\":6000,\\\"parent_max_messages\\\":100,\\\"semantic_void_skip_threshold\\\":24},\\\"chunker_version\\\":\\\"trivae-semantic-chunker-v1\\\",\\\"database_identity\\\":\\\"trivae.sqlite3\\\",\\\"embedding\\\":{\\\"dimension\\\":1024,\\\"model\\\":\\\"Qwen/Qwen3-Embedding-0.6B\\\",\\\"normalized\\\":true,\\\"pooling\\\":\\\"last_token\\\",\\\"provider\\\":\\\"sentence-transformers\\\",\\\"query_instruction\\\":\\\"Given a chat history search query, retrieve relevant conversation messages that answer the query\\\"}}\",\"model\":\"deepseek-v4-flash\",\"model_parameters\":{},\"planner_configuration\":{},\"prompt_identity\":\"production-default\",\"provider\":\"opencode-go\",\"retrieval_configuration\":{\"surface\":\"agent-facing\"},\"role\":\"candidate\",\"router_configuration\":{},\"runtime_configuration\":{\"trace_profile\":\"normal\"}}",
+    "bench-semantic-ctx-v1": "{\"available_tools\":[\"lexical_search\",\"semantic_search\"],\"budget\":{},\"code_version\":\"70e1b4736a75f269f4ec20e474b1eb4df6b71559\",\"context_expansion_configuration\":{\"context_window_limit\":null,\"implementation\":\"execution_override.context_window_limit\"},\"evidence_citation_version\":\"production-default\",\"execution_override\":{\"context_window_limit\":null,\"forced_route\":null},\"extra_configuration\":{\"ablation_role\":\"C: B + production default auto context expansion (single variable vs B)\",\"pinned_lexical_identity\":\"lexical:fts5-unicode61+cjk-bigram-v2@trivae.sqlite3\"},\"index_identity\":\"{\\\"chunker_config\\\":{\\\"child_max_chars\\\":480,\\\"child_max_messages\\\":10,\\\"child_min_chars\\\":96,\\\"child_overlap_messages\\\":1,\\\"embedding_max_chars\\\":6000,\\\"header_max_chars\\\":600,\\\"parent_gap_seconds\\\":1200,\\\"parent_max_chars\\\":6000,\\\"parent_max_messages\\\":100,\\\"semantic_void_skip_threshold\\\":24},\\\"chunker_version\\\":\\\"trivae-semantic-chunker-v1\\\",\\\"database_identity\\\":\\\"trivae.sqlite3\\\",\\\"embedding\\\":{\\\"dimension\\\":1024,\\\"model\\\":\\\"Qwen/Qwen3-Embedding-0.6B\\\",\\\"normalized\\\":true,\\\"pooling\\\":\\\"last_token\\\",\\\"provider\\\":\\\"sentence-transformers\\\",\\\"query_instruction\\\":\\\"Given a chat history search query, retrieve relevant conversation messages that answer the query\\\"}}\",\"model\":\"deepseek-v4-flash\",\"model_parameters\":{},\"planner_configuration\":{},\"prompt_identity\":\"production-default\",\"provider\":\"opencode-go\",\"retrieval_configuration\":{\"surface\":\"agent-facing\"},\"role\":\"candidate\",\"router_configuration\":{},\"runtime_configuration\":{\"trace_profile\":\"normal\"}}"
+  }
+}
