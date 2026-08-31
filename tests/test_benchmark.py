@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -859,3 +860,177 @@ class TraceLimitationBoundTests(unittest.TestCase):
             measurements["trace_limitations"],
             ("payload.model_visible_context[].output_projection.data.hits[].truncated",),
         )
+
+
+class CaseAuditTests(unittest.TestCase):
+    """GT 机器审计回归：存在性、zero-result 蕴含、category 形态、正文泄露、holdout 隔离。"""
+
+    def _fixture_db(self, directory: Path) -> Path:
+        database_path = directory / "canonical.sqlite3"
+        with create_application(database_path):
+            connection = sqlite3.connect(database_path)
+            connection.execute(
+                "INSERT INTO messages(internal_message_id, session_id, platform, source_message_id, seq, timestamp,"
+                " message_type, content_text, content_json, raw_payload_json, canonical_projection_json,"
+                " canonical_source_id, canonical_source_record_index, reply_to_source_message_id, recalled, system)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    "m-1", "session:t", "qq", "s-1", 1, 1750000000000, "text",
+                    "https://github.com/example/repo 是个好项目",
+                    "{}", "{}", "{}", "source:test", 0, None, 0, 0,
+                ),
+            )
+            connection.execute(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5("
+                "internal_message_id UNINDEXED, session_id UNINDEXED, source_message_id UNINDEXED,"
+                " content_text, tokenize = 'unicode61')"
+            )
+            connection.commit()
+            connection.close()
+        return database_path
+
+    def _case_file(self, directory: Path, name: str, findings, *, query: str = "test?", tags=("category:exact_lexical",)) -> Path:
+        from trivae.evaluation.contracts import DatasetSnapshot
+
+        snapshot = DatasetSnapshot(
+            snapshot_id="snapshot:audit-test",
+            canonical_database_identity="sqlite-canonical:test",
+            schema_version="canonical-m1-v1",
+            source_identity="source:test",
+            message_count=1,
+            relevant_time_range=(1750000000000, 1750000000000),
+            deterministic_fingerprint="manifest:audit-test",
+            created_at="2026-08-31T00:00:00+00:00",
+            manifest={"message_count": 1},
+        )
+        payload = {
+            "schema_version": 1,
+            "case_id": name,
+            "version": 1,
+            "suite_tags": list(tags),
+            "dataset_snapshot": snapshot.to_dict(),
+            "data_access_scope": {"allowed_session_ids": None, "start_timestamp": None, "end_timestamp": None, "max_results": 20},
+            "query": query,
+            "locale": "zh-CN",
+            "reference_findings": [finding.to_dict() for finding in findings],
+            "uncertainty_constraints": [],
+            "negative_constraints": [],
+            "critical_requirements": [],
+            "diagnostic_expectations": None,
+            "review_policy": {"rubric_version": "m7-v1", "reviewer_types": ["human"], "blind_pairwise": True, "human_adjudication_on_disagreement": True},
+            "provenance": {"source": "test", "method": "test", "created_at": "2026-08-31T00:00:00+00:00"},
+        }
+        path = directory / f"{name}.json"
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        return path
+
+    def _finding(self, finding_id: str, criterion: str, semantics: str, evidence_ids=(), completeness="exhaustive"):
+        from trivae.evaluation.benchmark.gt import build_case_ground_truth  # noqa: F401
+        from trivae.evaluation.contracts import ReferenceEvidence, ReferenceFinding, ReferenceProvenance
+
+        provenance = ReferenceProvenance(
+            source="t", created_at="2026-08-31T00:00:00+00:00", method="deterministic LIKE scan; hit_count=1",
+            snapshot_id="snapshot:audit-test",
+            scope_identity='{"allowed_session_ids":null,"end_timestamp":null,"max_results":20,"start_timestamp":null}',
+        )
+        evidence = tuple(
+            ReferenceEvidence(
+                evidence_id=f"ev:{mid}", relation="supports" if criterion == "gt.relevant" else "context",
+                source_type="message", locator={"internal_message_id": mid}, why_relevant="t", provenance=provenance,
+            )
+            for mid in evidence_ids
+        )
+        return ReferenceFinding(
+            finding_id=finding_id, criterion=criterion, expected_semantics=semantics,
+            reference_evidence=evidence, annotation_completeness=completeness, provenance=provenance,
+        )
+
+    def test_valid_case_passes_and_leak_detected(self) -> None:
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            self._case_file(
+                cases_dir, "ok-case",
+                (
+                    self._finding("relevant", "gt.relevant", "messages with repo", ["m-1"]),
+                    self._finding("zero", "gt.expected_zero_result", "false"),
+                    self._finding("fact", "gt.expected_fact", '["github.com/example/repo"]'),
+                ),
+                query="谁分享过 example/repo？",
+            )
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            self.assertTrue(result["passed"], result["findings"])
+
+            # 正文泄露：把消息原文塞进 why_relevant 必须被抓到
+            leaking = self._case_file(
+                cases_dir, "leak-case",
+                (
+                    self._finding(
+                        "relevant", "gt.relevant", "x", ["m-1"],
+                    ),
+                ),
+            )
+            payload = json.loads(leaking.read_text())
+            # 直接把消息原文整段粘进 why_relevant——即真实泄露形态。
+            payload["reference_findings"][0]["reference_evidence"][0]["why_relevant"] = (
+                "https://github.com/example/repo 是个好项目"
+            )
+            leaking.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            self.assertFalse(result["passed"])
+            self.assertTrue(any(f["detail"].startswith("content_leak") for f in result["findings"]))
+
+    def test_missing_message_and_holdout_isolation(self) -> None:
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            self._case_file(
+                cases_dir, "missing-msg",
+                (
+                    self._finding("relevant", "gt.relevant", "x", ["m-404"]),
+                    self._finding("zero", "gt.expected_zero_result", "false"),
+                ),
+            )
+            holdout = root / "holdout"
+            holdout.mkdir()
+            (holdout / "case.json").write_text("{}", encoding="utf-8")
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=holdout)
+            result = audit.audit()
+            audit.close()
+            details = {item["detail"].split(":")[0] for item in result["findings"]}
+            self.assertIn("missing_message", details)
+            self.assertIn("holdout_dir_exists_before_freeze", details)
+            self.assertFalse(result["passed"])
+
+    def test_category_shape_enforced(self) -> None:
+        from trivae.evaluation.benchmark.audit import CaseAudit
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database_path = self._fixture_db(root)
+            cases_dir = root / "cases"
+            cases_dir.mkdir()
+            self._case_file(
+                cases_dir, "bad-paraphrase",
+                (
+                    self._finding("relevant", "gt.relevant", "x", ["m-1"]),
+                    self._finding("zero", "gt.expected_zero_result", "false"),
+                ),
+                tags=("category:semantic_paraphrase",),
+            )
+            audit = CaseAudit(database_path=database_path, case_dirs=(cases_dir,), holdout_dir=root / "holdout")
+            result = audit.audit()
+            audit.close()
+            self.assertTrue(any("paraphrase must not claim exhaustive" in item["detail"] for item in result["findings"]))

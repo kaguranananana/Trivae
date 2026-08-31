@@ -324,6 +324,12 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_judge_parser.add_argument("--records", type=Path, required=True, help="raw-records.json from a benchmark run")
     benchmark_judge_parser.add_argument("--cases-dir", type=Path, required=True)
     benchmark_judge_parser.add_argument("--output", type=Path, required=True)
+    benchmark_audit_parser = benchmark_subparsers.add_parser(
+        "audit", help="Deterministic GT consistency audit over version-controlled benchmark cases"
+    )
+    benchmark_audit_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_audit_parser.add_argument("--cases-dir", type=Path, action="append", required=True)
+    benchmark_audit_parser.add_argument("--output", type=Path, default=None)
     retrieval_metrics_parser.add_argument("--sealed", type=Path, required=True)
     retrieval_metrics_parser.add_argument("--annotations", type=Path, required=True)
     retrieval_metrics_parser.add_argument(
@@ -585,6 +591,22 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
                 )
             print(json.dumps(outcome, ensure_ascii=False, indent=2))
             return 0
+
+        if args.benchmark_command == "audit":
+            from trivae.evaluation.benchmark.audit import CaseAudit
+
+            audit = CaseAudit(database_path=args.database, case_dirs=tuple(args.cases_dir))
+            try:
+                result = audit.audit()
+            finally:
+                audit.close()
+            if args.output is not None:
+                Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+                Path(args.output).write_text(
+                    json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["passed"] else 1
 
         if args.benchmark_command == "run":
             suite = EvaluationSuite.from_json(args.suite)
