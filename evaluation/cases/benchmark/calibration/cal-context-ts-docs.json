@@ -154,8 +154,8 @@
   ],
   "provenance": {
     "created_at": "2026-08-30T00:00:00+00:00",
-    "method": "reply pair pick; provisional",
-    "notes": "provisional pending human review",
+    "method": "reply pair pick; human adjudicated 2026-08-31",
+    "notes": "human adjudication 2026-08-31: Modify: swap gt.relevant/gt.required_context roles (reply directly answers query; parent restores the Vercel AI SDK referent)",
     "source": "calibration-construction:cal-context-ts-docs"
   },
   "query": "之前有没有人问过想深入学习某个前端 SDK 文档但是读不进去的问题？",
@@ -164,59 +164,16 @@
       "annotation_completeness": "partial",
       "criterion": "gt.relevant",
       "critical": false,
-      "expected_semantics": "被讨论的推荐消息（direct target）",
+      "expected_semantics": "直接回答 query 的提问消息（读前端 SDK 文档抓不到重点、想深入学）",
       "finding_id": "relevant",
       "known_limitations": [
         "target 集合未证明 corpus-exhaustive。"
       ],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
-        "method": "reply pair pick; manual",
-        "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
-        "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
-        "source": "deterministic-construction:cal-context-ts-docs"
-      },
-      "reference_evidence": [
-        {
-          "evidence_id": "ev:qq:831907794:7673166668798186827",
-          "locator": {
-            "internal_message_id": "qq:831907794:7673166668798186827"
-          },
-          "provenance": {
-            "adjudicated": false,
-            "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
-            "method": "deterministic LIKE scan / manual pick",
-            "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
-            "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
-            "source": "deterministic-construction:shared"
-          },
-          "relation": "supports",
-          "source_type": "message",
-          "why_relevant": "对话主消息"
-        }
-      ]
-    },
-    {
-      "annotation_completeness": "exhaustive",
-      "criterion": "gt.required_context",
-      "critical": false,
-      "expected_semantics": "对 direct target 的追问/回应，脱离上下文不可解释",
-      "finding_id": "context",
-      "known_limitations": [],
-      "provenance": {
-        "adjudicated": false,
-        "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
-        "method": "single known reply pair",
+        "limitations": [],
+        "method": "reply pair pick; reply directly answers query (roles swapped per human adjudication)",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
         "source": "deterministic-construction:cal-context-ts-docs"
@@ -228,11 +185,46 @@
             "internal_message_id": "qq:831907794:7674452954669596319"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
+            "method": "deterministic LIKE scan / manual pick",
+            "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+            "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+            "source": "deterministic-construction:shared"
+          },
+          "relation": "supports",
+          "source_type": "message",
+          "why_relevant": "直接回答 query：读 SDK 文档抓不到重点、想深入学的提问"
+        }
+      ]
+    },
+    {
+      "annotation_completeness": "exhaustive",
+      "criterion": "gt.required_context",
+      "critical": false,
+      "expected_semantics": "direct target 回复指向的上文（Vercel AI SDK 推荐），脱离上下文不可解释",
+      "finding_id": "context",
+      "known_limitations": [],
+      "provenance": {
+        "adjudicated": true,
+        "created_at": "2026-08-30T00:00:00+00:00",
+        "limitations": [],
+        "method": "single known reply pair (parent of direct target)",
+        "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+        "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+        "source": "deterministic-construction:cal-context-ts-docs"
+      },
+      "reference_evidence": [
+        {
+          "evidence_id": "ev:qq:831907794:7673166668798186827",
+          "locator": {
+            "internal_message_id": "qq:831907794:7673166668798186827"
+          },
+          "provenance": {
+            "adjudicated": true,
+            "created_at": "2026-08-30T00:00:00+00:00",
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -240,7 +232,7 @@
           },
           "relation": "context",
           "source_type": "message",
-          "why_relevant": "回复消息，指代 direct target"
+          "why_relevant": "reply pair 的 parent：恢复'这个'指代的 Vercel AI SDK 上文"
         }
       ]
     },
@@ -252,11 +244,9 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "target exists",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -283,5 +273,5 @@
   "uncertainty_constraints": [
     "required_context 必须出现在最终 evidence 中才算恢复成功。"
   ],
-  "version": 1
+  "version": 2
 }

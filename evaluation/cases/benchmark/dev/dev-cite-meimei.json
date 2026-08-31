@@ -154,26 +154,26 @@
   ],
   "provenance": {
     "created_at": "2026-08-30T00:00:00+00:00",
-    "method": "deterministic LIKE scan (3 hits); provisional",
-    "notes": "provisional pending human review",
+    "method": "deterministic LIKE scan (3 hits); human adjudicated 2026-08-31",
+    "notes": "human adjudication 2026-08-31: Modify: gt.relevant exhaustive->partial (LIKE proves the target repo occurrence set, not semantic-class corpus enumeration)",
     "source": "dev-construction:dev-cite-meimei"
   },
   "query": "有没有人分享过 Java/NestJS 方向的管理后台模板或学习资源？",
   "reference_findings": [
     {
-      "annotation_completeness": "exhaustive",
+      "annotation_completeness": "partial",
       "criterion": "gt.relevant",
       "critical": false,
-      "expected_semantics": "包含 87789771/meimei-nestjs-admin 的消息（LIKE 全库扫描枚举，共 3 条）",
+      "expected_semantics": "包含 87789771/meimei-nestjs-admin 的消息（target 集合=该 repo 全部出现，LIKE 全库扫描枚举共 3 条；query 为语义类，不声称 corpus 穷举）",
       "finding_id": "relevant",
-      "known_limitations": [],
+      "known_limitations": [
+        "target 集合=该 repo URL 全部出现（LIKE 证明）；query 为语义类，只能评 Target Recall。"
+      ],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
-        "method": "deterministic LIKE scan; hit_count=3",
+        "limitations": [],
+        "method": "deterministic LIKE scan; hit_count=3 (target repo occurrence set; corpus semantic enumeration not claimed)",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
         "source": "deterministic-construction:dev-cite-meimei"
@@ -185,11 +185,9 @@
             "internal_message_id": "qq:1039179741:7643850471469905093"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -205,11 +203,9 @@
             "internal_message_id": "qq:1039179741:7643850840259025702"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -225,11 +221,9 @@
             "internal_message_id": "qq:1039179741:7643854479613009953"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -249,11 +243,9 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "predicate scan proves non-empty",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -269,11 +261,9 @@
       "finding_id": "fact",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "extractive fact; citation required",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -299,5 +289,5 @@
   "uncertainty_constraints": [
     "期望答案明确引用来源消息。"
   ],
-  "version": 1
+  "version": 2
 }

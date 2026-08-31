@@ -154,11 +154,11 @@
   ],
   "provenance": {
     "created_at": "2026-08-30T00:00:00+00:00",
-    "method": "reply pair pick; provisional",
-    "notes": "provisional pending human review",
+    "method": "reply pair pick; human adjudicated 2026-08-31",
+    "notes": "human adjudication 2026-08-31: Modify: query rewritten so a second member's reply is required evidence (direct target alone already answered the old query)",
     "source": "calibration-construction:cal-context-ui-skill"
   },
-  "query": "之前有没有人推荐过可以检查 UI 效果的 skill？大家觉得怎么样？",
+  "query": "之前有没有人推荐过可以检查 UI 效果的 skill？除了推荐者本人，还有没有其他人评价过它？",
   "reference_findings": [
     {
       "annotation_completeness": "partial",
@@ -170,11 +170,9 @@
         "target 集合未证明 corpus-exhaustive。"
       ],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "reply pair pick; manual",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -187,11 +185,9 @@
             "internal_message_id": "qq:831907794:7674452946487780087"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -211,11 +207,9 @@
       "finding_id": "context",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "single known reply pair",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -228,11 +222,9 @@
             "internal_message_id": "qq:831907794:7674452946487780099"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -252,11 +244,9 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "target exists",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -283,5 +273,5 @@
   "uncertainty_constraints": [
     "required_context 必须出现在最终 evidence 中才算恢复成功。"
   ],
-  "version": 1
+  "version": 2
 }

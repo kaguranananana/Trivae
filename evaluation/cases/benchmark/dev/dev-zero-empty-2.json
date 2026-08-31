@@ -154,11 +154,11 @@
   ],
   "provenance": {
     "created_at": "2026-08-30T00:00:00+00:00",
-    "method": "deterministic empty-window COUNT; provisional",
-    "notes": "provisional pending human review",
+    "method": "deterministic empty-window COUNT; human adjudicated 2026-08-31",
+    "notes": "human adjudication 2026-08-31: Modify: query declares explicit UTC day window (production renders UTC only)",
     "source": "dev-construction:dev-zero-empty-2"
   },
-  "query": "2025-08-23这天大家有没有发言？都在聊什么？",
+  "query": "按 UTC 时间算，2025-08-23 这天大家有没有发言？都在聊什么？",
   "reference_findings": [
     {
       "annotation_completeness": "exhaustive",
@@ -168,11 +168,9 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "SQL COUNT over 2025-08-23 UTC = 0 (deterministic)",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -198,5 +196,5 @@
   "uncertainty_constraints": [
     "2025-08-23 UTC 窗口经验证为 0 条消息；合法空窗。"
   ],
-  "version": 1
+  "version": 2
 }

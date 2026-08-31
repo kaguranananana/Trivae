@@ -154,11 +154,11 @@
   ],
   "provenance": {
     "created_at": "2026-08-30T00:00:00+00:00",
-    "method": "deterministic window count (73863); provisional",
-    "notes": "provisional pending human review",
+    "method": "deterministic window count (73863); human adjudicated 2026-08-31",
+    "notes": "human adjudication 2026-08-31: Modify: query '过去一个月'->'最近30天' (proof window is fixed 30d; boundary now explicit)",
     "source": "dev-construction:dev-temporal-30d"
   },
-  "query": "过去一个月群里的主要话题有哪些？",
+  "query": "最近30天群里的主要话题有哪些？",
   "reference_findings": [
     {
       "annotation_completeness": "exhaustive",
@@ -168,11 +168,9 @@
       "finding_id": "coverage",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "SQL COUNT over last 30d = 73863 (deterministic)",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -188,11 +186,9 @@
       "finding_id": "truncated",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "window count 73863 vs trusted capacity (deterministic)",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -208,11 +204,9 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "window count 73863 > 0 (deterministic)",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -238,5 +232,5 @@
   "uncertainty_constraints": [
     "窗口实测 73863 条消息；coverage/truncated 预期由容量决定。"
   ],
-  "version": 1
+  "version": 2
 }

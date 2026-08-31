@@ -154,26 +154,26 @@
   ],
   "provenance": {
     "created_at": "2026-08-30T00:00:00+00:00",
-    "method": "deterministic LIKE scan (4 hits); provisional",
-    "notes": "provisional pending human review",
+    "method": "deterministic LIKE scan (4 hits); human adjudicated 2026-08-31",
+    "notes": "human adjudication 2026-08-31: Modify: gt.relevant exhaustive->partial (semantic-class query; LIKE proves target repo occurrence set only)",
     "source": "dev-construction:dev-lexical-resume-miner"
   },
   "query": "有没有人分享过能把项目经历整理到简历上的工具？",
   "reference_findings": [
     {
-      "annotation_completeness": "exhaustive",
+      "annotation_completeness": "partial",
       "criterion": "gt.relevant",
       "critical": false,
-      "expected_semantics": "包含 auberginewly/resume-project-miner 的消息（LIKE 全库扫描枚举，共 4 条）",
+      "expected_semantics": "包含 auberginewly/resume-project-miner 的消息（target 集合=该 repo 全部出现，LIKE 全库扫描枚举共 4 条；query 为语义类，不声称 corpus 穷举）",
       "finding_id": "relevant",
-      "known_limitations": [],
+      "known_limitations": [
+        "target 集合=该 repo URL 全部出现（LIKE 证明）；query 为语义类，只能评 Target Recall。"
+      ],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
-        "method": "deterministic LIKE scan; hit_count=4",
+        "limitations": [],
+        "method": "deterministic LIKE scan; hit_count=4 (target repo occurrence set; corpus semantic enumeration not claimed)",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
         "source": "deterministic-construction:dev-lexical-resume-miner"
@@ -185,11 +185,9 @@
             "internal_message_id": "qq:750807478:7662661909059919056"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -205,11 +203,9 @@
             "internal_message_id": "qq:750807478:7662661994759881060"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -225,11 +221,9 @@
             "internal_message_id": "qq:750807478:7662662101585409213"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -245,11 +239,9 @@
             "internal_message_id": "qq:750807478:7662662118489864781"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -269,11 +261,9 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "predicate scan proves non-empty",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -289,11 +279,9 @@
       "finding_id": "fact",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "extractive fact from GT messages",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -319,5 +307,5 @@
   "uncertainty_constraints": [
     "不要求罗列每条消息的发送者与时间。"
   ],
-  "version": 1
+  "version": 2
 }

@@ -14,7 +14,7 @@
     },
     {
       "case_id": "dev-cite-meimei",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-cite-nanobot",
@@ -30,7 +30,7 @@
     },
     {
       "case_id": "dev-context-mattpocock-1",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-context-mattpocock-2",
@@ -38,11 +38,11 @@
     },
     {
       "case_id": "dev-lexical-agentic-zh",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-lexical-chatlog-alpha",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-lexical-deepseek-harness",
@@ -54,31 +54,31 @@
     },
     {
       "case_id": "dev-lexical-mcp-switch",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-lexical-nanobot-wiki",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-lexical-resume-miner",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-lexical-siclaw",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-lexical-vibe-game",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-lexical-zenith",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-para-ai-interest",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-para-intern-hard-part",
@@ -114,7 +114,7 @@
     },
     {
       "case_id": "dev-temporal-1d",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-temporal-2d",
@@ -122,7 +122,7 @@
     },
     {
       "case_id": "dev-temporal-30d",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-temporal-3d",
@@ -134,24 +134,24 @@
     },
     {
       "case_id": "dev-zero-empty-1",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-zero-empty-2",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-zero-empty-3",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "dev-zero-excalidraw",
-      "version": 1
+      "version": 2
     }
   ],
   "created_at": "2026-08-30T00:00:00+00:00",
-  "description": "resume-benchmark-v1 development set (provisional GT pending adjudication). Final benchmark denominator = development + holdout (calibration excluded).",
+  "description": "resume-benchmark-v1 development set (GT human-adjudicated 2026-08-31; v2 refs = modified cases). Final benchmark denominator = development + holdout (calibration excluded).",
   "kind": "core",
   "suite_id": "resume-benchmark-dev",
-  "version": 1
+  "version": 2
 }

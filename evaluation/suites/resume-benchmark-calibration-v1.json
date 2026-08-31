@@ -10,7 +10,7 @@
     },
     {
       "case_id": "cal-lexical-hello-agents",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cal-paraphrase-agent-memory",
@@ -22,11 +22,11 @@
     },
     {
       "case_id": "cal-context-ui-skill",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cal-context-ts-docs",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cal-temporal-last-2d",
@@ -38,12 +38,12 @@
     },
     {
       "case_id": "cal-zero-empty-window",
-      "version": 1
+      "version": 2
     }
   ],
   "created_at": "2026-08-30T00:00:00+00:00",
-  "description": "Stage 1.5 calibration pilot: validates GT parser, run projection, metrics, report before mass case construction. NOT part of the final benchmark denominator; results never appear in headline metrics.",
+  "description": "Stage 1.5 calibration pilot slice (GT human-adjudicated 2026-08-31; v2 refs = modified cases). Validates GT parser, run projection, metrics, report; excluded from the final benchmark denominator.",
   "kind": "calibration_slice",
   "suite_id": "resume-benchmark-calibration",
-  "version": 1
+  "version": 2
 }

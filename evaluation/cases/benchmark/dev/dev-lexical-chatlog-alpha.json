@@ -154,11 +154,11 @@
   ],
   "provenance": {
     "created_at": "2026-08-30T00:00:00+00:00",
-    "method": "deterministic LIKE scan (2 hits); provisional",
-    "notes": "provisional pending human review",
+    "method": "deterministic LIKE scan (2 hits); human adjudicated 2026-08-31",
+    "notes": "human adjudication 2026-08-31: Modify: query rewritten to drop the sender-extraction dimension",
     "source": "dev-construction:dev-lexical-chatlog-alpha"
   },
-  "query": "chatlog_alpha 这个聊天记录相关的仓库谁分享过？",
+  "query": "teest114514/chatlog_alpha 这个聊天记录相关的仓库在群里被分享过吗？",
   "reference_findings": [
     {
       "annotation_completeness": "exhaustive",
@@ -168,11 +168,9 @@
       "finding_id": "relevant",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "deterministic LIKE scan; hit_count=2",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -185,11 +183,9 @@
             "internal_message_id": "qq:1039179741:7641513975025272000"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -205,11 +201,9 @@
             "internal_message_id": "qq:1039179741:7641514409533959400"
           },
           "provenance": {
-            "adjudicated": false,
+            "adjudicated": true,
             "created_at": "2026-08-30T00:00:00+00:00",
-            "limitations": [
-              "provisional; awaiting human review"
-            ],
+            "limitations": [],
             "method": "deterministic LIKE scan / manual pick",
             "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
             "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -229,11 +223,9 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "predicate scan proves non-empty",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -249,11 +241,9 @@
       "finding_id": "fact",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "provisional; awaiting human review"
-        ],
+        "limitations": [],
         "method": "extractive fact from GT messages",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
@@ -279,5 +269,5 @@
   "uncertainty_constraints": [
     "不要求罗列每条消息的发送者与时间。"
   ],
-  "version": 1
+  "version": 2
 }
