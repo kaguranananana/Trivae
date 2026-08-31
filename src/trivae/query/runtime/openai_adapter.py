@@ -1602,6 +1602,15 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
     ) -> RuntimeEvent:
         """为每个事件分配进程内 sequence，不暴露 provider 原始 sequence。"""
 
+        if provider_observation is None and state.provider_transport_observations:
+            # provider 在 on_llm_end 之前断流时没有 model_output 事件；失败终态仍必须带上
+            # 已经观察到的 status/chunk/finish facts，避免把 provider failure 变成不可诊断黑洞。
+            provider_observation = {
+                "transport_attempts": [
+                    dict(item) for item in state.provider_transport_observations
+                ]
+            }
+            state.provider_transport_observations.clear()
         state.sequence += 1
         return RuntimeEvent(
             type=event_type,

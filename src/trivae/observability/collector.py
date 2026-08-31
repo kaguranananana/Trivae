@@ -460,6 +460,7 @@ class TraceableAgentRuntime(AgentRuntime):
         last_usage: Mapping[str, int | float] | None = None
         last_tool_round = 0
         last_event: RuntimeEvent | None = None
+        last_provider_observation: Mapping[str, object] | None = None
         stream_iterator = stream(request) if abort_event is None else stream(request, abort_event)
         try:
             async for event in stream_iterator:
@@ -467,6 +468,10 @@ class TraceableAgentRuntime(AgentRuntime):
                     raise TypeError("runtime stream must yield RuntimeEvent values")
                 # 先保存当前事件及其 terminal 快照，再调用 live observer；parser 可能在 observer 内失败。
                 last_event = event
+                if event.provider_observation is not None:
+                    # parser 可能在后续 content delta 中失败，不能因 last_event 被覆盖而丢掉
+                    # 最近一次 provider response 的 bounded transport facts。
+                    last_provider_observation = event.provider_observation
                 if event.tool_call is not None and event.tool_call not in observed_tool_calls:
                     observed_tool_calls.append(event.tool_call)
                 if event.tool_result is not None and event.tool_result not in observed_tool_results:
@@ -524,6 +529,7 @@ class TraceableAgentRuntime(AgentRuntime):
                 result=result,
                 run_id=result.run_id,
                 usage=result.usage,
+                provider_observation=last_provider_observation,
             )
             if self._runtime_event_observer is not None:
                 # failed event 不再携带 content delta；live adapter 可以明确关闭开放段并展示失败。

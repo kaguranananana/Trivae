@@ -657,6 +657,53 @@ class RuntimeAdapterTests(unittest.TestCase):
             }
         ])
 
+    def test_provider_stream_failure_observation_is_emitted_on_failed_terminal(self) -> None:
+        """provider 在 model callback 前断流时，失败 RuntimeEvent 仍保留 transport facts。"""
+
+        class FailingProviderStream:
+            response = SimpleNamespace(status_code=502, headers={"x-request-id": "req-failed"})
+
+            def __init__(self) -> None:
+                self.chunks = [SimpleNamespace(id="failed-response", choices=[], usage=None)]
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                if self.chunks:
+                    return self.chunks.pop(0)
+                raise OSError("provider stream disconnected")
+
+            async def aclose(self):
+                return None
+
+        class FailingStreamedRun:
+            async def stream_events(self):
+                stream = _ObservedProviderStream(FailingProviderStream())
+                async for chunk in stream:
+                    # 让 fake SDK stream 保持 async iterator 形态，并在下一次读取时暴露断流。
+                    yield chunk
+
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=ScriptedModel([]), max_turns=2)
+        with patch(
+            "trivae.query.runtime.openai_adapter.Runner.run_streamed",
+            return_value=FailingStreamedRun(),
+        ):
+            events = asyncio.run(
+                _collect_runtime_events(runtime, AgentRunRequest("query", self.scope))
+            )
+
+        failed = next(event for event in events if event.type == "failed")
+        self.assertEqual(failed.result.termination, "failed")
+        self.assertEqual(
+            failed.provider_observation["transport_attempts"][0]["status_code"],
+            502,
+        )
+        self.assertEqual(
+            failed.provider_observation["transport_attempts"][0]["exception_type"],
+            "OSError",
+        )
+
     def test_search_tool_schema_exposes_trusted_result_bound(self) -> None:
         """验证 provider schema 暴露本次 trusted result bound，但仍保留 Capability 校验。"""
 

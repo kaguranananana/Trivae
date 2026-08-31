@@ -135,6 +135,27 @@ def evaluate_case_failure(
             detail=f"run terminated with {terminal}",
         )
 
+    # Runtime completed 仍可能在 Answer/Citation Finalizer 失败；这属于答案生成边界，
+    # 必须先于 coverage 检查归类，避免把“没有 artifact”误报为 coverage mismatch。
+    finalization_error = run_query_result.get("finalization_error")
+    if isinstance(finalization_error, Mapping) or run_query_result.get("finalization_status") == "failed":
+        return BenchmarkFailure(
+            case_id=gt.case_id,
+            variant_id=variant_id,
+            run_id=run_id,
+            category="answer_generation_error",
+            expected={"answer_artifact": "present"},
+            actual={
+                **actual,
+                "finalization_status": run_query_result.get("finalization_status"),
+                "finalization_error": dict(finalization_error)
+                if isinstance(finalization_error, Mapping)
+                else None,
+            },
+            trace_id=trace_id,
+            detail="answer finalization did not produce a valid AnswerArtifact",
+        )
+
     # 2. false zero-result：GT 存在相关消息却输出 no_result 形态。
     if gt.expected_zero_result is False and run_query_result.get("answer_form") == NO_RESULT_FORM:
         return BenchmarkFailure(

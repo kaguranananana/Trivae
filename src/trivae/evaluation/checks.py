@@ -214,7 +214,13 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
         "termination": result.termination,
         "execution_status": result.execution_status,
         "is_successful": result.is_successful,
-        "finalization_status": result.finalization_status,
+        # Runtime 尚未完成时没有进入 Finalizer；QueryResult 的 dataclass 默认值不能
+        # 被当作真实 finalization 状态写入 Evaluation projection。
+        "finalization_status": (
+            result.finalization_status
+            if result.runtime_result.termination == "completed"
+            else "skipped"
+        ),
         "route": result.route_decision.route,
         "route_source": result.route_decision.source,
         "route_degraded": result.route_decision.degraded,
@@ -244,6 +250,7 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
                 "stage": runtime_error.stage,
                 "category": runtime_error.category,
                 "diagnostic_type": runtime_error.diagnostic_type,
+                "exception_type": runtime_error.exception_type,
             },
         },
         "finalization_error": None

@@ -167,6 +167,10 @@ class BenchmarkOrchestrator:
                     "run_status": outcome["run_status"],
                     "flags": outcome["flags"],
                     "metrics": outcome["metrics"],
+                    # 把同一 EvaluationRun 的 operational facts 带入 report，
+                    # 让 latency/tool/token 聚合与质量指标共享完全相同的分母。
+                    "operational_measurements": dict(run.operational_measurements),
+                    "trace_id": run.trace_id,
                 }
             )
             failure = evaluate_case_failure(

@@ -22,7 +22,7 @@ from trivae.evaluation.benchmark.failures import evaluate_case_failure
 from trivae.evaluation.benchmark.freeze import capture_freeze_record, verify_freeze_record
 from trivae.evaluation.benchmark.gt import build_case_ground_truth
 from trivae.evaluation.benchmark.metrics import evaluate_end_to_end_case, score_expansion, score_ranking
-from trivae.evaluation.benchmark.report import aggregate_metric_records, render_markdown
+from trivae.evaluation.benchmark.report import aggregate_metric_records, build_report, render_markdown
 from trivae.evaluation.checks import query_result_snapshot, run_deterministic_checks
 from trivae.evaluation.contracts import (
     CaseReference,
@@ -47,7 +47,7 @@ from trivae.query.evidence import (
     ToolResultRecord,
 )
 from trivae.query.router import RouteDecision
-from trivae.query.runtime.contracts import RuntimeResult, RuntimeToolCall
+from trivae.query.runtime.contracts import RuntimeErrorInfo, RuntimeResult, RuntimeToolCall
 from trivae.retrieval.structured import MessageProjection
 
 _SNAPSHOT = DatasetSnapshot(
@@ -410,6 +410,29 @@ class FailureTests(unittest.TestCase):
         )
         self.assertEqual(failure.category, "zero_result_error")
 
+    def test_answer_generation_failure_precedes_coverage_classification(self) -> None:
+        """Finalizer 失败必须归到答案生成，不被 coverage unavailable 遮蔽。"""
+
+        truth = self._gt(
+            (
+                _finding("relevant", "gt.relevant", "x", (_message_evidence("m1"),)),
+                _finding("coverage", "gt.expected_coverage_status", "complete"),
+            )
+        )
+        failure = evaluate_case_failure(
+            truth,
+            variant_id="D",
+            run_id="run-1",
+            run_query_result=_end_to_end_projection(
+                answer_form=None,
+                is_successful=False,
+                finalization_status="failed",
+                finalization_error={"code": "INVALID_ANSWER_ARTIFACT", "path": "answer"},
+            ),
+            trace_id="trace-1",
+        )
+        self.assertEqual(failure.category, "answer_generation_error")
+
     def test_context_missing(self) -> None:
         truth = self._gt(
             (
@@ -558,6 +581,66 @@ class AggregateReportTests(unittest.TestCase):
         self.assertIn("evidence_recall", markdown)
         self.assertIn("n/a", markdown)
 
+    def test_report_contains_weighted_counts_operational_facts_and_pair_delta(self) -> None:
+        """正式报告同时保留 rate 分母、运行事实和真实单变量 paired delta。"""
+
+        truth = build_case_ground_truth(
+            _case((_finding("relevant", "gt.relevant", "x", (_message_evidence("m1"),)),))
+        )
+        variants = [{"variant_id": alias} for alias in ("A", "B", "C", "C2")]
+        records = []
+        for alias, evidence, latency in (
+            ("A", (), 20),
+            ("B", ("m1",), 10),
+            ("C", ("m1",), 12),
+            ("C2", (), 15),
+        ):
+            outcome = evaluate_end_to_end_case(
+                truth,
+                _end_to_end_projection(evidence_sources=_evidence_projection(*evidence)),
+            )
+            records.append(
+                {
+                    "case_id": truth.case_id,
+                    "variant_id": alias,
+                    "category": "exact_lexical",
+                    "metrics": outcome["metrics"],
+                    "operational_measurements": {
+                        "latency_ms": latency,
+                        "tool_calls": 1,
+                        "tool_rounds": 1,
+                        "usage": {"input_tokens": 2, "output_tokens": 3, "total_tokens": 5},
+                    },
+                }
+            )
+        report = build_report(
+            benchmark="resume-benchmark-v1",
+            environment={"canonical_snapshot_id": "s", "git_commit": "c", "semantic_index": "i"},
+            variants=variants,
+            case_stats={"total": 1},
+            end_to_end_records={"development": records},
+            module_retrieval=None,
+            failures=[],
+            holdout_sealed=False,
+            report_metadata={"stage": "stage3_final_clean", "run_count": 4},
+        )
+        overall_a = report["splits"]["development"]["overall"]["A"]["metrics"]
+        evidence = next(item for item in overall_a if item["name"] == "evidence_recall")
+        self.assertEqual(evidence["numerator"], 0.0)
+        self.assertEqual(evidence["denominator"], 1.0)
+        self.assertEqual(evidence["rate"], 0.0)
+        operational = report["splits"]["development"]["operational"]["A"]
+        self.assertEqual(operational["run_count"], 1)
+        self.assertEqual(operational["latency_ms"]["p50"], 20.0)
+        comparisons = report["cross_variant"]["comparisons"]
+        semantic = next(item for item in comparisons if item["label"] == "semantic_uplift")
+        evidence_delta = next(
+            item for item in semantic["splits"][0]["metrics"] if item["name"] == "evidence_recall"
+        )
+        self.assertEqual(evidence_delta["delta"]["rate"], 1.0)
+        self.assertEqual(evidence_delta["paired_n"], 1)
+        self.assertIn("1/1", render_markdown(report))
+
 
 def _tool_record(*direct_ids: str, expanded_ids: tuple[str, ...] = ()) -> ToolResultRecord:
     def _message(message_id: str) -> MessageProjection:
@@ -644,6 +727,24 @@ class ChecksProjectionTests(unittest.TestCase):
         artifact = AnswerArtifact(content_blocks=(AnswerContentBlock("answer", "没有找到相关内容"),))
         result = self._result(artifact=artifact)
         self.assertEqual(query_result_snapshot(result)["answer_form"], "no_result_signature")
+
+    def test_failed_runtime_projection_does_not_claim_valid_finalization(self) -> None:
+        """Runtime 未完成时，projection 必须保留 skipped 与真实 exception type。"""
+
+        failed_runtime = replace(
+            self._result().runtime_result,
+            final_answer=None,
+            termination="failed",
+            error=RuntimeErrorInfo(
+                code="RUNTIME_ERROR",
+                message="runtime failed",
+                category="terminal",
+                exception_type="ProviderError",
+            ),
+        )
+        snapshot = query_result_snapshot(replace(self._result(), runtime_result=failed_runtime))
+        self.assertEqual(snapshot["finalization_status"], "skipped")
+        self.assertEqual(snapshot["runtime"]["error"]["exception_type"], "ProviderError")
 
     def test_context_expansion_override_check(self) -> None:
         case = _case()
