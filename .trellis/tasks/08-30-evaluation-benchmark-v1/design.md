@@ -226,6 +226,7 @@ class ExecutionOverride:
 - **Calibration pilot**：批量审核前，先取 8~12 个 dev case 走完 Stage 1 全链路（GT parser → runner → projection → metrics → report），验证数据模型后再扩展到 40~60。
 - **目录与隔离**：
   - `evaluation/cases/benchmark/dev/*.json`、`calibration/*.json` → version-controlled（无正文；`why_relevant` ≤200 字符）
+  - **数量口径**：calibration 是 substrate 校准 slice，不计入最终 benchmark 分母与 headline metric；final split = development（当前 37）+ holdout（冻结后生成 16~23）= 53~60
   - **holdout 在 Gate 3 系统冻结之后才生成与人工审核（构造时序隔离，blind by construction）**：冻结前不存在任何 holdout 文件，不依赖「不可访问某目录」的纪律；gitignored 目录仅作本地存放位置，不声称技术不可见
   - Suite：`resume-benchmark-dev-v1.json`（提交）、`resume-benchmark-holdout-v1.json`（Gate 3 后创建，local）、`resume-benchmark-v1.json` full 清单（提交 dev 明细；holdout 计数在 Stage 4 回填，不含 holdout 明文）
 - 冻结记录：冻结时间、dev case 清单 hash（Gate 3 入库）；holdout 清单 hash 在 Stage 4 生成时补记（hash 入库，明文本地）。

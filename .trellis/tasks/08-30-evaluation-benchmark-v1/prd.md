@@ -22,7 +22,12 @@
 - 私有 source metadata 不进仓库；禁止把同一数据因 semantic rebuild/commit 不同错误建模成不同 Dataset
 
 ### R2 Benchmark Case 数据集（质量优先）
-- v1 目标 40~60 条高质量 case（上限 100），逐条人工 review 后 `adjudicated=true`
+- **数量口径（2026-08-31 统一）**：
+  - **calibration（10 case）是 Measurement Substrate / schema 校准 slice，不计入最终 benchmark 分母，其结果不出现在 headline metric**
+  - 正式 benchmark split 从 development case 池起算：当前 **37 条 development**
+  - holdout 在 Gate 3 冻结后生成 **16~23 条**，使 final split = 53~60，落在「v1 目标 40~60（上限 100）」区间内，且 dev 占比 62~70% 符合 60~70/30~40 拆分
+  - full benchmark case 数 = development + holdout（不含 calibration）
+- v1 目标 40~60 条高质量 case 指上述 final split（上限 100），逐条人工 review 后 `adjudicated=true`
 - 至少覆盖六类：exact_lexical、semantic_paraphrase、context_recovery、temporal_overview、citation_evidence、zero_result
 - Case 来源优先级：真实 dogfooding 问题 > 已归档 Failure Case > 数据自然可提出的问题 > 人工设计
 - 已知 Failure Case（2699/100 覆盖误判、CJK 0-hit、合法空窗等）进 development set 作回归
@@ -104,7 +109,7 @@
 ### R8 交付物
 1. Evaluation 现状审计（沉淀于 research/evaluation-audit.md）
 2. Benchmark Schema 说明
-3. Benchmark 数据集统计（总数、分类、dev/holdout、审核状态）
+3. Benchmark 数据集统计（总数、分类、dev/holdout、审核状态；calibration 单列不计入分母）
 4. Ablation Matrix 说明（A/B/C/C2/D）
 5. 真实 Benchmark Result（无数据写 not measured）
 6. Failure Analysis（acceptance-condition failures + root cause）
@@ -122,7 +127,7 @@
 ## Acceptance Criteria
 
 - [ ] `resume-benchmark-v1` canonical Snapshot + BenchmarkEnvironmentManifest 存在；pre-run gate 三查（snapshot/semantic identity/lexical count）通过；Runner 漂移拒绝验证
-- [ ] ≥40 条人工 adjudicated dev case（六类齐全，含 calibration pilot）；holdout 在 Gate 3 冻结后生成并审核（构造时序隔离）
+- [ ] 37 条 dev case 全部人工 adjudicated（六类齐全；数量口径见 R2）；holdout 在 Gate 3 冻结后生成 16~23 条并审核（构造时序隔离）
 - [ ] A/B/C/C2/D 五 variant 定义完成且 diff 可追溯；context 钳制在 Trace 可验证；B−A / C−B / C2−C 构成真单变量
 - [ ] Calibration pilot（8~12 case）通过后才进入批量审核；指标引擎 + report 测试全绿，`pytest -q` 全绿
 - [ ] 真实 benchmark 跑完：冻结 commit 全 dev rerun + 同 commit holdout 一次性运行；结果 JSON + Markdown，holdout 单独封存报告

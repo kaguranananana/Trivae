@@ -64,6 +64,7 @@
 - [ ] 冻结记录：时间、dev 清单 hash（提交）
 - [ ] **本阶段不创建任何 holdout 文件**（holdout 推迟到 Gate 3 冻结后的 Stage 4.0）
 - [ ] 无效条目预声明规则写入冻结记录：仅 (a) GT 与 Snapshot 事实矛盾 (b) 重复 (c) 数据损坏 三种情况允许替换，且必须记录原因
+- [ ] 数量口径：calibration（10）不计入最终 benchmark 分母；final split = dev 37 + holdout 16~23 = 53~60
 
 **Gate 2（用户 review）**：dev GT 逐条审核完成；dev 集冻结确认。
 
