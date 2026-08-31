@@ -3,6 +3,12 @@
 > Revision 2：吸收 review 修正——新增 Stage 1.5 calibration pilot gate；Stage 3 末尾「冻结 commit 全 dev rerun」；Stage 4 改为 holdout 一次定稿、结果封存、修复进 v2（删除降级替换重跑流程）。
 > 四阶段：Measurement Substrate → Benchmark Dataset → 干净 Ablation → Judge + 冻结后 holdout。
 > 每阶段末尾有 review gate；gate 未过不进入下一阶段。
+>
+> **当前状态（2026-08-31）**：停在 Gate 2 之前——47 个 case（10 calibration + 37 dev）已完成机器 GT 审计
+> （0 findings，`data/evaluation/benchmark/gt-audit.json`），enriched review pack 已就绪
+> （`data/evaluation/benchmark/review-pack-dev.md`，建议 Accept 27 / Modify 20 / Reject 0），
+> **等待用户逐条人工裁决**。holdout 未生成（有意）；dev 数字均为 development/provisional；
+> 不要 archive 本任务。
 
 ---
 
