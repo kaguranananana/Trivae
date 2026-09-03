@@ -916,15 +916,15 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - Q：怎么防止 Evaluation Overfit？→ dev/holdout 时序隔离（holdout 冻结后才存在）；dev 修复全部走通用机制（两个 substrate bug 修复即证据）；holdout 一次定稿不换题。
 - Q：数字会不会是调出来的？→ 每个数字可复查：Evaluation Store runs（run_id/trace_id）→ Trace → 逐层 retrieval_calls/evidence_sources 投影；报告 JSON 带 unavailable reasons 与分母；provider_failure 不进条件分母但无条件完成率并列呈现。
 
-## resume-benchmark-v1 Stage 3 Development Evaluation 事实索引（2026-09-01）
+## resume-benchmark-v1 Stage 3 Development Evaluation 事实索引（2026-09-04）
 
 ### Scope / identity
 
 - **Measured fact**：Human GT 为 47/47 adjudicated（Accept 26 / Modify 21 / Reject 0）；其中 Development 37、calibration 10。calibration 不进入 headline 分母，holdout 未生成、未查看、未评测。
 - **Measured fact**：最终 clean rerun 为 `resume-benchmark-dev@v2` 的 37 cases × A/B/C/C2/D 五个 Variant × 1 repetition = **185 runs**；每个 Variant 都有 37 条 EvaluationRun，运行使用真实 `opencode-go / deepseek-v4-flash` provider 和 production `TrivaeApplication.query()` path。
-- **Identity**：Gate 2 freeze record 为 `evaluation/snapshots/resume-benchmark-v1-freeze.json`；freeze execution commit 为 `b1f7b78ba802f853f9cd1cbf7433fe07b2f895c1`，freeze metadata commit 为 `e34c6985a734eb2169e0a48e12a512270ca0c353`，最终 clean execution commit 为 `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`。Case identity 使用 ordered versioned Case identities，Variant identity 使用 canonical configuration text；本仓库不使用 cryptographic digest。
+- **Identity**：Gate 2 freeze record 为 `evaluation/snapshots/resume-benchmark-v1-freeze.json`；freeze execution commit 为 `b1f7b78ba802f853f9cd1cbf7433fe07b2f895c1`，freeze metadata commit 为 `e34c6985a734eb2169e0a48e12a512270ca0c353`，冻结后的 quality baseline execution commit 为 `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`，根因修复后的 post-fix validation execution commit 为 `f24775099cb2314772c7d409341e8ebceeceac23`。Case identity 使用 ordered versioned Case identities，Variant identity 使用 canonical configuration text；本仓库不使用 cryptographic digest。
 - **Environment**：canonical Snapshot 为 `snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14`，lexical FTS 为 473236 rows，semantic 为 Qwen/Qwen3-Embedding-0.6B、1024d、last_token、normalized、chunker v1。freeze verification 12/12、environment gate 4/4、GT audit 47/47 且 0 error / 0 warning。
-- **Evidence**：Tier 1 机器报告为 `data/evaluation/benchmark/stage3-final-real/report.json` / `report.md`；raw records、failures、module packet、freeze verification 和 final evaluation database 均保留在 `data/evaluation/benchmark/` 下的对应 artifact。
+- **Evidence**：冻结后的 Tier 1 quality baseline 为 `data/evaluation/benchmark/stage3-final-real/report.json` / `report.md`；post-fix validation 为 `data/evaluation/benchmark/stage3-root-cause-final-clean-real/report.json` / `report.md`，对应独立 Evaluation SQLite。两批 raw records、failures、module packet、freeze verification 和 evaluation database 均保留在 `data/evaluation/benchmark/` 下的对应 artifact。
 
 ### Tier 1 final clean results
 
@@ -961,9 +961,9 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 
 ### Failure-driven iteration and remaining limits
 
-- 首轮真实 185 runs 的 failure artifact 为 112 条：provider_failure 19、coverage_error 17、context_missing 12、zero_result_error 6、retrieval_miss 4、not_observed_within_recorded_depth 54。最终 clean failure artifact 为 108 条：provider_failure 9、coverage_error 18、context_missing 13、answer_generation_error 6、retrieval_miss 3、zero_result_error 2、not_observed_within_recorded_depth 57。
+- 首轮真实 185 runs 的 failure artifact 为 112 条：provider_failure 19、coverage_error 17、context_missing 12、zero_result_error 6、retrieval_miss 4、not_observed_within_recorded_depth 54。冻结后的 quality baseline failure artifact 为 108 条：provider_failure 9、coverage_error 18、context_missing 13、answer_generation_error 6、retrieval_miss 3、zero_result_error 2、not_observed_within_recorded_depth 57。post-fix validation 的 failure artifact 为 146 条：provider_failure 114、retrieval_miss 12、coverage_error 7、context_missing 4、ranking_failure 4、answer_generation_error 2、zero_result_error 3。
 - 通用修复包含：stream parse/provider transport observation 的终止投影与 `ModelBehaviorError` 边界（`70e1b473...` / `7bac928...`，`tests/test_agent_runtime.py`）；finalization failure 的显式状态/分类及 report 的 denominator、operational、paired comparison 保留（`7bac928...`，`tests/test_benchmark.py`）。targeted artifacts 对 stream A/C 回归通过，对 context/temporal 剩余限制保持显式。
-- 剩余 Failure 主要是 provider/model stochastic output、required context 未被最终 evidence 保留、temporal pagination/coverage 未完整结束，以及 recorded depth 内未观察到 GT relevance。低 Recall/MRR 本身仍是质量结果，不自动归类为 infrastructure failure；本轮未观察到 ranking_failure、router_tool_selection_error 或 evaluation_infrastructure artifact。
+- baseline 的剩余 Failure 主要是 provider/model stochastic output、required context 未被最终 evidence 保留、temporal pagination/coverage 未完整结束，以及 recorded depth 内未观察到 GT relevance。post-fix validation 中 `not_observed_within_recorded_depth=0`；4 个 `ranking_failure` 均有 direct relevant hit 且 rank 14–29，说明分类修复已生效。全批次 114 条 terminal provider failure 中 C/C2/D 占 106 条，集中发生在 `APITimeoutError`/`APIConnectionError` 与 `ROUTER_COMPLETION_TIMEOUT` 时间窗口，C2/D 没有首个 model turn；它们不作为 ablation quality 结论。低 Recall/MRR 本身仍是质量结果，不自动归类为 infrastructure failure；两批均未观察到 `router_tool_selection_error` 或 `evaluation_infrastructure` artifact。
 
 ### Tier 2 judge boundary
 
@@ -973,7 +973,9 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 
 ### Interview Defense Notes
 
-- Q：为什么 final 只用这 185 条？→ 因为 first run 是 provisional，targeted run 只用于定位；final clean identity 明确为 `resume-benchmark-dev@v2:37x5:repeat=1`，每个 Variant 37 条，report metadata 固定 execution commit、Snapshot、semantic identity 和 Variant configuration。
+- Q：为什么 final 只用这 185 条？→ 因为 first run 是 provisional，targeted run 只用于定位；冻结后的 quality baseline 和 post-fix validation 都各自明确为 `resume-benchmark-dev@v2:37x5:repeat=1`，每个 Variant 37 条。前者保留质量 baseline，后者只验证分类与生命周期修复；两份 report metadata 都固定 execution commit、Snapshot、semantic identity 和 Variant configuration。
+- Q：为什么 post-fix C2/D 的 completion 很低，是否是新增代码回归？→ Trace 显示失败在 C 后集中出现，错误是 provider `APITimeoutError`/`APIConnectionError`，router 也有 `ROUTER_COMPLETION_TIMEOUT`，C2/D 连首个 model turn 都没有开始；独立 recovery smoke 中 D 可完成而 C2 仍会失败，不能归因到 context tool。benchmark 没有添加 retry/fallback，而是把这段外部 availability window 原样记录。
+- Q：这轮真正修了什么？→ 两个可复现的测量层缺陷：旧 failure classifier 把不同 retrieval call 全局合并并把 context call当 direct rank；旧 benchmark CLI 对每个 Variant 分别 `asyncio.run`，导致 provider client 跨 loop 并在退出时触发 `Event loop is closed`。现在按单 call 保留 rank、排除 context，并用同一 async Application context 运行/关闭全套 Variant；576 个测试通过。
 - Q：Semantic 是否提升？→ Module 结果显示 lexical 在 exact/corpus predicate 上 Recall@10=1.0，semantic corpus Recall@10=.364；最终 B−A completion/valid answer 上升，但 paired evidence recall 下降，所以结论是互补而非全面提升。
 - Q：Context tool 是否已证明有效？→ 没有。C−B 只在 paired n=2 的 context recovery 上出现 +.500，C2−C 为 −.333；样本小且 final evidence 仍有 context missing，不能包装为稳定收益。
 - Q：为什么不把 Tier 2 数字写成 citation quality？→ 当前仅 8/37 成功得到 LLM-assisted provisional 判定，且 0 item 人工确认；报告与 audit queue 直接保留未判定和 adjudication 边界。

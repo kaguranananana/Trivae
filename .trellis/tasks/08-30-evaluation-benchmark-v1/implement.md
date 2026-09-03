@@ -4,14 +4,15 @@
 > 四阶段：Measurement Substrate → Benchmark Dataset → 干净 Ablation → Judge + 冻结后 holdout。
 > 每阶段末尾有 review gate；gate 未过不进入下一阶段。
 >
-> **当前状态（2026-09-01，Stage 3 收口）**：**Human GT Adjudication Gate、Gate 2
+> **当前状态（2026-09-04，Stage 3 根因收口）**：**Human GT Adjudication Gate、Gate 2
 > Development Freeze、Module Retrieval、Failure-driven iteration、最终 clean 37×5 和 Tier 1
 > / Tier 2 Development Evaluation 均已完成**。47/47 case 已人工裁决（Accept 26 / Modify 21 /
 > Reject 0；calibration 10 / development 37），deterministic audit 为 green（47 cases / 47
 > adjudicated / 0 error / 0 warning，`data/evaluation/benchmark/gt-audit-stage3-final.json`）。
 > Gate 2 使用 ordered versioned Case identities + canonical Variant configuration text 作为可复现
-> identity；execution commit 为 `b1f7b78...`，最终 clean execution commit 为
-> `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`。最终 headline 只使用 Development 37×5=185
+> identity；execution commit 为 `b1f7b78...`，冻结后的 clean execution commit 为
+> `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`，根因修复后的 post-fix clean execution commit 为
+> `f24775099cb2314772c7d409341e8ebceeceac23`。最终 headline 只使用 Development 37×5=185
 > runs；calibration 排除，holdout 尚不存在。当前 **Stage 3 Complete / Ready for Gate 3**，不
 > 进入 Gate 3，不生成 holdout；不要 archive 本任务。
 
@@ -99,6 +100,7 @@
 
 ### 3.4 冻结 Rerun
 - [x] 末次修复后：**在 `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f` 上完整重跑整个 dev suite**（全部 variant），作为最终 dev 数字
+- [x] 根因修复后再次执行 clean 37×5：`f24775099cb2314772c7d409341e8ebceeceac23`；产物为 `data/evaluation/benchmark/stage3-root-cause-final-clean-real/` 与独立 Evaluation SQLite。该批次用于验证 failure attribution 与 Application lifecycle；C/C2/D 的大批量 provider timeout/connection window 按实际 failure 保留，不能重新解释为 ablation quality
 - [x] 记录最终 execution commit、环境、Variant identity 和 final rerun identity；后续仅增加 report/documentation artifact，不改变 production behavior
 
 ### 3.5 Tier 2 Development Judge
@@ -106,7 +108,7 @@
 - [x] 所有 judge item 保持 `llm_assisted_provisional`；8 条有 provisional 判定、29 条 `judge_failed` 显式保留、0 条人工 adjudicated
 - [x] 生成 `data/evaluation/benchmark/stage3-final-judge-audit-queue.json`；未进入人工逐条 adjudication，不把 Tier 2 数字写成 human verified
 
-## Stage 3 completion evidence（2026-09-01）
+## Stage 3 completion evidence（2026-09-04）
 
 - **Gate 2 freeze**：`evaluation/snapshots/resume-benchmark-v1-freeze.json`；freeze verification 12/12 passed，environment gate 4/4 passed；`holdout` absent。
 - **Module retrieval**：`data/evaluation/benchmark/stage3-module-retrieval.json`，27 个 Development query，lexical / semantic 均保留 corpus 与 target scope、Recall@5/10、Hit@K、MRR@10 和 context applicability。
@@ -116,6 +118,9 @@
 - **Final clean**：`data/evaluation/benchmark/stage3-final-real/` + `data/evaluation/benchmark/stage3-final-evaluation.sqlite3`；A/B/C/C2/D 各 37 条，合计 185，final report 只使用这批数据。
 - **Tier 1 report**：`data/evaluation/benchmark/stage3-final-real/report.json` / `report.md`，包含分子/分母/rate/macro、unavailable reason、operational、B−A/C−B/C2−C、failure analysis、freeze/environment identity。
 - **Tier 2 report**：`data/evaluation/benchmark/stage3-final-judge-d.json` 和 audit queue；结果是 LLM-assisted provisional，仍待人工 adjudication。
+- **Root-cause closure clean**：`data/evaluation/benchmark/stage3-root-cause-final-clean-real/` + `data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`；raw / SQLite / Trace 均为 185，A/B/C/C2/D 各 37。failure artifact 146 条：provider_failure 114、retrieval_miss 12、coverage_error 7、context_missing 4、ranking_failure 4、answer_generation_error 2、zero_result_error 3；`not_observed_within_recorded_depth=0`，`evaluation_infrastructure=0`。
+- **Root-cause closure audit**：A 31/37、B 35/37、C 5/37、C2 0/37、D 0/37 completed。全批次 114 条 terminal provider failure 中，C/C2/D 占 106 条；这些 failure 在 Trace 中为 `APITimeoutError`/`APIConnectionError`，并集中伴随 `ROUTER_COMPLETION_TIMEOUT`，C2/D failure 没有首个 model turn。独立 recovery smoke 中 D 成功、C2 仍一次失败，故保留为 provider availability/timeout observation，不新增 provider retry 或变体特判。
+- **评估缺陷修复**：failure classifier 改为按单次 direct retrieval call 保留 rank，排除 context call，新增 `ranking_failure`；benchmark CLI 改为 async Application context，所有 Variant 在同一个 event loop 执行和关闭。新增 CLI lifecycle regression；全量 `pytest` 576 passed。
 - **停止边界**：当前为 **Stage 3 Complete / Ready for Gate 3**；Gate 3、holdout generation、holdout evaluation、full benchmark 尚未执行。
 
 **Gate 3（用户 review）**：dev 最终结果面审 + 系统冻结声明（commit pin + variant fingerprint 记录）。
