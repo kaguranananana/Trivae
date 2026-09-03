@@ -238,7 +238,7 @@ def load_cases_dir(cases_dir: Path) -> dict[str, EvaluationCaseBundle]:
     return cases
 
 
-def run_benchmark(
+async def run_benchmark_async(
     *,
     application: TrivaeApplication,
     database_path: Path,
@@ -249,7 +249,7 @@ def run_benchmark(
     output_dir: Path,
     repetitions: int = 1,
 ) -> dict[str, object]:
-    """同步入口：gate → 逐 variant 执行 → 评分 → failure → 报告落盘。"""
+    """异步 benchmark 主入口：运行、评分和落盘共享调用方的 event loop。"""
 
     orchestrator = BenchmarkOrchestrator(application=application, database_path=database_path)
     manifest = orchestrator.load_manifest(manifest_path)
@@ -271,13 +271,12 @@ def run_benchmark(
     all_records: list[dict[str, object]] = []
     all_failures: list[BenchmarkFailure] = []
     for variant in variants:
-        runs = asyncio.run(
-            orchestrator.run_variant_suite(
-                suite=suite,
-                cases=cases,
-                variant=variant,
-                repetitions=repetitions,
-            )
+        # 所有 Variant 共用同一个 loop，避免 provider client 跨 loop 保存连接状态。
+        runs = await orchestrator.run_variant_suite(
+            suite=suite,
+            cases=cases,
+            variant=variant,
+            repetitions=repetitions,
         )
         records, failures = orchestrator.score_variant_runs(runs=runs, gt_index=gt_index, variant_id=variant.variant_id)
         all_records.extend(records)
@@ -311,6 +310,33 @@ def run_benchmark(
         raw_records=tuple(all_records),
     )
     return {"status": "completed", "report": report}
+
+
+def run_benchmark(
+    *,
+    application: TrivaeApplication,
+    database_path: Path,
+    manifest_path: Path,
+    suite: EvaluationSuite,
+    cases_dir: Path,
+    variant_paths: tuple[Path, ...],
+    output_dir: Path,
+    repetitions: int = 1,
+) -> dict[str, object]:
+    """同步包装 benchmark 主入口；CLI 需要使用 async 入口管理 Application lifecycle。"""
+
+    return asyncio.run(
+        run_benchmark_async(
+            application=application,
+            database_path=database_path,
+            manifest_path=manifest_path,
+            suite=suite,
+            cases_dir=cases_dir,
+            variant_paths=variant_paths,
+            output_dir=output_dir,
+            repetitions=repetitions,
+        )
+    )
 
 
 def run_module_retrieval_scoring(

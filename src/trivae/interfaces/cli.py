@@ -35,7 +35,10 @@ from trivae.evaluation import (
     build_retrieval_metrics,
 )
 from trivae.evaluation.benchmark.environment import capture_environment
-from trivae.evaluation.benchmark.orchestrator import BenchmarkOrchestrator, run_benchmark
+from trivae.evaluation.benchmark.orchestrator import (
+    BenchmarkOrchestrator,
+    run_benchmark_async,
+)
 from trivae.evaluation.review import M6_FAILURE_REGRESSION_MAP
 from trivae.evaluation.store import EvaluationStoreError
 from trivae.feedback.contracts import FeedbackError, FeedbackRecord
@@ -527,6 +530,28 @@ def _run_retrieval_metrics_command(args: argparse.Namespace) -> int:
     return 0
 
 
+async def _run_benchmark_with_application(args: argparse.Namespace) -> dict[str, object]:
+    """在同一个 async context 内运行 benchmark 并关闭 Application。"""
+
+    suite = EvaluationSuite.from_json(args.suite)
+    variant_paths = tuple(args.variant)
+    # Application 的异步 client 在同一 loop 中完成请求与关闭，避免跨 loop 释放连接。
+    async with create_application(
+        args.database,
+        evaluation_database_path=args.evaluation_database,
+    ) as application:
+        return await run_benchmark_async(
+            application=application,
+            database_path=args.database,
+            manifest_path=args.manifest,
+            suite=suite,
+            cases_dir=args.cases_dir,
+            variant_paths=variant_paths,
+            output_dir=args.output_dir,
+            repetitions=args.repeat,
+        )
+
+
 def _run_benchmark_command(args: argparse.Namespace) -> int:
     """Benchmark 编排 CLI：gate / capture-environment / run。"""
 
@@ -609,22 +634,7 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
             return 0 if result["passed"] else 1
 
         if args.benchmark_command == "run":
-            suite = EvaluationSuite.from_json(args.suite)
-            variant_paths = tuple(args.variant)
-            with create_application(
-                args.database,
-                evaluation_database_path=args.evaluation_database,
-            ) as application:
-                outcome = run_benchmark(
-                    application=application,
-                    database_path=args.database,
-                    manifest_path=args.manifest,
-                    suite=suite,
-                    cases_dir=args.cases_dir,
-                    variant_paths=variant_paths,
-                    output_dir=args.output_dir,
-                    repetitions=args.repeat,
-                )
+            outcome = asyncio.run(_run_benchmark_with_application(args))
             summary = {
                 "status": outcome["status"],
                 "gate": outcome.get("gate"),

@@ -107,6 +107,21 @@ class _FakeApplication:
         return (output_path or Path("data/traces") / f"{trace_id}.log").resolve()
 
 
+class _BenchmarkApplicationContext:
+    """记录 benchmark Application context 的进入、运行与退出 loop。"""
+
+    def __init__(self) -> None:
+        self.application = object()
+        self.loop_ids: list[int] = []
+
+    async def __aenter__(self) -> object:
+        self.loop_ids.append(id(asyncio.get_running_loop()))
+        return self.application
+
+    async def __aexit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.loop_ids.append(id(asyncio.get_running_loop()))
+
+
 def _session(session_id: str, name: str) -> ChatSession:
     """构造与 Canonical Store 相同语义的群聊 metadata。"""
 
@@ -142,6 +157,49 @@ def _scripted_input(values: list[object]) -> tuple[list[str], object]:
 
 class ChatCliTests(unittest.TestCase):
     """验证 chat interface 的 scope、conversation 和正式结果 projection。"""
+
+    def test_benchmark_application_and_runner_share_one_event_loop(self) -> None:
+        """benchmark 的 provider 请求与 Application 关闭必须由同一个 loop 承载。"""
+
+        args = cli.build_parser().parse_args(
+            [
+                "eval",
+                "benchmark",
+                "run",
+                "--database",
+                "data/trivae.sqlite3",
+                "--evaluation-database",
+                "data/evaluation/test.sqlite3",
+                "--manifest",
+                "data/evaluation/benchmark/environment-root-cause.json",
+                "--suite",
+                "evaluation/suites/resume-benchmark-dev-v1.json",
+                "--cases-dir",
+                "evaluation/cases/benchmark/dev",
+                "--variant",
+                "evaluation/variants/bench-full-system-v1.json",
+                "--output-dir",
+                "data/evaluation/benchmark/test",
+            ]
+        )
+        context = _BenchmarkApplicationContext()
+        runner_loop_ids: list[int] = []
+
+        async def fake_run_benchmark_async(**kwargs: object) -> dict[str, object]:
+            runner_loop_ids.append(id(asyncio.get_running_loop()))
+            self.assertIs(kwargs["application"], context.application)
+            return {"status": "completed"}
+
+        with patch.object(cli, "create_application", return_value=context), patch.object(
+            cli,
+            "run_benchmark_async",
+            new=fake_run_benchmark_async,
+        ):
+            outcome = asyncio.run(cli._run_benchmark_with_application(args))
+
+        self.assertEqual(outcome["status"], "completed")
+        self.assertEqual(len(runner_loop_ids), 1)
+        self.assertEqual(context.loop_ids, [runner_loop_ids[0], runner_loop_ids[0]])
 
     def test_chat_parser_uses_the_default_database(self) -> None:
         """chat parser 应识别命令并沿用现有默认数据库路径。"""
