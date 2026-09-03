@@ -409,6 +409,8 @@ class FailureTests(unittest.TestCase):
             trace_id="trace-1",
         )
         self.assertEqual(failure.category, "zero_result_error")
+        self.assertTrue(failure.expected["expected_non_empty"])
+        self.assertIn("non-empty", failure.detail)
 
     def test_answer_generation_failure_precedes_coverage_classification(self) -> None:
         """Finalizer 失败必须归到答案生成，不被 coverage unavailable 遮蔽。"""
@@ -514,6 +516,107 @@ class FailureTests(unittest.TestCase):
             evaluate_case_failure(truth, variant_id="A", run_id="r", run_query_result=truncated, trace_id=None).category,
             "not_observed_within_recorded_depth",
         )
+
+    def test_hit_at_k_uses_each_search_call_rank(self) -> None:
+        truth = self._gt((_finding("relevant", "gt.relevant", "x", (_message_evidence("m-target"),)),))
+        projection = _end_to_end_projection(
+            retrieval_calls={
+                "calls": [
+                    {
+                        "tool_call_id": "c1",
+                        "tool_name": "lexical_search",
+                        "strategy": "lexical",
+                        "status": "ok",
+                        "direct_hit_count": 10,
+                        "direct_hits": [
+                            {"rank": rank, "internal_message_id": f"m-noise-{rank}"}
+                            for rank in range(1, 11)
+                        ],
+                        "omitted_direct_ids": 0,
+                        "expanded_count": 0,
+                        "expanded_ids": [],
+                        "omitted_expanded_ids": 0,
+                    },
+                    {
+                        "tool_call_id": "c2",
+                        "tool_name": "lexical_search",
+                        "strategy": "lexical",
+                        "status": "ok",
+                        "direct_hit_count": 7,
+                        "direct_hits": [
+                            {"rank": rank, "internal_message_id": "m-target" if rank == 7 else f"m-other-{rank}"}
+                            for rank in range(1, 8)
+                        ],
+                        "omitted_direct_ids": 0,
+                        "expanded_count": 0,
+                        "expanded_ids": [],
+                        "omitted_expanded_ids": 0,
+                    },
+                ],
+                "total": 2,
+                "omitted": 0,
+            }
+        )
+        self.assertIsNone(
+            evaluate_case_failure(truth, variant_id="A", run_id="r", run_query_result=projection, trace_id=None)
+        )
+
+    def test_observed_rank_beyond_k_is_ranking_failure(self) -> None:
+        truth = self._gt((_finding("relevant", "gt.relevant", "x", (_message_evidence("m-target"),)),))
+        projection = _end_to_end_projection(
+            retrieval_calls={
+                "calls": [
+                    {
+                        "tool_call_id": "c1",
+                        "tool_name": "lexical_search",
+                        "strategy": "lexical",
+                        "status": "ok",
+                        "direct_hit_count": 11,
+                        "direct_hits": [
+                            {"rank": rank, "internal_message_id": "m-target" if rank == 11 else f"m-other-{rank}"}
+                            for rank in range(1, 12)
+                        ],
+                        "omitted_direct_ids": 0,
+                        "expanded_count": 0,
+                        "expanded_ids": [],
+                        "omitted_expanded_ids": 0,
+                    }
+                ],
+                "total": 1,
+                "omitted": 0,
+            }
+        )
+        failure = evaluate_case_failure(truth, variant_id="A", run_id="r", run_query_result=projection, trace_id=None)
+        self.assertIsNotNone(failure)
+        self.assertEqual(failure.category, "ranking_failure")
+        self.assertEqual(failure.actual["observed_relevant_direct_hits"][0]["rank"], 11)  # type: ignore[index]
+
+    def test_context_call_is_not_a_ranking_observation(self) -> None:
+        truth = self._gt((_finding("relevant", "gt.relevant", "x", (_message_evidence("m-target"),)),))
+        projection = _end_to_end_projection(
+            retrieval_calls={
+                "calls": [
+                    {
+                        "tool_call_id": "c1",
+                        "tool_name": "get_message_context",
+                        "strategy": "context",
+                        "status": "ok",
+                        "direct_hit_count": 1,
+                        "direct_hits": [{"rank": 1, "internal_message_id": "m-target"}],
+                        "omitted_direct_ids": 0,
+                        "expanded_count": 0,
+                        "expanded_ids": [],
+                        "omitted_expanded_ids": 0,
+                    }
+                ],
+                "total": 1,
+                "omitted": 0,
+            }
+        )
+        failure = evaluate_case_failure(truth, variant_id="D", run_id="r", run_query_result=projection, trace_id=None)
+        self.assertIsNotNone(failure)
+        self.assertEqual(failure.category, "retrieval_miss")
+        self.assertEqual(failure.actual["ignored_context_calls"], 1)
 
     def test_healthy_run_has_no_failure(self) -> None:
         truth = self._gt(

@@ -23,6 +23,7 @@ FAILURE_CATEGORIES = (
     "context_missing",
     "retrieval_miss",
     "not_observed_within_recorded_depth",
+    "ranking_failure",
     "answer_generation_error",
 )
 
@@ -69,32 +70,114 @@ class BenchmarkFailure:
         }
 
 
-def _recorded_direct_hits(run_query_result: Mapping[str, object]) -> tuple[list[str], bool]:
-    """返回 (按 rank 排序的全部 recorded direct hit IDs, 是否所有 call 完整落盘)。"""
+@dataclass(frozen=True)
+class _DirectHitObservation:
+    """单个检索 call 中保留下来的 direct hit 观测。"""
+
+    tool_call_id: str
+    strategy: str
+    rank: int
+    message_id: str
+
+
+@dataclass(frozen=True)
+class _DirectHitAudit:
+    """供 failure 分类消费的 bounded direct-hit 观测摘要。"""
+
+    observations: tuple[_DirectHitObservation, ...]
+    hit_at_k_observable: bool
+    ignored_context_calls: int
+
+
+def _recorded_direct_hits(run_query_result: Mapping[str, object]) -> _DirectHitAudit:
+    """保留每个检索 call 的 rank，并判断 Hit@K 是否仍可由投影确定。"""
 
     projection = run_query_result.get("retrieval_calls")
     if not isinstance(projection, Mapping):
-        return [], True
+        return _DirectHitAudit((), True, 0)
     calls = projection.get("calls")
     if not isinstance(calls, list):
-        return [], True
-    ranked: list[tuple[int, str]] = []
-    complete = True
+        return _DirectHitAudit((), True, 0)
+
+    observations: list[_DirectHitObservation] = []
+    hit_at_k_observable = not (
+        isinstance(projection.get("omitted"), int) and projection.get("omitted", 0) > 0
+    )
+    ignored_context_calls = 0
     for call in calls:
         if not isinstance(call, Mapping):
             continue
-        if call.get("omitted_direct_ids", 0) or call.get("omitted_expanded_ids", 0) or (
-            isinstance(projection.get("omitted"), int) and projection.get("omitted", 0) > 0
+
+        # Context Expansion 是检索后的第二个动作，不是独立的 ranking surface；
+        # 把它排除，避免“显式恢复到的消息”伪装成搜索结果排名。
+        strategy = call.get("strategy")
+        if strategy == "context":
+            ignored_context_calls += 1
+            continue
+        if not isinstance(strategy, str):
+            continue
+
+        direct_hits = call.get("direct_hits", ())
+        if not isinstance(direct_hits, list):
+            direct_hits = []
+        omitted_direct_ids = call.get("omitted_direct_ids", 0)
+        # 只有 top-K 本身被截断时才会影响 Hit@K；K 之后的 bounded omission
+        # 不会让已经记录的 top-K 变成未知。
+        if (
+            isinstance(omitted_direct_ids, int)
+            and omitted_direct_ids > 0
+            and len(direct_hits) < ACCEPTANCE_HIT_K
         ):
-            complete = False
-        for hit in call.get("direct_hits", ()):
+            hit_at_k_observable = False
+
+        tool_call_id = call.get("tool_call_id")
+        bounded_tool_call_id = tool_call_id if isinstance(tool_call_id, str) else ""
+        for hit in direct_hits:
             if isinstance(hit, Mapping):
                 rank = hit.get("rank")
                 message_id = hit.get("internal_message_id")
                 if isinstance(rank, int) and isinstance(message_id, str):
-                    ranked.append((rank, message_id))
-    ranked.sort()
-    return [message_id for _, message_id in ranked], complete
+                    observations.append(
+                        _DirectHitObservation(
+                            tool_call_id=bounded_tool_call_id,
+                            strategy=strategy,
+                            rank=rank,
+                            message_id=message_id,
+                        )
+                    )
+    return _DirectHitAudit(tuple(observations), hit_at_k_observable, ignored_context_calls)
+
+
+def _observed_relevant_hits(
+    audit: _DirectHitAudit,
+    relevant_message_ids: tuple[str, ...],
+) -> list[dict[str, object]]:
+    """返回 GT relevant 的 bounded rank 观测，保留 tool 与 strategy 归因。"""
+
+    relevant = set(relevant_message_ids)
+    return [
+        {
+            "internal_message_id": observation.message_id,
+            "rank": observation.rank,
+            "strategy": observation.strategy,
+            "tool_call_id": observation.tool_call_id,
+        }
+        for observation in audit.observations
+        if observation.message_id in relevant
+    ]
+
+
+def _has_relevant_hit_at_k(
+    audit: _DirectHitAudit,
+    relevant_message_ids: tuple[str, ...],
+) -> bool:
+    """按单个 direct-search call 的局部 rank 判断是否命中 Hit@K。"""
+
+    relevant = set(relevant_message_ids)
+    return any(
+        observation.message_id in relevant and observation.rank <= ACCEPTANCE_HIT_K
+        for observation in audit.observations
+    )
 
 
 def evaluate_case_failure(
@@ -163,10 +246,14 @@ def evaluate_case_failure(
             variant_id=variant_id,
             run_id=run_id,
             category="zero_result_error",
-            expected={"zero_result": False, "relevant_count": len(gt.relevant_message_ids)},
+            expected={
+                "zero_result": False,
+                "expected_non_empty": True,
+                "relevant_count": len(gt.relevant_message_ids),
+            },
             actual=actual,
             trace_id=trace_id,
-            detail="answer claimed no results while GT declares relevant messages",
+            detail="answer claimed no results while GT requires a non-empty result",
         )
 
     # 3. coverage / truncation mismatch（GT 有声明时）。
@@ -215,21 +302,40 @@ def evaluate_case_failure(
                 detail=f"{len(missing)} required context message(s) missing from final evidence",
             )
 
-    # 5. target Hit@K miss：recorded direct hits 内前 K 全 miss。
+    # 5. target Hit@K miss：按每个 direct-search call 的局部 rank 做观测分类。
     if gt.has_relevant:
-        ranked_hits, complete = _recorded_direct_hits(run_query_result)
-        top = ranked_hits[:ACCEPTANCE_HIT_K]
-        if not any(message_id in set(gt.relevant_message_ids) for message_id in top):
-            if not complete:
+        audit = _recorded_direct_hits(run_query_result)
+        observed_relevant = _observed_relevant_hits(audit, gt.relevant_message_ids)
+        top_k_hit = _has_relevant_hit_at_k(audit, gt.relevant_message_ids)
+        if not top_k_hit:
+            actual_with_observation = {
+                **actual,
+                "recorded_direct_hits": len(audit.observations),
+                "observed_relevant_direct_hits": observed_relevant,
+                "hit_at_k_observable": audit.hit_at_k_observable,
+                "ignored_context_calls": audit.ignored_context_calls,
+            }
+            if not audit.hit_at_k_observable:
                 return BenchmarkFailure(
                     case_id=gt.case_id,
                     variant_id=variant_id,
                     run_id=run_id,
                     category="not_observed_within_recorded_depth",
                     expected={"hit_at_k": ACCEPTANCE_HIT_K},
-                    actual={**actual, "recorded_direct_hits": len(ranked_hits)},
+                    actual=actual_with_observation,
                     trace_id=trace_id,
-                    detail="relevant messages not observed within recorded depth; ranking beyond depth was omitted",
+                    detail="relevant messages were not observable within the recorded top-K depth",
+                )
+            if observed_relevant:
+                return BenchmarkFailure(
+                    case_id=gt.case_id,
+                    variant_id=variant_id,
+                    run_id=run_id,
+                    category="ranking_failure",
+                    expected={"hit_at_k": ACCEPTANCE_HIT_K},
+                    actual=actual_with_observation,
+                    trace_id=trace_id,
+                    detail="relevant messages were observed in direct search but all recorded ranks exceeded K",
                 )
             return BenchmarkFailure(
                 case_id=gt.case_id,
@@ -237,7 +343,7 @@ def evaluate_case_failure(
                 run_id=run_id,
                 category="retrieval_miss",
                 expected={"hit_at_k": ACCEPTANCE_HIT_K, "relevant_count": len(gt.relevant_message_ids)},
-                actual={**actual, "recorded_direct_hits": len(ranked_hits)},
+                actual=actual_with_observation,
                 trace_id=trace_id,
                 detail="no GT relevant message appears in the recorded direct hits",
             )
