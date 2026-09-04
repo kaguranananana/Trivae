@@ -21,6 +21,7 @@
 
 ## Evaluation artifacts
 
+- 简历与面试事实索引：`evaluation/reports/resume-benchmark-v1-fact-index.md`；该文档只整理已存在的 Development baseline、post-fix measurement-substrate validation、系统 quality failure 与可写数字，不生成新的运行结果。
 - Module retrieval：`data/evaluation/benchmark/stage3-module-retrieval.json`，27 个 query，保留 lexical / semantic 的 corpus 与 target scope、Recall@5/10、Hit@K、MRR@10 和 context observation。
 - First real run：`data/evaluation/benchmark/stage3-first-real/`，185 条 provisional run 与 112 条 failure artifact。
 - Targeted reruns：`data/evaluation/benchmark/stage3-targeted/`，stream A/C、C2 context、D temporal classification 均保留真实 production Query path 的 before/after 证据。

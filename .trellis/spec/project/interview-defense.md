@@ -918,6 +918,8 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 
 ## resume-benchmark-v1 Stage 3 Development Evaluation 事实索引（2026-09-04）
 
+> 完整的指标分母、简历可写清单与项目 bullet 见 [`resume-benchmark-v1-fact-index.md`](../../../evaluation/reports/resume-benchmark-v1-fact-index.md)。
+
 ### Scope / identity
 
 - **Measured fact**：Human GT 为 47/47 adjudicated（Accept 26 / Modify 21 / Reject 0）；其中 Development 37、calibration 10。calibration 不进入 headline 分母，holdout 未生成、未查看、未评测。
@@ -956,8 +958,8 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 
 ### Operational measurements
 
-- D latency：mean 23,597 ms，P50 **18,658 ms**，P95 **58,174 ms**；tool calls mean 1.84，P50 2，P95 5；tool rounds mean 1.35，P50 1，P95 3。
-- D token usage：input total 961,413（P50 20,150 / P95 91,147），output total 47,215（P50 1,205 / P95 2,144），total tokens 1,008,628（P50 20,821 / P95 92,934）。这些是本地 Snapshot、当前 provider/model 和本次 Development run 的 measured facts，不是生产 SLA。
+- D latency：mean 31,942.757 ms，P50 **26,691 ms**，P95 **68,299 ms**；tool calls mean 2.108，P50 2，P95 5；tool rounds mean 1.568，P50 1，P95 3。
+- D token usage：input total 1,602,065（P50 28,371 / P95 111,369），output total 55,714（P50 1,218 / P95 3,125），total tokens 1,657,779（P50 29,863 / P95 113,436）。这些是本地 Snapshot、当前 provider/model 和本次 Development run 的 measured facts，不是生产 SLA。
 
 ### Failure-driven iteration and remaining limits
 
