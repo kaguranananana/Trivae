@@ -19,3 +19,8 @@ If you're using Codex or another agent-capable tool, additional project-scoped h
 Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
 
 <!-- TRELLIS:END -->
+
+## 面试文档目录约定
+
+- 所有项目导学、项目面经、面试题库、STAR 口播、简历事实摘要和 Claim 核验材料统一存放在根目录的 `interview-docs/`。
+- 新增、删除或重命名面试文档时，同步更新 `interview-docs/README.md` 的文档索引。
