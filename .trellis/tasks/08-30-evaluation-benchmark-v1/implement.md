@@ -4,7 +4,7 @@
 > 四阶段：Measurement Substrate → Benchmark Dataset → 干净 Ablation → Judge + 冻结后 holdout。
 > 每阶段末尾有 review gate；gate 未过不进入下一阶段。
 >
-> **当前状态（2026-09-04，Stage 3 根因收口）**：**Human GT Adjudication Gate、Gate 2
+> **当前状态（2026-09-08，Stage 3 / Gate 3 candidate）**：**Human GT Adjudication Gate、Gate 2
 > Development Freeze、Module Retrieval、Failure-driven iteration、最终 clean 37×5 和 Tier 1
 > / Tier 2 Development Evaluation 均已完成**。47/47 case 已人工裁决（Accept 26 / Modify 21 /
 > Reject 0；calibration 10 / development 37），deterministic audit 为 green（47 cases / 47
@@ -13,8 +13,11 @@
 > identity；execution commit 为 `b1f7b78...`，冻结后的 clean execution commit 为
 > `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`，根因修复后的 post-fix clean execution commit 为
 > `f24775099cb2314772c7d409341e8ebceeceac23`。最终 headline 只使用 Development 37×5=185
-> runs；calibration 排除，holdout 尚不存在。当前 **Stage 3 Complete / Ready for Gate 3**，不
-> 进入 Gate 3，不生成 holdout；不要 archive 本任务。
+> runs；calibration 排除，holdout 尚不存在。Gate 3 candidate commit 为
+> `8805aa2bf58fcb2702817d54afe96bd819645db2`，已在干净 worktree 捕获 Environment 并完成新的
+> Development 37×5 acceptance；D-only Judge 为 provisional partial，人工 packet 仍 pending。
+> 当前 **Stage 3 Complete / Gate 3 review pending**：候选
+> Development 已完成机器验收，但人工答案核验和 freeze 尚未完成；不要生成或查看 holdout，也不要 archive 本任务。
 
 ---
 
@@ -120,8 +123,8 @@
 - **Tier 2 report**：`data/evaluation/benchmark/stage3-final-judge-d.json` 和 audit queue；结果是 LLM-assisted provisional，仍待人工 adjudication。
 - **Root-cause closure clean**：`data/evaluation/benchmark/stage3-root-cause-final-clean-real/` + `data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`；raw / SQLite / Trace 均为 185，A/B/C/C2/D 各 37。failure artifact 146 条：provider_failure 114、retrieval_miss 12、coverage_error 7、context_missing 4、ranking_failure 4、answer_generation_error 2、zero_result_error 3；`not_observed_within_recorded_depth=0`，`evaluation_infrastructure=0`。
 - **Root-cause closure audit**：A 31/37、B 35/37、C 5/37、C2 0/37、D 0/37 completed。全批次 114 条 terminal provider failure 中，C/C2/D 占 106 条；这些 failure 在 Trace 中为 `APITimeoutError`/`APIConnectionError`，并集中伴随 `ROUTER_COMPLETION_TIMEOUT`，C2/D failure 没有首个 model turn。独立 recovery smoke 中 D 成功、C2 仍一次失败，故保留为 provider availability/timeout observation，不新增 provider retry 或变体特判。
-- **评估缺陷修复**：failure classifier 改为按单次 direct retrieval call 保留 rank，排除 context call，新增 `ranking_failure`；benchmark CLI 改为 async Application context，所有 Variant 在同一个 event loop 执行和关闭。新增 CLI lifecycle regression；全量 `pytest` 576 passed。
-- **停止边界**：当前为 **Stage 3 Complete / Ready for Gate 3**；Gate 3、holdout generation、holdout evaluation、full benchmark 尚未执行。
+- **评估缺陷修复**：failure classifier 改为按单次 direct retrieval call 保留 rank，排除 context call，新增 `ranking_failure`；benchmark CLI 改为 async Application context，所有 Variant 在同一个 event loop 执行和关闭。新增 CLI lifecycle regression；全量 `pytest` 594 passed。
+- **停止边界**：当前为 **Stage 3 Complete / Gate 3 review pending**；候选 Development 已机器验收，人工 review、freeze、holdout generation、holdout evaluation 和 full benchmark 尚未执行。
 
 **Gate 3（用户 review）**：dev 最终结果面审 + 系统冻结声明（commit pin + variant fingerprint 记录）。
 
@@ -185,8 +188,9 @@ python -m trivae eval benchmark report --input data/evaluation/benchmark/...
 - [x] 准备 12 条人工复核 packet（本地 pending），核对旧 judge failure 的可诊断范围。
 - [x] 更新 README 操作顺序及事实边界，运行相关测试、ruff、mypy、全量 pytest。
 - [x] 换 key 后完成单条 Judge smoke；修复了 2048 token 截断并保留 provisional 状态。
-- [x] Gate 3 closure implementation 已提交到远端 `cd973588e0b5e99304770b4a159e21ff20c2baf9`；原有 `interview-docs/` 工作区改动未混入该提交。
-- [x] 补齐 clean-worktree Environment guard、独立 final-development 目录口径，并让 `freeze-final` 强制校验完整 Development Case/Variant 覆盖；候选实现待本轮提交后捕获 Environment。
+- [x] Gate 3 closure implementation 已先提交到远端 `cd973588e0b5e99304770b4a159e21ff20c2baf9`，后续候选验收约束提交为 `8805aa2bf58fcb2702817d54afe96bd819645db2`；原有 `interview-docs/` 工作区改动未混入这些提交。
+- [x] 补齐 clean-worktree Environment guard、独立 final-development 目录口径，并让 `freeze-final` 强制校验完整 Development Case/Variant 覆盖；候选 commit `8805aa2` 已捕获 Environment，并完成 37×5 Development acceptance（185/185 pairs）。
+- [x] 在候选 commit 的干净 worktree 完成 provider smoke 与完整 Development：raw / Evaluation SQLite / Trace 各 185 条；D-only Judge 输出 21 judged、5 skipped、11 failed 的 `partial` provisional 批次；已生成 12 条人工 review packet，全部 pending。
 - [ ] 用户实际完成答案核验和 Gate 3 review 后生成/审核 holdout，正式运行一次并输出最终报告。
 
-用户已有 interview-docs/ 工作区改动保持原样；本批次不自动 commit、archive 或把待人工确认项标完成。
+用户已有 interview-docs/ 工作区改动保持原样；待人工确认项不标为完成。

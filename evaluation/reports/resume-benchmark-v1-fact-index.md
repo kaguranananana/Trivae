@@ -1,11 +1,12 @@
 # `resume-benchmark-v1` Evaluation 事实索引
 
-> 更新日期：2026-09-04。本文是脱敏的文档型索引，只引用仓库已有的 Evaluation、Trace、SQLite 和 Git 证据；不包含聊天正文，也不产生新的 benchmark 运行。
+> 更新日期：2026-09-08。本文是脱敏的文档型索引，只引用仓库已有的 Evaluation、Trace、SQLite 和 Git 证据；不包含聊天正文，也不产生新的 benchmark 运行。
 
 ## 0. 结论先行
 
-- 当前边界是 **Stage 3 Complete / Ready for Gate 3**。
+- 当前边界是 **Stage 3 Complete / Gate 3 review pending**：候选 Development 已完成机器验收，人工答案核验和 Gate 3 freeze 仍待完成。
 - 可作为 Development quality baseline 的是冻结后的 `7bac928` clean run：Development 37 cases × A/B/C/C2/D 五个 Variant × 1 repetition = **185 次真实运行**。
+- 当前 Gate 3 候选 Development 使用 `8805aa2`，同一 Snapshot 下独立完成 185 次真实运行；它是本轮 review 输入，不在人工 review 前升级为最终 freeze，也不替换历史 baseline。
 - `f247750` 之后的 clean run 只用于验证两个 **Evaluation / measurement substrate bug** 的修复和 failure attribution 的可解释性；其中 C/C2/D 出现 provider timeout/connection window，不能替代 baseline，也不能重新推导 ablation quality。
 - Human GT 为 **47/47 adjudicated**：Accept 26、Modify 21、Reject 0；其中 Development 37，Calibration 10。Calibration 不进入 headline denominator。
 - Holdout 当前不存在：未生成、未查看、未评测。因此本文不声称 unseen、holdout 或 generalization result。
@@ -17,6 +18,7 @@
 | GT 人工裁决 | `data/evaluation/benchmark/gt-audit-stage3-final.json` | 47 cases、47 adjudicated、0 error、0 warning，passed |
 | Gate / freeze | `data/evaluation/benchmark/stage3-freeze-verification.json`、`evaluation/snapshots/resume-benchmark-v1-freeze.json` | freeze verification 12/12 passed；environment gate 4/4 passed |
 | Development baseline | `data/evaluation/benchmark/stage3-final-real/report.json`、`report.md` | 以 `7bac928` 为 execution commit，185 runs，作为冻结后的质量 baseline |
+| Gate 3 candidate Development | `data/evaluation/benchmark/gate3-final-development-real/report.json`、`raw-records.json` | 以 `8805aa2` 为 execution commit，185 runs，raw / SQLite / Trace 已对齐；待人工 review |
 | Post-fix validation | `data/evaluation/benchmark/stage3-root-cause-final-clean-real/report.json`、`report.md` | 185 runs，主要验证 failure attribution 和 Application lifecycle；不作为 ablation quality 结论 |
 | Module retrieval | `data/evaluation/benchmark/stage3-module-retrieval.json` | 27 个 Development retrieval query；exhaustive 使用 corpus scope，partial 使用 target scope |
 | Failure root cause | `.trellis/spec/project/problems/benchmark-root-cause-closure.md`、`43d282e`、`f247750` | 两个测量层缺陷已修复；系统 quality failure 仍保持可见 |
@@ -48,7 +50,7 @@ Environment 的 canonical Snapshot 为 `snapshot-v1:messages=473236:first=175301
 
 每个 Variant 37 cases；A/B/C/C2/D 合计 185 runs。运行经过 production `TrivaeApplication.query()` path，使用真实 `opencode-go / deepseek-v4-flash` provider，不是 mock。
 
-可追溯性复核结果：post-fix raw records 为 185 条；post-fix Evaluation SQLite 的 `evaluation_runs` 和 `evaluation_results` 均为 185 条，每个 Variant 37 条；canonical Trace Store 中与 raw record 对应的 Trace 为 185 条，`context.prepared` 为 185 条。对应证据为 `data/evaluation/benchmark/stage3-root-cause-final-clean-real/raw-records.json`、`data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3` 和本地 `data/trivae.sqlite3`。
+可追溯性复核结果：post-fix raw records 为 185 条；post-fix Evaluation SQLite 的 `evaluation_runs` 和 `evaluation_results` 均为 185 条，每个 Variant 37 条；canonical Trace Store 中与 raw record 对应的 Trace 为 185 条，`context.prepared` 为 185 条。Gate 3 candidate 也保留 185 条 raw record、185 条 distinct Evaluation `run_id`、185 条 result 和 185 条对应 Trace，每条都有 `context.prepared`。对应证据为 `data/evaluation/benchmark/stage3-root-cause-final-clean-real/raw-records.json`、`data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`、`data/evaluation/benchmark/gate3-final-development-real/`、`data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3` 和本地 `data/trivae.sqlite3`。
 
 ## 3. 冻结后的 Development quality baseline
 
@@ -98,6 +100,22 @@ Environment 的 canonical Snapshot 为 `snapshot-v1:messages=473236:first=175301
 ### 3.4 运维诊断轴
 
 D baseline 的 measured facts 为：latency mean 31,942.757 ms、P50 26,691 ms、P95 68,299 ms；tool calls mean 2.108、P50 2、P95 5；tool rounds mean 1.568、P50 1、P95 3；input tokens total 1,602,065、output tokens total 55,714、total tokens 1,657,779。它们只描述本地 Snapshot、当前 provider/model 和本次 Development run，不是生产 SLA，不建议放入简历主 bullet。
+
+### 3.5 Gate 3 candidate final Development（人工 review 输入）
+
+来源统一为 `data/evaluation/benchmark/gate3-final-development-real/report.json`。候选 commit 为 `8805aa2`，Environment 为 `data/evaluation/benchmark/gate3-candidate-environment.json`；raw 185 条、五个 Variant 各 37 条，其中 138 条 completed、47 条 failed。failure artifact 共 126 条：provider_failure 47、retrieval_miss 38、coverage_error 13、context_missing 12、ranking_failure 7、answer_generation_error 6、zero_result_error 3。失败数是诊断 artifact 数，可能多于 failed run 数。
+
+| Variant | execution completed | valid answer | evidence recall | expected fact answer coverage | context recovery |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| A lexical-only | .405 (15/37) | .405 (15/37) | .784 (29/37；n=15) | 1.000 (8/8；n=8) | .000 (0/3；n=3) |
+| B lexical+semantic | .486 (18/37) | .459 (17/37) | .636 (7/11；n=8) | 1.000 (1/1；n=1) | unavailable（0 个可用 case） |
+| C + auto context | .973 (36/37) | .946 (35/37) | .657 (44/67；n=27) | .875 (14/16；n=16) | .000 (0/3；n=3) |
+| C2 + explicit context tool | .919 (34/37) | .892 (33/37) | .672 (39/58；n=25) | .929 (13/14；n=14) | .000 (0/3；n=3) |
+| D full-system | .946 (35/37) | .865 (32/37) | .627 (37/59；n=25) | .857 (12/14；n=14) | .000 (0/3；n=3) |
+
+这些数值只描述当前 provider/model 窗口下的 Development candidate，不能直接与 `7bac928` baseline 包装成改进结论；两者 execution commit、运行时间和 provider availability window 不同。`freeze-final` 已要求绑定这份完整 Development 输出，但人工 review 通过前不生成 Gate 3 freeze。
+
+本轮 D-only Tier 2 Judge 输出为 `data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`：37 条中 21 条成功判定、5 条因无 content blocks 跳过、11 条 `judge_failed`，批次状态 `partial`；Grounded Claim Rate macro 0.398、Citation Correctness macro 0.132。所有成功判定仍为 `llm_assisted_provisional`，人工 review packet 为 `data/evaluation/benchmark/gate3-review/review.md` 与 `packet.json`，共 12 条、六类各两条，全部 pending。
 
 ## 4. Post-fix validation：只验证 measurement substrate
 

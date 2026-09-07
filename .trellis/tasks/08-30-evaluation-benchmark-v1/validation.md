@@ -2,12 +2,13 @@
 
 ## Completion boundary
 
-- Stage 3 status: **Complete / Ready for Gate 3**。
+- Stage 3 status: **Complete / Gate 3 review pending**；候选 Development 已通过机器验收，人工答案核验和最终 freeze 仍待完成。
 - Final headline scope: Development only，37 cases × A/B/C/C2/D × 1 repetition = 185 runs。
 - calibration 10 cases 已排除 headline denominator；holdout absent，未生成、未查看、未评测。
 - 冻结后的 clean execution commit：`7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`。
 - 根因修复后的 post-fix clean execution commit：`f24775099cb2314772c7d409341e8ebceeceac23`。
 - Gate 2 freeze execution commit：`b1f7b78ba802f853f9cd1cbf7433fe07b2f895c1`；freeze metadata commit：`e34c6985a734eb2169e0a48e12a512270ca0c353`。
+- Gate 3 candidate execution commit：`8805aa2bf58fcb2702817d54afe96bd819645db2`；候选结果只作为本轮人工 review 输入，不替换历史 baseline。
 
 ## Gate / dataset validation
 
@@ -18,6 +19,8 @@
 - `trivae eval benchmark gate ...`：canonical Snapshot、lexical index、semantic identity、Git commit 四项 passed。
 - 最终 SQLite Evaluation Store：185 distinct run_id；五个 Variant 各 37 个 case。
 - post-fix clean SQLite：185 distinct run_id；五个 Variant 各 37 个 case；对应 Trace 185 条、`context.prepared` 185 条。
+- candidate Environment：`data/evaluation/benchmark/gate3-candidate-environment.json`；environment gate 4/4、Gate 2 freeze verification 12/12，全部 passed。
+- candidate Development：`gate3-final-development-real/` 与独立 `gate3-final-development-evaluation.sqlite3`；raw / Evaluation SQLite / Trace 各 185 条，五个 Variant 各 37 条，Case×Variant coverage 185/185。
 
 ## Evaluation artifacts
 
@@ -27,6 +30,8 @@
 - Targeted reruns：`data/evaluation/benchmark/stage3-targeted/`，stream A/C、C2 context、D temporal classification 均保留真实 production Query path 的 before/after 证据。
 - 冻结后 final clean：`data/evaluation/benchmark/stage3-final-real/` 与 `data/evaluation/benchmark/stage3-final-evaluation.sqlite3`；raw records 185 条、failures 108 条、每个 Variant 37 条。该结果保留为根因修复前的质量基线。
 - post-fix root-cause clean：`data/evaluation/benchmark/stage3-root-cause-final-clean-real/` 与 `data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`；raw / SQLite / Trace 均 185 条，每个 Variant 37 条，failure artifacts 146 条。
+- Gate 3 candidate final Development：`data/evaluation/benchmark/gate3-final-development-real/` 与 `data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3`；raw 185 条，138 条 completed、47 条 failed，failure artifacts 126 条；结果等待人工 review，不作为 holdout 或最终 freeze 结论。
+- Gate 3 candidate Tier 2：`data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`；D 变体 37 条中 21 judged、5 skipped、11 failed，状态 `partial`；人工 packet 为 `data/evaluation/benchmark/gate3-review/review.md`，12 条全部 pending。
 - Tier 1：`data/evaluation/benchmark/stage3-final-real/report.json` / `report.md`；包含分子/分母/rate/macro、unavailable reason、operational、paired comparison、failure analysis、freeze/environment identity。
 - Tier 2：`data/evaluation/benchmark/stage3-final-judge-d.json`；8 条 LLM-assisted provisional judge，29 条 `judge_failed`，0 条 skipped，0 条 human adjudicated。
 - Tier 2 audit queue：`data/evaluation/benchmark/stage3-final-judge-audit-queue.json`，37 条完整覆盖，状态为 pending human adjudication。
@@ -34,9 +39,9 @@
 ## Engineering checks
 
 ```text
-.venv/bin/pytest -q                         → 576 passed
+.venv/bin/pytest -q                         → 594 passed
 .venv/bin/ruff check src tests              → All checks passed
-.venv/bin/mypy src                          → Success: no issues found in 111 source files
+.venv/bin/mypy src                          → Success: no issues found in 112 source files
 git diff --check                            → passed
 ```
 
@@ -54,10 +59,12 @@ git diff --check                            → passed
 - post-fix 185 运行的 C/C2/D 大批量 failure 不是上述两项代码缺陷：C 为 5/37 completed、C2 为 0/37、D 为 0/37；全批次 114 条 terminal provider failure 中 C/C2/D 占 106 条。Trace 显示这些 terminal failures 为 `APITimeoutError`/`APIConnectionError`，并集中出现 `ROUTER_COMPLETION_TIMEOUT`，C2/D failure 没有首个 model turn。独立 recovery smoke 一条 D completed、一条 C2 provider failure，保留该外部 provider availability/timeout 事实，不添加 retry、fallback 或变体特判。
 - 其他可观察 failure 保持语义透明：12 条 `retrieval_miss` 是 direct retrieval 中没有 GT relevant hit；7 条 `coverage_error` 是 completed run 但 coverage status 未被产出；4 条 `context_missing` 是 final evidence 缺少 GT required context；2 条 `answer_generation_error` 是 finalization contract failure；3 条 `zero_result_error` 是 GT 要求非空但模型给出 no-result signature。
 - 数据完整性审计通过：raw 185 = Evaluation SQLite 185 = Trace 185；failure artifact 与 report 一致；holdout 目录 absent，未生成、未查看、未评测。
+- candidate 数据完整性审计通过：raw 185 = Evaluation SQLite 185 = Trace 185；distinct run_id 185；每条都有 `context.prepared`；failure artifact 126 条与报告分类一致。candidate 与历史 baseline 的 provider window 不同，不直接宣称质量改进。
 
 ## Stop boundary
 
 - Gate 3 review：pending。
+- candidate Development machine acceptance：complete；人工 packet 仍待逐条核验。
 - Holdout generation / evaluation：未执行。
 - Full benchmark：未执行。
 - 本文件和其他文档只记录已完成的 Development Evaluation，不把结果表述为 unseen 或 holdout 结果；post-fix C/C2/D provider failure window 不用作 ablation quality 结论。
@@ -71,9 +78,12 @@ git diff --check                            → passed
 - 复测确认空 JSON 的直接根因是 Judge 误用 Router/Planner 的 2048 completion budget，返回 `finish_reason=length`；现改用 `max_output_tokens`，输出已完整。精确 provider 余额/配额仍不可从当前兼容 API 读取。
 - Gate 3 freeze、holdout 生成/审核、一次正式 holdout 运行和 full 合并仍保持 pending；本批次没有创建 holdout，也没有把 smoke 当作最终质量结论。
 
-## 2026-09-08 Gate 3 candidate preparation
+## 2026-09-08 Gate 3 candidate preparation and completion
 
 - `environment.py::_git_commit()` 现在先检查 `git status --porcelain --untracked-files=all`，脏 worktree 显式拒绝；被 `.gitignore` 排除的本地 Evaluation artifact 不影响 clean 判定。
 - README 的最终 Development 示例改为独立的 `gate3-final-development-real/` 和 `gate3-final-development-evaluation.sqlite3`，并明确历史 `stage3-final-real/`（`7bac928`）不能与新 holdout 合并。
-- 当前最新远端代码仍为 `cd973588e0b5e99304770b4a159e21ff20c2baf9`；本次 clean-worktree guard 与文档修复尚未提交。
-- 最终候选 Environment、37×5 Development 重跑、最终 Tier 1/Tier 2 报告和 Gate 3 review summary 待本批次修复提交后生成；holdout 仍未生成、未查看、未登记、未运行。
+- 当前候选远端代码为 `8805aa2bf58fcb2702817d54afe96bd819645db2`；clean-worktree guard、独立 final-development 目录口径和 `freeze-final` 完整覆盖校验已提交。
+- 候选 Environment 已在该 commit 的干净 worktree 捕获；environment gate 4/4、Gate 2 freeze verification 12/12 均 passed。
+- 完整 Development 已完成：37 cases × 5 variants = 185 runs，raw / Evaluation SQLite / Trace 各 185 条；138 条 completed、47 条 failed，126 条 failure artifact 全部保留在报告与本地输出。
+- D-only Tier 2 Judge 已完成 provisional 批次：21 judged、5 skipped、11 failed，输出 `status=partial`；人工 packet 已生成 12 条诊断抽样，全部 pending。
+- 当前停止点是 Gate 3 人工 review；holdout 仍未生成、未查看、未登记、未运行，`freeze-final` 尚未执行。

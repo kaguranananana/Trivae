@@ -14,13 +14,18 @@
 
 `resume-benchmark-v1` 已完成 Development Stage 3：47 条人工裁决 GT，其中 Development 37 条、Calibration 10 条；五 Variant 的历史 Development baseline 共 185 次真实运行。Calibration 不计入正式分母，holdout 尚未生成。
 
+- Gate 3 candidate Development 已在候选 commit `8805aa2` 的干净 worktree 完成新的 37×5=185 次真实运行；Environment gate 4/4、Gate 2 freeze verification 12/12、Development Case/Variant coverage 185/185 passed。结果写入 `data/evaluation/benchmark/gate3-final-development-real/` 与独立 `data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3`，人工答案核验仍 pending。
+- 本轮 D-only Tier 2 Judge 写入 `data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`：21 judged、5 skipped、11 failed，状态为 partial；所有成功判定保持 `llm_assisted_provisional`。新的人工 packet 是 `data/evaluation/benchmark/gate3-review/review.md`（12 条、六类各两条，全部 pending）。
+
 - [历史事实索引](reports/resume-benchmark-v1-fact-index.md)：baseline、post-fix measurement validation 与可引用数字的边界。
 - [任务验收记录](../.trellis/tasks/08-30-evaluation-benchmark-v1/validation.md)：真实运行、工程检查和当前停止点。
-- 本地人工核验：`data/evaluation/benchmark/closure-review/review.md`（12 条历史 D 答案，六类各两条，优先失败）。它是诊断抽样，全部待人工确认，不能推算总体正确率。
+- 本地人工核验：`data/evaluation/benchmark/closure-review/review.md`（12 条历史 D 答案）和 `data/evaluation/benchmark/gate3-review/review.md`（候选 `8805aa2` 的新 12 条）。它们都是诊断抽样，全部待人工确认，不能推算总体正确率。
 
 收尾顺序：提交候选代码 → 在干净 worktree 捕获 Environment → provider smoke → 完整 Development 验收 → 人工答案核验与 Gate 3 review → `freeze-final` → 构造并人工审核 holdout → 一次正式运行 → 同版本合并报告。历史结果保持原样，新结果使用独立输出目录。`stage3-final-real` 绑定历史 `7bac928`，禁止直接拿它与冻结后的 holdout 合并。
 
 2026-09-07 旧 key 的单条 Judge smoke 曾返回 `401 / CreditsError / Insufficient balance`；换 key 后，带 OpenCode Go session header 的独立短请求返回 `OK`（98 tokens）。首次 Judge smoke 暴露了 `finish_reason=length`，根因是 Judge 误用 Router/Planner 的 2048 completion budget；现改用独立的 final output budget 后，同一条 smoke 已完成（1 条、9 个 atomic claims，Grounded Claim Rate 0.667、Citation Correctness 0.000），仍保持 `llm_assisted_provisional`，不能当作人工结论。精确余额/配额不由当前兼容 API 暴露，不能据此反推旧的 29 条 Judge 失败原因。Judge 批次包含失败时输出 `status=partial`、`failed` 计数并返回非零退出码，每条保留错误原因；证据读取失败不再用空正文继续评分，已有结果文件损坏时显式拒绝覆盖。人工确认只升级实际检查过的条目。
+
+2026-09-08 候选 `8805aa2` 的真实 provider smoke（D、1 条 Development case）完成，1 条 raw / 1 条 Trace，随后 Judge 11 个 factual atomic claims 全部得到 provisional 支持；完整 Development 185 条已结束，raw / Evaluation SQLite / Trace 均对齐。当前候选报告的 47 条 failed run 和 126 条 failure artifact 保留 provider、召回、排序、context、coverage、答案生成与 zero-result 事实；这些结果等待人工 review，不能当作 holdout 或最终 freeze 结论。
 
 Gate 3 当前候选版本的 CLI 顺序如下；命令必须在干净 worktree 中执行，每一步都使用独立的 local-only 输出目录，不覆盖历史结果：
 
