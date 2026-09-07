@@ -61,3 +61,12 @@ git diff --check                            → passed
 - Holdout generation / evaluation：未执行。
 - Full benchmark：未执行。
 - 本文件和其他文档只记录已完成的 Development Evaluation，不把结果表述为 unseen 或 holdout 结果；post-fix C/C2/D provider failure window 不用作 ablation quality 结论。
+
+## 2026-09-07 收尾工具与 provider check
+
+- 新增 `benchmark/closure.py`：Gate 3 final freeze、冻结后 holdout registration、一次性 `started/completed/failed` claim、sealed report 校验，以及基于 raw records 的 dev/holdout/full 合并。CLI 已接入 `freeze-final`、`seal-holdout`、`run-holdout`、`merge-report`。
+- 新增 closure contract 回归：freeze round-trip 与 git drift、holdout 重复 claim、sealed report、同身份 full 与异身份 `identity_mismatch`。Judge 回归覆盖证据 Tool error、provider 原文、损坏 JSON、partial exit code、OpenCode Go session header 和 final output budget。
+- 当前工程检查：`.venv/bin/pytest -q` → **591 passed**；`.venv/bin/ruff check src tests` → passed；`.venv/bin/mypy src` → passed（112 source files）；`git diff --check` → passed。
+- 换 key 后单条 Judge smoke 使用独立输出 `data/evaluation/benchmark/closure-review/judge-smoke-final-result.json`，1 条 run、9 个 atomic claims，Grounded Claim Rate 0.667、Citation Correctness 0.000，全部仍为 `llm_assisted_provisional`；没有人工升级，也没有覆盖历史 `stage3-final-judge-d.json`。
+- 复测确认空 JSON 的直接根因是 Judge 误用 Router/Planner 的 2048 completion budget，返回 `finish_reason=length`；现改用 `max_output_tokens`，输出已完整。精确 provider 余额/配额仍不可从当前兼容 API 读取。
+- Gate 3 freeze、holdout 生成/审核、一次正式 holdout 运行和 full 合并仍保持 pending；本批次没有创建 holdout，也没有把 smoke 当作最终质量结论。

@@ -75,3 +75,12 @@
 7. 2699/100 覆盖误判：keyset continuation 修复；按最大 covered_units 汇总；COVERAGE_MISMATCH/TIME_RANGE_MISMATCH fatal
 8. 合法空窗被三层拒绝 → kind=no_result + positive proof contract
 9. Dogfooding F-DEPTH-01 / F-RUNTIME-02：answer 长度只作 diagnostic；Evidence Artifact 与 Answer Content 目标分离
+
+## 2026-09-07 收尾审计与真实 Judge smoke
+
+- 历史 Stage 3 的 29 条 `judge_failed` 全部只记录 `EvaluationContractError`，没有原始错误文本，因此不能追溯其确切原因。
+- `judge_records` 原先在 `get_message_context` 返回 error/no data 时用空正文继续评分；这会把评测输入故障与证据不足混在一起。现已改为该条 `judge_failed`，保留 Tool code/message，模型不执行。
+- 已有 judge JSON 损坏时原先静默重置结果；现改为显式错误并保留原文件。Provider 包装和单条失败投影保留原始原因，批次有失败时 status=partial、CLI exit=1。
+- 单条真实 smoke 使用历史 D Run `dev-cite-lofisu`，输出单独存放 `data/evaluation/benchmark/closure-review/judge-smoke-result.json`，原结果未覆盖。旧 key 返回 401 AuthenticationError / CreditsError / Insufficient balance；换 key 后，带稳定 OpenCode Go session header 的独立短请求返回 `OK`（98 tokens）。首次 Judge smoke 暴露 `finish_reason=length`，根因是 Judge 误用 Router/Planner 的 2048 completion budget；改用独立 final output budget 后，`judge-smoke-final-result.json` 已完成 1 条、9 个 atomic claims，Grounded Claim Rate 0.667、Citation Correctness 0.000，状态仍为 `llm_assisted_provisional`。精确余额/配额不由当前兼容 API 暴露，因此不能推断旧的 29 条失败由余额导致。
+- 真实 dev 重跑与 Tier 2 续跑以完整 provider 结果为准；不自动更换 provider/model，不增加重试或 fallback。OpenCode Go 的 production runtime、retrieval annotator 和 benchmark Judge 均显式发送稳定 session header 与 User-Agent。
+- 已生成 `data/evaluation/benchmark/closure-review/review.md` 与 `packet.json`：12 条历史 D Development 答案、六类各两条、failure-first 诊断抽样，含 GT、引用和 bounded 原文。全部 pending，不作为总体正确率或 holdout 结果。生成脚本与材料仅留本地；不修改 `interview-docs/` 既有工作。

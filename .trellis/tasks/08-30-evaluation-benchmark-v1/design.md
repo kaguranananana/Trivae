@@ -229,7 +229,7 @@ class ExecutionOverride:
   - **数量口径**：calibration 是 substrate 校准 slice，不计入最终 benchmark 分母与 headline metric；final split = development（当前 37）+ holdout（冻结后生成 16~23）= 53~60
   - **holdout 在 Gate 3 系统冻结之后才生成与人工审核（构造时序隔离，blind by construction）**：冻结前不存在任何 holdout 文件，不依赖「不可访问某目录」的纪律；gitignored 目录仅作本地存放位置，不声称技术不可见
   - Suite：`resume-benchmark-dev-v1.json`（提交）、`resume-benchmark-holdout-v1.json`（Gate 3 后创建，local）、`resume-benchmark-v1.json` full 清单（提交 dev 明细；holdout 计数在 Stage 4 回填，不含 holdout 明文）
-- 冻结记录：冻结时间、dev case 清单 hash（Gate 3 入库）；holdout 清单 hash 在 Stage 4 生成时补记（hash 入库，明文本地）。
+- 冻结记录：冻结时间、Development Case 的有序版本身份与 canonical 配置（Gate 3 本地保存）；holdout 在 Stage 4 注册时保存同样的明文配置以逐项比对（仅本地）。
 
 ## 10. 兼容性与回滚
 
@@ -263,3 +263,15 @@ evaluation/suites/resume-benchmark-v1.json       新增（dev 明细 + holdout �
 data/evaluation/benchmark/                       本地（gitignored）：environment 完整版 / holdout cases+suite（Gate 3 后生成）/ 中间产物 / failure artifacts
 tests/test_benchmark_*.py                        新增
 ```
+
+## 12. 2026-09-07 最终验收接线
+
+保留 Gate 2 freeze contract，在 Evaluation benchmark 层新增 Gate 3 finalization owner（可独立 closure.py），通过现有 CLI 暴露 freeze-final / seal-holdout / merge-report 操作。冻结先记录 environment、Development suite/case identities、五 Variant 的 canonical configuration text；不使用内容摘要算法。holdout 注册于冻结后，校验 adjudication、split 与 Development 不重叠并保存完整 case 配置用于漂移检查。正式 run 以冻结旁的固定登记文件记录 started/completed/failed，首次请求前登记；中断保留 started，禁止另换输出目录绕过首次运行约束。只复用现有 production-path orchestration 与 report aggregation。
+
+报告合并读取两个 output directory 中的 report/raw-records/failures；逐项比较 environment 和 Variant 配置，然后以原始逐 run metrics 构建 full，不能平均两个已聚合比率。版本不一致时 full 显式 unavailable，独立 split 仍可读取。
+
+Judge 改动限错误出口与 provider 边界：保留 exception 类型和原因链，证据读取错误阻止该条判定，已有 JSON 损坏拒绝覆盖；OpenCode Go 发送稳定 session header；Judge JSON 使用 final output budget，不引入新 provider 重试。
+
+关键模块七问：职责是完成评测验收边界；问题是当前 run 固定未封存且合并无版本检查；归属 Evaluation，不改 Query；输入为既有 manifest/suite/case/variant/run artifact，输出冻结/封存记录与报告；现有 runner/report 可复用；只有数据漂移、重复正式运行、版本混合和 Judge 失因这些已确认问题需要校验；测试以首次执行、错版本、错误证据与既有回归证明行为。
+
+文件边界：closure.py（最终验收契约）、orchestrator.py（运行登记与 Judge 错误出口）、report.py（full unavailable 展示）、judge.py（provider 原因）、cli.py（薄入口）、对应测试、evaluation/README.md。无生产检索行为重构。

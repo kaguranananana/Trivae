@@ -248,6 +248,7 @@ async def run_benchmark_async(
     variant_paths: tuple[Path, ...],
     output_dir: Path,
     repetitions: int = 1,
+    holdout_sealed: bool = False,
 ) -> dict[str, object]:
     """异步 benchmark 主入口：运行、评分和落盘共享调用方的 event loop。"""
 
@@ -301,7 +302,7 @@ async def run_benchmark_async(
         end_to_end_records=end_to_end,
         module_retrieval=None,
         failures=[item.to_dict() for item in all_failures],
-        holdout_sealed=False,
+        holdout_sealed=holdout_sealed,
     )
     orchestrator.write_benchmark_outputs(
         output_dir=output_dir,
@@ -396,17 +397,19 @@ def judge_records(
     # 幂等续跑：已有判定结果的 run 跳过（provider 瞬时故障后可安全重试批次）。
     existing: dict[str, dict[str, object]] = {}
     if output_path.exists():
+        # 已有文件是人工可审阅的结果，解析失败必须保留原件并显式退出。
         try:
-            for item in json.loads(output_path.read_text(encoding="utf-8")):
-                if (
-                    isinstance(item, dict)
-                    and isinstance(item.get("run_id"), str)
-                    # judge_failed/skipped 条目不阻断续跑：成功判定才算已处理。
-                    and item.get("status") not in ("judge_failed", "skipped_no_content_blocks")
-                ):
-                    existing[str(item["run_id"])] = item
-        except json.JSONDecodeError:
-            existing = {}
+            saved = json.loads(output_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise EvaluationContractError(f"cannot read existing judge results: {exc}") from exc
+        if not isinstance(saved, list):
+            raise EvaluationContractError("existing judge results must be an array")
+        for item in saved:
+            if not isinstance(item, dict) or not isinstance(item.get("run_id"), str):
+                raise EvaluationContractError("existing judge result requires run_id")
+            # 显式续跑只跳过成功项，失败项仍允许下一次人工发起的批次重新判定。
+            if item.get("status") not in ("judge_failed", "skipped_no_content_blocks"):
+                existing[item["run_id"]] = item
     judgments: list[dict[str, object]] = list(existing.values())
     for record in records:
         run_id = record.get("run_id")
@@ -446,18 +449,24 @@ def judge_records(
                     if isinstance(message_id, str) and message_id not in message_ids:
                         message_ids.append(message_id)
         excerpts: dict[str, str] = {}
-        for message_id in message_ids[:20]:
-            envelope = application.invoke_tool(
-                "get_message_context",
-                GetMessageContextInput(message_id=message_id, context_before=0, context_after=0),
-                case.data_access_scope,
-            )
-            if envelope.error is not None or envelope.data is None:
-                excerpts[message_id] = ""
-                continue
-            messages = getattr(envelope.data, "messages", ())
-            excerpts[message_id] = messages[0].normalized_content if messages else ""
         try:
+            for message_id in message_ids[:20]:
+                # 使用原 Case scope 读取证据，不能用空正文掩盖读取失败。
+                envelope = application.invoke_tool(
+                    "get_message_context",
+                    GetMessageContextInput(message_id=message_id, context_before=0, context_after=0),
+                    case.data_access_scope,
+                )
+                if envelope.error is not None:
+                    raise EvaluationContractError(
+                        f"judge evidence {message_id}: {envelope.error.code}: {envelope.error.message}"
+                    )
+                if envelope.data is None:
+                    raise EvaluationContractError(f"judge evidence {message_id}: tool returned no data")
+                messages = getattr(envelope.data, "messages", ())
+                if not messages:
+                    raise EvaluationContractError(f"judge evidence {message_id}: source message unavailable")
+                excerpts[message_id] = messages[0].normalized_content
             judgment = asyncio.run(
                 judge.judge(
                     run_id=run_id,
@@ -476,11 +485,17 @@ def judge_records(
                     "variant_id": variant_id,
                     "status": "judge_failed",
                     "exception": type(exc).__name__,
+                    "error": str(exc),
                 }
             )
             print(
                 json.dumps(
-                    {"status": "judge_failed", "run_id": run_id, "exception": type(exc).__name__},
+                    {
+                        "status": "judge_failed",
+                        "run_id": run_id,
+                        "exception": type(exc).__name__,
+                        "error": str(exc),
+                    },
                     ensure_ascii=False,
                 ),
                 flush=True,
@@ -506,8 +521,11 @@ def judge_records(
     skipped_count = sum(
         1 for item in judgments if isinstance(item, dict) and item.get("status") == "skipped_no_content_blocks"
     )
+    # 批次完成与判定成功分开：存在失败时 CLI 必须可观察到非成功状态。
+    failed_count = sum(item.get("status") == "judge_failed" for item in judgments)
     return {
-        "status": "completed",
+        "status": "partial" if failed_count else "completed",
+        "failed": failed_count,
         "judged": judged_count,
         "skipped": skipped_count,
         "grounded_claim_rate_macro": sum(grounded) / len(grounded) if grounded else None,

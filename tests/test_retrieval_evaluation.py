@@ -437,9 +437,11 @@ class RetrievalLLMAnnotationTests(unittest.TestCase):
             ),
         )
         observed_payloads: list[dict[str, object]] = []
+        observed_requests: list[dict[str, object]] = []
 
         class FakeCompletions:
             async def create(self, **kwargs: object) -> object:
+                observed_requests.append(kwargs)
                 messages = kwargs["messages"]
                 payload = json.loads(messages[1]["content"])  # type: ignore[index]
                 observed_payloads.append(payload)
@@ -484,6 +486,7 @@ class RetrievalLLMAnnotationTests(unittest.TestCase):
             annotations = asyncio.run(LLMRetrievalAnnotator(settings).annotate(packet))
 
         self.assertEqual(len(annotations.annotations), 2)
+        self.assertEqual(observed_requests[0]["max_tokens"], settings.max_output_tokens)
         self.assertEqual(annotations.reference_status, "llm_assisted_provisional")
         self.assertTrue(all(not item.verification_status == "human_verified" for item in annotations.annotations))
         serialized_payload = json.dumps(observed_payloads, ensure_ascii=False)

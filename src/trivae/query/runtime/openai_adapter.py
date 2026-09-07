@@ -1138,7 +1138,17 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
 
         # M4 没有 Trivae Trace backend；显式关闭 hosted tracing，避免产生额外外部依赖。
         set_tracing_disabled(True)
-        client = AsyncOpenAI(api_key=settings.api_key, base_url=settings.base_url)
+        # OpenCode Go 要求每个客户端声明稳定 session 和自有 User-Agent，否则请求不会进入 Go 通道。
+        default_headers = (
+            {"x-opencode-session": "trivae-runtime", "User-Agent": "trivae/0.1.0"}
+            if settings.provider == "opencode-go"
+            else None
+        )
+        client = AsyncOpenAI(
+            api_key=settings.api_key,
+            base_url=settings.base_url,
+            default_headers=default_headers,
+        )
         # OpenCode Go 只在有工具的请求上需要动态移除 JSON mode，其他 Provider 保持原模型。
         model_type = (
             _OpenCodeGoChatCompletionsModel

@@ -266,6 +266,8 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(runtime._model_name, "deepseek-v4-flash")
         assert runtime._provider_client is not None
         self.assertEqual(str(runtime._provider_client.base_url).rstrip("/"), settings.base_url)
+        self.assertEqual(runtime._provider_client.default_headers["x-opencode-session"], "trivae-runtime")
+        self.assertEqual(runtime._provider_client.default_headers["User-Agent"], "trivae/0.1.0")
         self.assertNotIn("opencode-go/", runtime._model_name)
         asyncio.run(runtime.aclose())
 

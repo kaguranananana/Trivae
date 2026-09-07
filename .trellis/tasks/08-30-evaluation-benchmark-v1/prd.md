@@ -147,3 +147,17 @@
 8. Failure artifact 改 acceptance-condition 触发；单 Run 只记 observation category，跨 Variant 归因上移；`not_observed_within_recorded_depth` 语义
 9. 报告强制携带 Execution Completion Rate / Valid Answer Rate 无条件指标
 10. Gate 3 增加「冻结 commit 全 dev rerun」；MRR@K 显式 cutoff；`benchmark/retrieval.py` 定位为薄 adapter
+
+## 2026-09-07 收尾推进
+
+用户在审阅四步收尾建议后回复“好的”，同意沿用本任务推进。当前先完成最终验收工具与人工复核材料，已有 Development 结果仍为历史事实。
+
+- Gate 3 固定最终 Environment、五 Variant 配置和 Development 身份；人工 review 与正式冻结在最终 Development 结果可审阅后执行。
+- holdout 必须在 Gate 3 之后生成并由用户实际审核。首次正式运行保存一次性运行记录，重复运行显式拒绝；运行失败保留事实，不自动重试或覆盖。
+- 合并报告仅在 dev/holdout 的 execution commit、Snapshot、索引及 Variant 配置一致时生成 full；否则保留分 split 报告并声明 full unavailable。
+- Judge 错误记录保留实际原因；证据读取失败显式标为 judge_failed，不用空正文继续评判；损坏的已有判定文件显式失败。
+- Judge JSON 使用 final output budget；Router/Planner 的 2048 completion budget 仅用于短规划调用，避免 `finish_reason=length` 被误判成质量失败。
+- 准备覆盖六类、包含已知失败的 12 条 Development 人工复核材料；全部保持 pending，只有用户实际核对后升级。
+- 不增加检索算法、指标体系、重试、fallback；不改历史 GT/质量结果；不自动提交或冻结尚在修改的代码。
+
+验收：冻结/漂移、首次封存/重复拒绝、同版本合并/异版本 unavailable、Judge 原因保留有 deterministic tests；CLI 可用；ruff/mypy/完整 pytest 通过；README 给出可执行操作顺序。正式 provider 运行与人工裁决结果单独记录，不用测试代替。

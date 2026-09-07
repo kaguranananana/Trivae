@@ -65,9 +65,16 @@ class LLMRetrievalAnnotator:
             grouped[candidate.query_id].append(candidate)
 
         annotations: list[RelevanceAnnotation] = []
+        # OpenCode Go 需要稳定 session 标识和自有 User-Agent 才能接受 Go API 请求。
+        default_headers = (
+            {"x-opencode-session": "trivae-retrieval-annotation", "User-Agent": "trivae/0.1.0"}
+            if self._settings.provider == "opencode-go"
+            else None
+        )
         async with AsyncOpenAI(
             api_key=self._settings.api_key,
             base_url=self._settings.base_url,
+            default_headers=default_headers,
         ) as client:
             for query_id in query_order:
                 candidates = grouped[query_id]
@@ -124,7 +131,8 @@ class LLMRetrievalAnnotator:
                 ],
                 response_format={"type": "json_object"},
                 temperature=0,
-                max_tokens=self._settings.completion_max_tokens,
+                # 批量标签 JSON 属于评测输出，不能被 Router/Planner 的短预算截断。
+                max_tokens=self._settings.max_output_tokens,
             )
         except OpenAIError as exc:
             # 对外只保留异常类型；provider 原文可能含 request 或 endpoint 细节。

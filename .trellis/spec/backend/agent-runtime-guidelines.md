@@ -99,6 +99,11 @@ smoke/evaluation 配置；OpenCode Go 不读取任何 `DEEPSEEK_*` 字段。`tri
 文件缺失或格式错误必须在 Application 创建前报错。`load_settings()` 及其 mapping 注入
 接口仍不得隐式读取工作区 credential，非 CLI 库调用不产生文件系统副作用。
 
+OpenCode Go 的 OpenAI-compatible client 必须在构造时携带稳定 `x-opencode-session` 和
+`User-Agent: trivae/0.1.0`；runtime 使用固定的本地 runtime session，Evaluation Judge 使用当前
+Run 的 session。缺少该 header 会得到 provider 的 `MissingSessionID`，必须在 client 边界修复，不能在
+调用方吞错或重试。
+
 Tool Result projection 是独立于 retrieval 与 answer 的预算。fixed 模式继续按每次 Tool 16000
 estimated tokens；dynamic 按 explicit context → verified model registry → 16k fallback 解析 context。
 per-call ceiling 使用 `min(floor(context_window_tokens * 50 / 100), 128000)`，run-level pool 使用独立的

@@ -34,6 +34,7 @@ from trivae.evaluation import (
     build_retrieval_audit_queue,
     build_retrieval_metrics,
 )
+from trivae.evaluation.benchmark.closure import BenchmarkFinalFreezeRecord, HoldoutRegistrationRecord
 from trivae.evaluation.benchmark.environment import capture_environment
 from trivae.evaluation.benchmark.orchestrator import (
     BenchmarkOrchestrator,
@@ -327,6 +328,43 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_judge_parser.add_argument("--records", type=Path, required=True, help="raw-records.json from a benchmark run")
     benchmark_judge_parser.add_argument("--cases-dir", type=Path, required=True)
     benchmark_judge_parser.add_argument("--output", type=Path, required=True)
+    benchmark_freeze_parser = benchmark_subparsers.add_parser(
+        "freeze-final", help="Capture the Gate 3 Development identity after final review"
+    )
+    benchmark_freeze_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_freeze_parser.add_argument("--manifest", type=Path, required=True)
+    benchmark_freeze_parser.add_argument("--suite", type=Path, required=True)
+    benchmark_freeze_parser.add_argument("--cases-dir", type=Path, required=True)
+    benchmark_freeze_parser.add_argument("--variant", type=Path, action="append", required=True)
+    benchmark_freeze_parser.add_argument("--output", type=Path, required=True)
+    benchmark_freeze_parser.add_argument("--gate2-freeze", type=Path, default=None)
+    benchmark_holdout_parser = benchmark_subparsers.add_parser(
+        "seal-holdout", help="Register manually adjudicated holdout cases after Gate 3"
+    )
+    benchmark_holdout_parser.add_argument("--freeze", type=Path, required=True)
+    benchmark_holdout_parser.add_argument("--suite", type=Path, required=True)
+    benchmark_holdout_parser.add_argument("--cases-dir", type=Path, required=True)
+    benchmark_holdout_parser.add_argument("--output", type=Path, required=True)
+    benchmark_holdout_run_parser = benchmark_subparsers.add_parser(
+        "run-holdout", help="Run the sealed holdout once through the production query path"
+    )
+    benchmark_holdout_run_parser.add_argument("--database", type=Path, default=Path("data/trivae.sqlite3"))
+    benchmark_holdout_run_parser.add_argument("--evaluation-database", type=Path, default=None)
+    benchmark_holdout_run_parser.add_argument("--manifest", type=Path, required=True)
+    benchmark_holdout_run_parser.add_argument("--freeze", type=Path, required=True)
+    benchmark_holdout_run_parser.add_argument("--registration", type=Path, required=True)
+    benchmark_holdout_run_parser.add_argument("--suite", type=Path, required=True)
+    benchmark_holdout_run_parser.add_argument("--cases-dir", type=Path, required=True)
+    benchmark_holdout_run_parser.add_argument("--variant", type=Path, action="append", required=True)
+    benchmark_holdout_run_parser.add_argument("--output-dir", type=Path, required=True)
+    benchmark_holdout_run_parser.add_argument("--repeat", type=int, default=1)
+    benchmark_merge_parser = benchmark_subparsers.add_parser(
+        "merge-report", help="Merge sealed Development and holdout reports when identities match"
+    )
+    benchmark_merge_parser.add_argument("--development-dir", type=Path, required=True)
+    benchmark_merge_parser.add_argument("--holdout-dir", type=Path, required=True)
+    benchmark_merge_parser.add_argument("--freeze", type=Path, required=True)
+    benchmark_merge_parser.add_argument("--output-dir", type=Path, required=True)
     benchmark_audit_parser = benchmark_subparsers.add_parser(
         "audit", help="Deterministic GT consistency audit over version-controlled benchmark cases"
     )
@@ -552,8 +590,87 @@ async def _run_benchmark_with_application(args: argparse.Namespace) -> dict[str,
         )
 
 
+async def _run_holdout_with_application(args: argparse.Namespace) -> dict[str, object]:
+    """在 Gate 3 identity 复核后执行一次性 holdout，并持久化 claim 状态。"""
+
+    from trivae.evaluation.benchmark.closure import (
+        assert_finalized_run_inputs,
+        begin_holdout_run,
+        complete_holdout_run,
+        fail_holdout_run,
+    )
+
+    if isinstance(args.repeat, bool) or not isinstance(args.repeat, int) or args.repeat <= 0:
+        raise EvaluationContractError("holdout repetitions must be a positive integer")
+    suite = EvaluationSuite.from_json(args.suite)
+    cases = _load_cases(args.cases_dir)
+    variants = tuple(_load_variant(path) for path in args.variant)
+    freeze = _load_final_freeze(args.freeze)
+    registration = _load_holdout_registration(args.registration)
+    async with create_application(
+        args.database,
+        evaluation_database_path=args.evaluation_database,
+    ) as application:
+        orchestrator = BenchmarkOrchestrator(application=application, database_path=args.database)
+        manifest = orchestrator.load_manifest(args.manifest)
+        gate = orchestrator.preflight_gate(manifest)
+        if not gate.passed:
+            return {"status": "gate_failed", "gate": gate.to_dict()}
+        # 所有 identity 检查都发生在 claim 和 provider 请求前，失败时不会留下“已开始”的假象。
+        assert_finalized_run_inputs(
+            freeze=freeze,
+            manifest=manifest,
+            suite=suite,
+            cases=cases,
+            variants=variants,
+            split="holdout",
+            registration=registration,
+            freeze_path=args.freeze,
+        )
+        claim_path, _claim = begin_holdout_run(
+            freeze=freeze,
+            freeze_path=args.freeze,
+            registration_path=args.registration,
+            output_dir=args.output_dir,
+        )
+        try:
+            outcome = await run_benchmark_async(
+                application=application,
+                database_path=args.database,
+                manifest_path=args.manifest,
+                suite=suite,
+                cases_dir=args.cases_dir,
+                variant_paths=tuple(args.variant),
+                output_dir=args.output_dir,
+                repetitions=args.repeat,
+                holdout_sealed=True,
+            )
+            if outcome.get("status") != "completed":
+                raise EvaluationContractError(
+                    f"holdout benchmark did not complete: {outcome.get('status')}"
+                )
+            completed_claim = complete_holdout_run(claim_path, args.output_dir / "report.json")
+        except Exception as exc:  # noqa: BLE001 - claim 必须保留真实失败原因
+            fail_holdout_run(claim_path, exc)
+            raise
+    outcome["holdout_run_claim"] = completed_claim.to_dict()
+    return outcome
+
+
+def _load_final_freeze(path: Path) -> BenchmarkFinalFreezeRecord:
+    """读取 final freeze；schema 或 identity 损坏由 contract 显式拒绝。"""
+
+    return BenchmarkFinalFreezeRecord.from_json(path)
+
+
+def _load_holdout_registration(path: Path) -> HoldoutRegistrationRecord:
+    """读取 holdout registration；损坏或 schema 漂移由 contract 显式拒绝。"""
+
+    return HoldoutRegistrationRecord.from_json(path)
+
+
 def _run_benchmark_command(args: argparse.Namespace) -> int:
-    """Benchmark 编排 CLI：gate / capture-environment / run。"""
+    """Benchmark 编排 CLI：gate、冻结、封存、运行、评分和报告合并。"""
 
     try:
         if args.benchmark_command == "gate":
@@ -579,6 +696,109 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
                 )
             manifest.to_json(args.output)
             print(json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2))
+            return 0
+
+        if args.benchmark_command == "freeze-final":
+            from trivae.evaluation.benchmark.closure import capture_final_freeze
+
+            if args.output.exists():
+                raise EvaluationContractError(f"final freeze already exists: {args.output}")
+            if args.gate2_freeze is not None and not args.gate2_freeze.is_file():
+                raise EvaluationContractError(f"Gate 2 freeze does not exist: {args.gate2_freeze}")
+            suite = EvaluationSuite.from_json(args.suite)
+            cases = _load_cases(args.cases_dir)
+            variants = tuple(_load_variant(path) for path in args.variant)
+            with create_application(args.database) as application:
+                orchestrator = BenchmarkOrchestrator(application=application, database_path=args.database)
+                manifest = orchestrator.load_manifest(args.manifest)
+                gate = orchestrator.preflight_gate(manifest)
+                if not gate.passed:
+                    print(json.dumps({"status": "gate_failed", "gate": gate.to_dict()}, ensure_ascii=False, indent=2))
+                    return 1
+                freeze = capture_final_freeze(
+                    manifest=manifest,
+                    suite=suite,
+                    dev_cases=cases,
+                    variants=variants,
+                    gate2_freeze_path=args.gate2_freeze,
+                )
+            freeze.to_json(args.output)
+            print(json.dumps({"status": "completed", "freeze": freeze.to_dict()}, ensure_ascii=False, indent=2))
+            return 0
+
+        if args.benchmark_command == "seal-holdout":
+            from trivae.evaluation.benchmark.closure import register_holdout
+
+            if args.output.exists():
+                raise EvaluationContractError(f"holdout registration already exists: {args.output}")
+            freeze = _load_final_freeze(args.freeze)
+            suite = EvaluationSuite.from_json(args.suite)
+            cases = _load_cases(args.cases_dir)
+            registration = register_holdout(
+                freeze=freeze,
+                freeze_path=args.freeze,
+                suite=suite,
+                holdout_cases=cases,
+            )
+            registration.to_json(args.output)
+            print(
+                json.dumps(
+                    {"status": "completed", "registration": registration.to_dict()},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 0
+
+        if args.benchmark_command == "run-holdout":
+            outcome = asyncio.run(_run_holdout_with_application(args))
+            summary = {
+                "status": outcome["status"],
+                "gate": outcome.get("gate"),
+                "report_path": str(args.output_dir / "report.json"),
+                "markdown_path": str(args.output_dir / "report.md"),
+                "failures_path": str(args.output_dir / "failures" / "failures.json"),
+                "holdout_run_claim": outcome.get("holdout_run_claim"),
+            }
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+            return 0 if outcome["status"] == "completed" else 1
+
+        if args.benchmark_command == "merge-report":
+            from trivae.evaluation.benchmark.closure import merge_reports, read_holdout_run_claim
+
+            freeze = _load_final_freeze(args.freeze)
+            claim = read_holdout_run_claim(args.freeze)
+            if claim.status != "completed":
+                raise EvaluationContractError(
+                    f"holdout run claim is not completed: {claim.status}"
+                )
+            if claim.benchmark != freeze.benchmark:
+                raise EvaluationContractError("holdout run claim benchmark differs from final freeze")
+            if claim.output_dir != str(args.holdout_dir.resolve()):
+                raise EvaluationContractError("holdout run claim output_dir differs from --holdout-dir")
+            expected_report = str((args.holdout_dir / "report.json").resolve())
+            if claim.report_path != expected_report:
+                raise EvaluationContractError("holdout run claim report_path differs from holdout report")
+            report = merge_reports(
+                development_dir=args.development_dir,
+                holdout_dir=args.holdout_dir,
+                output_dir=args.output_dir,
+                freeze=freeze,
+            )
+            metadata = report.get("metadata")
+            full_available = metadata.get("full_available") if isinstance(metadata, Mapping) else None
+            print(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "full_available": full_available,
+                        "report_path": str(args.output_dir / "report.json"),
+                        "markdown_path": str(args.output_dir / "report.md"),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             return 0
 
         if args.benchmark_command == "retrieval-score":
@@ -615,7 +835,7 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
                     output_path=args.output,
                 )
             print(json.dumps(outcome, ensure_ascii=False, indent=2))
-            return 0
+            return 0 if outcome["status"] == "completed" else 1
 
         if args.benchmark_command == "audit":
             from trivae.evaluation.benchmark.audit import CaseAudit

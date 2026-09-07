@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Mapping, Sequence
+from typing import Literal, Mapping, Sequence
 
 from openai import AsyncOpenAI, OpenAIError
 
@@ -27,6 +27,7 @@ CITATION_VERDICTS = ("supported", "partially_supported", "unsupported", "insuffi
 _MAX_EVIDENCE_EXCERPTS = 20
 _MAX_EXCERPT_CHARS = 400
 _MAX_CLAIM_TEXT_CHARS = 500
+_LOW_REASONING_MODELS = frozenset({"deepseek-v4-flash"})
 
 _CLAIM_SYSTEM_PROMPT = """你是 Trivae benchmark 的 Tier 2 judge。输入是一个最终回答的
 content blocks、每个 block 的 citation 绑定（指向的 evidence 摘要），以及 evidence 摘要文本。
@@ -182,7 +183,7 @@ class LLMClaimJudge:
             "citation_bindings": [dict(binding) for binding in citation_bindings],
             "evidence_excerpts": dict(bounded_excerpts),
         }
-        response_text = await self._complete(payload)
+        response_text = await self._complete(payload, session_id=run_id)
         claims, citations = _parse_judge_output(response_text, block_ids, citation_bindings)
         return AnswerJudgment(
             run_id=run_id,
@@ -194,8 +195,24 @@ class LLMClaimJudge:
             created_at=utc_now(),
         )
 
-    async def _complete(self, payload: Mapping[str, object]) -> str:
-        async with AsyncOpenAI(api_key=self._settings.api_key, base_url=self._settings.base_url) as client:
+    async def _complete(self, payload: Mapping[str, object], *, session_id: str) -> str:
+        # OpenCode Go 按稳定会话标识路由；同一 Run 的 Judge 请求始终使用同一身份。
+        headers = (
+            {"x-opencode-session": session_id, "User-Agent": "trivae/0.1.0"}
+            if self._settings.provider == "opencode-go"
+            else None
+        )
+        reasoning_effort: Literal["low"] | None = (
+            "low"
+            if self._settings.provider == "opencode-go"
+            and self._settings.model_name.casefold() in _LOW_REASONING_MODELS
+            else None
+        )
+        async with AsyncOpenAI(
+            api_key=self._settings.api_key,
+            base_url=self._settings.base_url,
+            default_headers=headers,
+        ) as client:
             try:
                 response = await client.chat.completions.create(
                     model=self._settings.model_name,
@@ -205,15 +222,20 @@ class LLMClaimJudge:
                     ],
                     response_format={"type": "json_object"},
                     temperature=0,
-                    max_tokens=self._settings.completion_max_tokens,
+                    # Judge 产出完整 JSON，不受 Router/Planner 的短 completion budget 截断。
+                    max_tokens=self._settings.max_output_tokens,
+                    reasoning_effort=reasoning_effort,
                 )
             except OpenAIError as exc:
-                raise EvaluationContractError(f"benchmark judge provider failed: {type(exc).__name__}") from exc
+                raise EvaluationContractError(f"benchmark judge provider failed: {type(exc).__name__}: {exc}") from exc
         if not response.choices:
             raise EvaluationContractError("benchmark judge response has no choices")
         content = response.choices[0].message.content
         if not isinstance(content, str) or not content.strip():
-            raise EvaluationContractError("benchmark judge response has no JSON content")
+            # 空正文仍是失败；记录公开终止原因，区分预算截断与正常停止的空输出。
+            raise EvaluationContractError(
+                f"benchmark judge response has no JSON content; finish_reason={response.choices[0].finish_reason}"
+            )
         return content
 
 

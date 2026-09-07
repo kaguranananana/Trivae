@@ -132,7 +132,7 @@
 ### 4.0 Holdout 生成与审核（Gate 3 冻结之后，构造时序隔离）
 - [ ] 从冻结前未使用的问题池生成 holdout candidate（总规模 30~40%，六类分布，含新的真实问题）
 - [ ] 用户逐条人工审核 → adjudicated；存放 `data/evaluation/benchmark/holdout/`（gitignored）
-- [ ] holdout 清单 hash 补记入冻结记录
+- [ ] holdout 有序 Case 身份与 canonical 配置注册到本地冻结记录
 - [ ] 无效条目替换仅限预声明三情形（GT 矛盾 / 重复 / 数据损坏），记录原因
 
 ### 4.1 Tier 2 Judge（dev 上先验证）
@@ -174,3 +174,18 @@ python -m trivae eval benchmark report --input data/evaluation/benchmark/...
 - Stage 1：benchmark 模块未接入生产链路，revert 对应 commit 即可；ExecutionOverride 新字段默认 None 可独立回滚
 - Stage 2/3：case/suite 为纯新增文件；数据产物在 gitignored 目录；GT 不合格 case 废弃即可
 - 全程不改 GT 迁就系统输出；holdout 一次定稿，v2 才是新起点
+
+## 2026-09-07 收尾实施批次
+
+此前 Stage 3 历史完成结论保留；用户已同意推进收尾。本批次不将历史未勾选条目机械改为完成。
+
+- [x] 实现 Gate 3 freeze-final、冻结后 holdout 注册与首次 run 封存，并接入 CLI。
+- [x] 实现 dev/holdout 同身份报告合并，异版本 full unavailable。
+- [x] 补 Judge 证据读取/解析/provider 错误根因与回归测试。
+- [x] 准备 12 条人工复核 packet（本地 pending），核对旧 judge failure 的可诊断范围。
+- [x] 更新 README 操作顺序及事实边界，运行相关测试、ruff、mypy、全量 pytest。
+- [x] 换 key 后完成单条 Judge smoke；修复了 2048 token 截断并保留 provisional 状态。
+- [ ] 提交最终可审阅改动；代码提交后再捕获运行 Environment，安排 provider smoke 和完整 dev 验收。
+- [ ] 用户实际完成答案核验和 Gate 3 review 后生成/审核 holdout，正式运行一次并输出最终报告。
+
+用户已有 interview-docs/ 工作区改动保持原样；本批次不自动 commit、archive 或把待人工确认项标完成。
