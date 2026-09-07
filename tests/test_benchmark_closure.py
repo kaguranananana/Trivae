@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from trivae.capabilities.contracts import ExecutionScope
 from trivae.evaluation import ControlledVariant
 from trivae.evaluation.benchmark.closure import (
     BenchmarkFinalFreezeRecord,
+    assert_development_acceptance,
     begin_holdout_run,
     capture_final_freeze,
     complete_holdout_run,
@@ -173,6 +175,41 @@ def _write_report_dir(
     (output_dir / "failures" / "failures.json").write_text("[]\n", encoding="utf-8")
 
 
+def _write_development_acceptance_dir(
+    output_dir: Path,
+    *,
+    environment: BenchmarkEnvironmentManifest,
+    suite: EvaluationSuite,
+    case: EvaluationCaseBundle,
+    variant: ControlledVariant,
+) -> None:
+    """写入一个最小但完整的 Development Case/Variant 覆盖 artifact。"""
+
+    record = {
+        "case_id": case.case_id,
+        "variant_id": variant.variant_id,
+        "category": "exact_lexical",
+        "split": "development",
+        "run_id": "run:closure-acceptance",
+        "metrics": [],
+    }
+    report = build_report(
+        benchmark=environment.benchmark,
+        environment=environment.to_dict(),
+        variants=(variant.to_dict(),),
+        case_stats={"suite": suite.identity, "suite_cases": 1},
+        end_to_end_records={"development": (record,)},
+        module_retrieval=None,
+        failures=(),
+        holdout_sealed=False,
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    write_report_outputs(report, json_path=output_dir / "report.json", markdown_path=output_dir / "report.md")
+    (output_dir / "raw-records.json").write_text("[" + json.dumps(record) + "]\n", encoding="utf-8")
+    (output_dir / "failures").mkdir(parents=True, exist_ok=True)
+    (output_dir / "failures" / "failures.json").write_text("[]\n", encoding="utf-8")
+
+
 def test_final_freeze_roundtrip_and_git_drift_is_visible(tmp_path: Path) -> None:
     """冻结可恢复，manifest 的 commit 漂移必须进入失败检查。"""
 
@@ -196,6 +233,37 @@ def test_final_freeze_roundtrip_and_git_drift_is_visible(tmp_path: Path) -> None
     )
     assert drift.passed is False
     assert any(item["name"] == "environment_identity" for item in drift.checks if item["passed"] is False)
+
+
+def test_development_acceptance_requires_every_case_variant_pair(tmp_path: Path) -> None:
+    """最终 Development artifact 覆盖完整时通过，缺少组合时显式失败。"""
+
+    _freeze_record, _freeze_path, suite, case, variant = _freeze(tmp_path)
+    output_dir = tmp_path / "development"
+    _write_development_acceptance_dir(
+        output_dir,
+        environment=_manifest(),
+        suite=suite,
+        case=case,
+        variant=variant,
+    )
+    accepted = assert_development_acceptance(
+        output_dir=output_dir,
+        manifest=_manifest(),
+        suite=suite,
+        variants=(variant,),
+    )
+    assert accepted["expected_pair_count"] == 1
+    assert accepted["observed_pair_count"] == 1
+
+    (output_dir / "raw-records.json").write_text("[]\n", encoding="utf-8")
+    with pytest.raises(EvaluationContractError, match="missing Case/Variant runs"):
+        assert_development_acceptance(
+            output_dir=output_dir,
+            manifest=_manifest(),
+            suite=suite,
+            variants=(variant,),
+        )
 
 
 def test_holdout_registration_and_claim_cannot_be_reused(tmp_path: Path) -> None:

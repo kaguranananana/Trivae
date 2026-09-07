@@ -186,7 +186,7 @@ python -m trivae eval benchmark report --input data/evaluation/benchmark/...
 - [x] 更新 README 操作顺序及事实边界，运行相关测试、ruff、mypy、全量 pytest。
 - [x] 换 key 后完成单条 Judge smoke；修复了 2048 token 截断并保留 provisional 状态。
 - [x] Gate 3 closure implementation 已提交到远端 `cd973588e0b5e99304770b4a159e21ff20c2baf9`；原有 `interview-docs/` 工作区改动未混入该提交。
-- [ ] 补齐 clean-worktree Environment guard 和 final-development 目录口径；完成后生成新的候选 commit，再捕获运行 Environment 并安排 provider smoke / 完整 dev 验收。
+- [x] 补齐 clean-worktree Environment guard、独立 final-development 目录口径，并让 `freeze-final` 强制校验完整 Development Case/Variant 覆盖；候选实现待本轮提交后捕获 Environment。
 - [ ] 用户实际完成答案核验和 Gate 3 review 后生成/审核 holdout，正式运行一次并输出最终报告。
 
 用户已有 interview-docs/ 工作区改动保持原样；本批次不自动 commit、archive 或把待人工确认项标完成。

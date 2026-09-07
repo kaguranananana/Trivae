@@ -926,6 +926,65 @@ def _report_environment(report: Mapping[str, object], split: str) -> Mapping[str
     return _environment_dict(value)
 
 
+def assert_development_acceptance(
+    *,
+    output_dir: Path,
+    manifest: BenchmarkEnvironmentManifest,
+    suite: EvaluationSuite,
+    variants: Sequence[ControlledVariant],
+) -> dict[str, object]:
+    """校验最终 Development report 覆盖了 Suite×Variant 的全部组合。
+
+    ``freeze-final`` 只能绑定已经完成的 Development artifact；单纯存在
+    Environment、Suite 和 Variant 文件不足以证明 37×5 已经运行。因此这里
+    同时读取 report、raw records 和 failure artifact，逐条检查 split、版本身份
+    和每个 Case/Variant 组合，缺失时显式拒绝生成 Gate 3 freeze。
+    """
+
+    report, raw_records, failures = _load_report_artifacts(output_dir, "development")
+    if report.get("benchmark") != manifest.benchmark:
+        raise EvaluationContractError("development report benchmark differs from final environment")
+    report_environment = _report_environment(report, "development")
+    if environment_identity(report_environment) != environment_identity(manifest.to_dict()):
+        raise EvaluationContractError("development report differs from final environment identity")
+    report_variants, _ = _report_variant_configurations(report, "development")
+    expected_variants = _variant_configurations(variants)
+    if report_variants != expected_variants:
+        raise EvaluationContractError("development report differs from final Variant configurations")
+    report_splits = report.get("splits")
+    if not isinstance(report_splits, Mapping) or not isinstance(report_splits.get("development"), Mapping):
+        raise EvaluationContractError("development report lacks development split")
+
+    expected_cases = {reference.case_id for reference in suite.case_references}
+    if len(expected_cases) != len(suite.case_references):
+        raise EvaluationContractError("development Suite contains duplicate Case identities")
+    expected_pairs = {(case_id, variant_id) for case_id in expected_cases for variant_id in expected_variants}
+    observed_pairs: set[tuple[str, str]] = set()
+    for record in raw_records:
+        case_id = record.get("case_id")
+        variant_id = record.get("variant_id")
+        if not isinstance(case_id, str) or case_id not in expected_cases:
+            raise EvaluationContractError(f"development raw record references unknown Case: {case_id!r}")
+        if not isinstance(variant_id, str) or variant_id not in expected_variants:
+            raise EvaluationContractError(f"development raw record references unknown Variant: {variant_id!r}")
+        observed_pairs.add((case_id, variant_id))
+    missing_pairs = sorted(expected_pairs - observed_pairs)
+    if missing_pairs:
+        raise EvaluationContractError(
+            "development acceptance is incomplete; missing Case/Variant runs: "
+            f"{missing_pairs!r}"
+        )
+    return {
+        "output_dir": str(output_dir.resolve()),
+        "raw_record_count": len(raw_records),
+        "failure_count": len(failures),
+        "case_count": len(expected_cases),
+        "variant_count": len(expected_variants),
+        "expected_pair_count": len(expected_pairs),
+        "observed_pair_count": len(observed_pairs),
+    }
+
+
 def _report_provenance(
     *,
     output_dir: Path,
@@ -1125,6 +1184,7 @@ __all__ = [
     "HOLDOUT_RUN_CLAIM_SCHEMA_VERSION",
     "HoldoutRegistrationRecord",
     "HoldoutRunClaim",
+    "assert_development_acceptance",
     "assert_finalized_run_inputs",
     "assert_holdout_registration",
     "begin_holdout_run",

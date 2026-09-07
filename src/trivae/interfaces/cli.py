@@ -336,6 +336,12 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_freeze_parser.add_argument("--suite", type=Path, required=True)
     benchmark_freeze_parser.add_argument("--cases-dir", type=Path, required=True)
     benchmark_freeze_parser.add_argument("--variant", type=Path, action="append", required=True)
+    benchmark_freeze_parser.add_argument(
+        "--development-dir",
+        type=Path,
+        required=True,
+        help="Completed final Development output directory to bind into the Gate 3 review",
+    )
     benchmark_freeze_parser.add_argument("--output", type=Path, required=True)
     benchmark_freeze_parser.add_argument("--gate2-freeze", type=Path, default=None)
     benchmark_holdout_parser = benchmark_subparsers.add_parser(
@@ -699,7 +705,7 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
             return 0
 
         if args.benchmark_command == "freeze-final":
-            from trivae.evaluation.benchmark.closure import capture_final_freeze
+            from trivae.evaluation.benchmark.closure import assert_development_acceptance, capture_final_freeze
 
             if args.output.exists():
                 raise EvaluationContractError(f"final freeze already exists: {args.output}")
@@ -715,6 +721,12 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
                 if not gate.passed:
                     print(json.dumps({"status": "gate_failed", "gate": gate.to_dict()}, ensure_ascii=False, indent=2))
                     return 1
+                development_acceptance = assert_development_acceptance(
+                    output_dir=args.development_dir,
+                    manifest=manifest,
+                    suite=suite,
+                    variants=variants,
+                )
                 freeze = capture_final_freeze(
                     manifest=manifest,
                     suite=suite,
@@ -723,7 +735,17 @@ def _run_benchmark_command(args: argparse.Namespace) -> int:
                     gate2_freeze_path=args.gate2_freeze,
                 )
             freeze.to_json(args.output)
-            print(json.dumps({"status": "completed", "freeze": freeze.to_dict()}, ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "development_acceptance": development_acceptance,
+                        "freeze": freeze.to_dict(),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             return 0
 
         if args.benchmark_command == "seal-holdout":

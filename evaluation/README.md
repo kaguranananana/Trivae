@@ -56,6 +56,7 @@ python -m trivae eval benchmark freeze-final \
   --variant evaluation/variants/bench-semantic-ctx-v1.json \
   --variant evaluation/variants/bench-semantic-ctx-tool-v1.json \
   --variant evaluation/variants/bench-full-system-v1.json \
+  --development-dir data/evaluation/benchmark/gate3-final-development-real \
   --gate2-freeze evaluation/snapshots/resume-benchmark-v1-freeze.json \
   --output data/evaluation/benchmark/gate3-final-freeze.json
 
