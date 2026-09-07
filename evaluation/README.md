@@ -18,16 +18,24 @@
 - [任务验收记录](../.trellis/tasks/08-30-evaluation-benchmark-v1/validation.md)：真实运行、工程检查和当前停止点。
 - 本地人工核验：`data/evaluation/benchmark/closure-review/review.md`（12 条历史 D 答案，六类各两条，优先失败）。它是诊断抽样，全部待人工确认，不能推算总体正确率。
 
-收尾顺序：提交最终代码 → 捕获同版本 Environment → provider smoke → 完整 Development 验收 → 人工答案核验与 Gate 3 review → 冻结 → 构造并人工审核 holdout → 一次正式运行 → 同版本合并报告。历史结果保持原样，新结果使用独立输出目录。
+收尾顺序：提交候选代码 → 在干净 worktree 捕获 Environment → provider smoke → 完整 Development 验收 → 人工答案核验与 Gate 3 review → `freeze-final` → 构造并人工审核 holdout → 一次正式运行 → 同版本合并报告。历史结果保持原样，新结果使用独立输出目录。`stage3-final-real` 绑定历史 `7bac928`，禁止直接拿它与冻结后的 holdout 合并。
 
 2026-09-07 旧 key 的单条 Judge smoke 曾返回 `401 / CreditsError / Insufficient balance`；换 key 后，带 OpenCode Go session header 的独立短请求返回 `OK`（98 tokens）。首次 Judge smoke 暴露了 `finish_reason=length`，根因是 Judge 误用 Router/Planner 的 2048 completion budget；现改用独立的 final output budget 后，同一条 smoke 已完成（1 条、9 个 atomic claims，Grounded Claim Rate 0.667、Citation Correctness 0.000），仍保持 `llm_assisted_provisional`，不能当作人工结论。精确余额/配额不由当前兼容 API 暴露，不能据此反推旧的 29 条 Judge 失败原因。Judge 批次包含失败时输出 `status=partial`、`failed` 计数并返回非零退出码，每条保留错误原因；证据读取失败不再用空正文继续评分，已有结果文件损坏时显式拒绝覆盖。人工确认只升级实际检查过的条目。
 
-Gate 3 收尾 CLI 顺序如下；每一步都使用独立的 local-only 输出目录，不覆盖历史结果：
+Gate 3 当前候选版本的 CLI 顺序如下；命令必须在干净 worktree 中执行，每一步都使用独立的 local-only 输出目录，不覆盖历史结果：
 
 ```bash
-python -m trivae eval benchmark freeze-final \
+# 在候选最终代码的干净 worktree 中捕获 Environment。
+python -m trivae eval benchmark capture-environment \
   --database data/trivae.sqlite3 \
-  --manifest data/evaluation/benchmark/environment.json \
+  --benchmark resume-benchmark-v1 \
+  --output data/evaluation/benchmark/gate3-candidate-environment.json
+
+# 使用独立 Evaluation SQLite 完整验收 37×5 Development；不要写入历史 baseline 目录。
+python -m trivae eval benchmark run \
+  --database data/trivae.sqlite3 \
+  --evaluation-database data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3 \
+  --manifest data/evaluation/benchmark/gate3-candidate-environment.json \
   --suite evaluation/suites/resume-benchmark-dev-v1.json \
   --cases-dir evaluation/cases/benchmark/dev \
   --variant evaluation/variants/bench-lexical-only-v1.json \
@@ -35,10 +43,24 @@ python -m trivae eval benchmark freeze-final \
   --variant evaluation/variants/bench-semantic-ctx-v1.json \
   --variant evaluation/variants/bench-semantic-ctx-tool-v1.json \
   --variant evaluation/variants/bench-full-system-v1.json \
-  --output data/evaluation/benchmark/benchmark-final-freeze.json
+  --output-dir data/evaluation/benchmark/gate3-final-development-real
+
+# 完整 Development 验收与人工 review 通过后，才生成 Gate 3 freeze。
+python -m trivae eval benchmark freeze-final \
+  --database data/trivae.sqlite3 \
+  --manifest data/evaluation/benchmark/gate3-candidate-environment.json \
+  --suite evaluation/suites/resume-benchmark-dev-v1.json \
+  --cases-dir evaluation/cases/benchmark/dev \
+  --variant evaluation/variants/bench-lexical-only-v1.json \
+  --variant evaluation/variants/bench-lexical-semantic-v1.json \
+  --variant evaluation/variants/bench-semantic-ctx-v1.json \
+  --variant evaluation/variants/bench-semantic-ctx-tool-v1.json \
+  --variant evaluation/variants/bench-full-system-v1.json \
+  --gate2-freeze evaluation/snapshots/resume-benchmark-v1-freeze.json \
+  --output data/evaluation/benchmark/gate3-final-freeze.json
 
 python -m trivae eval benchmark seal-holdout \
-  --freeze data/evaluation/benchmark/benchmark-final-freeze.json \
+  --freeze data/evaluation/benchmark/gate3-final-freeze.json \
   --suite data/evaluation/benchmark/holdout/resume-benchmark-holdout-v1.json \
   --cases-dir data/evaluation/benchmark/holdout/cases \
   --output data/evaluation/benchmark/holdout-registration.json
@@ -46,8 +68,8 @@ python -m trivae eval benchmark seal-holdout \
 python -m trivae eval benchmark run-holdout \
   --database data/trivae.sqlite3 \
   --evaluation-database data/evaluation/benchmark/holdout-evaluation.sqlite3 \
-  --manifest data/evaluation/benchmark/environment.json \
-  --freeze data/evaluation/benchmark/benchmark-final-freeze.json \
+  --manifest data/evaluation/benchmark/gate3-candidate-environment.json \
+  --freeze data/evaluation/benchmark/gate3-final-freeze.json \
   --registration data/evaluation/benchmark/holdout-registration.json \
   --suite data/evaluation/benchmark/holdout/resume-benchmark-holdout-v1.json \
   --cases-dir data/evaluation/benchmark/holdout/cases \
@@ -59,9 +81,9 @@ python -m trivae eval benchmark run-holdout \
   --output-dir data/evaluation/benchmark/holdout-run
 
 python -m trivae eval benchmark merge-report \
-  --development-dir data/evaluation/benchmark/stage3-final-real \
+  --development-dir data/evaluation/benchmark/gate3-final-development-real \
   --holdout-dir data/evaluation/benchmark/holdout-run \
-  --freeze data/evaluation/benchmark/benchmark-final-freeze.json \
+  --freeze data/evaluation/benchmark/gate3-final-freeze.json \
   --output-dir data/evaluation/benchmark/final-report
 ```
 

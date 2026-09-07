@@ -66,7 +66,14 @@ git diff --check                            → passed
 
 - 新增 `benchmark/closure.py`：Gate 3 final freeze、冻结后 holdout registration、一次性 `started/completed/failed` claim、sealed report 校验，以及基于 raw records 的 dev/holdout/full 合并。CLI 已接入 `freeze-final`、`seal-holdout`、`run-holdout`、`merge-report`。
 - 新增 closure contract 回归：freeze round-trip 与 git drift、holdout 重复 claim、sealed report、同身份 full 与异身份 `identity_mismatch`。Judge 回归覆盖证据 Tool error、provider 原文、损坏 JSON、partial exit code、OpenCode Go session header 和 final output budget。
-- 当前工程检查：`.venv/bin/pytest -q` → **591 passed**；`.venv/bin/ruff check src tests` → passed；`.venv/bin/mypy src` → passed（112 source files）；`git diff --check` → passed。
+- 当前工程检查：`.venv/bin/pytest -q` → **593 passed**；`.venv/bin/ruff check src tests` → passed；`.venv/bin/mypy src` → passed（112 source files）；`git diff --check` → passed。
 - 换 key 后单条 Judge smoke 使用独立输出 `data/evaluation/benchmark/closure-review/judge-smoke-final-result.json`，1 条 run、9 个 atomic claims，Grounded Claim Rate 0.667、Citation Correctness 0.000，全部仍为 `llm_assisted_provisional`；没有人工升级，也没有覆盖历史 `stage3-final-judge-d.json`。
 - 复测确认空 JSON 的直接根因是 Judge 误用 Router/Planner 的 2048 completion budget，返回 `finish_reason=length`；现改用 `max_output_tokens`，输出已完整。精确 provider 余额/配额仍不可从当前兼容 API 读取。
 - Gate 3 freeze、holdout 生成/审核、一次正式 holdout 运行和 full 合并仍保持 pending；本批次没有创建 holdout，也没有把 smoke 当作最终质量结论。
+
+## 2026-09-08 Gate 3 candidate preparation
+
+- `environment.py::_git_commit()` 现在先检查 `git status --porcelain --untracked-files=all`，脏 worktree 显式拒绝；被 `.gitignore` 排除的本地 Evaluation artifact 不影响 clean 判定。
+- README 的最终 Development 示例改为独立的 `gate3-final-development-real/` 和 `gate3-final-development-evaluation.sqlite3`，并明确历史 `stage3-final-real/`（`7bac928`）不能与新 holdout 合并。
+- 当前最新远端代码仍为 `cd973588e0b5e99304770b4a159e21ff20c2baf9`；本次 clean-worktree guard 与文档修复尚未提交。
+- 最终候选 Environment、37×5 Development 重跑、最终 Tier 1/Tier 2 报告和 Gate 3 review summary 待本批次修复提交后生成；holdout 仍未生成、未查看、未登记、未运行。

@@ -272,6 +272,8 @@ tests/test_benchmark_*.py                        新增
 
 Judge 改动限错误出口与 provider 边界：保留 exception 类型和原因链，证据读取错误阻止该条判定，已有 JSON 损坏拒绝覆盖；OpenCode Go 发送稳定 session header；Judge JSON 使用 final output budget，不引入新 provider 重试。
 
+Environment 捕获和默认 pre-run gate 通过 `git status --porcelain --untracked-files=all` 拒绝脏 worktree，再读取 `HEAD`；被 `.gitignore` 排除的本地 Evaluation artifact 不构成脏状态。最终 Environment、Development run 和 freeze 必须在该候选 commit 的干净 worktree 中完成，不能让工作区里未提交的代码或文档混入 execution identity。
+
 关键模块七问：职责是完成评测验收边界；问题是当前 run 固定未封存且合并无版本检查；归属 Evaluation，不改 Query；输入为既有 manifest/suite/case/variant/run artifact，输出冻结/封存记录与报告；现有 runner/report 可复用；只有数据漂移、重复正式运行、版本混合和 Judge 失因这些已确认问题需要校验；测试以首次执行、错版本、错误证据与既有回归证明行为。
 
 文件边界：closure.py（最终验收契约）、orchestrator.py（运行登记与 Judge 错误出口）、report.py（full unavailable 展示）、judge.py（provider 原因）、cli.py（薄入口）、对应测试、evaluation/README.md。无生产检索行为重构。

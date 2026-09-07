@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from trivae.bootstrap.application import create_application
 from trivae.capabilities.contracts import ExecutionScope
@@ -946,6 +948,47 @@ class _ContextRecordingRuntime:
 
 class EnvironmentAndIntegrationTests(unittest.TestCase):
     """environment manifest round-trip、gate 与 Runner 集成（override 贯通）。"""
+
+    def test_git_commit_rejects_dirty_worktree(self) -> None:
+        """Environment identity 不能把未提交文件伪装成当前 HEAD 的结果。"""
+
+        from trivae.evaluation.benchmark import environment as environment_module
+
+        with patch.object(
+            environment_module.subprocess,
+            "run",
+            return_value=SimpleNamespace(stdout=" M src/changed.py\n"),
+        ) as run:
+            with self.assertRaisesRegex(EvaluationContractError, "git worktree is dirty"):
+                environment_module._git_commit()
+        run.assert_called_once_with(
+            ["git", "status", "--porcelain", "--untracked-files=all"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+
+    def test_git_commit_returns_head_only_after_clean_status(self) -> None:
+        """只有 status 为空时才读取并返回 HEAD。"""
+
+        from trivae.evaluation.benchmark import environment as environment_module
+
+        with patch.object(
+            environment_module.subprocess,
+            "run",
+            side_effect=(
+                SimpleNamespace(stdout=""),
+                SimpleNamespace(stdout="cd973588e0b5e99304770b4a159e21ff20c2baf9\n"),
+            ),
+        ) as run:
+            self.assertEqual(
+                environment_module._git_commit(),
+                "cd973588e0b5e99304770b4a159e21ff20c2baf9",
+            )
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[0].args[0], ["git", "status", "--porcelain", "--untracked-files=all"])
+        self.assertEqual(run.call_args_list[1].args[0], ["git", "rev-parse", "HEAD"])
 
     def test_manifest_round_trip_and_gate(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -66,6 +66,19 @@ def _git_commit() -> str:
     """捕获当前 commit；git 不可用或仓库脏时显式失败，不猜 identity。"""
 
     try:
+        # 只读取 HEAD 会把未提交的生产代码误报为该 commit 的实验结果。
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=all"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        ).stdout.strip()
+        if status:
+            raise EvaluationContractError(
+                "git worktree is dirty; clean tracked/untracked files before capturing benchmark environment:\n"
+                f"{status}"
+            )
         commit = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
