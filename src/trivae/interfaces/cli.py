@@ -577,6 +577,8 @@ def _run_retrieval_metrics_command(args: argparse.Namespace) -> int:
 async def _run_benchmark_with_application(args: argparse.Namespace) -> dict[str, object]:
     """在同一个 async context 内运行 benchmark 并关闭 Application。"""
 
+    # Provider 配置必须在创建 Application 前校验，避免缺配置时逐 Case 重复写失败记录。
+    load_settings()
     suite = EvaluationSuite.from_json(args.suite)
     variant_paths = tuple(args.variant)
     # Application 的异步 client 在同一 loop 中完成请求与关闭，避免跨 loop 释放连接。
@@ -606,6 +608,8 @@ async def _run_holdout_with_application(args: argparse.Namespace) -> dict[str, o
         fail_holdout_run,
     )
 
+    # Holdout 是一次性运行；先校验 Provider，不能先创建 claim 再发现本地配置缺失。
+    load_settings()
     if isinstance(args.repeat, bool) or not isinstance(args.repeat, int) or args.repeat <= 0:
         raise EvaluationContractError("holdout repetitions must be a positive integer")
     suite = EvaluationSuite.from_json(args.suite)

@@ -12,22 +12,30 @@
 
 ## Benchmark 当前状态与收尾入口
 
-`resume-benchmark-v1` 已完成 Development Stage 3：47 条人工裁决 GT，其中 Development 37 条、Calibration 10 条；五 Variant 的历史 Development baseline 共 185 次真实运行。Calibration 不计入正式分母，holdout 尚未生成。
+`resume-benchmark-v1` 已完成 Development Stage 3：47 条人工裁决 GT，其中 Development 37 条、Calibration 10 条；五 Variant 的历史 Development baseline 共 185 次真实运行。Calibration 不计入正式分母；Gate 3 已冻结候选 commit `8805aa2`，冻结后 18 条 holdout 已全部人工确认、登记并完成一次性运行，随后生成了最终合并报告。该次运行因从冻结临时 worktree 启动时未注入主仓库 `.env`，90 个 holdout run 全部在 Query 设置校验阶段以 `SettingsError` 结束；因此 holdout 质量指标不可用，不能据此宣称 v1 的 holdout 质量。
 
-- Gate 3 candidate Development 已在候选 commit `8805aa2` 的干净 worktree 完成新的 37×5=185 次真实运行；Environment gate 4/4、Gate 2 freeze verification 12/12、Development Case/Variant coverage 185/185 passed。结果写入 `data/evaluation/benchmark/gate3-final-development-real/` 与独立 `data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3`，人工答案核验仍 pending。
-- 本轮 D-only Tier 2 Judge 写入 `data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`：21 judged、5 skipped、11 failed，状态为 partial；所有成功判定保持 `llm_assisted_provisional`。新的人工 packet 是 `data/evaluation/benchmark/gate3-review/review.md`（12 条、六类各两条，全部 pending）。
+- Gate 3 candidate Development 已在候选 commit `8805aa2` 的干净 worktree 完成新的 37×5=185 次真实运行；Environment gate 4/4、Gate 2 freeze verification 12/12、Development Case/Variant coverage 185/185 passed。结果写入 `data/evaluation/benchmark/gate3-final-development-real/` 与独立 `data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3`，并已写入 `data/evaluation/benchmark/gate3-final-freeze.json`。
+- 本轮 D-only Tier 2 Judge 写入 `data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`：21 judged、5 skipped、11 failed，状态为 partial；所有成功判定保持 `llm_assisted_provisional`。人工 packet `data/evaluation/benchmark/gate3-review/review.md`（12 条、六类各两条）已完成核验。
+- Gate 3 人工核验已完成：6 条 `confirmed/confirmed_with_notes`、2 条内容 `fail`、4 条无答案的系统失败；结论只用于诊断，不把失败条目改写成通过。
+- Stage 4.0 候选 packet 是 `data/evaluation/benchmark/holdout/review.md`，18 条、六类各 3 条；用户已逐条确认（18/18 confirmed），Case JSON、Suite 和 retrieval query 均在同一目录，正文只存在本地 review packet。
 
 - [历史事实索引](reports/resume-benchmark-v1-fact-index.md)：baseline、post-fix measurement validation 与可引用数字的边界。
 - [任务验收记录](../.trellis/tasks/08-30-evaluation-benchmark-v1/validation.md)：真实运行、工程检查和当前停止点。
-- 本地人工核验：`data/evaluation/benchmark/closure-review/review.md`（12 条历史 D 答案）和 `data/evaluation/benchmark/gate3-review/review.md`（候选 `8805aa2` 的新 12 条）。它们都是诊断抽样，全部待人工确认，不能推算总体正确率。
+- 本地人工核验：`data/evaluation/benchmark/closure-review/review.md`（历史 D 答案诊断抽样）、`data/evaluation/benchmark/gate3-review/review.md`（候选 Development 的 12 条诊断抽样，已完成核验）和 `data/evaluation/benchmark/holdout/review.md`（18 条冻结后 holdout，18/18 confirmed）。这些材料与最终运行产物分开保存；本次 holdout 没有可用于质量率的已完成答案。
 
-收尾顺序：提交候选代码 → 在干净 worktree 捕获 Environment → provider smoke → 完整 Development 验收 → 人工答案核验与 Gate 3 review → `freeze-final` → 构造并人工审核 holdout → 一次正式运行 → 同版本合并报告。历史结果保持原样，新结果使用独立输出目录。`stage3-final-real` 绑定历史 `7bac928`，禁止直接拿它与冻结后的 holdout 合并。
+当前收尾状态：人工审核、adjudication、`seal-holdout`、同一冻结 commit 的一次性运行和同版本合并均已完成。历史结果保持原样；登记、holdout 运行和 final report 使用独立输出目录。`stage3-final-real` 绑定历史 `7bac928`，禁止直接拿它与冻结后的 holdout 合并。
 
 2026-09-07 旧 key 的单条 Judge smoke 曾返回 `401 / CreditsError / Insufficient balance`；换 key 后，带 OpenCode Go session header 的独立短请求返回 `OK`（98 tokens）。首次 Judge smoke 暴露了 `finish_reason=length`，根因是 Judge 误用 Router/Planner 的 2048 completion budget；现改用独立的 final output budget 后，同一条 smoke 已完成（1 条、9 个 atomic claims，Grounded Claim Rate 0.667、Citation Correctness 0.000），仍保持 `llm_assisted_provisional`，不能当作人工结论。精确余额/配额不由当前兼容 API 暴露，不能据此反推旧的 29 条 Judge 失败原因。Judge 批次包含失败时输出 `status=partial`、`failed` 计数并返回非零退出码，每条保留错误原因；证据读取失败不再用空正文继续评分，已有结果文件损坏时显式拒绝覆盖。人工确认只升级实际检查过的条目。
 
-2026-09-08 候选 `8805aa2` 的真实 provider smoke（D、1 条 Development case）完成，1 条 raw / 1 条 Trace，随后 Judge 11 个 factual atomic claims 全部得到 provisional 支持；完整 Development 185 条已结束，raw / Evaluation SQLite / Trace 均对齐。当前候选报告的 47 条 failed run 和 126 条 failure artifact 保留 provider、召回、排序、context、coverage、答案生成与 zero-result 事实；这些结果等待人工 review，不能当作 holdout 或最终 freeze 结论。
+2026-09-08 候选 `8805aa2` 的真实 provider smoke（D、1 条 Development case）完成，1 条 raw / 1 条 Trace，随后 Judge 11 个 factual atomic claims 全部得到 provisional 支持；完整 Development 185 条已结束，raw / Evaluation SQLite / Trace 均对齐。当前候选报告的 47 条 failed run 和 126 条 failure artifact 保留 provider、召回、排序、context、coverage、答案生成与 zero-result 事实；Gate 3 人工核验已完成，这些结果仍不能当作 holdout 或最终质量结论。
 
-Gate 3 当前候选版本的 CLI 顺序如下；命令必须在干净 worktree 中执行，每一步都使用独立的 local-only 输出目录，不覆盖历史结果：
+2026-09-08 Gate 3 freeze 后，`scripts/generate_holdout_candidates.py` 从未使用 GT 消息池构造 18 条 candidate（六类各 3 条），并写入 `data/evaluation/benchmark/holdout/`。Case contract、消息级 split 隔离、holdout 内部 GT 消息不重复和 temporal/zero-result 确定性校验均通过；用户复核 18/18 confirmed 后，`scripts/apply_holdout_adjudication.py` 将 18 条 GT provenance 标为 adjudicated，`seal-holdout` 生成 `data/evaluation/benchmark/holdout-registration.json`。正式运行生成 `data/evaluation/benchmark/holdout-run/` 和 `data/evaluation/benchmark/gate3-final-freeze-holdout-run.json`：90/90 run 为 `exception`，异常类型为 `SettingsError`，没有 provider 请求、答案或质量指标。该事实已按 v1 一次性运行纪律封存，未删除 claim、未换目录重跑。
+
+2026-09-08 final merge：`data/evaluation/benchmark/final-report/` 已生成，raw 记录 275 条（Development 185 + holdout 90），五个 Variant 各 55 条，`full_available=true` 仅表示两 split 的冻结 Environment/Variant identity 一致；holdout split 的质量矩阵为空，不能把 full 的结构性合并当作 holdout 质量结论。holdout 的直接根因是运行命令从冻结临时 worktree 启动，CLI 默认只在当前目录寻找 `.env`，而该 worktree 没有 `.env`；主仓库 `.env` 存在，但一次性 claim 已 terminal，按设计不允许补注入后重跑 v1。
+
+2026-09-08 holdout v2 recovery validation：用户明确要求复用原 18 条 holdout Case、GT 和 18/18 人工核验结果。为避免覆盖 v1 claim，使用独立的 `gate3-final-freeze-v2-recovery.json`、`holdout-registration-v2-recovery.json`、`holdout-v2-recovery-run/` 和 `holdout-v2-recovery-evaluation.sqlite3`，在同一冻结 commit `8805aa2` 上通过显式 `--env-file` 完成新的 90 次运行。raw / Evaluation SQLite / Trace 均为 90 条；52 条 completed、38 条 failed，failure artifact 58 条。`final-report-v2-recovery/` 的 `full_available=true` 只表示 Development/Recovery split identity 一致；这轮是已暴露 Case 的 recovery validation，不是全新 blind/generalization holdout，v1 产物保持不变。
+
+Gate 3 收尾 CLI 记录如下；这组流程已经执行完毕。若用于新一轮实验，必须先在实际执行 worktree 显式注入 provider 配置，并创建新的冻结/登记身份；不得对当前 v1 claim 重跑：
 
 ```bash
 # 在候选最终代码的干净 worktree 中捕获 Environment。
@@ -37,7 +45,8 @@ python -m trivae eval benchmark capture-environment \
   --output data/evaluation/benchmark/gate3-candidate-environment.json
 
 # 使用独立 Evaluation SQLite 完整验收 37×5 Development；不要写入历史 baseline 目录。
-python -m trivae eval benchmark run \
+# 如果命令从冻结 worktree 启动，--env-file 必须指向 worktree 外可读取的主工作区 `.env`。
+python -m trivae eval --env-file /path/to/main-repository/.env benchmark run \
   --database data/trivae.sqlite3 \
   --evaluation-database data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3 \
   --manifest data/evaluation/benchmark/gate3-candidate-environment.json \
@@ -50,7 +59,7 @@ python -m trivae eval benchmark run \
   --variant evaluation/variants/bench-full-system-v1.json \
   --output-dir data/evaluation/benchmark/gate3-final-development-real
 
-# 完整 Development 验收与人工 review 通过后，才生成 Gate 3 freeze。
+# 完整 Development 验收与人工 review 通过后生成 Gate 3 freeze；当前冻结文件已存在。
 python -m trivae eval benchmark freeze-final \
   --database data/trivae.sqlite3 \
   --manifest data/evaluation/benchmark/gate3-candidate-environment.json \
@@ -71,7 +80,8 @@ python -m trivae eval benchmark seal-holdout \
   --cases-dir data/evaluation/benchmark/holdout/cases \
   --output data/evaluation/benchmark/holdout-registration.json
 
-python -m trivae eval benchmark run-holdout \
+# 冻结 worktree 同样显式注入 Provider 配置，避免把缺少 `.env` 误判成 Provider/网络失败。
+python -m trivae eval --env-file /path/to/main-repository/.env benchmark run-holdout \
   --database data/trivae.sqlite3 \
   --evaluation-database data/evaluation/benchmark/holdout-evaluation.sqlite3 \
   --manifest data/evaluation/benchmark/gate3-candidate-environment.json \
@@ -93,7 +103,9 @@ python -m trivae eval benchmark merge-report \
   --output-dir data/evaluation/benchmark/final-report
 ```
 
-只有 `run-holdout` 返回 completed 且 claim 为 completed，`merge-report` 才会进入；环境或 Variant identity 不一致时保留两个 split，并把 `full` 标成 unavailable。
+只有 `run-holdout` 返回 completed 且 claim 为 completed，`merge-report` 才会进入；本轮 claim 为 completed，但 90 条 holdout run 均是 `SettingsError` exception，故报告只保留这一封存事实。环境或 Variant identity 不一致时保留两个 split，并把 `full` 标成 unavailable。
+
+当前 benchmark CLI 会在 `run` / `run-holdout` 创建 Application 前预检 Provider 配置；从冻结 worktree 启动时必须把 `--env-file` 放在 `eval` 后、`benchmark` 前，并指向 worktree 外的可读配置文件。缺少配置会在首个 Case 前显式失败，不会生成逐 Case 的重复异常记录。
 
 ## Stage A Agent Tool Selection
 

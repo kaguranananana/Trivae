@@ -96,6 +96,9 @@ CLI 子命令固定为 `freeze-final`、`seal-holdout`、`run-holdout` 和 `merg
   `error_type` 与完整 `error` 文本，不能自动重试或改用另一个 output directory。
 - holdout report 只有 `holdout_sealed=true` 才能合并；dev/holdout identity 一致时从 raw records 重新构建
   `full`，不一致时保留两个 split 且 `full` 为 `unavailable`。
+- Benchmark CLI 的 `run` / `run-holdout` 必须在创建 Application、写入 claim 或遍历 Case 前调用
+  `load_settings()` 做 Provider 配置预检；从冻结 worktree 执行时由 `trivae eval --env-file PATH benchmark ...`
+  显式注入配置。默认 dotenv 仍只读取当前目录，不向父目录搜索，也不通过 retry/fallback 掩盖缺配置。
 - Judge 的 JSON 输出使用 final output budget（`ModelSettings.max_output_tokens`），不能误用
   Router/Planner 的 `completion_max_tokens`。
 

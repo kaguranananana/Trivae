@@ -190,16 +190,79 @@ class ChatCliTests(unittest.TestCase):
             self.assertIs(kwargs["application"], context.application)
             return {"status": "completed"}
 
-        with patch.object(cli, "create_application", return_value=context), patch.object(
-            cli,
-            "run_benchmark_async",
-            new=fake_run_benchmark_async,
+        with (
+            patch.object(cli, "load_settings"),
+            patch.object(cli, "create_application", return_value=context),
+            patch.object(
+                cli,
+                "run_benchmark_async",
+                new=fake_run_benchmark_async,
+            ),
         ):
             outcome = asyncio.run(cli._run_benchmark_with_application(args))
 
         self.assertEqual(outcome["status"], "completed")
         self.assertEqual(len(runner_loop_ids), 1)
         self.assertEqual(context.loop_ids, [runner_loop_ids[0], runner_loop_ids[0]])
+
+    def test_benchmark_preflight_rejects_missing_provider_before_application(self) -> None:
+        """缺少 Provider 配置时必须在创建 Application 前失败，不能逐 Case 重复报错。"""
+
+        args = cli.build_parser().parse_args(
+            [
+                "eval",
+                "benchmark",
+                "run",
+                "--database",
+                "data/trivae.sqlite3",
+                "--evaluation-database",
+                "data/evaluation/test.sqlite3",
+                "--manifest",
+                "data/evaluation/benchmark/environment-root-cause.json",
+                "--suite",
+                "evaluation/suites/resume-benchmark-dev-v1.json",
+                "--cases-dir",
+                "evaluation/cases/benchmark/dev",
+                "--variant",
+                "evaluation/variants/bench-full-system-v1.json",
+                "--output-dir",
+                "data/evaluation/benchmark/test",
+            ]
+        )
+        context = _BenchmarkApplicationContext()
+
+        async def fake_run_benchmark_async(**_: object) -> dict[str, object]:
+            """当前实现若绕过预检会走到这里，测试应因此失败。"""
+
+            return {"status": "completed"}
+
+        with (
+            patch.object(
+                cli,
+                "load_settings",
+                side_effect=cli.SettingsError("TRIVAE_MODEL_API_KEY is required"),
+            ) as load_settings,
+            patch.object(cli, "create_application", return_value=context),
+            patch.object(cli, "run_benchmark_async", new=fake_run_benchmark_async),
+        ):
+            with self.assertRaisesRegex(cli.SettingsError, "TRIVAE_MODEL_API_KEY"):
+                asyncio.run(cli._run_benchmark_with_application(args))
+
+        load_settings.assert_called_once_with()
+        self.assertEqual(context.loop_ids, [])
+
+    def test_holdout_preflight_rejects_missing_provider_before_claim(self) -> None:
+        """一次性 holdout 缺少 Provider 配置时不能先创建 claim。"""
+
+        with patch.object(
+            cli,
+            "load_settings",
+            side_effect=cli.SettingsError("TRIVAE_MODEL_API_KEY is required"),
+        ) as load_settings:
+            with self.assertRaisesRegex(cli.SettingsError, "TRIVAE_MODEL_API_KEY"):
+                asyncio.run(cli._run_holdout_with_application(SimpleNamespace()))
+
+        load_settings.assert_called_once_with()
 
     def test_chat_parser_uses_the_default_database(self) -> None:
         """chat parser 应识别命令并沿用现有默认数据库路径。"""

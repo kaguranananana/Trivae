@@ -4,7 +4,7 @@
 > 四阶段：Measurement Substrate → Benchmark Dataset → 干净 Ablation → Judge + 冻结后 holdout。
 > 每阶段末尾有 review gate；gate 未过不进入下一阶段。
 >
-> **当前状态（2026-09-08，Stage 3 / Gate 3 candidate）**：**Human GT Adjudication Gate、Gate 2
+> **当前状态（2026-09-08，Stage 4 / holdout sealed + merged）**：**Human GT Adjudication Gate、Gate 2
 > Development Freeze、Module Retrieval、Failure-driven iteration、最终 clean 37×5 和 Tier 1
 > / Tier 2 Development Evaluation 均已完成**。47/47 case 已人工裁决（Accept 26 / Modify 21 /
 > Reject 0；calibration 10 / development 37），deterministic audit 为 green（47 cases / 47
@@ -13,11 +13,10 @@
 > identity；execution commit 为 `b1f7b78...`，冻结后的 clean execution commit 为
 > `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`，根因修复后的 post-fix clean execution commit 为
 > `f24775099cb2314772c7d409341e8ebceeceac23`。最终 headline 只使用 Development 37×5=185
-> runs；calibration 排除，holdout 尚不存在。Gate 3 candidate commit 为
+> runs；calibration 排除，正式 holdout 已完成一次性运行。Gate 3 candidate commit 为
 > `8805aa2bf58fcb2702817d54afe96bd819645db2`，已在干净 worktree 捕获 Environment 并完成新的
-> Development 37×5 acceptance；D-only Judge 为 provisional partial，人工 packet 仍 pending。
-> 当前 **Stage 3 Complete / Gate 3 review pending**：候选
-> Development 已完成机器验收，但人工答案核验和 freeze 尚未完成；不要生成或查看 holdout，也不要 archive 本任务。
+> Development 37×5 acceptance；D-only Judge 为 provisional partial，人工 packet 已完成核验。
+> 当前 **Stage 4 registration / run / merge complete**：候选 Development 已完成机器验收，Gate 3 人工核验与 freeze 已完成；18 条 holdout 已 18/18 confirmed、登记、一次性运行并合并。由于运行命令从冻结临时 worktree 启动且未注入主仓库 `.env`，90 条 holdout run 全部为 `SettingsError` exception，holdout 质量指标不可用；该 claim 和报告按 v1 纪律保留，不重跑，不要把 `full_available=true` 当作 holdout 质量结论，不要 archive 本任务。
 
 ---
 
@@ -124,7 +123,7 @@
 - **Root-cause closure clean**：`data/evaluation/benchmark/stage3-root-cause-final-clean-real/` + `data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`；raw / SQLite / Trace 均为 185，A/B/C/C2/D 各 37。failure artifact 146 条：provider_failure 114、retrieval_miss 12、coverage_error 7、context_missing 4、ranking_failure 4、answer_generation_error 2、zero_result_error 3；`not_observed_within_recorded_depth=0`，`evaluation_infrastructure=0`。
 - **Root-cause closure audit**：A 31/37、B 35/37、C 5/37、C2 0/37、D 0/37 completed。全批次 114 条 terminal provider failure 中，C/C2/D 占 106 条；这些 failure 在 Trace 中为 `APITimeoutError`/`APIConnectionError`，并集中伴随 `ROUTER_COMPLETION_TIMEOUT`，C2/D failure 没有首个 model turn。独立 recovery smoke 中 D 成功、C2 仍一次失败，故保留为 provider availability/timeout observation，不新增 provider retry 或变体特判。
 - **评估缺陷修复**：failure classifier 改为按单次 direct retrieval call 保留 rank，排除 context call，新增 `ranking_failure`；benchmark CLI 改为 async Application context，所有 Variant 在同一个 event loop 执行和关闭。新增 CLI lifecycle regression；全量 `pytest` 594 passed。
-- **停止边界**：当前为 **Stage 3 Complete / Gate 3 review pending**；候选 Development 已机器验收，人工 review、freeze、holdout generation、holdout evaluation 和 full benchmark 尚未执行。
+- **停止边界**：Stage 4 的 registration、一次性 holdout run 和 dev/holdout/full merge 已完成；当前等待 Gate 4 复核。holdout 的 90 条 run 全部为 `SettingsError` exception，v1 不生成 holdout 质量指标，也不重跑。
 
 **Gate 3（用户 review）**：dev 最终结果面审 + 系统冻结声明（commit pin + variant fingerprint 记录）。
 
@@ -133,25 +132,25 @@
 ## Stage 4: Judge + 冻结后 Holdout（一次定稿）
 
 ### 4.0 Holdout 生成与审核（Gate 3 冻结之后，构造时序隔离）
-- [ ] 从冻结前未使用的问题池生成 holdout candidate（总规模 30~40%，六类分布，含新的真实问题）
-- [ ] 用户逐条人工审核 → adjudicated；存放 `data/evaluation/benchmark/holdout/`（gitignored）
-- [ ] holdout 有序 Case 身份与 canonical 配置注册到本地冻结记录
-- [ ] 无效条目替换仅限预声明三情形（GT 矛盾 / 重复 / 数据损坏），记录原因
+- [x] 从冻结前未使用的问题池生成 18 条 holdout candidate（六类各 3 条，含新的真实问题）
+- [x] 用户逐条人工审核 → adjudicated；存放 `data/evaluation/benchmark/holdout/`（gitignored）
+- [x] holdout 有序 Case 身份与 canonical 配置注册到本地冻结记录
+- [x] 无效条目替换仅限预声明三情形（GT 矛盾 / 重复 / 数据损坏），本轮无需要替换的条目
 
 ### 4.1 Tier 2 Judge（dev 上先验证）
 - [ ] `benchmark/judge.py`：atomic claim 切分 + entailment（llm_assisted_provisional）；若不做 atomic 切分则输出 `Cited Content Block Support Rate`
 - [ ] dev 抽样人工逐条确认 → per-item adjudicated + judge-human agreement 报告（无整组升级）
 
 ### 4.2 Holdout 运行（一次性，同冻结 commit + 同 variant fingerprint）
-- [ ] 五 variant × holdout case（1 rep）+ 全部 Tier 1 / Tier 2 指标
-- [ ] **结果封存**：无论好坏，v1 holdout 结果即最终结果，照实报告
+- [x] 五 variant × holdout case（1 rep）+ Tier 1 projection；本轮 90/90 在设置校验阶段 exception，未产生 Tier 1 质量值或 Tier 2 答案
+- [x] **结果封存**：无论好坏，v1 holdout 结果即最终结果，照实报告；claim 为 completed，90 条 provider_failure 事实保留
 - [ ] 若暴露真实 Bug：v1 结果保留 + 记录 root cause；修复进入 `resume-benchmark-v2`（届时构造全新未暴露 holdout）；**禁止因系统答错替换/降级 holdout case 后重跑 v1**
 - [ ] 仅预声明的无效条目情形（GT 矛盾/重复/数据损坏）允许替换并记录原因
-- [ ] full 报告合并断言：dev rerun commit == holdout commit，否则 full 列 unavailable
+- [x] full 报告合并断言：dev rerun commit == holdout commit；final report 的 `full_available=true`，但 holdout 质量矩阵为空
 
 ### 4.3 交付
-- [ ] 最终 Comparison Report（full / development / holdout + per-category + 无条件指标 + 跨 Variant 归因）
-- [ ] Failure Analysis（acceptance-condition failures + root cause 清单）
+- [x] 最终 Comparison Report（full / development / holdout + per-category + 无条件指标 + 跨 Variant 归因；holdout 指标 unavailable）
+- [x] Failure Analysis（acceptance-condition failures + `SettingsError` 运行根因）
 - [ ] 简历候选指标 2~4 个（holdout 优先，含 baseline/current/absolute/relative/样本量/scope/GT completeness）
 - [ ] `interview-defense.md` 新增「resume-benchmark-v1 事实索引」章节（指标选择/GT 构建与完备度边界/Snapshot 与 Environment 分离/Ablation 设计/防 overfit 与 holdout 纪律/semantic 与 expansion 有效性/coverage 三轴与 citation 验证/真实 before-after/应对质疑话术）
 - [ ] `problem-records.md` 视新增 bug 情况补记录
@@ -185,12 +184,30 @@ python -m trivae eval benchmark report --input data/evaluation/benchmark/...
 - [x] 实现 Gate 3 freeze-final、冻结后 holdout 注册与首次 run 封存，并接入 CLI。
 - [x] 实现 dev/holdout 同身份报告合并，异版本 full unavailable。
 - [x] 补 Judge 证据读取/解析/provider 错误根因与回归测试。
-- [x] 准备 12 条人工复核 packet（本地 pending），核对旧 judge failure 的可诊断范围。
+- [x] 准备 12 条人工复核 packet（初始为本地 pending，现已完成核验），核对旧 judge failure 的可诊断范围。
 - [x] 更新 README 操作顺序及事实边界，运行相关测试、ruff、mypy、全量 pytest。
 - [x] 换 key 后完成单条 Judge smoke；修复了 2048 token 截断并保留 provisional 状态。
 - [x] Gate 3 closure implementation 已先提交到远端 `cd973588e0b5e99304770b4a159e21ff20c2baf9`，后续候选验收约束提交为 `8805aa2bf58fcb2702817d54afe96bd819645db2`；原有 `interview-docs/` 工作区改动未混入这些提交。
 - [x] 补齐 clean-worktree Environment guard、独立 final-development 目录口径，并让 `freeze-final` 强制校验完整 Development Case/Variant 覆盖；候选 commit `8805aa2` 已捕获 Environment，并完成 37×5 Development acceptance（185/185 pairs）。
-- [x] 在候选 commit 的干净 worktree 完成 provider smoke 与完整 Development：raw / Evaluation SQLite / Trace 各 185 条；D-only Judge 输出 21 judged、5 skipped、11 failed 的 `partial` provisional 批次；已生成 12 条人工 review packet，全部 pending。
-- [ ] 用户实际完成答案核验和 Gate 3 review 后生成/审核 holdout，正式运行一次并输出最终报告。
+- [x] 在候选 commit 的干净 worktree 完成 provider smoke 与完整 Development：raw / Evaluation SQLite / Trace 各 185 条；D-only Judge 输出 21 judged、5 skipped、11 failed 的 `partial` provisional 批次；已生成并完成 12 条人工 review packet 核验。
+- [x] 用户完成 Gate 3 人工核验：6 条通过（含备注）、2 条内容失败、4 条系统失败；不据此修改冻结代码或 GT。
+- [x] 在 Gate 3 freeze `8805aa2` 后生成 18 条 holdout candidate；Case contract、消息级隔离、候选内 GT 去重和 temporal/zero-result 确定性校验通过。
+- [x] 用户逐条审核 holdout candidate 后登记、正式运行一次并输出最终报告；本轮正式运行 90/90 为 `SettingsError` exception，结果不用于 holdout 质量宣传。
+
+## 2026-09-08 配置加载回归修复
+
+- [x] benchmark `run` / `run-holdout` 在创建 Application、写入 claim 和遍历 Case 前预检 `load_settings()`；缺少 Provider 配置时 fail-fast，不再产生 90 条逐 Case 设置异常。
+- [x] 保持 dotenv contract：默认仍只读取当前目录 `.env`；冻结 worktree 的运行命令通过 `trivae eval --env-file PATH benchmark ...` 显式注入外部配置，不新增父目录搜索、fallback 或 retry。
+- [x] 增加 CLI 回归覆盖缺配置时不创建 Application/claim；从无 `.env` worktree 的实际命令复现 fail-fast，显式 `--env-file` 的 Case 校验通过。
+- [x] `.venv/bin/pytest -q` 596 passed；`.venv/bin/ruff check src tests`、`.venv/bin/mypy src` 和 `git diff --check` 通过。
+- [x] V1 holdout claim、raw、Evaluation SQLite、Trace 和 final report 保持原样；本修复不触发 V1 重跑，后续真实质量实验仍从新的 v2/fresh freeze 开始。
+
+## 2026-09-08 Holdout v2 recovery validation
+
+- [x] 按用户决定复用 v1 的 18 条 holdout Case、GT 和 18/18 人工核验；不重新构造或改写 GT。
+- [x] 复用同一 execution commit `8805aa2` 的 Development acceptance，创建独立 v2 recovery freeze / registration / claim / output，避免触碰 v1 terminal claim。
+- [x] 从冻结 worktree 显式注入主工作区 `.env`，完成 18×5=90 次 production-path run；raw / Evaluation SQLite / Trace 均为 90 条。
+- [x] Recovery 结果为 52 条 completed、38 条 failed，failure artifact 58 条；`final-report-v2-recovery/` 合并成功。
+- [x] 报告标注为 recovery validation / known holdout：不能把复用的 Case/GT/裁决解释为全新 blind holdout 或独立 generalization；v1 失败产物保持不变。
 
 用户已有 interview-docs/ 工作区改动保持原样；待人工确认项不标为完成。
