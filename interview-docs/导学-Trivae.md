@@ -2,7 +2,7 @@
 
 > 文档归档：`interview-docs/`，与项目面经及后续面试材料统一维护。
 >
-> 项目事实边界：本文基于当前仓库源码、Trellis 架构文档与 `resume-benchmark-v1` 事实索引整理。当前可证明的是 Development 基线与工程验证；Holdout 尚未生成，个人职责边界与线上业务指标待补，不据此推断。
+> 项目事实边界：本文基于当前仓库源码、Trellis 架构文档、SQLite、Git 历史与 `resume-benchmark-v1` 事实索引整理。Git 显示 2026-08-18 至 2026-09-05 的 256 个提交来自同一作者，结合用户提供的个人项目语境，正文可使用“设计/实现”口径；当前可证明的是 Development 基线与工程验证，Holdout、生产上线及真实用户收益均未被证明。
 
 ## 1. 前置知识（面试高频标注）
 
@@ -129,18 +129,18 @@
 
 ### 已有、可复核的工程事实
 
-- Canonical Snapshot：473,236 条消息、14 个来源；FTS5 为 473,236 rows；语义索引为 54,267 个向量，具体口径见事实索引与环境记录。
+- Canonical Snapshot：累计接收 989,256 条输入并归并为 473,236 条唯一消息，包含 14 份来源文件、7 个会话、516,020 次重复输入与 5,550 次冲突；FTS5 为 473,236 rows，语义索引为 54,267 个向量，具体口径见事实索引与环境记录。
 - GT：47 条已人工裁决，其中 Development 37、Calibration 10；Holdout 不存在。
-- Development 基线：37 个 Case × 5 个 Variant × 1 次重复，共 185 次真实 production-path provider 运行。
+- Development 基线：37 个 Case × 5 个 Variant × 1 次重复，共 185 次真实 Provider、应用查询链路运行。
 - 冻结门禁：environment gate 4/4、freeze verification 12/12 通过。
-- 工程验证记录：pytest 576 passed，ruff、mypy 与 diff check 通过；这是当时任务记录，不替代当前重新运行。
+- 当前工程验证：pytest 576 passed，Ruff 与 Mypy 通过；Evaluation 任务记录另包含 diff check 通过。
 - 关键词检索在 10 个 exhaustive/corpus predicate query 上 Recall@10 为 33/33；该结论只适用于该 scope，不得泛化为全系统召回率。
 
 ### 建议补测
 
 | 目标 | 当前状态 | 建议测法 | 通过标准如何定 |
 | --- | --- | --- | --- |
-| 个人贡献范围 | 待补 | 以 PR、commit、任务文档逐项标出设计、实现、评测和协作边界 | 每个简历 bullet 都能对应至少一项本人证据 |
+| 个人贡献范围 | 仓库侧已核验 | Git shortlog 显示单一作者；继续由用户确认公开身份、是否存在未入库协作与可披露范围 | 每个简历 bullet 都能对应源码、测试或 Evaluation 证据，且不扩写为团队管理 |
 | Holdout 泛化 | 待测 | Gate 3 后按既定隔离流程生成并人工审核 Holdout，再在冻结版本上运行 | 先定义指标与不退化边界，再开封结果 |
 | 语义检索真实增益 | 待测 | 扩大 human-verified paraphrase Case，分别报告 lexical、semantic 与组合策略 | 不用单轮小样本；按类别与置信区间解释 |
 | 上下文恢复收益 | 待测 | 增加 required-context Case，分别测自动扩展和显式上下文工具 | 同时看 evidence recall、context recovery 与成本 |

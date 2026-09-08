@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "profile": {
+    "candidate_id": "trivae-candidate",
+    "target_roles": [
+      "AI Agent 开发工程师",
+      "大模型应用开发工程师",
+      "Agent Infra / Evaluation 工程师"
+    ],
+    "updated_at": "2026-09-05"
+  },
+  "claims": [
+    {
+      "id": "claim-trivae-ownership-001",
+      "source_fact": "Trivae Git 历史从 2026-08-18 延续到 2026-09-05，共 256 个提交，shortlog 显示单一提交作者；用户将其作为个人项目简历材料。",
+      "candidate_wording": "Trivae 高噪声群聊检索分析 Agent｜个人项目｜2026.08–至今",
+      "sources": [
+        {
+          "type": "git_history",
+          "location": "Trivae repository git log / shortlog",
+          "public": false,
+          "note": "提交作者与用户公开身份的对应关系仍需本人确认"
+        }
+      ],
+      "responsibility_level": "项目负责人",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "HR 开场白",
+        "面试自我介绍"
+      ],
+      "interview_details": {
+        "decisions": [
+          "按个人项目口径使用设计、实现、构建，不扩写成带领团队或生产 Owner"
+        ],
+        "difficulties": [
+          "开发周期较集中，需要用源码、测试与评测 artifact 支撑深度"
+        ],
+        "verification": [
+          "git rev-list --count HEAD",
+          "git shortlog -sne --all",
+          "git log --reverse"
+        ],
+        "result": "形成可运行的 Data、Retrieval、Agent、Evidence、Trace、Evaluation 与 Web 链路"
+      },
+      "boundary": "个人项目 ownership 有仓库历史支持；不代表生产上线、团队管理或真实业务 Owner。",
+      "risk_notes": [
+        "正式公开前由用户确认 Git 作者身份和项目起止时间"
+      ],
+      "last_verified": "2026-09-05"
+    },
+    {
+      "id": "claim-trivae-data-001",
+      "source_fact": "当前 Canonical SQLite 包含 473236 条唯一消息、14 份来源文件、7 个会话；28 个 completed 导入批次累计接收 989256 条输入，记录 516020 次重复和 5550 次冲突，当前 import_errors 为 0。",
+      "candidate_wording": "以文件级事务将 989,256 条重叠输入归并为 473,236 条唯一消息，并保留重复、冲突、来源与导入批次 provenance。",
+      "sources": [
+        {
+          "type": "sqlite",
+          "location": "data/trivae.sqlite3",
+          "public": false,
+          "note": "只使用统计与 schema，不公开聊天正文"
+        },
+        {
+          "type": "source_code",
+          "location": "src/trivae/data/ingestion/importer.py",
+          "public": false
+        },
+        {
+          "type": "source_code",
+          "location": "src/trivae/data/storage/sqlite.py",
+          "public": false
+        }
+      ],
+      "responsibility_level": "主导方案或交付",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "大模型应用开发简历",
+        "项目面试"
+      ],
+      "interview_details": {
+        "decisions": [
+          "Canonical Store 保存事实，FTS5 与向量索引作为派生数据",
+          "文件级事务；记录级错误进入 partial，未知异常回滚并传播",
+          "重复与冲突保留 source/variant provenance"
+        ],
+        "difficulties": [
+          "多份导出存在大量重叠记录与内容差异",
+          "来源文件数与实际会话数不同，简历必须避免歧义"
+        ],
+        "verification": [
+          "SQLite 表计数与 import_batches 汇总",
+          "tests/test_ingestion.py"
+        ],
+        "result": "事实层可幂等归并，索引策略变化不修改 Canonical Message"
+      },
+      "boundary": "989256 是累计输入记录，473236 是唯一 Canonical Message；14 是来源文件，不是 14 个独立群。",
+      "risk_notes": [],
+      "last_verified": "2026-09-05"
+    },
+    {
+      "id": "claim-trivae-retrieval-001",
+      "source_fact": "项目拆分 lexical、semantic、structured、temporal 与 context 检索；CJK bigram v2 修复 unicode61 连续中文与 mixed-script 边界漏召回；10 个 exhaustive/corpus 精确谓词 Query 的 lexical Recall@10 为 33/33。",
+      "candidate_wording": "拆分多路检索并修复 FTS5 连续中文短词漏召回，在 10 个 exhaustive/corpus 精确谓词 Query 上取得 lexical Recall@10 33/33；语义通道采用时间感知 Parent/Small Child 分块并回源 Canonical Message。",
+      "sources": [
+        {
+          "type": "source_code",
+          "location": "src/trivae/data/storage/sqlite_lexical_text.py",
+          "public": false
+        },
+        {
+          "type": "test",
+          "location": "tests/test_chinese_lexical_regression.py",
+          "public": false
+        },
+        {
+          "type": "source_code",
+          "location": "src/trivae/retrieval/semantic/chunking.py",
+          "public": false
+        },
+        {
+          "type": "evaluation_artifact",
+          "location": "data/evaluation/benchmark/stage3-module-retrieval.json",
+          "public": false
+        }
+      ],
+      "responsibility_level": "主导方案或交付",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "RAG / 检索岗位简历",
+        "项目面试"
+      ],
+      "interview_details": {
+        "decisions": [
+          "词法和语义保留为独立策略，不宣称 semantic 全面替代 lexical",
+          "Parent 保留局部语境，Small Child 负责匹配，最终证据回到 Canonical Message"
+        ],
+        "difficulties": [
+          "unicode61 将连续中文视为整 token，短词无法命中",
+          "mixed CJK/ASCII 边界在 v1 中仍会漏召回"
+        ],
+        "verification": [
+          "中文、URL、代码标识与 mixed-script regression",
+          "27 个 module retrieval query 的分层 GT scope"
+        ],
+        "result": "exhaustive/corpus 精确谓词范围内 lexical Recall@10 为 33/33"
+      },
+      "boundary": "33/33 只适用于 10 个 exhaustive/corpus 精确谓词 Query；semantic 增益与 context uplift 尚未被证明稳定。",
+      "risk_notes": [],
+      "last_verified": "2026-09-05"
+    },
+    {
+      "id": "claim-trivae-runtime-001",
+      "source_fact": "OpenAI Agents SDK Runtime 使用复杂度路由、一次性软计划和统一 Tool Loop；限制最大 Turn、Tool Round 与共享 Tool Result Budget，提供 Router/Planner 超时和 cooperative cancel，Tool Round 耗尽后清空工具并进入 Final Synthesis。",
+      "candidate_wording": "构建复杂度路由、一次性软计划与共享 Agent Runtime，以最大 Turn/Tool Round、共享 Tool Result Budget、Planner 超时和 cooperative cancel 约束执行，并在工具预算耗尽后进入无工具 Final Synthesis。",
+      "sources": [
+        {
+          "type": "source_code",
+          "location": "src/trivae/query/orchestrator.py",
+          "public": false
+        },
+        {
+          "type": "source_code",
+          "location": "src/trivae/query/runtime/openai_adapter.py",
+          "public": false
+        },
+        {
+          "type": "source_code",
+          "location": "src/trivae/query/runtime/budget.py",
+          "public": false
+        },
+        {
+          "type": "test",
+          "location": "tests/test_agent_runtime.py / tests/test_tool_result_budget.py / tests/test_query_streaming.py",
+          "public": false
+        }
+      ],
+      "responsibility_level": "主导方案或交付",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "Agent Infra 简历",
+        "项目面试"
+      ],
+      "interview_details": {
+        "decisions": [
+          "Router 只判断复杂度，Planner 只提供软指导",
+          "同一模型回合的并行 Tool Call 只计一个 Tool Round",
+          "产品 Tool Round 耗尽进入无工具合成，SDK max_turns 仍是绝对失败 backstop"
+        ],
+        "difficulties": [
+          "区分工具轮次与模型 Turn",
+          "保证取消、预算耗尽和最大 Turn 不被包装成成功"
+        ],
+        "verification": [
+          "ScriptedModel Tool Loop regression",
+          "预算账本与 Trace 投影测试",
+          "流式取消与 terminal state 测试"
+        ],
+        "result": "简单查询与复杂调查复用同一执行链路和终态语义"
+      },
+      "boundary": "Timeout 只写 Router/Planner 独立 completion timeout；不声称所有工具或整个 Agent 请求都有统一硬超时。",
+      "risk_notes": [],
+      "last_verified": "2026-09-05"
+    },
+    {
+      "id": "claim-trivae-evidence-001",
+      "source_fact": "Answer Artifact 显式建模 Claim、Evidence 与 Citation Binding；引用必须解析到当前 Run、授权 Scope 内的 Tool Result；zero-result 只有在所有相关检索完整成功且没有结果事实时才被接受。",
+      "candidate_wording": "将 Claim、Evidence 与 Citation 显式关联，只接受当前 Run、授权 Scope 内的真实 Tool Result，并以完整空检索作为 zero-result 正证据，阻断跨请求、伪造来源、越权引用和假阴性回答。",
+      "sources": [
+        {
+          "type": "source_code",
+          "location": "src/trivae/query/evidence.py",
+          "public": false
+        },
+        {
+          "type": "test",
+          "location": "tests/test_evidence.py",
+          "public": false
+        },
+        {
+          "type": "test",
+          "location": "tests/test_no_result_finalization.py",
+          "public": false
+        }
+      ],
+      "responsibility_level": "主导方案或交付",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "Agent Infra 简历",
+        "项目面试"
+      ],
+      "interview_details": {
+        "decisions": [
+          "模型只提交短 source handle，Host 生成 Artifact bookkeeping",
+          "历史 Evidence 可以回放，但不能直接成为新 Run 的 Tool Result",
+          "partial、truncated、error 或 incomplete coverage 不支持 no-result"
+        ],
+        "difficulties": [
+          "区分模型候选内容与 Host 可信 provenance",
+          "允许局部 schema recovery 时不能放宽 provenance/scope fatal boundary"
+        ],
+        "verification": [
+          "跨 Run、伪造 result、越权消息与 trusted hydration regression",
+          "zero-result positive-proof matrix"
+        ],
+        "result": "答案、证据和引用在提交前形成可验证的当前运行契约"
+      },
+      "boundary": "该机制降低无依据答案进入终态的可能性，但不等于所有答案事实正确。",
+      "risk_notes": [],
+      "last_verified": "2026-09-05"
+    },
+    {
+      "id": "claim-trivae-evaluation-001",
+      "source_fact": "项目完成人工裁决 GT 47 条，其中 Development 37、Calibration 10；五个 Variant 在固定 Snapshot/Environment 上完成 185 次真实 Provider、应用查询链路运行；Trace 与 Failure Artifact 支持分层归因，并修复 per-call rank 与 Provider event-loop lifecycle 两项测量链路缺陷。",
+      "candidate_wording": "建立 47 条人工裁决 GT 与五 Variant 消融，在固定 Snapshot/Environment 上完成 185 次真实 Provider、应用查询链路运行；通过 append-only Trace 分离 Provider、召回、排序、上下文与 Finalization 故障，并修复 rank 观测和异步 Provider 生命周期两项根因。",
+      "sources": [
+        {
+          "type": "evaluation_report",
+          "location": "evaluation/reports/resume-benchmark-v1-fact-index.md",
+          "public": false
+        },
+        {
+          "type": "evaluation_artifact",
+          "location": "data/evaluation/benchmark/stage3-final-real/report.json",
+          "public": false
+        },
+        {
+          "type": "evaluation_artifact",
+          "location": "data/evaluation/benchmark/gt-audit-stage3-final.json",
+          "public": false
+        },
+        {
+          "type": "evaluation_database",
+          "location": "data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3",
+          "public": false
+        },
+        {
+          "type": "source_code",
+          "location": "src/trivae/evaluation/benchmark/failures.py / orchestrator.py",
+          "public": false
+        }
+      ],
+      "responsibility_level": "主导方案或交付",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "Agent Evaluation 简历",
+        "项目面试"
+      ],
+      "interview_details": {
+        "decisions": [
+          "Development、Calibration 与 Holdout 分层",
+          "A/B/C/C2 是单变量递进，D 是多变量 full-system",
+          "Provider availability 与系统 quality 使用不同 failure category"
+        ],
+        "difficulties": [
+          "旧分类器合并不同 retrieval call 并混入 context observation",
+          "同步 CLI 多次 asyncio.run 导致异步 Provider client 跨 event loop"
+        ],
+        "verification": [
+          "GT audit 47/47",
+          "environment gate 4/4 与 freeze verification 12/12",
+          "正式 Development 37×5=185",
+          "post-fix raw/Evaluation/Trace 185 条对齐",
+          "当前 pytest 576 passed、Ruff 与 Mypy 通过"
+        ],
+        "result": "失败可以按 Provider、Retrieval、Ranking、Context、Coverage、Finalization 与 zero-result 分层归因"
+      },
+      "boundary": "185 次为 37 Development case × 5 Variant × 1 repetition；Calibration 不进入 headline denominator，Holdout 不存在，不能声称泛化或生产 SLA。",
+      "risk_notes": [],
+      "last_verified": "2026-09-05"
+    }
+  ]
+}
