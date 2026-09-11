@@ -11,6 +11,7 @@ ContextWindowSource = Literal[
     "fallback",
     "not_used",
 ]
+ReasoningEffort = Literal["low", "high", "max"]
 
 
 class ModelCapabilityError(ValueError):
@@ -24,6 +25,7 @@ class VerifiedModelMetadata:
     provider: str
     model_name: str
     context_window_tokens: int
+    reasoning_effort: ReasoningEffort | None = None
 
     def __post_init__(self) -> None:
         """只接受有意义的 provider/model 和正整数 context，拒绝伪精确值。"""
@@ -38,6 +40,8 @@ class VerifiedModelMetadata:
             or self.context_window_tokens <= 0
         ):
             raise ModelCapabilityError("context_window_tokens must be a positive integer")
+        if self.reasoning_effort not in {None, "low", "high", "max"}:
+            raise ModelCapabilityError("reasoning_effort must be low, high, max, or None")
         object.__setattr__(self, "provider", self.provider.strip())
         object.__setattr__(self, "model_name", self.model_name.strip())
 
@@ -105,11 +109,20 @@ class ContextWindowResolution:
 
 DEFAULT_MODEL_CAPABILITY_REGISTRY = ModelCapabilityRegistry(
     (
-        # 该条目来自本轮已验证的 OpenCode Go / DeepSeek V4 Flash 1M context 能力。
+        # 官方 DeepSeek 文档确认当前 deepseek-flash 支持 1M context；low 是本项目为
+        # 保留最终 JSON 输出预算而显式选择的请求档位，不把 provider 默认 high 带入 Runtime。
+        VerifiedModelMetadata(
+            provider="deepseek",
+            model_name="deepseek-flash",
+            context_window_tokens=1_000_000,
+            reasoning_effort="low",
+        ),
+        # 这是历史 OpenCode Go / DeepSeek V4 Flash 运行身份，不能与官方 identity 合并。
         VerifiedModelMetadata(
             provider="opencode-go",
             model_name="deepseek-v4-flash",
             context_window_tokens=1_000_000,
+            reasoning_effort="low",
         ),
     )
 )
@@ -136,3 +149,15 @@ def resolve_context_window(
     if metadata is not None:
         return ContextWindowResolution(metadata.context_window_tokens, "verified_model_registry")
     return ContextWindowResolution(None, "fallback")
+
+
+def resolve_reasoning_effort(
+    *,
+    provider: str,
+    model_name: str,
+    registry: ModelCapabilityRegistry = DEFAULT_MODEL_CAPABILITY_REGISTRY,
+) -> ReasoningEffort | None:
+    """只为已精确登记的 provider/model 返回 reasoning 档位，未知组合不猜测。"""
+
+    metadata = registry.resolve(provider, model_name)
+    return None if metadata is None else metadata.reasoning_effort

@@ -2,6 +2,20 @@
 
 这里保存 version-controlled 的 Case、Suite 和 Controlled Variant 定义，不保存聊天正文、完整 Trace 或运行结果。
 
+## Provider migration boundary（2026-09-11）
+
+当前新执行身份是官方 DeepSeek：`deepseek / deepseek-flash`，base URL 为
+`https://api.deepseek.com`，配置使用 generic `TRIVAE_MODEL_*` 变量；本地 key 只放在被 `.gitignore`
+忽略的 `.env`。旧的 `opencode-go / deepseek-v4-flash` 仍是历史 benchmark 的身份和元数据，不把新结果
+追加到旧目录或旧 Variant。
+
+旧 benchmark 的 185 条 Development runs、v1 holdout 90/90 `SettingsError` 封存事实和 v2 recovery 均保持
+原样；v1 holdout 不重跑。新的 DeepSeek Evaluation 必须先建立新的 model/provider identity、environment
+manifest、freeze/registration 和独立 output/database，并在执行 worktree 显式传入 `--env-file`。
+
+Provider migration 的能力/传输审计、reasoning_content 回放回归和 A–E bounded smoke 纪律见
+[Trellis Provider Migration ADR](../.trellis/spec/project/technical-decisions/provider-migration-deepseek-official.md)。
+
 `cases/seed-*.json` 是第一版 Design / Seed contract 样例。它们故意使用 `unavailable` 的占位 Snapshot：真实数据 Case 必须由当前 Canonical Store 建立 Snapshot 后显式 materialize，不能把漂移数据静默绑定到旧 Case。
 
 `variants/last-stable.json` pin 到 M6 完成后的 `cce944d`，表示当前 stable reference，不表示最优方案。`forced-standard.json` 与 `forced-planned.json` 只改变显式 execution override，供同 Case 的 Planner Utility 实验使用。

@@ -1042,9 +1042,10 @@ opencode-go / deepseek-v4-flash
 
 ### Resolution and fallback
 
-Context 解析优先级是 `explicit_config → verified_model_registry → fallback`。当前 registry 只登记已验证的
-`opencode-go / deepseek-v4-flash → 1,000,000`；unknown dynamic model 不猜 context，而使用 per-call 16k、
-共享 Run pool 16k。`fixed` 仍是显式 16k compatibility baseline，不读取 context/registry。
+Context 解析优先级是 `explicit_config → verified_model_registry → fallback`。当前 registry 精确登记两条
+身份：官方 `deepseek / deepseek-flash → 1,000,000`，以及历史 `opencode-go / deepseek-v4-flash →
+1,000,000`；unknown dynamic model 不猜 context，而使用 per-call 16k、共享 Run pool 16k。`fixed` 仍是
+显式 16k compatibility baseline，不读取 context/registry。
 
 ### Reopen boundary
 
@@ -1094,3 +1095,16 @@ window 的全量。
 相对时间的 absolute range 不由 Runtime 或模型计算。Capability 只用 trusted scope 内的
 `archive_latest` 解析一次，Runtime/Trace 传递同一 Host-owned range；模型提及日期只能复制
 其中的 UTC 文本，不能读取 historical context 或本地当前时间自行换算。
+
+## 23. Official DeepSeek provider migration amendment（2026-09-11）
+
+Provider migration 的完整审计、协议证据、测试矩阵和 Evaluation 边界记录在
+[Provider Migration: OpenCode Go → Official DeepSeek](provider-migration-deepseek-official.md)。本 amendment 只
+冻结三条实现边界：
+
+1. 新运行身份是 `deepseek / deepseek-flash`，使用官方 `https://api.deepseek.com`；`deepseek-v4-flash`
+   只保留为历史 OpenCode Go identity，不改写旧的 185 条运行事实。
+2. `reasoning_effort` 和 context 是 exact provider/model capability registry 的结果；OpenCode Go session
+   header 与 tools + JSON workaround 仍是 transport-specific 行为，官方 DeepSeek 不继承它们。
+3. OpenAI Agents SDK 0.22.0 继续承载唯一 Agent Loop；其 DeepSeek `reasoning_content` replay 由 SDK converter
+   处理，Trivae 只验证该边界，不另写第二套循环或保存 hidden reasoning。

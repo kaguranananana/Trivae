@@ -19,7 +19,7 @@ from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
 
 from trivae.capabilities.registry import CapabilityRegistry
-from trivae.config.model_capabilities import resolve_context_window
+from trivae.config.model_capabilities import ReasoningEffort, resolve_context_window, resolve_reasoning_effort
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
 from trivae.query.evidence import ToolResultRecord
@@ -73,9 +73,6 @@ _DEFAULT_MAX_OUTPUT_TOKENS = 16384
 _DEFAULT_COMPLETION_MAX_TOKENS = 2048
 # 真实 smoke 证明 OpenCode Go 的 Chat Completions 不兼容 tools + JSON mode 组合。
 _PROVIDERS_WITHOUT_TOOL_JSON_MODE = frozenset({"opencode-go"})
-# DeepSeek V4 Flash 默认开启 high thinking；reasoning token 与最终 JSON 共用
-# max_output_tokens，真实长证据查询会在 JSON 闭合前耗尽 provider 输出预算。
-_LOW_REASONING_MODELS = frozenset({"deepseek-v4-flash"})
 _JSON_REPAIR_OBSERVER: ContextVar[Callable[[Any], None] | None] = ContextVar(
     "trivae_json_repair_observer",
     default=None,
@@ -1519,14 +1516,9 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 )
             return "".join(parts)
 
-        # 只对已验证支持 low effort 的 OpenCode Go DeepSeek V4 Flash 降低内部推理预算；
-        # 这样保留模型的思考能力，同时把 token 预算留给必须闭合的 Answer Artifact JSON。
-        reasoning = (
-            {"effort": "low"}
-            if self._provider_name == "opencode-go"
-            and self._model_name.lower() in _LOW_REASONING_MODELS
-            else None
-        )
+        # 从精确 provider/model registry 读取已验证请求档位；未知组合不猜测 reasoning。
+        reasoning_effort = self._resolved_reasoning_effort()
+        reasoning = None if reasoning_effort is None else {"effort": reasoning_effort}
 
         return Agent(
             name="Trivae Agent",
@@ -1757,7 +1749,16 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             "max_tokens": self.completion_max_tokens,
             "json_mode": True,
             "response_format": dict(_FINAL_SYNTHESIS_RESPONSE_FORMAT),
+            "reasoning_effort": self._resolved_reasoning_effort(),
         }
+
+    def _resolved_reasoning_effort(self) -> ReasoningEffort | None:
+        """复用同一精确能力 registry，保证 Agent、Planner 和 Router 请求一致。"""
+
+        return resolve_reasoning_effort(
+            provider=self._provider_name,
+            model_name=self._model_name,
+        )
 
     async def complete_text_with_observation(self, prompt: str) -> CompletionResult:
         """执行一次 JSON completion，并返回安全的 request/response/usage/finish 投影。"""
@@ -1778,6 +1779,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             # Router/Planner 都要求 JSON；显式 JSON mode 让 provider 不依赖裸 prompt 约束。
             response_format=cast(Any, _FINAL_SYNTHESIS_RESPONSE_FORMAT),
             max_tokens=self.completion_max_tokens,
+            reasoning_effort=self._resolved_reasoning_effort(),
         )
         # 只读取公开 choices/message 字段；不保存 SDK response 或 raw repr。
         choices = getattr(response, "choices", None)

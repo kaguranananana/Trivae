@@ -143,10 +143,10 @@ def test_judge_uses_provider_session_contract(settings, provider, expected):
     context.__aenter__ = AsyncMock(return_value=client)
     context.__aexit__ = AsyncMock(return_value=False)
     with patch("trivae.evaluation.benchmark.judge.AsyncOpenAI", return_value=context) as constructor:
-        model_name = "deepseek-v4-flash" if provider == "opencode-go" else settings.model_name
+        model_name = "deepseek-v4-flash" if provider == "opencode-go" else "deepseek-flash"
         judge = LLMClaimJudge(replace(settings, provider=provider, model_name=model_name))
         assert asyncio.run(judge._complete({}, session_id="run:stable")) == '{}'
     assert constructor.call_args.kwargs['default_headers'] == expected
     create_kwargs = client.chat.completions.create.call_args.kwargs
-    assert create_kwargs["reasoning_effort"] == ("low" if provider == "opencode-go" else None)
+    assert create_kwargs["reasoning_effort"] == "low"
     assert create_kwargs["max_tokens"] == settings.max_output_tokens

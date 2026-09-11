@@ -15,7 +15,7 @@ from trivae.config.limits import (
     DEFAULT_RUN_TOOL_EVIDENCE_PERCENT,
     DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
 )
-from trivae.config.model_capabilities import resolve_context_window
+from trivae.config.model_capabilities import resolve_context_window, resolve_reasoning_effort
 from trivae.config.settings import ModelSettings, SettingsError, load_settings
 from trivae.evaluation.checks import operational_measurements
 from trivae.observability.collector import TraceableAgentRuntime, TraceCollector
@@ -129,6 +129,18 @@ class ToolResultBudgetPolicyTests(unittest.TestCase):
                 self.assertEqual(config.run_tool_evidence_budget, run_pool)
 
     def test_context_resolution_uses_verified_registry_before_fallback(self) -> None:
+        official = resolve_context_window(
+            explicit_context_window_tokens=None,
+            provider="deepseek",
+            model_name="deepseek-flash",
+        )
+        self.assertEqual(official.context_window_tokens, 1_000_000)
+        self.assertEqual(official.source, "verified_model_registry")
+        self.assertEqual(
+            resolve_reasoning_effort(provider="deepseek", model_name="deepseek-flash"),
+            "low",
+        )
+
         verified = resolve_context_window(
             explicit_context_window_tokens=None,
             provider="opencode-go",
@@ -136,6 +148,13 @@ class ToolResultBudgetPolicyTests(unittest.TestCase):
         )
         self.assertEqual(verified.context_window_tokens, 1_000_000)
         self.assertEqual(verified.source, "verified_model_registry")
+        self.assertEqual(
+            resolve_reasoning_effort(provider="opencode-go", model_name="deepseek-v4-flash"),
+            "low",
+        )
+        self.assertIsNone(
+            resolve_reasoning_effort(provider="deepseek", model_name="deepseek-flash-preview")
+        )
 
         explicit = resolve_context_window(
             explicit_context_window_tokens=128_000,

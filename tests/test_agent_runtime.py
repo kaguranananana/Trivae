@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from agents.model_settings import ModelSettings as SDKModelSettings
+from agents.models.chatcmpl_converter import Converter
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
 
@@ -29,6 +30,7 @@ from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntimeContract
 from trivae.query.runtime.openai_adapter import (
     _PROVIDER_RESPONSE_OBSERVER,
     OpenAIAgentsRuntimeAdapter,
+    _ObservedChatCompletionsModel,
     _ObservedProviderStream,
     _OpenCodeGoChatCompletionsModel,
     _provider_response_shape,
@@ -86,13 +88,13 @@ class SettingsTests(unittest.TestCase):
                 "TRIVAE_MODEL_PROVIDER": "deepseek",
                 "TRIVAE_MODEL_API_KEY": "fake-deepseek-key",
                 "TRIVAE_MODEL_BASE_URL": "https://api.deepseek.com",
-                "TRIVAE_MODEL_NAME": "deepseek-chat",
+                "TRIVAE_MODEL_NAME": "deepseek-flash",
             }
         )
 
         self.assertEqual(settings.provider, "deepseek")
         self.assertEqual(settings.base_url, "https://api.deepseek.com")
-        self.assertEqual(settings.model_name, "deepseek-chat")
+        self.assertEqual(settings.model_name, "deepseek-flash")
 
     def test_new_provider_variables_take_priority_over_legacy_deepseek_values(self) -> None:
         settings = load_settings(
@@ -114,7 +116,7 @@ class SettingsTests(unittest.TestCase):
             {
                 "DEEPSEEK_API_KEY": "legacy-fake-key",
                 "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
-                "TRIVAE_MODEL_NAME": "deepseek-chat",
+                "TRIVAE_MODEL_NAME": "deepseek-flash",
             }
         )
 
@@ -135,7 +137,7 @@ class SettingsTests(unittest.TestCase):
     def test_empty_new_variables_do_not_fallback_to_legacy_values(self) -> None:
         base = {
             "TRIVAE_MODEL_PROVIDER": "deepseek",
-            "TRIVAE_MODEL_NAME": "deepseek-chat",
+            "TRIVAE_MODEL_NAME": "deepseek-flash",
             "DEEPSEEK_API_KEY": "legacy-fake-key",
             "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
         }
@@ -185,7 +187,7 @@ class SettingsTests(unittest.TestCase):
                 {
                     "TRIVAE_MODEL_PROVIDER": "deepseek",
                     "TRIVAE_MODEL_API_KEY": "fake-deepseek-key",
-                    "TRIVAE_MODEL_NAME": "deepseek-chat",
+                    "TRIVAE_MODEL_NAME": "deepseek-flash",
                 }
             )
         with self.assertRaises(SettingsError):
@@ -233,11 +235,11 @@ class RuntimeAdapterTests(unittest.TestCase):
         with self.assertRaises(AgentRuntimeContractError):
             AgentRunRequest("query", self.scope, None)
 
-    def test_deepseek_chat_completions_model_is_constructed_without_network(self) -> None:
+    def test_deepseek_flash_model_is_constructed_without_network(self) -> None:
         settings = load_settings(
             {
                 "DEEPSEEK_API_KEY": "test-secret-value",
-                "TRIVAE_MODEL_NAME": "deepseek-chat-test",
+                "TRIVAE_MODEL_NAME": "deepseek-flash",
                 "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
             }
         )
@@ -246,9 +248,37 @@ class RuntimeAdapterTests(unittest.TestCase):
         runtime = OpenAIAgentsRuntimeAdapter(self.registry, settings=settings, max_turns=3)
 
         self.assertIsInstance(runtime._model, OpenAIChatCompletionsModel)
+        self.assertIsInstance(runtime._model, _ObservedChatCompletionsModel)
         self.assertEqual(runtime._provider_name, "deepseek")
-        self.assertEqual(runtime._model_name, "deepseek-chat-test")
+        self.assertEqual(runtime._model_name, "deepseek-flash")
+        assert runtime._provider_client is not None
+        self.assertEqual(str(runtime._provider_client.base_url).rstrip("/"), settings.base_url)
+        self.assertNotIn("x-opencode-session", runtime._provider_client.default_headers)
         self.assertEqual(runtime.max_turns, 3)
+        asyncio.run(runtime.aclose())
+
+    def test_deepseek_flash_uses_verified_context_reasoning_and_standard_json_tools(self) -> None:
+        """官方 DeepSeek identity 使用 registry 能力，不继承 OpenCode Go 兼容层。"""
+
+        settings = load_settings(
+            {
+                "TRIVAE_MODEL_PROVIDER": "deepseek",
+                "TRIVAE_MODEL_API_KEY": "fake-deepseek-key",
+                "TRIVAE_MODEL_BASE_URL": "https://api.deepseek.com",
+                "TRIVAE_MODEL_NAME": "deepseek-flash",
+            }
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(self.registry, settings=settings)
+        request = AgentRunRequest("Find evidence", self.scope)
+        agent = runtime._build_agent(request, runtime._build_context(request), object())
+
+        self.assertIsInstance(runtime._model, _ObservedChatCompletionsModel)
+        self.assertEqual(runtime._tool_result_budget_config.context_window_tokens, 1_000_000)
+        self.assertEqual(runtime._tool_result_budget_config.context_window_source, "verified_model_registry")
+        self.assertIsNotNone(agent.model_settings.reasoning)
+        self.assertEqual(agent.model_settings.reasoning.effort, "low")
+        self.assertEqual(agent.model_settings.extra_args, {"response_format": {"type": "json_object"}})
+        asyncio.run(runtime.aclose())
 
     def test_opencode_go_model_uses_exact_model_id_and_base_url(self) -> None:
         settings = load_settings(
@@ -549,6 +579,69 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.assertEqual(result.observation.request["max_tokens"], 2048)
         self.assertTrue(result.observation.request["json_mode"])
         self.assertNotIn("api_key", result.observation.request)
+
+    def test_provider_completion_uses_verified_deepseek_reasoning_effort(self) -> None:
+        """Router/Planner 纯 completion 也必须带官方 DeepSeek 的显式 low 档位。"""
+
+        class RecordingCompletions:
+            def __init__(self) -> None:
+                self.kwargs: dict[str, object] | None = None
+
+            async def create(self, **kwargs: object) -> object:
+                self.kwargs = kwargs
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(content='{"ok":true}'))]
+                )
+
+        completions = RecordingCompletions()
+        settings = ModelSettings(
+            api_key="fixture-key",
+            base_url="https://api.deepseek.com",
+            provider="deepseek",
+            model_name="deepseek-flash",
+            max_turns=1,
+        )
+        runtime = OpenAIAgentsRuntimeAdapter(
+            self.registry,
+            model=ScriptedModel([]),
+            settings=settings,
+        )
+        runtime._provider_client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+
+        self.assertEqual(asyncio.run(runtime.complete_text("return a JSON object")), '{"ok":true}')
+        assert completions.kwargs is not None
+        self.assertEqual(completions.kwargs["reasoning_effort"], "low")
+        self.assertEqual(runtime.completion_request_projection()["reasoning_effort"], "low")
+
+    def test_deepseek_tool_turn_replays_reasoning_content_for_next_request(self) -> None:
+        """锁定 Agents SDK 的 DeepSeek reasoning_content 回放，防止多轮工具请求 400。"""
+
+        messages = Converter.items_to_messages(
+            [
+                {"role": "user", "content": "find evidence"},
+                {
+                    "type": "reasoning",
+                    "id": "rs_1",
+                    "summary": [{"type": "summary_text", "text": "Need a tool."}],
+                    "encrypted_content": None,
+                    "status": "completed",
+                },
+                {
+                    "type": "function_call",
+                    "id": "fc_1",
+                    "call_id": "call_1",
+                    "name": "search_messages",
+                    "arguments": "{}",
+                },
+                {"type": "function_call_output", "call_id": "call_1", "output": "evidence"},
+            ],
+            model="deepseek-flash",
+            base_url="https://api.deepseek.com",
+        )
+
+        self.assertEqual(messages[1]["role"], "assistant")
+        self.assertEqual(messages[1]["reasoning_content"], "Need a tool.")
+        self.assertEqual(messages[2]["role"], "tool")
 
     def test_provider_usage_projects_cached_input_tokens_only_when_present(self) -> None:
         response = SimpleNamespace(

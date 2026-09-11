@@ -25,8 +25,10 @@ from trivae.config.model_capabilities import (
     ContextWindowSource,
     ModelCapabilityError,
     ModelCapabilityRegistry,
+    ReasoningEffort,
     VerifiedModelMetadata,
     resolve_context_window,
+    resolve_reasoning_effort,
 )
 from trivae.config.settings import (
     DEFAULT_DEEPSEEK_BASE_URL,
@@ -59,8 +61,10 @@ __all__ = [
     "DEFAULT_MODEL_CAPABILITY_REGISTRY",
     "ModelCapabilityError",
     "ModelCapabilityRegistry",
+    "ReasoningEffort",
     "VerifiedModelMetadata",
     "resolve_context_window",
+    "resolve_reasoning_effort",
     "DEFAULT_DEEPSEEK_BASE_URL",
     "DeepSeekSettings",
     "ModelSettings",

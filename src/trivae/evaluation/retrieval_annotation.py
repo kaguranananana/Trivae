@@ -7,6 +7,7 @@ from collections.abc import Sequence
 
 from openai import AsyncOpenAI, OpenAIError
 
+from trivae.config.model_capabilities import resolve_reasoning_effort
 from trivae.config.settings import ModelSettings
 
 from .contracts import EvaluationContractError, _mapping, utc_now
@@ -133,6 +134,11 @@ class LLMRetrievalAnnotator:
                 temperature=0,
                 # 批量标签 JSON 属于评测输出，不能被 Router/Planner 的短预算截断。
                 max_tokens=self._settings.max_output_tokens,
+                # 盲标与 Judge/Runtime 使用同一已验证 reasoning contract。
+                reasoning_effort=resolve_reasoning_effort(
+                    provider=self._settings.provider,
+                    model_name=self._settings.model_name,
+                ),
             )
         except OpenAIError as exc:
             # 对外只保留异常类型；provider 原文可能含 request 或 endpoint 细节。

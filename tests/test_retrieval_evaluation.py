@@ -476,7 +476,7 @@ class RetrievalLLMAnnotationTests(unittest.TestCase):
             api_key="fixture-key",
             base_url="https://provider.test/v1",
             provider="deepseek",
-            model_name="fixture-model",
+            model_name="deepseek-flash",
             max_turns=1,
         )
         with patch(
@@ -487,6 +487,7 @@ class RetrievalLLMAnnotationTests(unittest.TestCase):
 
         self.assertEqual(len(annotations.annotations), 2)
         self.assertEqual(observed_requests[0]["max_tokens"], settings.max_output_tokens)
+        self.assertEqual(observed_requests[0]["reasoning_effort"], "low")
         self.assertEqual(annotations.reference_status, "llm_assisted_provisional")
         self.assertTrue(all(not item.verification_status == "human_verified" for item in annotations.annotations))
         serialized_payload = json.dumps(observed_payloads, ensure_ascii=False)

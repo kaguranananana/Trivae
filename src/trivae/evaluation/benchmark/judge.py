@@ -12,10 +12,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Literal, Mapping, Sequence
+from typing import Mapping, Sequence
 
 from openai import AsyncOpenAI, OpenAIError
 
+from trivae.config.model_capabilities import resolve_reasoning_effort
 from trivae.config.settings import ModelSettings
 from trivae.evaluation.contracts import EvaluationContractError, _mapping, utc_now
 
@@ -27,8 +28,6 @@ CITATION_VERDICTS = ("supported", "partially_supported", "unsupported", "insuffi
 _MAX_EVIDENCE_EXCERPTS = 20
 _MAX_EXCERPT_CHARS = 400
 _MAX_CLAIM_TEXT_CHARS = 500
-_LOW_REASONING_MODELS = frozenset({"deepseek-v4-flash"})
-
 _CLAIM_SYSTEM_PROMPT = """你是 Trivae benchmark 的 Tier 2 judge。输入是一个最终回答的
 content blocks、每个 block 的 citation 绑定（指向的 evidence 摘要），以及 evidence 摘要文本。
 
@@ -202,11 +201,10 @@ class LLMClaimJudge:
             if self._settings.provider == "opencode-go"
             else None
         )
-        reasoning_effort: Literal["low"] | None = (
-            "low"
-            if self._settings.provider == "opencode-go"
-            and self._settings.model_name.casefold() in _LOW_REASONING_MODELS
-            else None
+        # Judge 与 Runtime 共用精确 provider/model registry，不凭字符串猜测档位。
+        reasoning_effort = resolve_reasoning_effort(
+            provider=self._settings.provider,
+            model_name=self._settings.model_name,
         )
         async with AsyncOpenAI(
             api_key=self._settings.api_key,
