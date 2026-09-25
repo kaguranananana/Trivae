@@ -25,6 +25,7 @@
 | Stage 1.11 | Confirmed / Completed（架构边界） | Application Boundary · Composition Root · Python package ownership · unified Query execution core · CLI / API / Evaluation adapters | [stage-1-11-application-architecture.md](./technical-decisions/stage-1-11-application-architecture.md) |
 | Web UI | Confirmed / Implemented | Local Web 成为 primary interaction surface · QueryStreamEvent UI-neutral · Conversation shared capability · provider reasoning visibility · Trace Finder · Session≠Conversation | [web-primary-interface.md](./technical-decisions/web-primary-interface.md) |
 | Provider Migration | Confirmed | OpenCode Go → Official DeepSeek · exact capability registry · JSON/tools boundary · evaluation identity | [provider-migration-deepseek-official.md](./technical-decisions/provider-migration-deepseek-official.md) |
+| Router Jev experiment | Experimental / Not promoted | OpenRouter Decisions provider for ambiguous Router choices · default shadow · paired diagnostic Evaluation | [router-jev-provider-experiment.md](./technical-decisions/router-jev-provider-experiment.md) |
 
 Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；M4 Query、M5a Evidence/Citation 与 M5b Conversation persistence 已形成第一版实现级契约，Trace backend、Evaluation runner、产品交互与长期质量校准仍 Pending。
 

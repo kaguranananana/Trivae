@@ -6,6 +6,7 @@ Reveal in Finder 等本机 OS 能力自动禁用。
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import webbrowser
@@ -91,7 +92,19 @@ def run_web_server(settings: WebServerSettings) -> int:
         app = create_web_app(application, host=settings.host)
         if settings.open_browser:
             threading.Timer(1.0, _open_browser, args=(url,)).start()
-        uvicorn.run(app, host=settings.host, port=settings.port, log_level="warning")
+
+        async def serve() -> None:
+            """在 Uvicorn 的服务 loop 内释放 Query Provider 的 async transport。"""
+
+            try:
+                server = uvicorn.Server(
+                    uvicorn.Config(app, host=settings.host, port=settings.port, log_level="warning")
+                )
+                await server.serve()
+            finally:
+                await application.aclose()
+
+        asyncio.run(serve())
     return 0
 
 

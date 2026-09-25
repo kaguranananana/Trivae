@@ -181,6 +181,14 @@ class QueryOrchestrator:
                 "degraded": decision.degraded,
                 "degradation_code": decision.degradation_code,
                 "usage": None if decision.usage is None else dict(decision.usage),
+                "probabilities": (
+                    None if decision.probabilities is None else dict(decision.probabilities)
+                ),
+                "provider": decision.provider,
+                "model": decision.model,
+                "provider_error_type": decision.provider_error_type,
+                "primary_latency_ms": decision.primary_latency_ms,
+                "shadow_latency_ms": None if decision.shadow is None else decision.shadow.latency_ms,
                 "execution_override": request.execution_override.to_dict(),
             }
             trace.emit(
@@ -194,12 +202,81 @@ class QueryOrchestrator:
                 payload=decision_payload,
             )
         diagnostics: list[QueryDiagnostic] = []
+        if decision.shadow is not None and decision.shadow.degraded:
+            # Shadow failure 进入诊断，但不修改 primary route、degraded 状态或执行路径。
+            diagnostics.append(
+                QueryDiagnostic(
+                    stage="router",
+                    code=decision.shadow.degradation_code or "JEV_ROUTER_PROVIDER_ERROR",
+                    message="shadow Jev decision was unavailable; primary route was retained",
+                )
+            )
+            if trace is not None:
+                shadow = decision.shadow
+                trace.emit(
+                    stage="router",
+                    operation="router.shadow_decision",
+                    phase="degraded",
+                    operation_id="router.shadow",
+                    parent_operation_id=query_operation_id,
+                    outcome="partial",
+                    duration_ms=shadow.latency_ms,
+                    payload={
+                        "provider": shadow.provider or "openrouter",
+                        "model": shadow.model,
+                        "route": shadow.route,
+                        "confidence": shadow.confidence,
+                        "probabilities": (
+                            None if shadow.probabilities is None else dict(shadow.probabilities)
+                        ),
+                        "usage": None if shadow.usage is None else dict(shadow.usage),
+                        "latency_ms": shadow.latency_ms,
+                        "degraded": True,
+                        "degradation_code": shadow.degradation_code,
+                        "provider_error_type": shadow.provider_error_type,
+                    },
+                    limitations=("shadow_only", "primary_route_retained"),
+                    failure=FailureInfo(
+                        error_code=shadow.degradation_code or "JEV_ROUTER_PROVIDER_ERROR",
+                        origin_stage="router",
+                        observed_stage="router",
+                        category="degradation",
+                        handling="shadow_only",
+                        cause_operation_id="router.shadow",
+                    ),
+                )
+        elif decision.shadow is not None and trace is not None:
+            # 成功的 shadow observation 单独记其自身时长，不与 primary 时长合并。
+            shadow = decision.shadow
+            trace.emit(
+                stage="router",
+                operation="router.shadow_decision",
+                phase="completed",
+                operation_id="router.shadow",
+                parent_operation_id=query_operation_id,
+                outcome="ok",
+                duration_ms=shadow.latency_ms,
+                payload={
+                    "provider": shadow.provider or "openrouter",
+                    "model": shadow.model,
+                    "route": shadow.route,
+                    "confidence": shadow.confidence,
+                    "probabilities": (
+                        None if shadow.probabilities is None else dict(shadow.probabilities)
+                    ),
+                    "usage": None if shadow.usage is None else dict(shadow.usage),
+                    "latency_ms": shadow.latency_ms,
+                    "degraded": False,
+                    "provider_error_type": shadow.provider_error_type,
+                },
+                limitations=("shadow_only", "primary_route_retained"),
+            )
         if decision.degraded:
             diagnostics.append(
                 QueryDiagnostic(
                     stage="router",
                     code=decision.degradation_code or "ROUTER_DEGRADED",
-                    message="router optional completion was not used successfully",
+                    message="router optional decision provider was not used successfully",
                 )
             )
             if trace is not None:

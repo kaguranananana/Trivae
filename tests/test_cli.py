@@ -72,6 +72,12 @@ class _FakeApplication:
         self.requests: list[QueryRequest] = []
         self.exported_trace_ids: list[str] = []
         self.list_sessions_calls = 0
+        self.aclose_calls = 0
+
+    async def aclose(self) -> None:
+        """匹配正式 Application 的异步生命周期接口。"""
+
+        self.aclose_calls += 1
 
     def list_sessions(self) -> tuple[ChatSession, ...]:
         """返回 fake read facade 的 session projection。"""
@@ -294,7 +300,7 @@ class ChatCliTests(unittest.TestCase):
             def __init__(self, *_: object, **__: object) -> None:
                 pass
 
-            def run(self) -> None:
+            async def run_async(self) -> None:
                 pass
 
         fake_tui_module.TrivaeChatApp = _FakeTuiApp  # type: ignore[attr-defined]
@@ -312,7 +318,7 @@ class ChatCliTests(unittest.TestCase):
             patch.object(builtins, "__import__", side_effect=recording_import),
         ):
             os.environ.pop("TEXTUAL_DISABLE_KITTY_KEY", None)
-            exit_code = cli._run_tui_chat(application, verbose=False)
+            exit_code = asyncio.run(cli._run_tui_chat(application, verbose=False))
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(imported_with_protocol_disabled, [True])

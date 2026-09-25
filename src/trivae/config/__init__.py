@@ -34,7 +34,9 @@ from trivae.config.settings import (
     DEFAULT_DEEPSEEK_BASE_URL,
     DeepSeekSettings,
     ModelSettings,
+    RouterJevSettings,
     SettingsError,
+    load_router_jev_settings,
     load_settings,
 )
 
@@ -68,6 +70,8 @@ __all__ = [
     "DEFAULT_DEEPSEEK_BASE_URL",
     "DeepSeekSettings",
     "ModelSettings",
+    "RouterJevSettings",
     "SettingsError",
+    "load_router_jev_settings",
     "load_settings",
 ]

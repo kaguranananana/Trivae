@@ -18,7 +18,7 @@ from typing import TextIO, cast
 from trivae.bootstrap.application import TrivaeApplication, create_application
 from trivae.capabilities.contracts import CapabilityContractError, ExecutionScope, SemanticSearchInput
 from trivae.config.dotenv import DotenvError, load_environment_file
-from trivae.config.settings import SettingsError, load_settings
+from trivae.config.settings import SettingsError, load_router_jev_settings, load_settings
 from trivae.conversation.contracts import ConversationError, ConversationSummary
 from trivae.data.model import ChatSession, IngestionError
 from trivae.evaluation import (
@@ -26,6 +26,7 @@ from trivae.evaluation import (
     ControlledVariant,
     EvaluationCaseBundle,
     EvaluationContractError,
+    EvaluationRun,
     EvaluationSuite,
     LLMRetrievalAnnotator,
     RelevanceAnnotationSet,
@@ -226,6 +227,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Independent SQLite Evaluation Store path",
     )
     evaluation_subparsers.add_parser("regression", help="Show M6 failure regression coverage")
+    eval_router_jev_parser = evaluation_subparsers.add_parser(
+        "router-jev",
+        help="Run a paired ambiguous-Router evaluation against the existing LLM and OpenRouter Jev",
+    )
+    eval_router_jev_parser.add_argument(
+        "--cases",
+        type=Path,
+        default=Path("evaluation/router-jev/cases-v1.json"),
+        help="Versioned Router case manifest",
+    )
+    eval_router_jev_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Create-only path for the secret-free diagnostic report",
+    )
+    eval_router_jev_parser.add_argument("--repeat", type=int, default=1, help="Paired repetitions per case")
     eval_snapshot_parser = evaluation_subparsers.add_parser(
         "snapshot",
         help="Materialize a secret-free Canonical Dataset Snapshot manifest",
@@ -561,6 +579,75 @@ def _run_retrieval_annotation_command(args: argparse.Namespace) -> int:
     output_dir: Path = args.output_dir
     _write_json_projection(annotations.to_dict(), output_dir / "annotations.json")
     _write_json_projection(audit_queue, output_dir / "audit-queue.json")
+    return 0
+
+
+def _run_router_jev_evaluation(args: argparse.Namespace) -> int:
+    """配对运行 Router provider 并只写入不含 query/secret 的诊断 projection。"""
+
+    from trivae.evaluation.router_jev import (
+        RouterEvaluationError,
+        load_router_evaluation_cases,
+        run_paired_router_evaluation,
+        write_router_evaluation_report,
+    )
+    from trivae.query.jev_provider import JevRouteDecisionProvider
+    from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+
+    jev_settings = load_router_jev_settings()
+    if not jev_settings.enabled:
+        raise EvaluationContractError("Router Jev evaluation requires TRIVIAE_ROUTER_JEV_ENABLED=true")
+    if not jev_settings.api_key:
+        raise EvaluationContractError("Router Jev evaluation requires OPENROUTER_API_KEY in the environment")
+    if args.repeat <= 0:
+        raise EvaluationContractError("Router Jev evaluation --repeat must be positive")
+
+    try:
+        suite_id, cases = load_router_evaluation_cases(args.cases)
+        primary_settings = load_settings()
+        baseline = OpenAIAgentsRuntimeAdapter(settings=primary_settings)
+        jev_provider = JevRouteDecisionProvider(jev_settings)
+
+        async def run() -> dict[str, object]:
+            """在同一异步边界内运行两种 provider，并明确释放各自的 transport。"""
+
+            try:
+                return await run_paired_router_evaluation(
+                    suite_id=suite_id,
+                    cases=cases,
+                    llm_completion=baseline.complete_text_with_observation,
+                    jev_provider=jev_provider,
+                    llm_identity={
+                        "provider": primary_settings.provider,
+                        "model": primary_settings.model_name,
+                    },
+                    jev_model=jev_settings.model,
+                    repetitions=args.repeat,
+                )
+            finally:
+                await jev_provider.aclose()
+                await baseline.aclose()
+
+        report = asyncio.run(run())
+        # 记录本次 Router 专属配置，始终排除 OPENROUTER_API_KEY。
+        report["configured_router_jev"] = {
+            "enabled": jev_settings.enabled,
+            "model": jev_settings.model,
+            "endpoint": jev_settings.endpoint,
+            "mode": jev_settings.mode,
+        }
+        write_router_evaluation_report(report, args.output)
+    except RouterEvaluationError as exc:
+        raise EvaluationContractError(str(exc)) from exc
+    summary = {
+        "status": report["status"],
+        "suite_id": suite_id,
+        "case_count": len(cases),
+        "repetitions": args.repeat,
+        "output": str(args.output),
+        "promotion_recommendation": report["promotion_recommendation"],
+    }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -914,6 +1001,9 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
             print(json.dumps(dict(M6_FAILURE_REGRESSION_MAP), ensure_ascii=False, indent=2, sort_keys=True))
             return 0
 
+        if args.evaluation_command == "router-jev":
+            return _run_router_jev_evaluation(args)
+
         if args.evaluation_command == "snapshot":
             with create_application(args.database) as application:
                 snapshot = application.materialize_evaluation_snapshot()
@@ -936,11 +1026,22 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
             suite = EvaluationSuite.from_json(args.suite)
             variant = _load_variant(args.variant)
             cases = _load_cases(args.cases_dir)
-            with create_application(
-                args.database,
-                evaluation_database_path=args.evaluation_database,
-            ) as application:
-                runs = asyncio.run(application.evaluate_suite(suite, cases, variant, repetitions=args.repeat))
+
+            async def evaluate_suite() -> tuple[EvaluationRun, ...]:
+                """在同一 event loop 内运行 Evaluation 并关闭主模型与 Jev client。"""
+
+                async with create_application(
+                    args.database,
+                    evaluation_database_path=args.evaluation_database,
+                ) as application:
+                    return await application.evaluate_suite(
+                        suite,
+                        cases,
+                        variant,
+                        repetitions=args.repeat,
+                    )
+
+            runs = asyncio.run(evaluate_suite())
             print(
                 json.dumps(
                     {"suite": suite.identity, "variant": variant.to_dict(), "runs": [run.to_dict() for run in runs]},
@@ -1889,7 +1990,7 @@ async def _run_interactive_chat(
         )
 
 
-def _run_tui_chat(application: TrivaeApplication, *, verbose: bool) -> int:
+async def _run_tui_chat(application: TrivaeApplication, *, verbose: bool) -> int:
     """以 Textual TUI 运行交互 chat；Runtime 仍由 Application 唯一执行。"""
 
     # macOS 中文 IME 需要终端传递完整的组字序列；Kitty 全键盘协议会打断该序列。
@@ -1914,7 +2015,7 @@ def _run_tui_chat(application: TrivaeApplication, *, verbose: bool) -> int:
         verbose=verbose,
     )
     # 标准全屏（alternate screen）模式：渲染路径最成熟；退出后终端恢复原样。
-    tui_app.run()
+    await tui_app.run_async()
     return 0
 
 
@@ -1927,9 +2028,18 @@ def _run_chat_command(args: argparse.Namespace) -> int:
         # Application 统一拥有 Store、Provider、Conversation 和 Trace lifecycle。
         with create_application(args.database) as application:
             use_plain = args.plain or not sys.stdout.isatty()
-            if use_plain:
-                return asyncio.run(_run_interactive_chat(application, verbose=args.verbose))
-            return _run_tui_chat(application, verbose=args.verbose)
+
+            async def run_chat() -> int:
+                """在 CLI 查询使用的 event loop 内退出 TUI/关闭 Async Provider。"""
+
+                try:
+                    if use_plain:
+                        return await _run_interactive_chat(application, verbose=args.verbose)
+                    return await _run_tui_chat(application, verbose=args.verbose)
+                finally:
+                    await application.aclose()
+
+            return asyncio.run(run_chat())
     except (EOFError, KeyboardInterrupt):
         # Ctrl+D/Ctrl+C 即使发生在 Query 等待期间，也只做短退出提示。
         print("Bye.")

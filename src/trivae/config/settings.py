@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Mapping, cast
+from urllib.parse import urlsplit
 
 from trivae.config.limits import (
     DEFAULT_PER_CALL_TOOL_RESULT_CAP,
@@ -21,6 +22,10 @@ _DEFAULT_MAX_TURNS = 8
 _DEFAULT_MAX_TOOL_ROUNDS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 16384
 _DEFAULT_COMPLETION_MAX_TOKENS = 2048
+_DEFAULT_ROUTER_JEV_ENABLED = True
+_DEFAULT_ROUTER_JEV_MODEL = "typesafe/jev-1.13"
+_DEFAULT_ROUTER_JEV_ENDPOINT = "https://openrouter.ai/api/alpha/decisions"
+_DEFAULT_ROUTER_JEV_MODE = "shadow"
 
 
 class SettingsError(ValueError):
@@ -89,7 +94,79 @@ class ModelSettings:
         }
 
 
+@dataclass(frozen=True)
+class RouterJevSettings:
+    """Router 专用 Jev 配置；与 Planner/Runtime 的 ModelSettings 完全分离。"""
+
+    api_key: str
+    enabled: bool
+    model: str
+    endpoint: str
+    mode: str
+
+    def __repr__(self) -> str:
+        """调试配置时只显示 key 是否存在，不显示 key 正文。"""
+
+        return (
+            "RouterJevSettings("
+            f"api_key={'[REDACTED]' if self.api_key else '[MISSING]'!r}, "
+            f"enabled={self.enabled!r}, model={self.model!r}, "
+            f"endpoint={self.endpoint!r}, mode={self.mode!r})"
+        )
+
+    def to_safe_dict(self) -> dict[str, object]:
+        """返回可进入配置诊断的值，不包含密钥正文。"""
+
+        return {
+            "api_key_configured": bool(self.api_key),
+            "enabled": self.enabled,
+            "model": self.model,
+            "endpoint": self.endpoint,
+            "mode": self.mode,
+        }
+
+
 DeepSeekSettings = ModelSettings
+
+
+def load_router_jev_settings(environ: Mapping[str, str] | None = None) -> RouterJevSettings:
+    """只读取 Router Jev 专用环境变量，不修改或继承主模型 Provider 配置。"""
+
+    # 让调用方可以用独立 mapping 测试配置，同时生产默认只读取进程环境。
+    values = os.environ if environ is None else environ
+    # 仅把空白去掉后放入配置对象；密钥缺失不阻止应用启动。
+    api_key = values.get("OPENROUTER_API_KEY", "").strip()
+    # enabled 使用显式布尔词，避免拼错时静默启动或关闭实验。
+    enabled_raw = values.get("TRIVIAE_ROUTER_JEV_ENABLED", str(_DEFAULT_ROUTER_JEV_ENABLED)).strip().lower()
+    if enabled_raw not in {"true", "false"}:
+        raise SettingsError("TRIVIAE_ROUTER_JEV_ENABLED must be true or false")
+    # model 与 endpoint 保持在 Router 专用配置中，不能借用 TRIVIAE_MODEL_NAME/BASE_URL。
+    model = values.get("TRIVIAE_ROUTER_JEV_MODEL", _DEFAULT_ROUTER_JEV_MODEL).strip()
+    endpoint = values.get("TRIVIAE_ROUTER_JEV_ENDPOINT", _DEFAULT_ROUTER_JEV_ENDPOINT).strip()
+    # mode 只允许当前支持的 A/B/shadow 选项，避免出现未定义的路由语义。
+    mode = values.get("TRIVIAE_ROUTER_JEV_MODE", _DEFAULT_ROUTER_JEV_MODE).strip().lower()
+    if mode not in {"existing_llm", "jev", "shadow"}:
+        raise SettingsError("TRIVIAE_ROUTER_JEV_MODE must be existing_llm, jev, or shadow")
+    # 空模型和非 Decisions HTTPS endpoint 在任何 Provider 请求前显式报配置错误。
+    if not model:
+        raise SettingsError("TRIVIAE_ROUTER_JEV_MODEL must not be empty")
+    parsed_endpoint = urlsplit(endpoint)
+    if (
+        parsed_endpoint.scheme != "https"
+        or not parsed_endpoint.netloc
+        or not parsed_endpoint.path.endswith("/alpha/decisions")
+        or parsed_endpoint.query
+        or parsed_endpoint.fragment
+    ):
+        raise SettingsError("TRIVIAE_ROUTER_JEV_ENDPOINT must be an HTTPS OpenRouter Decisions endpoint")
+    # 返回专属设置；OPENROUTER_API_KEY 不会覆盖 ModelSettings 的 API key。
+    return RouterJevSettings(
+        api_key=api_key,
+        enabled=enabled_raw == "true",
+        model=model,
+        endpoint=endpoint,
+        mode=mode,
+    )
 
 
 def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:

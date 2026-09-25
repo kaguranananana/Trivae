@@ -109,7 +109,7 @@ class RouterTests(unittest.TestCase):
 
         failed = asyncio.run(RuleRouter(raise_error).route(self._context("请总结 alpha 的讨论")))
         self.assertEqual(failed.route, "standard_execution")
-        self.assertEqual(failed.degradation_code, "ROUTER_COMPLETION_INVALID")
+        self.assertEqual(failed.degradation_code, "ROUTER_COMPLETION_PROVIDER_ERROR")
 
 
 class PlannerTests(unittest.TestCase):
@@ -352,6 +352,66 @@ class OrchestratorTests(unittest.TestCase):
         )
         self.assertEqual(result.runtime_result.final_answer, "recorded")
         self.assertEqual(result.diagnostics[0].code, "PLANNER_UNAVAILABLE")
+        self.assertEqual(len(runtime.requests), 1)
+
+    def test_router_shadow_trace_and_evaluation_keep_primary_and_jev_separate(self) -> None:
+        from trivae.evaluation.checks import query_result_snapshot
+        from trivae.observability.collector import TraceCollector
+        from trivae.observability.sqlite import SQLiteTraceStore
+        from trivae.query.router import RouterProviderResult
+
+        class JevProvider:
+            async def decide(self, context):
+                return RouterProviderResult(
+                    route="planned_execution",
+                    confidence=0.91,
+                    probabilities={"standard_execution": 0.09, "planned_execution": 0.91},
+                    provider="openrouter",
+                    model="typesafe/jev-1.13-20260917",
+                )
+
+        async def primary_completion(_: str) -> CompletionResult:
+            return CompletionResult(
+                '{"route":"standard_execution","confidence":0.62,"reason":"baseline"}',
+                CompletionObservation(provider="primary-provider", model="primary-model"),
+            )
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteTraceStore(Path(directory) / "trace.sqlite3")
+            trace = TraceCollector(
+                store,
+                trace_id="trace-router-shadow",
+                request_id="request-router-shadow",
+            )
+            runtime = _RecordingRuntime()
+            router = RuleRouter(
+                primary_completion,
+                decision_provider=JevProvider(),
+                jev_enabled=True,
+                provider_mode="shadow",
+            )
+            orchestrator = QueryOrchestrator(runtime, router, SoftPlanner())
+            result = asyncio.run(
+                orchestrator.run(
+                    QueryRequest("请总结 alpha 的讨论", ExecutionScope()),
+                    trace=trace,
+                )
+            )
+            stored_trace = store.read_trace("trace-router-shadow")
+            snapshot = query_result_snapshot(result)
+            store.close()
+
+        self.assertEqual(result.route_decision.route, "standard_execution")
+        self.assertEqual(result.route_decision.source, "llm")
+        self.assertEqual(result.route_decision.shadow.route, "planned_execution")
+        decision_event = next(event for event in stored_trace.events if event.operation == "router.decision")
+        shadow_event = next(event for event in stored_trace.events if event.operation == "router.shadow_decision")
+        self.assertEqual(decision_event.payload["route"], "standard_execution")
+        self.assertEqual(decision_event.payload["source"], "llm")
+        self.assertEqual(shadow_event.payload["route"], "planned_execution")
+        self.assertEqual(shadow_event.payload["model"], "typesafe/jev-1.13-20260917")
+        self.assertEqual(snapshot["route"], "standard_execution")
+        self.assertEqual(snapshot["router_shadow"]["route"], "planned_execution")
         self.assertEqual(len(runtime.requests), 1)
 
     def test_planner_failure_trace_keeps_debug_provider_and_parse_facts(self) -> None:

@@ -223,8 +223,42 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
         ),
         "route": result.route_decision.route,
         "route_source": result.route_decision.source,
+        "route_confidence": result.route_decision.confidence,
+        "route_probabilities": (
+            None
+            if result.route_decision.probabilities is None
+            else dict(result.route_decision.probabilities)
+        ),
+        "route_provider": result.route_decision.provider,
+        "route_model": result.route_decision.model,
+        "route_provider_error_type": result.route_decision.provider_error_type,
+        "router_primary_latency_ms": result.route_decision.primary_latency_ms,
         "route_degraded": result.route_decision.degraded,
         "route_degradation_code": result.route_decision.degradation_code,
+        "router_shadow": (
+            None
+            if result.route_decision.shadow is None
+            else {
+                "provider": result.route_decision.shadow.provider,
+                "model": result.route_decision.shadow.model,
+                "route": result.route_decision.shadow.route,
+                "confidence": result.route_decision.shadow.confidence,
+                "probabilities": (
+                    None
+                    if result.route_decision.shadow.probabilities is None
+                    else dict(result.route_decision.shadow.probabilities)
+                ),
+                "usage": (
+                    None
+                    if result.route_decision.shadow.usage is None
+                    else dict(result.route_decision.shadow.usage)
+                ),
+                "latency_ms": result.route_decision.shadow.latency_ms,
+                "degraded": result.route_decision.shadow.degraded,
+                "degradation_code": result.route_decision.shadow.degradation_code,
+                "provider_error_type": result.route_decision.shadow.provider_error_type,
+            }
+        ),
         "plan": None
         if plan is None
         else {

@@ -249,3 +249,28 @@ trivae eval retrieval-metrics \
 ```
 
 报告支持 Precision@k、merged-candidate-pool Recall@k、MRR、Top-k hit/success、relevant message coverage 与独立 partial relevant coverage。missing/uncertain label 会令依赖它的指标 `unavailable`，不会被当作 negative；没有 corpus-exhaustive reference 时 corpus Recall 始终 unavailable。由自动标签产生的所有数字都明确标记为 `llm_assisted_provisional`，不能作为 production gate。
+
+## Router Jev paired diagnostic
+
+Router Jev 是独立于 Planner / Runtime 主模型的实验 Provider。Router 的确定性 Rule 先运行；只有 ambiguous case 才会调用现有 LLM、Jev 或两者并行。默认 `shadow` 保留现有 LLM 作为唯一主决定，Jev 只产生隔离的诊断结果。
+
+实验配置只从环境变量读取：
+
+```dotenv
+OPENROUTER_API_KEY=
+TRIVIAE_ROUTER_JEV_ENABLED=true
+TRIVIAE_ROUTER_JEV_MODEL=typesafe/jev-1.13
+TRIVIAE_ROUTER_JEV_ENDPOINT=https://openrouter.ai/api/alpha/decisions
+TRIVIAE_ROUTER_JEV_MODE=shadow
+```
+
+这些变量不改写 `TRIVIAE_MODEL_*`；后者仍供 Planner、Runtime 和 Answer Generation 使用。Router 评估命令在同一 Router context 上配对调用现有 LLM 与 Jev，只将 route、confidence、probabilities、usage/cost、latency、错误码和 case metadata 写入 create-only 报告，不保存 query、密钥或原始 Provider response：
+
+```bash
+uv run trivae eval --env-file .env router-jev \
+  --cases evaluation/router-jev/cases-v1.json \
+  --repeat 3 \
+  --output data/evaluation/router-jev/after-key-rotation.json
+```
+
+当前 versioned diagnostic 集包含 16 个候选 Case，其中 13 个通过 Rule gate 进入 ambiguous Provider 分支，3 个由确定性 Rule 处理；16 个 route hypothesis 都待人工裁决。它用于发现分歧和失败模式，不是人工 ground truth。即使 Provider route accuracy 较高，也不能单独说明 Planner 带来了端到端收益；生产推广前还要完成 forced-standard / forced-planned Planner utility 对比，并审查 planned→standard 误判、时延、真实 usage.cost 与失败率。当前实现与实验状态见 [Router Jev provider experiment](../.trellis/spec/project/technical-decisions/router-jev-provider-experiment.md) 和 [本次任务报告](../.trellis/tasks/09-25-openrouter-jev-router/experiment-report.md)。

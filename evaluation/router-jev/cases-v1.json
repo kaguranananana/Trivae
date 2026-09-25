@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "suite_id": "router-provider-diagnostic-v1",
+  "label_status": "provisional_not_ground_truth",
+  "provenance": {
+    "source": "Stage 1.5 Router ADR criteria and agent-authored diagnostic prompts",
+    "adjudication_status": "pending_human_adjudication",
+    "contains_private_chat_content": false,
+    "notes": "Small diagnostic set; labels are route hypotheses only and cannot support production promotion."
+  },
+  "cases": [
+    {
+      "case_id": "RJV-001",
+      "slice": "clear_standard",
+      "query": "统计最近 7 天谁发言最多，并计算每个人的消息总数。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Stage 1.5 standard execution definition",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-002",
+      "slice": "clear_planned",
+      "query": "先找出方案 A 和方案 B 被讨论的不同，再比较它们从采纳到搁置的变化；解释哪些证据促成了最后选择。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Stage 1.5 dependent stages and temporal change criteria",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-003",
+      "slice": "ambiguous_keyword_false_positive",
+      "query": "请总结一下最近 7 天大家对 TypeScript 的主要观点。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Stage 1.5 summary wording without dependent investigation",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-004",
+      "slice": "ambiguous_keyword_false_positive",
+      "query": "分析过去半年大家对本地 Agent 框架的讨论趋势。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Stage 1.5 long time span and trend wording are not sufficient by themselves",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-005",
+      "slice": "ambiguous_implicit_temporal_investigation",
+      "query": "说明大家对方案的看法怎样从最初推荐走到后来不再采用，中间发生了什么。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Agent-authored implicit evolution diagnostic based on Stage 1.5 criteria",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-006",
+      "slice": "ambiguous_evidence_dependent_investigation",
+      "query": "把反对方案的几段讨论串起来，解释最后保留另一方案的理由；如果说法互相矛盾，再找出时间顺序。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Agent-authored evidence dependency diagnostic based on Stage 1.5 criteria",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-007",
+      "slice": "ambiguous_multi_turn_context_changes_route",
+      "query": "那后来为什么选了这个？",
+      "locale": "zh-CN",
+      "prior_context": [
+        {"role": "user", "content": "请追一下团队从最初推荐到最终放弃方案 A 的过程，重点找出测试证据如何改变后续选择。"},
+        {"role": "assistant", "content": "我会对照推荐前后的讨论和证据。"}
+      ],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Agent-authored multi-turn dependency diagnostic",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-008",
+      "slice": "ambiguous_multi_turn_context_changes_route",
+      "query": "那后来为什么选了这个？",
+      "locale": "zh-CN",
+      "prior_context": [
+        {"role": "user", "content": "会议记录已经给出选择方案 B 的单一理由，请按记录用一句话概括，不需要调查其他讨论。"},
+        {"role": "assistant", "content": "我会只整理这条已给定的理由。"}
+      ],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Agent-authored multi-turn context contrast diagnostic",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-009",
+      "slice": "ambiguous_recovery",
+      "query": "没找到时别直接结束，换个线索继续追，直到能说明最终结论来自哪几段讨论。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Agent-authored implicit recovery diagnostic based on Stage 1.5 criteria",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-010",
+      "slice": "ambiguous_structured_aggregation_boundary",
+      "query": "一共有多少位成员提到了 MCP？以及他们分别在哪些周提到？",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Stage 1.5 structured aggregation with an adjacent breakdown diagnostic",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-011",
+      "slice": "ambiguous_implicit_dependency_false_negative",
+      "query": "哪些讨论让大家逐渐从选项 A 转向选项 B，说明变化发生的原因。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Agent-authored implicit dependency diagnostic without a direct route phrase",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-012",
+      "slice": "clear_recovery_planned",
+      "query": "回到前面没查清的说法，补充找出完整上下文，再判断最终推荐的依据。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Stage 1.5 explicit recovery criterion",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-013",
+      "slice": "ambiguous_single_analysis_request",
+      "query": "分析一下这条消息中提到的名词是什么意思。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Stage 1.5 single semantic lookup despite analysis wording",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-014",
+      "slice": "ambiguous_implicit_stage_order",
+      "query": "把作者第一次推荐一项技术、后续遇到反例、最后调整建议的讨论顺序讲清楚。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "planned_execution",
+      "provenance": "Agent-authored implicit stage-order diagnostic",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-015",
+      "slice": "ambiguous_keyword_false_positive",
+      "query": "请概括最近一周大家提到的三个新工具，各用一句话说明。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Agent-authored bounded summary diagnostic based on Stage 1.5 criteria",
+      "adjudication_status": "pending_human_adjudication"
+    },
+    {
+      "case_id": "RJV-016",
+      "slice": "ambiguous_comparison_without_dependency",
+      "query": "梳理一下两种方案各自的主要观点和支持者。",
+      "locale": "zh-CN",
+      "prior_context": [],
+      "data_snapshot": {},
+      "route_hypothesis": "standard_execution",
+      "provenance": "Stage 1.5 comparison/aggregation without dependent investigation",
+      "adjudication_status": "pending_human_adjudication"
+    }
+  ]
+}

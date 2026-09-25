@@ -42,7 +42,7 @@ from trivae.capabilities.tools import (
     SearchMessagesTool,
     SemanticSearchTool,
 )
-from trivae.config.settings import SettingsError, load_settings
+from trivae.config.settings import SettingsError, load_router_jev_settings, load_settings
 from trivae.conversation import (
     Conversation,
     ConversationScopeError,
@@ -713,8 +713,23 @@ class TrivaeApplication:
                     planner_completion = completion
                 completion_request = getattr(runtime, "completion_request_projection", None)
                 planner_request = completion_request() if callable(completion_request) else None
-                # 两个 optional completion 仍共享同一 provider/runtime，不创建第二个 Planner client。
-                self._router = self._router or RuleRouter(completion=completion)
+                # Planner/Router 的 LLM baseline 继续共享主 Runtime 的 completion boundary。
+                if self._router is None:
+                    # 只有构造默认 Router 时才读取专属配置，注入 Router 的测试/调用方不受影响。
+                    jev_settings = load_router_jev_settings()
+                    jev_provider = None
+                    # Existing-LLM A 组不创建 Jev transport；shadow/jev 才延迟创建 adapter。
+                    if jev_settings.enabled and jev_settings.mode in {"jev", "shadow"}:
+                        from trivae.query.jev_provider import JevRouteDecisionProvider
+
+                        jev_provider = JevRouteDecisionProvider(jev_settings)
+                    # completion boundary 同时保留 LLM usage/model observation，且仍使用主模型配置。
+                    self._router = RuleRouter(
+                        completion=planner_completion,
+                        decision_provider=jev_provider,
+                        jev_enabled=jev_settings.enabled,
+                        provider_mode=cast(Literal["existing_llm", "jev", "shadow"], jev_settings.mode),
+                    )
                 self._planner = self._planner or SoftPlanner(
                     completion=planner_completion,
                     completion_request=planner_request,
@@ -963,40 +978,48 @@ class TrivaeApplication:
             # 即使某一个 close 失败，也继续释放其余资源；原始 close 异常最终仍会向上暴露。
             try:
                 try:
-                    if self._lexical_index is not None:
-                        self._lexical_index.close()
+                    router_close = getattr(self._router, "aclose", None)
+                    if callable(router_close):
+                        router_result = router_close()
+                        if inspect.isawaitable(router_result):
+                            await router_result
                 finally:
                     try:
-                        if self._semantic_index is not None:
-                            self._semantic_index.close()
+                        if self._lexical_index is not None:
+                            self._lexical_index.close()
                     finally:
                         try:
-                            self.conversation_store.close()
+                            if self._semantic_index is not None:
+                                self._semantic_index.close()
                         finally:
                             try:
-                                self.read_repository.close()
+                                self.conversation_store.close()
                             finally:
                                 try:
-                                    self._import_diagnostics_reader.close()
+                                    self.read_repository.close()
                                 finally:
                                     try:
-                                        close_trace_store = getattr(self._trace_store, "close", None)
-                                        if callable(close_trace_store):
-                                            close_trace_store()
+                                        self._import_diagnostics_reader.close()
                                     finally:
                                         try:
-                                            close_evaluation_store = getattr(self.evaluation_store, "close", None)
-                                            if callable(close_evaluation_store):
-                                                close_evaluation_store()
+                                            close_trace_store = getattr(self._trace_store, "close", None)
+                                            if callable(close_trace_store):
+                                                close_trace_store()
                                         finally:
                                             try:
-                                                close_feedback_store = getattr(self._feedback_store, "close", None)
-                                                if callable(close_feedback_store):
-                                                    close_feedback_store()
+                                                close_evaluation_store = getattr(self.evaluation_store, "close", None)
+                                                if callable(close_evaluation_store):
+                                                    close_evaluation_store()
                                             finally:
-                                                self.store.close()
+                                                try:
+                                                    close_feedback_store = getattr(self._feedback_store, "close", None)
+                                                    if callable(close_feedback_store):
+                                                        close_feedback_store()
+                                                finally:
+                                                    self.store.close()
             finally:
                 self._agent_runtime = None
+                self._router = None
                 self._query_orchestrator = None
 
     def close(self) -> None:
