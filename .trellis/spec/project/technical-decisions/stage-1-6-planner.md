@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed（Stage 1.6）**
 >
-> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界、失败契约、ChatLab 基线继承与 Trivae-specific 差异。Stage 1.6 已完成架构设计沉淀；M4 已落地 bounded validation/sanitization、soft guidance 和 graceful skip。Agent Runtime 生命周期后由 Stage 1.7 确认，Trace conceptual boundary 后由 Stage 1.9 确认；具体 Python 参数、Trace serialization、Evaluation Case authoring 与真实校准仍保持 Pending（Stage 1.10 的 Evaluation contract 已确认）。
+> 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界和失败契约。当前 SoftPlanner 的 Python class、Prompt、Plan bounds、validation/sanitization、soft guidance、Trace 已实现；37 条 Development forced-path Case 已运行。zero-result 回归的 targeted 修复与复验、人工 treatment 裁决和长期校准仍在推进。下文阶段设计时的 Pending 不代表当前代码仍缺失。
 
 ---
 
@@ -238,7 +238,7 @@ PlannerInput
 
 Input 由 Runtime 提供。Planner 不主动调用 Tool 获取上下文，也不通过 Tool Result 逐步完善自己的计划。
 
-具体 Python class、字段类型、Pydantic Model、序列化格式和 package layout 保持 Pending。
+当前以 `QueryContext`、`Plan`、`PlannerResult` 等 Python contract 实现；不引入额外 Pydantic Model。字段与 soft guidance 序列化已在生产代码中固定，长期参数仍待 Evaluation 校准。
 
 ### 5.1 `user_query`
 
@@ -716,7 +716,7 @@ suggested_tools 结构合法
 success_criteria 存在有效内容
 ```
 
-具体实现 Schema、validator library、字段类型和错误表示保持 Implementation Pending。
+当前由 `SoftPlanner` 的确定性 parser/validator/sanitizer 实现，错误分类进入 Planner Trace；长期规则增减仍由 Failure Case 和 Evaluation 驱动。
 
 ### 9.2 Sanitization / Bounding
 
@@ -983,34 +983,15 @@ Pending architecture specification
 | 20 | **Do not rewrite Router Decision after Planner failure** | 保留 `route = planned_execution`、`planner = failed`、`runtime = executed_without_plan` 的语义。 |
 | 21 | **No Planner-specific retry / regeneration in v1** | Planner 失败或 Plan invalid 时直接 skip；是否未来增加机制必须由真实 Evaluation 重新评估。 |
 
-## 14. Pending Decisions
+## 14. 当前实现与待校准事项
 
-以下事项不在 Stage 1.6 提前解决：
-
-### Implementation Pending
-
-```text
-Planner 具体 Python class / package layout
-具体 Planner Model
-具体 Prompt
-Structured Output 技术
-temperature
-max tokens
-timeout
-Plan 的具体 Python / JSON serialization
-具体 validator library
-具体 max steps
-具体 max success criteria
-具体字段长度 limit
-Compact DataSnapshot 的完整 schema
-Planner Guidance 的具体注入实现
-```
+SoftPlanner 的 Python class、Prompt、JSON completion、Plan validator、步骤和字段上限、DeepSeek adapter、Runtime soft guidance 注入均已实现。当前数值是受控实验配置，不构成长期最优值；Compact DataSnapshot 的长期分析提示和参数仍待 Evaluation 校准。
 
 ### Stage 1.7 已解除的 Pending
 
 ```text
 Agent Loop / SDK / Runtime lifecycle 与 Session、Streaming、Abort 语义已由 Stage 1.7 确认
-Planner 与 Agent Runtime 的具体 adapter 契约保持 Implementation Pending
+Planner 与 Agent Runtime 的 soft guidance adapter 已实现
 Conversation Context 的具体 history window / compression / token 参数保持 Pending Evaluation
 ```
 
@@ -1018,7 +999,7 @@ Conversation Context 的具体 history window / compression / token 参数保持
 
 ```text
 Evidence / Citation 的领域语义与职责边界已由 Stage 1.8 确认
-具体 Python / JSON Schema、序列化与存储实现仍为 Implementation Pending
+Evidence / Citation 的 Python finalization、序列化与持久化已实现；长期 Schema 演进 Pending
 ```
 
 ### Stage 1.9 已解除的 Pending
@@ -1026,15 +1007,15 @@ Evidence / Citation 的领域语义与职责边界已由 Stage 1.8 确认
 ```text
 Planner Trace family、Failure Attribution、Error Code ownership 与 operational metric 维度已确认
 第一版不创建 Planner step execution state 或 step-level execution trace
-具体 Python / JSON Schema、事件名、storage backend 与采集实现保持 Implementation Pending
+Planner normalized Trace 的事件、SQLite backend 与采集已实现；长期 retention 校准 Pending
 ```
 
-### Stage 1.10 Implementation / Real-run Calibration Pending
+### Stage 1.10 已实现部分与 Real-run Calibration Pending
 
 ```text
-Planner Evaluation Case / Review workflow
-forced standard、forced planned 的 Planner Utility 评测方法
-Router 恢复后的 Router Utility 对照方法
+Planner Evaluation Case / Review workflow 已有初版；人工 treatment review Pending
+forced standard、forced planned 的 37 Case Development 实验已运行；fresh generalization Pending
+Router Utility 对照 runner/analysis 已准备；真实 treatment-linked 校准 Pending
 Planner latency threshold
 Planner cost budget
 Planner latency budget / invocation policy
@@ -1043,7 +1024,7 @@ Planner latency budget / invocation policy
 是否未来需要 replan
 ```
 
-Case Bundle、Reference completeness / provenance、pinned Variant、blind paired review 与 Regression 语义已由 [Stage 1.10 ADR](./stage-1-10-evaluation.md) 确认；本节只保留具体执行、真实 baseline、数值与参数校准。
+Case Bundle、Reference completeness / provenance、pinned Variant、paired review 与 Regression 语义已由 [Stage 1.10 ADR](./stage-1-10-evaluation.md) 确认；当前 Development baseline 已有，人工效用判断、fresh baseline、数值与参数仍待校准。
 
 以上 Pending 项不能因为 Stage 1.6 已 Confirmed 就被默认补全。除非新 Failure Case、技术约束、Evaluation 结果或业务需求触发 Reopen Reason，否则本 ADR 的 Confirmed 决策保持冻结。
 

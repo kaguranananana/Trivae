@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify deterministic regression and quality gates"}
+{"file": ".trellis/spec/project/technical-decisions/stage-1-10-evaluation.md", "reason": "Check Evaluation identity and utility evidence boundaries"}

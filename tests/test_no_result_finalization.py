@@ -16,6 +16,7 @@ from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
 from trivae.query.evidence import (
     AnswerArtifact,
     ToolResultRecord,
+    ToolStructuredItem,
     build_tool_result_record,
     finalize_answer,
     finalize_answer_gracefully,
@@ -163,6 +164,63 @@ class NoResultFinalizationTests(unittest.TestCase):
         # positive proof 的正例：recent ok + coverage complete + 0 facts。
         record = self._record(empty_window=True, tool_call_id="tc-proof")
         self.assertTrue(has_verified_zero_result_evidence((record,)))
+
+    def test_complete_empty_window_with_sql_statistics_is_accepted(self) -> None:
+        # 真实回归：时间窗已完整确认为空，COUNT(*) 的一行 0 与全局统计不代表当日消息。
+        recent = self._record(empty_window=True, tool_call_id="tc-recent")
+        start = recent.query_scope_snapshot["start_timestamp"]
+        end = recent.query_scope_snapshot["end_timestamp"]
+        count = self._sql_record(
+            "SELECT COUNT(*) AS n, COUNT(DISTINCT sender_user_id) AS senders "
+            f"FROM messages WHERE timestamp >= {start} AND timestamp < {end}",
+            {"n": 0, "senders": 0},
+        )
+        global_stats = self._sql_record(
+            "SELECT MIN(timestamp) AS first_ts, MAX(timestamp) AS last_ts, COUNT(*) AS total FROM messages",
+            {"first_ts": 1, "last_ts": 2, "total": 10},
+            call_id="tc-global",
+        )
+        self.assertTrue(tool_results_have_result_facts((recent, count)))
+        self.assertTrue(has_verified_zero_result_evidence((recent, count, global_stats)))
+        artifact = finalize_answer(
+            HONEST_NO_RESULT,
+            run_id="run-x",
+            tool_results=(recent, count, global_stats),
+            scope=self.scope,
+        )
+        self.assertIsInstance(artifact, AnswerArtifact)
+
+    def test_sql_statistics_cannot_replace_or_contradict_empty_retrieval(self) -> None:
+        # 只有 SQL COUNT=0 仍缺少完整候选集的正证明；同窗正数与消息行均拒绝。
+        recent = self._record(empty_window=True, tool_call_id="tc-recent")
+        start = recent.query_scope_snapshot["start_timestamp"]
+        end = recent.query_scope_snapshot["end_timestamp"]
+        zero = self._sql_record("SELECT COUNT(*) AS n FROM messages", {"n": 0})
+        conflicting = self._sql_record(
+            f"SELECT COUNT(*) AS n FROM messages WHERE timestamp >= {start} AND timestamp < {end}",
+            {"n": 1},
+        )
+        message_row = self._sql_record(
+            "SELECT content_text FROM messages", {"content_text": "真实消息"}
+        )
+        self.assertFalse(has_verified_zero_result_evidence((zero,)))
+        self.assertFalse(has_verified_zero_result_evidence((recent, conflicting)))
+        self.assertFalse(has_verified_zero_result_evidence((recent, message_row)))
+
+    def _sql_record(
+        self, sql: str, row: dict[str, object], *, call_id: str = "tc-sql"
+    ) -> ToolResultRecord:
+        # 构造与 SQL Tool provenance 相同的 query/row 投影，不依赖付费模型。
+        return ToolResultRecord(
+            run_id="run-x",
+            tool_call_id=call_id,
+            tool_result_id=f"{call_id}/result",
+            tool_name="execute_sql",
+            status="ok",
+            scope_snapshot=scope_snapshot(self.scope),
+            query_scope_snapshot={"query": {"sql": sql}},
+            structured_items=(ToolStructuredItem("row", "rows[0]", row),),
+        )
 
     def test_mixed_error_and_empty_retrieval_records_are_rejected(self) -> None:
         # 任何一条 retrieval 失败路径都让"范围内没有数据"结论不完备。

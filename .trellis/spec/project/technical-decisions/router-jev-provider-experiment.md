@@ -31,6 +31,6 @@
 - **Layer 2，Planner treatment utility**：在当前生产 Query 链路，37 条人工 GT Development Case 的 forced standard/planned 配对，主实验 74/74 completed，自动指标逐 Case为 better 6 / same 26 / worse 5。planned 的 evidence recall 为 57/67（standard 48/67）、context recovery 2/3（standard 0/3）；但 valid answer 为 34/37（standard 36/37）、verified zero 为 0/4（standard 3/4）。planned 端到端平均多 8.54 秒，总 token 多 33.62%，Provider cost unavailable。独立 targeted repeat 中 `dev-zero-empty-3` 三次均回归；context recovery 的 `dev-context-archify` 为 better/better/same。详见 [Planner Utility 实验报告](../../../tasks/archive/2026-09/09-25-planner-utility-evaluation/experiment-report.md)。
 - 两组 Case **不能一一对应**：16 条 Router 诊断 Case 有 route 标签，但没有绑定当前 Snapshot 的 final-answer GT；37 条 Development Case 有答案 GT，却没有可靠的逐 Case planned-worthy route 标签。因此 8 条人工 planned Router 标签尚未获得直接答案级 utility 支持，也不能从本次 Development 样本否定它们。自动指标的 `same` 不是答案语义等价；没有人工逐 claim Judge agreement。
 
-生产继续 `shadow`。下一步建立真正多阶段/证据依赖 Query 的答案 GT 和人工 utility 裁决，针对空结果回归单独改进并重新实验，再检验 Jev 能否识别**实际从 Planner 受益**的 Case，同时满足原 rollout 的误路由、availability、latency 和 cost 门槛。
+生产继续 `shadow`。Planner-specific Development Suite、人工 utility 裁决模板、Rule/Jev 对照 forced-treatment 的分析链路已准备；新 Case 的 GT 适用性与 treatment label 仍待人工审核。zero-result 修复须经新配对真实复验，Router Utility 尚不足以支持推广。原 rollout 的误路由、availability、latency 和 cost 门槛仍待正式校准。
 
 Stage 1.5 的 Router architecture decision 不因该实验而重写。升级或替换实验结论必须给出人工标签、完整对照和可复核的 failure cases。

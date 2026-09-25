@@ -222,19 +222,23 @@ def _load_variant(path: Path) -> ControlledVariant:
     return ControlledVariant.from_dict(payload)
 
 
-def load_cases_dir(cases_dir: Path) -> dict[str, EvaluationCaseBundle]:
-    """读取 benchmark case 目录；非法 JSON / 重复 case_id 由 contract 拒绝。"""
+def load_cases_dir(cases_dir: Path | Sequence[Path]) -> dict[str, EvaluationCaseBundle]:
+    """读取一个或多个 Case 目录；跨目录重复 case_id 仍由 contract 拒绝。"""
 
-    if not cases_dir.is_dir():
-        raise EvaluationContractError(f"benchmark cases dir is not a directory: {cases_dir}")
+    directories = (cases_dir,) if isinstance(cases_dir, Path) else tuple(cases_dir)
+    if not directories:
+        raise EvaluationContractError("benchmark requires at least one cases dir")
     cases: dict[str, EvaluationCaseBundle] = {}
-    for path in sorted(cases_dir.glob("*.json")):
-        case = EvaluationCaseBundle.from_json(path)
-        if case.case_id in cases:
-            raise EvaluationContractError(f"duplicate benchmark case_id: {case.case_id}")
-        cases[case.case_id] = case
+    for directory in directories:
+        if not directory.is_dir():
+            raise EvaluationContractError(f"benchmark cases dir is not a directory: {directory}")
+        for path in sorted(directory.glob("*.json")):
+            case = EvaluationCaseBundle.from_json(path)
+            if case.case_id in cases:
+                raise EvaluationContractError(f"duplicate benchmark case_id: {case.case_id}")
+            cases[case.case_id] = case
     if not cases:
-        raise EvaluationContractError(f"benchmark cases dir contains no cases: {cases_dir}")
+        raise EvaluationContractError("benchmark cases dirs contain no cases")
     return cases
 
 
@@ -243,16 +247,21 @@ def _execution_units(
     variants: Sequence[ControlledVariant],
     *,
     paired_by_case: bool,
+    paired_order: str = "fixed",
 ) -> tuple[tuple[EvaluationSuite, ControlledVariant], ...]:
     """生成执行顺序；配对模式保持原 Suite identity 并交替执行同 Case 的两路。"""
 
+    if paired_order not in ("fixed", "counterbalanced"):
+        raise EvaluationContractError("paired_order must be fixed or counterbalanced")
+    if paired_order == "counterbalanced" and (not paired_by_case or len(variants) != 2):
+        raise EvaluationContractError("counterbalanced order requires paired-by-case and exactly two variants")
     if not paired_by_case:
         return tuple((suite, variant) for variant in variants)
     # 每个单 Case Suite 仍保留原 suite_id/version，Evaluation run 身份不会漂移。
     return tuple(
         (replace(suite, case_references=(reference,)), variant)
-        for reference in suite.case_references
-        for variant in variants
+        for index, reference in enumerate(suite.case_references)
+        for variant in (tuple(reversed(variants)) if paired_order == "counterbalanced" and index % 2 else variants)
     )
 
 
@@ -262,12 +271,13 @@ async def run_benchmark_async(
     database_path: Path,
     manifest_path: Path,
     suite: EvaluationSuite,
-    cases_dir: Path,
+    cases_dir: Path | Sequence[Path],
     variant_paths: tuple[Path, ...],
     output_dir: Path,
     repetitions: int = 1,
     holdout_sealed: bool = False,
     paired_by_case: bool = False,
+    paired_order: str = "fixed",
 ) -> dict[str, object]:
     """异步 benchmark 主入口：运行、评分和落盘共享调用方的 event loop。"""
 
@@ -288,9 +298,29 @@ async def run_benchmark_async(
     if len({variant.variant_id for variant in variants}) != len(variants):
         raise EvaluationContractError("duplicate variant_id in benchmark variant list")
 
+    units = _execution_units(suite, variants, paired_by_case=paired_by_case, paired_order=paired_order)
+    # 顺序策略与实际 unit 序列在付费调用前 create-only 落盘；Case/Suite identity 不变。
+    order_manifest: dict[str, object] = {
+        "schema_version": 1,
+        "experiment_identity": f"{suite.identity}:repeat={repetitions}:paired={paired_by_case}:order={paired_order}:variants={','.join(variant.variant_id for variant in variants)}",
+        "suite_identity": suite.identity,
+        "repetitions": repetitions,
+        "paired_by_case": paired_by_case,
+        "paired_order": paired_order,
+        "variant_ids": [variant.variant_id for variant in variants],
+        "units": [
+            {"case_ids": [reference.case_id for reference in selected_suite.case_references], "variant_id": variant.variant_id}
+            for selected_suite, variant in units
+        ],
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "execution-order.json").open("x", encoding="utf-8") as stream:
+        json.dump(order_manifest, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+
     all_records: list[dict[str, object]] = []
     all_failures: list[BenchmarkFailure] = []
-    for selected_suite, variant in _execution_units(suite, variants, paired_by_case=paired_by_case):
+    for selected_suite, variant in units:
         # 所有 Variant 共用同一个 loop，避免 provider client 跨 loop 保存连接状态。
         runs = await orchestrator.run_variant_suite(
             suite=selected_suite,
@@ -323,6 +353,7 @@ async def run_benchmark_async(
         failures=[item.to_dict() for item in all_failures],
         holdout_sealed=holdout_sealed,
     )
+    report["experiment_order"] = order_manifest
     orchestrator.write_benchmark_outputs(
         output_dir=output_dir,
         report=report,
@@ -338,7 +369,7 @@ def run_benchmark(
     database_path: Path,
     manifest_path: Path,
     suite: EvaluationSuite,
-    cases_dir: Path,
+    cases_dir: Path | Sequence[Path],
     variant_paths: tuple[Path, ...],
     output_dir: Path,
     repetitions: int = 1,

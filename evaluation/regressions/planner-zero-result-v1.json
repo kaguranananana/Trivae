@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "regression_id": "planner-zero-result-v1",
+  "case_identity": "dev-zero-empty-3@v2",
+  "suite_identity": "planner-utility-development@v1",
+  "historical_execution_commit": "f94fffb4d050d9c5b506480f6fce2a48a1921e96",
+  "historical_observations": 3,
+  "standard_valid_and_verified_zero": "3/3",
+  "planned_valid_and_verified_zero": "0/3",
+  "first_divergence": "After complete zero-hit get_recent_messages, planned execution requested schema and SQL aggregate statistics; the final no_result was rejected because SQL aggregate rows were treated as candidate facts.",
+  "root_cause_boundary": "Evidence zero-result qualification plus soft-plan-induced extra investigation",
+  "related_cases": {
+    "dev-zero-empty-1@v2": "Mostly SQL-first; missing complete empty retrieval proof or additional SQL facts. Related tool-selection risk, not the same finalizer-only cause.",
+    "dev-zero-empty-2@v2": "SQL-first and no complete empty retrieval proof in the Development observation. Related tool-selection risk, not the same finalizer-only cause."
+  },
+  "status": "deterministic_fix_implemented; fresh Provider stability pending"
+}

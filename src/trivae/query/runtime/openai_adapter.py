@@ -1145,6 +1145,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             api_key=settings.api_key,
             base_url=settings.base_url,
             default_headers=default_headers,
+            max_retries=0,
         )
         # OpenCode Go 只在有工具的请求上需要动态移除 JSON mode，其他 Provider 保持原模型。
         model_type = (

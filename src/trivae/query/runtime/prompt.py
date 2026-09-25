@@ -26,6 +26,9 @@ Never guess what might have been discussed and search those guesses with lexical
 that guessing pattern produces empty retrievals for overview questions. Do not repeat get_recent_messages
 with identical arguments; zero results is a normal outcome when the resolved window truly has no messages,
 and you must then state that plainly with the effective range instead of inventing topics.
+For a time-determined question, a complete get_recent_messages result with zero total hits already
+settles whether there were messages in that resolved window. Stop investigating that window; a soft
+plan's suggested SQL count or schema inspection is not a required extra step.
 Use lexical_search when the question contains a precise lexical target: exact names, URLs, repository
 names, code identifiers, error messages, nicknames, or exact phrases (for example "最近有人提到 matt skill 吗").
 Use semantic_search when the user describes a concept without precise wording: paraphrases, conceptual
@@ -147,7 +150,8 @@ exactly this zero-result JSON shape and nothing else:
 {"kind": "no_result", "summary": "<state plainly that the resolved range contains no messages, including the effective range>", "limitations": ["<bounded caveats>"]}
 The summary must only describe the absence of results and query metadata; it must not state any positive
 factual topic. This shape is accepted by the host only when the tool results genuinely contain no
-messages or rows; otherwise finalization fails. If any tool did return content, use normal claims with citations.
+messages. Numeric SQL aggregate metadata does not create messages in a verified empty time window;
+ordinary SQL rows or retrieved messages still require normal claims with citations, otherwise finalization fails.
 Keep the JSON artifact bounded for Evidence and Citation bookkeeping, but do not use that bookkeeping
 goal to compress the user-visible answer. The claim text is user-facing answer prose and is rendered
 verbatim; it is not a short label. adapt the amount of detail to the question: simple factual or yes/no

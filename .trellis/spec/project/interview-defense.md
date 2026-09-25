@@ -979,7 +979,7 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 
 - Q：为什么 final 只用这 185 条？→ 因为 first run 是 provisional，targeted run 只用于定位；冻结后的 quality baseline 和 post-fix validation 都各自明确为 `resume-benchmark-dev@v2:37x5:repeat=1`，每个 Variant 37 条。前者保留质量 baseline，后者只验证分类与生命周期修复；两份 report metadata 都固定 execution commit、Snapshot、semantic identity 和 Variant configuration。
 - Q：为什么 post-fix C2/D 的 completion 很低，是否是新增代码回归？→ Trace 显示失败在 C 后集中出现，错误是 provider `APITimeoutError`/`APIConnectionError`，router 也有 `ROUTER_COMPLETION_TIMEOUT`，C2/D 连首个 model turn 都没有开始；独立 recovery smoke 中 D 可完成而 C2 仍会失败，不能归因到 context tool。benchmark 没有添加 retry/fallback，而是把这段外部 availability window 原样记录。
-- Q：这轮真正修了什么？→ 两个可复现的测量层缺陷：旧 failure classifier 把不同 retrieval call 全局合并并把 context call当 direct rank；旧 benchmark CLI 对每个 Variant 分别 `asyncio.run`，导致 provider client 跨 loop 并在退出时触发 `Event loop is closed`。现在按单 call 保留 rank、排除 context，并用同一 async Application context 运行/关闭全套 Variant；576 个测试通过。
+- Q：这轮真正修了什么？→ 两个可复现的测量层缺陷：旧 failure classifier 把不同 retrieval call 全局合并并把 context call当 direct rank；旧 benchmark CLI 对每个 Variant 分别 `asyncio.run`，导致 provider client 跨 loop 并在退出时触发 `Event loop is closed`。现在按单 call 保留 rank、排除 context，并用同一 async Application context 运行/关闭全套 Variant；该历史任务当时 576 个测试通过。当前测试数量以本次验证记录为准。
 - Q：Semantic 是否提升？→ Module 结果显示 lexical 在 exact/corpus predicate 上 Recall@10=1.0，semantic corpus Recall@10=.364；最终 B−A completion/valid answer 上升，但 paired evidence recall 下降，所以结论是互补而非全面提升。
 - Q：Context tool 是否已证明有效？→ 没有。C−B 只在 paired n=2 的 context recovery 上出现 +.500，C2−C 为 −.333；样本小且 final evidence 仍有 context missing，不能包装为稳定收益。
 - Q：为什么不把 Tier 2 数字写成 citation quality？→ 当前仅 8/37 成功得到 LLM-assisted provisional 判定，且 0 item 人工确认；报告与 audit queue 直接保留未判定和 adjudication 边界。
@@ -1028,3 +1028,9 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - 既有可比 GT 指标逐 Case 为 planned better 6 / same 26 / worse 5；`same` 不等于答案语义等价。Evidence Recall 48/67→57/67，context recovery 0/3→2/3；valid AnswerArtifact 36/37→34/37、verified zero 3/4→0/4。六个 targeted Case 各补两轮，只有 `dev-zero-empty-3` 三次均为 worse，`dev-context-archify` 为 better/better/same。
 - 端到端 mean 11.18→19.72 秒，配对 mean +8.54 秒；总 Provider token 1,942,224→2,595,240（+33.62%）。实际货币 cost 字段 unavailable，不可由定价反推。Planner 生成 plan 不证明 Agent 逐步执行计划，Tool sequence 27/37 改变只证明行为差异。
 - Router Jev 的 16 条人工 route 标签和本轮 37 条答案 GT 无一一对应 contract；前者不能作为 Planner quality GT。生产仍 `shadow`，需要真正多阶段/证据依赖 Case 的人工答案 GT 与 utility 裁决才可讨论切换。Judge 本轮未执行，答案语义差异在本地 review packet 待人工审核。
+
+## Planner → Router Utility 收口索引（2026-09-26）
+
+- **真实 Failure Case**：`dev-zero-empty-3@v2` 三次 Standard verified-zero 3/3、Planned 0/3；第一次关键偏离是 Planned 在完整零条时间窗检索后继续执行 SQL，零计数统计行触发 Evidence finalizer 的 `INVALID_FINAL_OUTPUT`。`dev-zero-empty-1/2` 还有 SQL-first、缺少检索正证明的问题，不可归为单一 finalizer 根因。见 [根因记录](./problems/planner-zero-result.md)。
+- **设计取舍**：保持 SoftPlanner 软指导与共享 Runtime，不新增 step executor。只在完整零条时间窗证明存在时区分 SQL 聚合行与候选消息；SQL-only、partial、真实消息和冲突正计数继续拒绝。确定性测试证明 contract，真实稳定性要以新配对实验检验。
+- **Evaluation 边界**：Planner-specific Development Suite、人工 treatment adjudication contract 和 Jev Router Utility 分析已建立；新 Case 已暴露，不能作为 fresh Holdout。自动指标不能替代人工答案正确性，route label 不能证明 Planner 收益。生产 Jev 仍为 shadow；长期 rollout threshold 尚未校准。

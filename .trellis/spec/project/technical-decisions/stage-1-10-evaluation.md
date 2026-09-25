@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed / Completed（Stage 1.10，架构契约）**
 >
-> 本 ADR 冻结 Evaluation 的事实边界、Case / Reference / Suite 语义、Baseline 与 Controlled Variant 身份、paired comparison、Judge governance、Failure Diagnosis 与 Reproducibility contract。它不实现 runner、CLI、Dataset storage、Evaluation Schema、真实 baseline、数值 threshold 或参数校准结果。实现与真实运行属于后续 Implementation / Real-run Calibration；Evaluation 触发、结果展示与用户交互属于 Stage 1.11。
+> 本 ADR 冻结 Evaluation 的事实边界、Case / Reference / Suite 语义、Baseline 与 Controlled Variant 身份、paired comparison、Judge governance、Failure Diagnosis 与 Reproducibility contract。文中“不实现”描述 Stage 1.10 作出架构决策时的范围；当前 runner、CLI、Dataset storage、Evaluation Schema 和 Development baseline 已实现，人工 treatment adjudication、fresh generalization、数值 threshold 与推广校准仍 Pending。
 
 ---
 
@@ -343,7 +343,11 @@ Evaluation Artifact 是独立选择和治理的数据，不因评测需要永久
 
 ## 20. Deferred
 
-### Implementation Pending
+### Implementation 状态更新（2026-09-26）
+
+CaseBundle / Snapshot / Suite / Variant、Evaluation Store/Runner、deterministic checks、forced-path Planner Utility Development 37×2 与 targeted repeat 已实现并运行；本轮新增 Planner-specific Suite、人工 treatment 裁决 contract 与 Router Utility 离线分析。以下列表保留最初 ADR 的待办语境；人工裁决 workflow、Router Utility 大样本与长期 retention/产品交互仍未完成。
+
+### 初始 Implementation Pending 清单（历史）
 
 - Python / JSON / Database Schema、package layout、Case authoring、Snapshot 构建、runner、replay 与结果存储；
 - completeness / provenance、Baseline diff、Snapshot status 的具体字段；

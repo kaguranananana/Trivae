@@ -930,6 +930,35 @@ def _is_complete_empty_retrieval_record(record: ToolResultRecord) -> bool:
     return True
 
 
+def _is_auxiliary_sql_aggregate(
+    record: ToolResultRecord,
+    *,
+    start_timestamp: int,
+    end_timestamp: int,
+) -> bool:
+    """区分 SQL 统计行和实际候选消息；零结果仍由完整时间窗检索证明。"""
+
+    if record.tool_name != "execute_sql" or record.status != "ok" or record.limitations:
+        return False
+    query = record.query_scope_snapshot.get("query")
+    sql = query.get("sql") if isinstance(query, Mapping) else None
+    # SQL row 本身仍是可引用事实；这里只允许以聚合函数开头的数值统计作为辅助诊断。
+    if not isinstance(sql, str) or re.match(r"^\s*SELECT\s+(COUNT|MIN|MAX)\s*\(", sql, re.I) is None:
+        return False
+    for item in record.structured_items:
+        if item.locator_kind != "row" or not isinstance(item.value_snapshot, Mapping):
+            return False
+        values = tuple(item.value_snapshot.values())
+        # 文本/消息列不是纯统计，不能绕过 no_result 的候选事实拒绝规则。
+        if any(value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))) for value in values):
+            return False
+        # 同一时间窗的正计数与零条检索相冲突，必须显式拒绝而非猜测哪边正确。
+        if str(start_timestamp) in sql and str(end_timestamp) in sql:
+            if any(isinstance(value, (int, float)) and value > 0 for value in values):
+                return False
+    return True
+
+
 def has_verified_zero_result_evidence(tool_results: tuple[ToolResultRecord, ...]) -> bool:
     """kind=no_result 的 positive-proof 判定。
 
@@ -937,7 +966,8 @@ def has_verified_zero_result_evidence(tool_results: tuple[ToolResultRecord, ...]
     1. 至少一次相关 retrieval 调用存在记录；
     2. 所有相关 retrieval 调用都 status=ok 且无 partial/error/incomplete coverage/
        truncation 信号（任何一条失败路径都会让"没有数据"结论不完备）；
-    3. 当前 run 全部 Tool Result Records 中确实不存在可引用事实。
+    3. 当前 run 无候选消息或普通结构化数据行；明确时间窗的完整零条证明可与
+       数值型 SQL 聚合统计并存，统计行本身仍是可引用事实。
     """
 
     retrieval_records = [
@@ -950,7 +980,31 @@ def has_verified_zero_result_evidence(tool_results: tuple[ToolResultRecord, ...]
         for record in retrieval_records
     ):
         return False
-    return not tool_results_have_result_facts(tool_results)
+    if not tool_results_have_result_facts(tool_results):
+        return True
+    # get_recent_messages 对明确时间窗返回 complete/0 时，SQL 的聚合统计行不表示
+    # 该时间窗存在消息。其他检索和任意消息/非聚合行仍按原契约拒绝 no_result。
+    recent = next(
+        (
+            record for record in retrieval_records
+            if record.tool_name == "get_recent_messages"
+            and record.query_scope_snapshot.get("total_hits") == 0
+            and isinstance(record.query_scope_snapshot.get("resolved_time_range"), Mapping)
+        ),
+        None,
+    )
+    if recent is None or any(record.message_items for record in tool_results):
+        return False
+    start = recent.query_scope_snapshot.get("start_timestamp")
+    end = recent.query_scope_snapshot.get("end_timestamp")
+    if not isinstance(start, int) or not isinstance(end, int):
+        return False
+    return all(
+        record.tool_name == "get_schema"
+        or not record.structured_items
+        or _is_auxiliary_sql_aggregate(record, start_timestamp=start, end_timestamp=end)
+        for record in tool_results
+    )
 
 
 def parse_model_no_result_candidate(output: str) -> ModelAnswerNoResult:

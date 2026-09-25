@@ -2,7 +2,7 @@
 
 > 状态：**Confirmed（Stage 1.5）**
 >
-> 本文记录 Stage 1.5 Router 的取舍、理由、边界、Failure Case 与重新打开条件。Router 已完成架构设计沉淀；M4 已落地两路 rule-first implementation 与可选 strict-JSON fallback。具体规则参数、Trace Schema 与 Evaluation Benchmark 不在本 ADR 中冻结。Router Trace 的 conceptual event / failure ownership 后由 Stage 1.9 确认，具体序列化与实现仍 Pending。
+> 本文记录 Stage 1.5 Router 的取舍、理由、边界、Failure Case 与重新打开条件。当前两路 Rule-first/strict-JSON LLM、Jev shadow、RouteDecision 与 Trace 已实现；16 条 Jev Case 的 route 分类已人工裁决。Planner treatment 的 Development 实验已运行，Router Utility 正式校准与生产推广仍 Pending。下文部分 Pending 是阶段设计时的历史状态，以本段当前实现状态为准。
 
 ---
 
@@ -286,7 +286,7 @@ Router failure
     → Agent Runtime
 ```
 
-降级必须显式、可观测，不得把 Router 错误伪装成正常高置信判断。Stage 1.9 已确认 Router decision / degraded / failure event family、Error Code ownership 与 operational metric 维度；具体 Python / JSON Schema、事件名和采集实现仍 Pending。
+降级必须显式、可观测，不得把 Router 错误伪装成正常高置信判断。Router decision / degraded / failure 事件、Error Code 与 operational metric 已进入当前 normalized Trace；长期 retention 校准仍 Pending。
 
 ### Failure Cases
 
@@ -391,7 +391,7 @@ Stage 1.5 冻结的 Evaluation 原则是：
 
 > Router 的最终目标不是获得漂亮的 Route Classification Accuracy，而是验证 Planner Invocation 是否产生实际下游收益。
 
-Stage 1.10 已将上述原则落实为同一 Case 的 forced-path 评测契约（具体 runner、真实 baseline 与数值仍 Pending），先比较两条受控路径：
+Stage 1.10 已将上述原则落实为同一 Case 的 forced-path 评测契约；runner 和 37 Case Development baseline 已运行，正式 Router Utility 校准仍 Pending。两条受控路径为：
 
 ```text
 A: standard_execution → Agent Runtime
@@ -447,5 +447,5 @@ Latency
 - Agent Runtime 的 Loop、Session、Streaming、Abort、SDK 版本与 Run Lifecycle（Stage 1.7）；
 - Evidence / Citation model 与证据选择（Stage 1.8）；
 - Router Trace 的具体 Python / JSON Schema、事件名、存储与采集实现（conceptual family / ownership 已由 Stage 1.9 确认）；
-- Router Evaluation Case / Review workflow、最终 accuracy / error rate 口径与参数校准（Stage 1.10 ADR 已确认 Case / Reference / paired 治理；具体实现与真实校准 Pending）；
+- Router Evaluation Case / Review workflow 已有 route diagnostic 与 treatment review 模板；最终误路由代价、accuracy / error rate 口径和参数校准仍 Pending；
 - 具体 regex、复杂度权重、confidence threshold、LLM model、prompt、timeout、Python class 与文件布局。

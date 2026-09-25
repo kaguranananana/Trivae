@@ -1262,6 +1262,30 @@ class PairedExecutionOrderTests(unittest.TestCase):
         )
         self.assertEqual({unit.identity for unit, _ in units}, {suite.identity})
 
+    def test_counterbalanced_order_is_deterministic_and_preserves_suite(self) -> None:
+        from trivae.evaluation.benchmark.orchestrator import _execution_units
+
+        suite = EvaluationSuite(
+            suite_id="paired-test",
+            version=1,
+            kind="core",
+            case_references=(CaseReference("a", 1), CaseReference("b", 1), CaseReference("c", 1)),
+            description="paired order test",
+            created_at="2026-09-25T00:00:00+00:00",
+        )
+        variants = (
+            ControlledVariant("standard", "commit", "deepseek", "deepseek-flash"),
+            ControlledVariant("planned", "commit", "deepseek", "deepseek-flash"),
+        )
+        units = _execution_units(suite, variants, paired_by_case=True, paired_order="counterbalanced")
+        self.assertEqual(
+            [(unit.case_references[0].case_id, variant.variant_id) for unit, variant in units],
+            [("a", "standard"), ("a", "planned"), ("b", "planned"), ("b", "standard"), ("c", "standard"), ("c", "planned")],
+        )
+        self.assertEqual({unit.identity for unit, _ in units}, {suite.identity})
+        with self.assertRaises(EvaluationContractError):
+            _execution_units(suite, variants, paired_by_case=False, paired_order="counterbalanced")
+
 
 class CaseAuditTests(unittest.TestCase):
     """GT 机器审计回归：存在性、zero-result 蕴含、category 形态、正文泄露、holdout 隔离。"""

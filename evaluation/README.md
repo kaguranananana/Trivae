@@ -284,3 +284,11 @@ uv run trivae eval --env-file .env router-jev \
 运行前从实际 execution worktree 显式传 `--env-file` 指向主仓库 `.env`，校验 Provider、数据库、Snapshot/索引、scope、Tool 与输出/Evaluation DB create-only。`--paired-by-case` 让同一 Case 的 standard→planned 紧邻运行；它不改变 Suite/Variant 身份，也不提供重试。独立 smoke 4×2 不进入正式分母；正式 37×2×1 的 raw、Evaluation 和 Trace 各 74；选定 6 Case 的 targeted repeat 共 24 run，放在另一组输出与 Evaluation DB，不并入主统计。私有 query、答案与 review packet 只保存在被 Git 忽略的本地 `data/evaluation/planner-utility/`。
 
 Development 自动指标给出 paired better 6 / same 26 / worse 5；context recovery 0/3→2/3、evidence recall 48/67→57/67，同时 valid answer 36/37→34/37、verified zero 3/4→0/4；planned 平均端到端多 8.54 秒、实测 token 多 33.62%，货币 cost unavailable。`same` 只表示可比自动指标相同，不能证明答案等价；Judge 未执行，答案差异待人工裁决。16 条 Router 诊断 Case 没有绑定答案 GT，不能直接证明它们的 8 个 planned 标签有 utility。详见 [Planner Utility 报告](../.trellis/tasks/archive/2026-09/09-25-planner-utility-evaluation/experiment-report.md)。生产 Router 保持 `shadow`。
+
+## Planner-specific Utility → Router Utility Development（2026-09-26）
+
+新增 [Planner Utility Suite](suites/planner-utility-development-v1.json) 与 [Case/裁决说明](planner-utility/README.md)：15 条已暴露 Development Case 包括 4 条新建 CaseBundle，覆盖 dependent/context recovery 候选、verified zero 与 direct/lexical/semantic/count/ranking/aggregation/summary/large-window 控制例。新结构化 GT 是固定 Snapshot 上的确定性 SQL 事实，人工答案和 treatment utility 尚未完成裁决；不得把 workload candidate 直接写成 expected route。
+
+`dev-zero-empty-3` 的三次旧 Trace 显示 Planned 已获得 complete/zero 的时间窗结果，却继续 SQL 聚合；Host 把零计数统计行当候选事实，拒绝 `no_result`。版本化 [Failure Case](regressions/planner-zero-result-v1.json) 及 [根因记录](../.trellis/spec/project/problems/planner-zero-result.md) 区分此 Evidence qualification 问题与 `dev-zero-empty-1/2` 的 SQL-first / 缺少 retrieval 正证明。当前代码进行了最小修复，历史结果未改写，真实修复稳定性仍需新 paired run。
+
+Benchmark 的 `--paired-order counterbalanced` 以 AB/BA 交替次序运行同 Case 两路，顺序及 unit 序列在首个请求前保存至 create-only `execution-order.json`，Suite/Case identity 不变；默认 `fixed` 仍是旧 standard→planned 顺序。`scripts/run_router_utility_jev.py` 只执行 Rule gate 与 Jev route，`scripts/analyze_router_utility.py` 离线连接 forced treatment、Evaluation DB、Jev route 和人工 utility 裁决，分别报告两种误路由与质量维度。当前所有 utility 标签均 pending；生产 Jev 继续 `shadow`。大规模正式实验只准备，不在本轮成本预算内自动运行。

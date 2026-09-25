@@ -27,7 +27,7 @@
 | Provider Migration | Confirmed | OpenCode Go → Official DeepSeek · exact capability registry · JSON/tools boundary · evaluation identity | [provider-migration-deepseek-official.md](./technical-decisions/provider-migration-deepseek-official.md) |
 | Router Jev experiment | Experimental / Not promoted | OpenRouter Decisions provider for ambiguous Router choices · default shadow · paired diagnostic Evaluation | [router-jev-provider-experiment.md](./technical-decisions/router-jev-provider-experiment.md) |
 
-Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；M4 Query、M5a Evidence/Citation 与 M5b Conversation persistence 已形成第一版实现级契约，Trace backend、Evaluation runner、产品交互与长期质量校准仍 Pending。
+Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；M4 Query、M5a Evidence/Citation、M5b Conversation、M6 Trace backend 与 Evaluation runner 已实现。Planner Utility 已在 37 条 Development Case 上执行，当前 Planner-specific Suite 与 Router Utility 分析链路已实现；人工 treatment 裁决、fresh generalization、最终阈值与生产 Jev 切换仍 Pending。
 
 ## 决策问题链
 
@@ -118,14 +118,14 @@ Regression
 - 状态：**Confirmed / Completed（Stage 1.5）**。本阶段完成 Router 架构决策沉淀；M4 已落地两路 rule-first Router 与可选 strict-JSON completion fallback。
 - 内容：Router 作为 execution-complexity classifier / Planner gate；两路 Route（`standard_execution` / `planned_execution`）；两种 Route 进入同一个 Agent Runtime；Planner 为 planned path 提供 soft guidance；Runtime 注入 Router Context / Data Snapshot / Capability Summary；严格区分 Evidence dependency / Dependent semantic investigation 与普通 Retrieval / Synthesis；明确 Data Scope Size、Retrieval Volume、Tool Call Count 等 non-signals；Rule-first + LLM fallback；conservative default；Router failure graceful degradation；Router 与 Tool / Retrieval / Planner 的职责边界；Route Decision 的 Trace / Evaluation 语义；真实 Trivae seed workload；Planner Utility 优先于单独的 Route Classification Accuracy。
 - 记录位置：[technical-decisions/stage-1-5-router.md](./technical-decisions/stage-1-5-router.md)（详细 rationale），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：Stage 1.6 已确认 Planner 的 Input、Plan Schema、步骤类型、重规划与执行语义；Stage 1.9 已确认 Router Trace family、degradation 与 Error Code ownership；具体 Trace Schema / 参数校准仍 Pending；Stage 1.10 已确认 Router Case、forced-path Planner Utility、Router Utility 与 paired Review 语义，具体运行与参数校准仍 Pending。
+- 后续：Router Rule/LLM/Jev shadow、Trace 与 16 条 route diagnostic 已实现；forced-path Planner Utility 已有 Development 结果，Router Utility 的人工标签、正式运行与长期参数校准仍 Pending。
 
 ### Stage 1.6：Planner
 
 - 状态：**Confirmed / Completed（Stage 1.6）**。本阶段完成 Planner 架构决策沉淀；M4 已落地 bounded validation/sanitization、soft guidance 和 graceful skip。
 - 内容：Planner 定义为 Thin pre-execution investigation planner；只在 `planned_execution` 进入 Agent Runtime 前运行一次；`standard_execution` 与 `planned_execution` 使用同一个 Agent Runtime；Plan 是 soft investigation guidance，不是 Workflow；Planner Input 由 Runtime 注入 `user_query`、`query_context`、compact `data_snapshot` 与 `capability_summary`；第一版采用轻量 Plan Schema（version / title / intent / steps.goal / suggested_tools / evidence_needed / success_criteria）；suggested_tools 是 advisory hint，不生成 Tool Arguments；evidence_needed 不是 Stage 1.8 Evidence Object；Plan 经过 deterministic validation / sanitization；hallucinated Tool 被过滤；Plan bounded；Planner failure graceful degradation 且不重写 Router Decision；第一版不 automatic replan、不 Planner-owned state、不 Planner-specific retry / regeneration、不增加 LLM Plan Validator。
 - 记录位置：[technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：Stage 1.7 已确认 Agent Loop / SDK / Runtime lifecycle，Stage 1.8 已确认 Evidence / Citation；Stage 1.9 已确认 Planner / Router / Agent / Evidence Trace 与 Observability 语义；具体 Trace Schema / 参数校准仍 Pending；Stage 1.10 已确认 Planner forced-path Utility 与质量轴，具体运行、评审与参数校准仍 Pending。
+- 后续：SoftPlanner 的 Python class、Prompt、bounded Plan、Trace 与生产注入已实现；forced-path Development 已测，zero-result 回归正针对性修复与复验。人工 utility 裁决、fresh 泛化和长期参数校准仍 Pending。
 
 ### Stage 1.7：Agent Runtime
 
@@ -144,14 +144,14 @@ Regression
 
 ### Stage 1.9：Trace / Observability
 
-- 状态：**Confirmed / Completed（Stage 1.9，修订版）**。本阶段完成跨 Query Plane Trace / Observability 架构决策沉淀；业务代码、具体 Schema 与 storage backend 尚未实现。
+- 状态：**Confirmed / Implemented（Stage 1.9，修订版）**。跨 Query Plane Trace Collector、normal/debug 投影与 SQLite Store 已实现；retention 和长期 operational calibration 仍 Pending。
 - 内容：一个 Trivae-owned normalized event boundary 横跨 Context、Router、Planner、Runtime、Tool、Retrieval、Evidence、Citation 与 Answer commit；Stream / Trace 使用不同 projection；conceptual envelope 保留 version、identity、correlation、sequence 与 operation causality；append-only event 为 Trace source of truth；Failure Attribution 区分 origin / observation / handling / terminal outcome；query-scope coverage 以授权 effective scope 为基准并支持 `complete / partial / none / unknown / not_applicable`；Error Code 由 contract owner namespace 拥有；Trace 采用 `normal / debug` Profile，Normal 允许 bounded / redacted actual content，Debug 在授权范围内允许完整或近完整的 model-visible / system-visible facts，但两者都排除 secrets、越权数据和 hidden Chain-of-Thought；retention 分层且不强制 Debug 比 Normal 更短；Trace Store 独立、versioned、append-only；Collector failure 显式产生 incomplete 但不回滚成功业务结果；Stage 1.9 只确认 operational metric dimensions，不设置质量阈值。
 - 记录位置：[technical-decisions/stage-1-9-trace-observability.md](./technical-decisions/stage-1-9-trace-observability.md)（详细 rationale、Failure Case、Validation Contract 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与跨切面边界）。
 - 后续：具体 Python / JSON Schema、Error Code 枚举、Collector / Store backend、retention 时长与 privacy enforcement 属于 Implementation；Evaluation Case / Dataset、quality metrics、threshold / gate 与参数校准已由 Stage 1.10 ADR 确认语义，具体实现与真实校准仍 Pending。
 
 ### Stage 1.10：Evaluation / Regression
 
-- 状态：**Confirmed / Completed（架构契约）**。本阶段完成 Evaluation 的 Case、Reference、Suite、Baseline、Review、paired comparison、Failure Diagnosis 与 Reproducibility 语义；不实现 runner、Schema、真实 baseline、数值 gate 或最终参数。
+- 状态：**Confirmed / Development-evaluated（架构与第一版实现）**。Case/Reference/Suite、Snapshot、Runner、Store、paired comparison 与 Planner forced-path Development 实验已实现；人工 treatment 裁决、Router Utility 真实样本、fresh baseline 与最终数值 gate 仍 Pending。
 - 内容：端到端 Evaluation Case Bundle 是 canonical truth；Reference 按具体 Finding 组织，每个 Finding 表达 `exhaustive / partial / unknown` completeness 与 provenance，Case 级完整度只能派生；Design Seed、Core、Failure Regression、Calibration Slice 分层，Core 通过 versioned Suite 刷新并保留历史；Baseline 是 pinned Controlled Variant，Candidate 声明显式 diff；Planner Utility 先通过除 Planner 是否介入及其 guidance 外其他条件完全相同的 forced standard / forced planned 测量，再评价 Router Utility；没有明显 Planner 收益的 Case 不强制填写 `expectedRoute`；quality 与 module diagnostics 分轴，paired quality review 使用 blind、随机 A/B、同 rubric、同 Evidence visibility；Snapshot 可重建但不绕过删除与权限变化；Stage 1.9 Trace 只能被引用、不能被 Diagnosis 改写。
 - 记录位置：[technical-decisions/stage-1-10-evaluation.md](./technical-decisions/stage-1-10-evaluation.md)（详细 rationale、Decision Set、Trivae-specific Seeds、ChatLab 继承 / 偏离、Deferred 与 Reopen Conditions），[architecture.md](./architecture.md)（整体视图）。
-- 后续：Case authoring、Dataset / Snapshot、runner、Review workflow、具体 Schema、真实 stable baseline、重复次数、统计方法、numerical threshold 与参数校准属于 Implementation / Real-run Calibration；CLI / API / UI 的具体实现与产品交互承接 Stage 1.11 ADR，具体契约仍 Pending。
+- 后续：Planner-specific Development Suite、人工 treatment review contract 与 Router Utility 离线分析已准备；大样本真实运行、人工一致性、数值 threshold 和长期校准仍 Pending。
