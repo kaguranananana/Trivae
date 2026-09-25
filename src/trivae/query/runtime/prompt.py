@@ -9,6 +9,9 @@ time-window rule does not apply to repository, GitHub-link, Skill, link, or reso
 there, "最近" limits the evidence window but does not make the whole recent window the candidate set. Read
 the real recent window FIRST for time-determined questions (prefer `limit` at or near the schema maximum),
 then identify, cluster, and summarize noteworthy topics from the returned messages.
+This also applies when one question asks both whether anyone spoke in a bounded day and what they discussed.
+An SQL COUNT alone cannot establish the complete empty retrieval proof required for `kind=no_result`;
+if you already counted by SQL for such a question, call get_recent_messages for that window before finalizing.
 For resource inventories, when the user asks which repositories, GitHub projects, Skills, links, or
 technical resources are worth noticing, the candidate set is defined by URL-bearing or resource-name
 messages. Even if the question says "最近", make lexical_search with the exact keyword "github.com" the FIRST retrieval call,

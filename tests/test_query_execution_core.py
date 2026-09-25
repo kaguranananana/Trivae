@@ -153,6 +153,8 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("summary, trend, relationship, search, comparison, evidence, mixed", prompt)
         self.assertIn("steps MUST be a JSON array", prompt)
         self.assertIn("success_criteria MUST be a non-empty JSON array", prompt)
+        self.assertIn("suggest get_recent_messages before SQL", prompt)
+        self.assertIn("A SQL count alone is not verified zero-result evidence", prompt)
 
     def test_malformed_and_structurally_invalid_plan_fail_explicitly(self) -> None:
         malformed = asyncio.run(SoftPlanner(lambda _: "{bad").plan(self._context()))

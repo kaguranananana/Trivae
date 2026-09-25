@@ -157,6 +157,7 @@ class AgentToolSurfaceTests(unittest.TestCase):
             SYSTEM_PROMPT,
         )
         self.assertIn('{"kind": "no_result"', SYSTEM_PROMPT)
+        self.assertIn("An SQL COUNT alone cannot establish the complete empty retrieval proof", SYSTEM_PROMPT)
         self.assertIn("otherwise finalization fails", SYSTEM_PROMPT)
         self.assertIn("canonical `user_id` in `sender_user_ids`", SYSTEM_PROMPT)
         self.assertIn("topic-wide recent overview", SYSTEM_PROMPT)
