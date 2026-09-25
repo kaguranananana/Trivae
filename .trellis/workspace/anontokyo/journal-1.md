@@ -1219,3 +1219,37 @@ Recorded the final 16-case human adjudication: all original route hypotheses uph
 ### Next Steps
 
 - Measure Planner utility with forced-standard and forced-planned comparisons before considering production promotion.
+
+
+## Session 49: Close resume benchmark v1 Gate 4
+
+**Date**: 2026-09-25
+**Task**: Close resume benchmark v1 Gate 4
+**Branch**: `main`
+
+### Summary
+
+审计并统一 resume-benchmark-v1 Gate 4 文档与结果边界，补充简历事实、20 个面试追问及 SettingsError 根因记录；保留 Tier 2 人工 adjudication 限制，完成 Trellis 归档。
+
+### Main Changes
+
+- 更新 benchmark 最终事实索引、Evaluation README、Task PRD/实施/验收记录。
+- 补齐 interview defense 和现有 benchmark root-cause record。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6736bdad978671cd0e8a20a3b85bc2dd0fcc7ec3` | (see git log) |
+| `4f8c3a07b21b58263e2fc6ba635af4302e5d8a68` | (see git log) |
+| `39b81be1f538386762babe5a0022788384ca0cc6` | (see git log) |
+
+### Testing
+
+- [OK] pytest 618 passed（运行时补入 tqdm；dev-only 原命令在 collection 因缺失 tqdm 失败已如实记录）。
+- [OK] Ruff、mypy、git diff --check 通过。
+- [OK] Trellis task validation 与归档状态核验通过。
+
+### Status
+
+[OK] **Completed**
