@@ -86,5 +86,26 @@ post-fix clean run 的 185 条数据完整落盘，failure artifact 146 条：
 - `tests/test_cli.py` 的 lifecycle regression 断言 Application enter、benchmark runner 和
   Application exit 使用同一 event loop。
 - post-fix clean audit 断言 raw / Evaluation SQLite / Trace 均 185、failure artifact 与 report
-  一致、ranking failure 全部 rank > 10、holdout absent。
+  一致、ranking failure 全部 rank > 10。v1 holdout 后续在 Gate 3 freeze 后构造；该后续结果见下节，不得套用早期 `holdout absent` 状态。
 - 全量 `.venv/bin/pytest -q` 为 576 passed，ruff、mypy 和 `git diff --check` 均通过。
+
+## Additional Failure: frozen worktree missing Provider configuration
+
+### Problem / Evidence
+
+2026-09-08 的正式 v1 Holdout 已按一次性 claim 执行 18 cases × 5 variants = 90 runs；90/90 在 Query 设置校验时以 `SettingsError` 结束。raw records、Evaluation SQLite、Trace 与 claim 均保留，未产生 Provider request、Answer 或 Holdout quality value。
+
+### Root Cause
+
+正式命令从 Gate 3 的临时冻结 worktree 启动。CLI 的 dotenv contract 默认只读取当前工作目录的 `.env`；该 worktree 没有主仓库的 `.env`，所以 `TRIVAE_MODEL_API_KEY` 在 Query 初始化/设置校验阶段缺失。这个事实属于 benchmark invocation/configuration failure，不是 Retrieval、Answer quality 或外部 Provider availability failure。
+
+### Decision / Result
+
+- v1 已完成一次性 claim，故保留 90 条 `SettingsError` 与原始报告；不删除 claim、不换目录、不注入配置后重跑 v1。
+- 后续 CLI 在创建 Application、写入 claim 或遍历 Case 前预检 `load_settings()`；缺少配置时在首个 Case 前显式报错，避免生成一批逐 Case 异常。
+- 从冻结 worktree 执行时，通过 `trivae eval --env-file PATH benchmark ...` 显式指向 worktree 外的配置文件；不增加父目录搜索、fallback 或 retry。
+- 使用独立 freeze/registration/output 的 v2 recovery 完成 90 runs，其中 52 completed、38 failed；该结果标记为 known/reused holdout，不替代 v1，也不属于 fresh/blind generalization。
+
+### Regression
+
+`tests/test_cli.py` 覆盖缺少配置时不创建 Application/holdout claim，以及显式 `--env-file` 入口；2026-09-08 的无 `.env` worktree 复现验证 fail-fast 不产生重复 Case records。修复只影响后续执行入口，v1 的 claim、raw records、Evaluation SQLite、Trace 和 final report 未变。

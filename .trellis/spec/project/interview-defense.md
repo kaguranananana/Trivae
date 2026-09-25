@@ -916,7 +916,9 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - Q：怎么防止 Evaluation Overfit？→ dev/holdout 时序隔离（holdout 冻结后才存在）；dev 修复全部走通用机制（两个 substrate bug 修复即证据）；holdout 一次定稿不换题。
 - Q：数字会不会是调出来的？→ 每个数字可复查：Evaluation Store runs（run_id/trace_id）→ Trace → 逐层 retrieval_calls/evidence_sources 投影；报告 JSON 带 unavailable reasons 与分母；provider_failure 不进条件分母但无条件完成率并列呈现。
 
-## resume-benchmark-v1 Stage 3 Development Evaluation 事实索引（2026-09-04）
+## Historical snapshot: resume-benchmark-v1 Stage 3 Development Evaluation（截至 2026-09-04；已由 Gate 4 facts supersede）
+
+> 本节保留当时的真实状态记录。文中“holdout 未生成 / Gate 3 pending”只对 2026-09-04 成立；当前最终状态见本文末尾的 2026-09-25 Gate 4 章节。
 
 > 完整的指标分母、简历可写清单与项目 bullet 见 [`resume-benchmark-v1-fact-index.md`](../../../evaluation/reports/resume-benchmark-v1-fact-index.md)。
 
@@ -981,4 +983,39 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - Q：Semantic 是否提升？→ Module 结果显示 lexical 在 exact/corpus predicate 上 Recall@10=1.0，semantic corpus Recall@10=.364；最终 B−A completion/valid answer 上升，但 paired evidence recall 下降，所以结论是互补而非全面提升。
 - Q：Context tool 是否已证明有效？→ 没有。C−B 只在 paired n=2 的 context recovery 上出现 +.500，C2−C 为 −.333；样本小且 final evidence 仍有 context missing，不能包装为稳定收益。
 - Q：为什么不把 Tier 2 数字写成 citation quality？→ 当前仅 8/37 成功得到 LLM-assisted provisional 判定，且 0 item 人工确认；报告与 audit queue 直接保留未判定和 adjudication 边界。
-- Q：Stage 3 是否等于最终 benchmark？→ 不是。本节是 Development benchmark result；Gate 3、holdout generation/evaluation 和 full benchmark 都未执行。
+- Q：Stage 3 是否等于最终 benchmark？→ 不是。本节是截至 2026-09-04 的 Development benchmark snapshot；其后的 Gate 3、v1 holdout 和 recovery 状态见本文末尾的 Gate 4 章节。
+
+## `resume-benchmark-v1` Gate 4 事实索引（2026-09-25）
+
+> 当前状态：Gate 4 review 通过并带明示限制；Trellis Task 已归档。v1 Holdout quality unavailable；v2 是 known/reused recovery；Tier 2 Judge 不升格为人工结论。完整分母与推荐简历事实见 [最终 Evaluation 事实索引](../../../evaluation/reports/resume-benchmark-v1-fact-index.md)。
+
+### 最终 lifecycle / evidence
+
+- GT 47/47 adjudicated：Development 37 + Calibration 10；Calibration 不进入 headline denominator。Freeze 后另生成 Holdout 18，18/18 人工确认。
+- `7bac928` 是历史 Development quality baseline execution commit：37×5×1=185；`f247750` 后的 185 条用于 measurement-substrate / failure attribution validation；`8805aa2` 的 Gate 3 candidate 是独立 candidate acceptance，不替代历史 baseline。
+- v1 Holdout 执行 90 次，90/90 因冻结临时 worktree 未注入 `.env` 而在 Query settings validation 阶段 `SettingsError`。claim、raw、Evaluation SQLite、Trace 和报告均 sealed，Holdout quality unavailable。
+- v2 recovery 使用独立 freeze/registration/claim/output，但复用相同 18 条已暴露 Case / GT：90 次中 52 completed、38 failed。只能称 known/reused holdout recovery validation。
+- Gate 3 D-only Judge 为 21 judged、5 skipped、11 failed；成功项仍 `llm_assisted_provisional`，0 个 claim 人工 adjudicated。12 条 Gate 3 人工答案 review 不是 claim-level Judge agreement；生成的 `packet.json` 状态与人工 `review.md` 有不一致，未修改原始 packet。
+
+### 20 个事实型追问与回答
+
+1. **为什么自建 Evaluation Harness，而不重写一套 Agent？** 要评估真实 production `TrivaeApplication.query()` path；Harness 负责版本化数据、运行身份、投影、指标和报告，不另造 invocation、retrieval、ranking 或 coverage 行为，否则测到的会是评测副本而非产品实现。证据：`evaluation/README.md`、`benchmark/orchestrator.py`、production Query 与 baseline report。
+2. **Case、Suite、Snapshot、Environment、Variant 分别是什么？数据怎么拆？** Case 表示一个带 scope/GT 的评测问题；Suite 固定有序 Case 集；Snapshot 标识 canonical data；Environment 绑定索引、运行环境与执行身份；Variant 表达可比较的工具/context 配置。47/47 GT 已 adjudicate：Development 37、Calibration 10；freeze 后另有 Holdout 18。证据：Case/Suite schema、freeze artifacts、`gt-audit-stage3-final.json` 与 Holdout registration。
+3. **Calibration 为什么不进正式分母？** 它用于校准 schema 和 measurement substrate；把它并入 headline 会混合校准样本与被测 Development。证据：PRD R2、final fact index 的 split table。
+4. **为什么 GT 要人工 adjudication？** GT 绑定 canonical message identity 和明示 criterion；人工裁决检查 query 与 reference evidence 是否一致，自动检索只提供候选，不能证明自身的 GT 完备。证据：`prd.md` R2、`design.md` §3、`gt-audit-stage3-final.json`。
+5. **如何防止根据系统输出修改 GT？** split/Case/Suite 有版本身份；GT 完备性由确定性 predicate 审计，非 exhaustive 类按 target scope 处理；Holdout 首次结果封存，系统答错不允许换题重跑。证据：freeze、GT audit、closure claim、`benchmark/closure.py`。
+6. **为什么冻结 execution commit？** 同 Snapshot 的结果仍会受代码、索引和 Variant configuration 影响；freeze identity 把它们显式绑定，pre-run gate 拒绝漂移。证据：`benchmark/environment.py`、`benchmark/closure.py`、environment gate 4/4 与 freeze verification 12/12。
+7. **Development 和 Holdout 如何隔离？** Holdout 是 Gate 3 freeze 后才生成；冻结前不存在 holdout file。v1 的 18 Case 后来已被 review/recovery 流程看过，因此之后不能再声称 blind。证据：freeze timestamp、holdout registration/review 与 v2 recovery manifest。
+8. **v1 Holdout 为什么失败？** 命令从冻结 worktree 启动，那里没有 `.env`；CLI 默认只读当前工作目录，故 `TRIVAE_MODEL_API_KEY` 在 Query 初始化时报 `SettingsError`，90/90 未产生答案。证据：holdout raw/report/claim、`benchmark-root-cause-closure.md`。
+9. **为什么修好 `.env` 后不重跑 v1？** 一次性 claim 已 terminal；重跑会改写预先声明的 sealed contract。配置预检和显式 `--env-file` 只用于后续新身份。证据：v1 claim、`benchmark/closure.py`、`tests/test_cli.py`。
+10. **v2 recovery 为什么不是 blind holdout？** 它重用用户与开发流程已经看过的 18 条 Case、GT 和裁决；虽然用了独立 freeze/claim，但内容不是 unseen。证据：v2 recovery registration、`final-report-v2-recovery/`、`validation.md`。
+11. **为什么 `full_available=true` 不代表 Holdout quality available？** 该字段检查的是 Development 与 Holdout 的 Environment / Variant identity 能否合并；v1 Holdout quality matrix 为空，因为 90 次全是 settings exception。证据：`benchmark/report.py`、`final-report/report.json`、Holdout raw records。
+12. **Semantic retrieval 是否有提升？** 没有全面提升证据。模块级 lexical 在 10 个 exhaustive/corpus query 为 33/33 Recall@10；semantic 为 12/33；端到端 B−A paired evidence recall rate 为 −.075（n=19）。更准确结论是两通道可能互补。证据：`stage3-module-retrieval.json`、`stage3-final-real/report.json`。
+13. **Context expansion 有稳定收益吗？** 没有。C−B context recovery +.500 只基于 paired n=2，C2−C 为 −.333、n=3；不应写成稳定 uplift。证据：baseline `cross_variant` report。
+14. **`retrieval_miss` 和 `ranking_failure` 有何不同？** `retrieval_miss` 是 direct retrieval 没观察到 GT relevant；`ranking_failure` 是已观察到，但 rank 超过 Hit@K。本轮 4 个 post-fix ranking failure 的 rank 为 14–29。证据：`benchmark/failures.py`、post-fix `failures.json`、`tests/test_benchmark.py`。
+15. **measurement-substrate bug 与产品质量失败怎么分？** per-call ranking attribution 和跨 event-loop provider lifecycle 是测量链路缺陷；retrieval miss/context missing/coverage error 是被测系统观察。先看 Trace/运行阶段再归因，不能把修复 substrate 说成 retrieval uplift。证据：`benchmark-root-cause-closure.md`、`f247750`、post-fix report。
+16. **Provider timeout 为什么不等于 retrieval regression？** post-fix 114 条 provider failure 中 106 条集中在 C/C2/D，Trace 是 API timeout/connection 与 `ROUTER_COMPLETION_TIMEOUT`；没有首个 model turn 的运行不能作 Retrieval 对照。证据：post-fix Trace/report 与 `benchmark-root-cause-closure.md`。
+17. **为什么没有把所有指标压成一个总分？** Recall、evidence、coverage、answer completion 与 provider availability 有不同分母和语义；合成单一分数会掩盖 unavailable 与不同 Failure。证据：`design.md` R4/R5、baseline report 的 numerator/denominator 与 unavailable reasons。
+18. **Tier 2 Judge 结论可信吗？** 它是 atomic-claim LLM-assisted measurement；本轮成功项 21 条，5 条 skipped、11 条 failed，且 0 claim 经人工 adjudication。Gate 3 的答案 review 不是 judge-human agreement，故全部保持 provisional。证据：Judge artifact、`gate3-review/review.md`、对应 `packet.json` 和 validation。
+19. **哪些数字可以写简历？** 可写 47/47 GT（注明 37 Development + 10 Calibration）、37×5=185 Development production-path runs、10 个 exhaustive query 的 lexical Recall@10=33/33，以及 post-fix 的 4 个可定位 ranking failure；每条都须保留 scope 和限制。不能写 v1 Holdout quality、v2 blind generalization、semantic 全面提升或 provisional Judge 为人工结论。证据：最终 fact index 第 9 节。
+20. **如果未来要测 v2 fresh generalization，应怎么做？** 开新 Trellis task，在新的冻结身份下从未用过的 case/message pool 构造并人工裁决 fresh Holdout；先冻结 Development/Environment/Variant，再登记一次性 run，并从实际执行 worktree 显式提供 Provider config。不得复用已暴露的 v1 Case/GT，也不得用 v1 sealed claim。证据：`prd.md` R2/R7、`benchmark/closure.py`、existing holdout registration contract。
