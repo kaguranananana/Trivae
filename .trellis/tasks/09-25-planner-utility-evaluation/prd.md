@@ -24,9 +24,9 @@
 
 ## Acceptance Criteria
 
-- [ ] Task/design 与 Variant 在正式运行前冻结；两个 Variant 的配置差异仅为 forced route。
-- [ ] Smoke 证明两条路径均经过 `TrivaeApplication.query()`，planned 有 Planner Trace、standard 无 Planner 调用，其他身份相同。
-- [ ] 完整 Development 运行或明确记录阻断事实；expected/raw/Evaluation/Trace 逐项核验，保留失败。
-- [ ] 以可复核的 paired 判定规则报告 better/same/worse 与不可判定，并分开报告 targeted repeat。
-- [ ] 报告条件收益、无收益、regression、成本和 taxonomy 证据边界；明确不能声称 fresh Holdout 或 Judge 人工准确率。
-- [ ] 相关 ADR/Evaluation 文档更新；执行 Trellis validate、pytest、Ruff、mypy、diff check；提交并归档，最终 worktree clean，不 push。
+- [x] Task/design 与 Variant 在正式运行前冻结；两个 Variant 的配置差异仅为 forced route。
+- [x] Smoke 证明两条路径均经过 `TrivaeApplication.query()`，planned 有 Planner Trace、standard 无 Planner 调用，其他身份相同。
+- [x] 完整 Development 运行；expected/raw/Evaluation/Trace 逐项核验，保留失败。
+- [x] 以可复核的 paired 判定规则报告 better/same/worse 与不可判定，并分开报告 targeted repeat。
+- [x] 报告条件收益、无收益、regression、成本和 taxonomy 证据边界；明确不能声称 fresh Holdout 或 Judge 人工准确率。
+- [x] 相关 ADR/Evaluation 文档更新；执行 Trellis validate、pytest、Ruff、mypy、diff check；提交并归档，最终 worktree clean，不 push。

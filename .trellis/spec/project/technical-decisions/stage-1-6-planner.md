@@ -1065,6 +1065,12 @@ Planner 不观察 Tool Result、不拥有执行 state、不触发 automatic repl
 
 Stage 1.10 应通过真实 workload 比较 planned 与 standard 路径，至少观察 Answer Correctness、Evidence Completeness、Missed Dimensions、Latency、Tokens 与 Tool Calls；不能只通过“Plan 看起来合理”判断 Planner Quality。
 
+### 2026-09-25 Development 实测补充
+
+当前生产 Query 链路上的 37×2 forced-path 配对实验已完成；执行 commit、Variant、GT、Snapshot、失败与成本见 [Planner Utility 实验报告](../../../tasks/archive/2026-09/09-25-planner-utility-evaluation/experiment-report.md)。planned 提高部分 evidence/context 自动指标，也降低 valid answer 和 verified zero，并增加平均 8.54 秒与 33.62% Provider 实测 token。37/37 Planner 调用成功，故此次回归发生在有合法 Plan 后的 Runtime/Answer 结果，不是 Planner Provider failure；soft guidance 是否逐步被 Runtime 采用仍未证明。
+
+这些证据支持继续把 Planner 视作有条件的实验性 treatment，不支持将所有 planned route 视为质量更高。Development 缺少可靠的逐 Case route utility 标签，真正 dependent multi-stage workload 的价值仍待专门 GT 和人工复核。当前不重写 Stage 1.6 架构边界；若后续重复确认广泛回归，可按本 ADR 的 Evaluation reopen condition 重新讨论。
+
 ## 16. Result、Trade-off 与 Reopen Conditions
 
 ### Result

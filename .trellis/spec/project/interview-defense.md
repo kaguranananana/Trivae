@@ -1019,3 +1019,12 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 18. **Tier 2 Judge 结论可信吗？** 它是 atomic-claim LLM-assisted measurement；本轮成功项 21 条，5 条 skipped、11 条 failed，且 0 claim 经人工 adjudication。Gate 3 的答案 review 不是 judge-human agreement，故全部保持 provisional。证据：Judge artifact、`gate3-review/review.md`、对应 `packet.json` 和 validation。
 19. **哪些数字可以写简历？** 可写 47/47 GT（注明 37 Development + 10 Calibration）、37×5=185 Development production-path runs、10 个 exhaustive query 的 lexical Recall@10=33/33，以及 post-fix 的 4 个可定位 ranking failure；每条都须保留 scope 和限制。不能写 v1 Holdout quality、v2 blind generalization、semantic 全面提升或 provisional Judge 为人工结论。证据：最终 fact index 第 9 节。
 20. **如果未来要测 v2 fresh generalization，应怎么做？** 开新 Trellis task，在新的冻结身份下从未用过的 case/message pool 构造并人工裁决 fresh Holdout；先冻结 Development/Environment/Variant，再登记一次性 run，并从实际执行 worktree 显式提供 Provider config。不得复用已暴露的 v1 Case/GT，也不得用 v1 sealed claim。证据：`prd.md` R2/R7、`benchmark/closure.py`、existing holdout registration contract。
+
+## Planner Utility Development 事实索引（2026-09-25）
+
+> 证据：[Planner Utility 实验报告](../../tasks/archive/2026-09/09-25-planner-utility-evaluation/experiment-report.md)。本节只适用于 37 条人工 GT Development Case、冻结执行 commit `f94fffb`、官方 DeepSeek 与当前 Snapshot；不是 fresh Holdout 或人工答案准确率。
+
+- 同一 production Query、Dataset、Snapshot、Provider/Model、Retrieval、Runtime、Tool 与 Evidence/Citation 下，仅强制 standard / planned route；37×2=74 次主实验，raw / Evaluation / Trace 各 74，forced route 与 Planner invocation 违例均 0。Planner 只在 planned 路调用，37/37 成功。
+- 既有可比 GT 指标逐 Case 为 planned better 6 / same 26 / worse 5；`same` 不等于答案语义等价。Evidence Recall 48/67→57/67，context recovery 0/3→2/3；valid AnswerArtifact 36/37→34/37、verified zero 3/4→0/4。六个 targeted Case 各补两轮，只有 `dev-zero-empty-3` 三次均为 worse，`dev-context-archify` 为 better/better/same。
+- 端到端 mean 11.18→19.72 秒，配对 mean +8.54 秒；总 Provider token 1,942,224→2,595,240（+33.62%）。实际货币 cost 字段 unavailable，不可由定价反推。Planner 生成 plan 不证明 Agent 逐步执行计划，Tool sequence 27/37 改变只证明行为差异。
+- Router Jev 的 16 条人工 route 标签和本轮 37 条答案 GT 无一一对应 contract；前者不能作为 Planner quality GT。生产仍 `shadow`，需要真正多阶段/证据依赖 Case 的人工答案 GT 与 utility 裁决才可讨论切换。Judge 本轮未执行，答案语义差异在本地 review packet 待人工审核。

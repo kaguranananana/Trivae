@@ -160,6 +160,52 @@ Wrong：在 `cli.py` 里重新连接 SQLite、拼装 Trace 事件或直接读取
 
 Correct：`TrivaeApplication.export_trace_log()` 读取 `StoredTrace`，交给 `TraceTextLogWriter` 投影文本；CLI 只显示返回路径。
 
+## Planner Utility 配对运行契约
+
+### 1. Scope / Trigger
+
+测量 `SoftPlanner` 是否改善 production Query 结果时，使用同一 Development Suite 的 forced standard / forced planned Variant；Router Provider 不作为处理变量。Router 诊断标签不能充当答案 GT。
+
+### 2. Signatures
+
+- `trivae eval --env-file PATH benchmark run --paired-by-case --database DB --evaluation-database NEW_DB --manifest ENV --suite SUITE --cases-dir CASES --variant STANDARD --variant PLANNED --output-dir NEW_DIR`：按 Case 顺序执行两路，默认 benchmark 顺序仍按 Variant 整批执行。
+- `operational_measurements["planner"]`：由 normal Trace 的 `planner.started` 与 terminal event 投影 `called/status/latency_ms/provider/model/usage/step_count/suggested_tools/failure_category/failure_detail_code`；Trace 不可用时 `called=None`。
+
+### 3. Contracts
+
+- `forced_route` 由 QueryOrchestrator 绕过 Router decision；planned 调用现有 Planner 一次，两路使用同一个 Agent Runtime、Tool surface 与 finalization contract。
+- benchmark run 在 Application 创建前拒绝已存在的 output directory 或 Evaluation SQLite；Provider settings 与 Environment gate 也必须在第一条 Case 前通过。从冻结 worktree 执行时显式给主仓库 `.env` 绝对路径。
+- Paired run 的 `suite_id/version` 保留原 Suite 身份；`--paired-by-case` 仅改变运行顺序，不改 Case/GT、Provider、Retriever 或计划语义。smoke 与 targeted repeat 使用独立目录，不并入正式分母。
+- Planner usage/cost 只读取 Provider 实际返回字段；`called=true` 与 Plan 被 Runtime 采用、答案改善是不同事实。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| output 或 Evaluation DB 已存在 | 首个 Case 前报 `EvaluationContractError`；不覆盖旧产物 |
+| Provider 缺配置或 Environment 漂移 | 首个 Case 前失败；不产生逐 Case 配置错误 |
+| standard 无 Planner event | `called=false/status=not_called` |
+| planned 有 started + completed/failed | 分别记录成功或失败、实测 duration 和可用 Provider metadata |
+| Trace 缺失或 started 无 terminal | 标 `trace_unavailable` / `missing_terminal`，不伪造成功 |
+| 单 Case Provider 异常 | 保留 Evaluation/Trace failure 和原始分母；不重试覆盖 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：同一 Case 的 standard→planned 相邻执行，两个 Variant diff 只有 forced route，Trace 可证实 Planner 只在 planned 调用。
+- Base：两路质量指标相同，但 planned usage/latency 增加；报告为已观测 overhead，不宣称答案语义完全相同。
+- Bad：用 Jev route accuracy、Planner step 数、Tool sequence 改变或未校准 Judge 分数代替 answer-level utility。
+
+### 6. Tests Required
+
+- 单元测试断言配对顺序和 Suite identity；Planner Trace 成功、失败、未调用投影；create-only 入口在创建 Application 前拒绝旧目录/库。
+- 真实运行核对 `raw/Evaluation/Trace` 数量、forced route、Planner invocation、Provider/Model、Snapshot/Environment；正式 denominator 与 repeat 分开。全仓 pytest、Ruff、mypy 和 Trellis validate 保持真实结果记录。
+
+### 7. Wrong vs Correct
+
+Wrong：Variant A 整批跑完后遇 Provider 故障，直接把 Variant B 的 failure 解释为 Planner regression；或覆盖旧结果重试直到成功。
+
+Correct：使用 Case 邻接配对缩短时间漂移，保留 Provider failure attribution 与原始记录；只对有相同 GT 指标且可比较的 Case 判断质量方向。
+
 ## 代码评审
 
 - 检查是否遵守本层各指南与工程原则。

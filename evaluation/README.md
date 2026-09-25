@@ -275,4 +275,12 @@ uv run trivae eval --env-file .env router-jev \
   --output data/evaluation/router-jev/after-key-rotation.json
 ```
 
-当前 versioned diagnostic 集包含 16 个候选 Case，其中 13 个通过 Rule gate 进入 ambiguous Provider 分支，3 个由确定性 Rule 处理；16 个 route hypothesis 都待人工裁决。它用于发现分歧和失败模式，不是人工 ground truth。即使 Provider route accuracy 较高，也不能单独说明 Planner 带来了端到端收益；生产推广前还要完成 forced-standard / forced-planned Planner utility 对比，并审查 planned→standard 误判、时延、真实 usage.cost 与失败率。当前实现与实验状态见 [Router Jev provider experiment](../.trellis/spec/project/technical-decisions/router-jev-provider-experiment.md) 和 [本次任务报告](../.trellis/tasks/archive/2026-09/09-25-openrouter-jev-router/experiment-report.md)。
+当前 versioned diagnostic 集包含 16 个候选 Case，其中 13 个通过 Rule gate 进入 ambiguous Provider 分支，3 个由确定性 Rule 处理；16 个 route hypothesis 后来均经人工裁决，最终 8 standard / 8 planned。它用于发现分歧和失败模式，其 route 标签不是答案 GT。即使 Provider route accuracy 较高，也不能单独说明 Planner 带来了端到端收益。当前实现与 route 实验见 [Router Jev provider experiment](../.trellis/spec/project/technical-decisions/router-jev-provider-experiment.md) 和 [Jev 任务报告](../.trellis/tasks/archive/2026-09/09-25-openrouter-jev-router/experiment-report.md)。
+
+## Planner Utility Development experiment
+
+本轮 forced-path 实验使用 [standard Variant](variants/planner-utility-standard-20260925.json) 和 [planned Variant](variants/planner-utility-planned-20260925.json)。两份配置仅 `execution_override.forced_route` 不同，均 pin 冻结执行 commit、官方 DeepSeek、当前生产 Tool/Runtime/Retrieval、Snapshot、Evidence/Citation 与 Evaluation identity。旧 `forced-standard.json` / `forced-planned.json` 属于旧 M6 身份，不能代替本轮 Variant。
+
+运行前从实际 execution worktree 显式传 `--env-file` 指向主仓库 `.env`，校验 Provider、数据库、Snapshot/索引、scope、Tool 与输出/Evaluation DB create-only。`--paired-by-case` 让同一 Case 的 standard→planned 紧邻运行；它不改变 Suite/Variant 身份，也不提供重试。独立 smoke 4×2 不进入正式分母；正式 37×2×1 的 raw、Evaluation 和 Trace 各 74；选定 6 Case 的 targeted repeat 共 24 run，放在另一组输出与 Evaluation DB，不并入主统计。私有 query、答案与 review packet 只保存在被 Git 忽略的本地 `data/evaluation/planner-utility/`。
+
+Development 自动指标给出 paired better 6 / same 26 / worse 5；context recovery 0/3→2/3、evidence recall 48/67→57/67，同时 valid answer 36/37→34/37、verified zero 3/4→0/4；planned 平均端到端多 8.54 秒、实测 token 多 33.62%，货币 cost unavailable。`same` 只表示可比自动指标相同，不能证明答案等价；Judge 未执行，答案差异待人工裁决。16 条 Router 诊断 Case 没有绑定答案 GT，不能直接证明它们的 8 个 planned 标签有 utility。详见 [Planner Utility 报告](../.trellis/tasks/archive/2026-09/09-25-planner-utility-evaluation/experiment-report.md)。生产 Router 保持 `shadow`。

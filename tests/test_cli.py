@@ -257,6 +257,24 @@ class ChatCliTests(unittest.TestCase):
         load_settings.assert_called_once_with()
         self.assertEqual(context.loop_ids, [])
 
+    def test_benchmark_preflight_rejects_existing_artifacts_before_application(self) -> None:
+        """正式 run 对输出目录和 Evaluation 库实施 create-only，不覆盖旧实验。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "existing-output"
+            output.mkdir()
+            evaluation_db = root / "existing-evaluation.sqlite3"
+            evaluation_db.write_bytes(b"existing")
+            for output_dir, database in ((output, root / "new.sqlite3"), (root / "new-output", evaluation_db)):
+                with self.subTest(output_dir=output_dir.name, database=database.name):
+                    args = SimpleNamespace(output_dir=output_dir, evaluation_database=database)
+                    with patch.object(cli, "load_settings") as load_settings, patch.object(cli, "create_application") as create:
+                        with self.assertRaises(cli.EvaluationContractError):
+                            asyncio.run(cli._run_benchmark_with_application(args))
+                    load_settings.assert_not_called()
+                    create.assert_not_called()
+
     def test_holdout_preflight_rejects_missing_provider_before_claim(self) -> None:
         """一次性 holdout 缺少 Provider 配置时不能先创建 claim。"""
 

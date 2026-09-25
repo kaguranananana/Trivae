@@ -1,6 +1,6 @@
 # Router Jev provider experiment
 
-> 状态：**Experimental / Not promoted**（2026-09-25）。实现采用 OpenRouter Decisions API；默认配置为 enabled + shadow。真实配对评测和 16 Case 人工裁决均已完成，原 route hypothesis 16/16 全部确认；本诊断集结果不构成生产切换或 Planner utility 证据。
+> 状态：**Experimental / Not promoted**（2026-09-25）。实现采用 OpenRouter Decisions API；默认配置为 enabled + shadow。真实配对评测和 16 Case 人工裁决均已完成，原 route hypothesis 16/16 全部确认；另有独立 Planner Utility Development 实验。本诊断集结果不构成生产切换或 Planner utility 证据。
 
 ## Decision
 
@@ -25,6 +25,12 @@
 
 人工裁决已完成。RJV-004 的最终标签为 standard：长时间跨度和趋势总结本身不要求 Planner；只有请求进一步追踪关键转折、原因及其证据链时才满足 planned 条件。RJV-008 的 prior context 限定了单一理由摘要，判 standard；RJV-007 的上下文则要求完整决策演变和测试证据，判 planned。RJV-013 是单一语义查找，“分析”措辞不构成 Planner 信号。生产运行时仍保持 `shadow`。两个 Provider 在 8 个 adjudicated planned Case 的 24 次重复中均未发生 `planned_execution → standard_execution`，但样本不足以排除该风险。
 
-下一步先通过 forced-standard / forced-planned 实验测量 Planner utility，即额外 Planner 调用是否改善最终结果；同时扩充代表性诊断集并复核 planned-to-standard 风险、availability、latency 和 cost。完成这些验证前不切换到 `jev`。
+### 2026-09-25 Planner Utility：独立的第二层证据
+
+- **Layer 1，route classification**：上述 16 Case 的人工标签与 Jev/Existing LLM route 比较仍成立；它回答 Provider 能否按当前 taxonomy 分类，不能说明所选 treatment 有收益。
+- **Layer 2，Planner treatment utility**：在当前生产 Query 链路，37 条人工 GT Development Case 的 forced standard/planned 配对，主实验 74/74 completed，自动指标逐 Case为 better 6 / same 26 / worse 5。planned 的 evidence recall 为 57/67（standard 48/67）、context recovery 2/3（standard 0/3）；但 valid answer 为 34/37（standard 36/37）、verified zero 为 0/4（standard 3/4）。planned 端到端平均多 8.54 秒，总 token 多 33.62%，Provider cost unavailable。独立 targeted repeat 中 `dev-zero-empty-3` 三次均回归；context recovery 的 `dev-context-archify` 为 better/better/same。详见 [Planner Utility 实验报告](../../../tasks/archive/2026-09/09-25-planner-utility-evaluation/experiment-report.md)。
+- 两组 Case **不能一一对应**：16 条 Router 诊断 Case 有 route 标签，但没有绑定当前 Snapshot 的 final-answer GT；37 条 Development Case 有答案 GT，却没有可靠的逐 Case planned-worthy route 标签。因此 8 条人工 planned Router 标签尚未获得直接答案级 utility 支持，也不能从本次 Development 样本否定它们。自动指标的 `same` 不是答案语义等价；没有人工逐 claim Judge agreement。
+
+生产继续 `shadow`。下一步建立真正多阶段/证据依赖 Query 的答案 GT 和人工 utility 裁决，针对空结果回归单独改进并重新实验，再检验 Jev 能否识别**实际从 Planner 受益**的 Case，同时满足原 rollout 的误路由、availability、latency 和 cost 门槛。
 
 Stage 1.5 的 Router architecture decision 不因该实验而重写。升级或替换实验结论必须给出人工标签、完整对照和可复核的 failure cases。
