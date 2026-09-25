@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "suite_id": "router-jev-cases-v1",
+  "adjudicated_at": "2026-09-25",
+  "adjudicator": "Human review supplied in this task",
+  "criterion": "Whether the request merits an additional Planner call before entering Agent Runtime, under the Stage 1.5 Router ADR.",
+  "case_count": 16,
+  "label_counts": {
+    "standard_execution": 8,
+    "planned_execution": 8
+  },
+  "hypotheses_upheld": 16,
+  "hypotheses_changed": 0,
+  "cases": [
+    {
+      "case_id": "RJV-001",
+      "adjudicated_route": "standard_execution",
+      "rationale": "A bounded seven-day count and per-person total are structured aggregation that Runtime can perform directly; there is no dependency between investigation stages."
+    },
+    {
+      "case_id": "RJV-002",
+      "adjudicated_route": "planned_execution",
+      "rationale": "The request depends on an ordered evidence chain: find A/B differences, trace adoption versus shelving, then identify evidence that led to the final choice."
+    },
+    {
+      "case_id": "RJV-003",
+      "adjudicated_route": "standard_execution",
+      "rationale": "Summarizing TypeScript views from the last seven days is bounded retrieval and synthesis; the word “summarize” alone is not a planning signal."
+    },
+    {
+      "case_id": "RJV-004",
+      "adjudicated_route": "standard_execution",
+      "rationale": "A six-month trend summary does not request turning points, a causal chain, or an investigation whose next stage depends on an earlier result. Time span and trend wording alone do not justify Planner. Explicitly tracing a shift, finding its key time, and explaining which feedback caused it would be planned."
+    },
+    {
+      "case_id": "RJV-005",
+      "adjudicated_route": "planned_execution",
+      "rationale": "Explaining the change from an initial recommendation to later rejection and what happened in between requires longitudinal state and causal investigation."
+    },
+    {
+      "case_id": "RJV-006",
+      "adjudicated_route": "planned_execution",
+      "rationale": "The request must connect opposing evidence, explain why the alternative was retained, and resolve contradictions by checking chronology; later reasoning depends on earlier evidence."
+    },
+    {
+      "case_id": "RJV-007",
+      "adjudicated_route": "planned_execution",
+      "rationale": "Prior context asks for the full decision evolution and test evidence. The short follow-up inherits that multi-stage investigation."
+    },
+    {
+      "case_id": "RJV-008",
+      "adjudicated_route": "standard_execution",
+      "rationale": "Prior context limits the request to summarizing one already-provided reason and explicitly says not to investigate other discussions. Planner adds no useful stage."
+    },
+    {
+      "case_id": "RJV-009",
+      "adjudicated_route": "planned_execution",
+      "rationale": "The request explicitly calls for recovery: if a source is not found, reformulate the search from new clues and continue until the evidence source is found."
+    },
+    {
+      "case_id": "RJV-010",
+      "adjudicated_route": "standard_execution",
+      "rationale": "A people count and weekly breakdown are structured aggregation; returning two fields does not make this a multi-stage investigation."
+    },
+    {
+      "case_id": "RJV-011",
+      "adjudicated_route": "planned_execution",
+      "rationale": "Identifying which discussions drove the A-to-B change and explaining why requires linking evidence across time."
+    },
+    {
+      "case_id": "RJV-012",
+      "adjudicated_route": "planned_execution",
+      "rationale": "The request returns to unresolved prior work, asks for missing context, and then asks to reassess the basis; this is explicit recovery."
+    },
+    {
+      "case_id": "RJV-013",
+      "adjudicated_route": "standard_execution",
+      "rationale": "Explaining one term in one message is a single semantic lookup. The word “analyze” does not itself trigger Planner."
+    },
+    {
+      "case_id": "RJV-014",
+      "adjudicated_route": "planned_execution",
+      "rationale": "Reconstructing the sequence from initial recommendation through counterexample to revised advice is a longitudinal state transition."
+    },
+    {
+      "case_id": "RJV-015",
+      "adjudicated_route": "standard_execution",
+      "rationale": "Returning one sentence for each of three tools is bounded retrieval and synthesis; item count alone is not planning complexity."
+    },
+    {
+      "case_id": "RJV-016",
+      "adjudicated_route": "standard_execution",
+      "rationale": "Comparing views and supporters of two options does not ask for evolution, causality, or cross-stage validation; ordinary aggregation is sufficient."
+    }
+  ]
+}
