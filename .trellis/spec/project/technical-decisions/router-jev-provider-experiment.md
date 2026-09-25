@@ -19,7 +19,7 @@
 
 `evaluation/router-jev/cases-v1.json` 是小型诊断集，不是正式 benchmark：16 个 Case 中，13 个为 ambiguous，3 个由确定性 Rule 处理。初次运行时 route hypothesis 标记为 provisional；运行后用户按“请求是否值得在进入 Agent Runtime 前额外调用 Planner”这一 Stage 1.5 标准逐条裁决，16/16 全部确认，8 standard / 8 planned，0 项变更。最终标签与理由记录在 `evaluation/router-jev/adjudication-v1.json`。原 case manifest 保留为运行时输入，原始 artifact 保持不变。配对 runner 对同一 context 运行现有 LLM 与 Jev，仅调用 ambiguous 分支，并记录分歧、confusion、route metrics、confidence 描述区间、latency、失败率和真实 usage/cost。artifact 不包含 query 或原始 Provider response。
 
-2026-09-25 首轮真实配对运行：16 Case × 3 repetitions；两路各调用 39 次并全部成功。LLM/Jev 在全部 48 个投影上的 agreement 为 42/48（87.5%）；只看 ambiguous decisions 为 33/39（84.6%），6 次分歧均来自 RJV-008 与 RJV-013。按最终人工标签，Existing LLM 为 39/48（81.25%，13/16 个 Case），Jev 为 45/48（93.75%，15/16 个 Case）；LLM 错误为 RJV-004/008/013，Jev 错误仅 RJV-004。Jev 平均 route-call latency 为 278.893 ms，LLM 为 2164.128 ms；Jev 的 39 次真实 `usage.cost` 合计 0.000746802，baseline cost unavailable。详细分析见[实验报告](../../../tasks/09-25-openrouter-jev-router/experiment-report.md)。
+2026-09-25 首轮真实配对运行：16 Case × 3 repetitions；两路各调用 39 次并全部成功。LLM/Jev 在全部 48 个投影上的 agreement 为 42/48（87.5%）；只看 ambiguous decisions 为 33/39（84.6%），6 次分歧均来自 RJV-008 与 RJV-013。按最终人工标签，Existing LLM 为 39/48（81.25%，13/16 个 Case），Jev 为 45/48（93.75%，15/16 个 Case）；LLM 错误为 RJV-004/008/013，Jev 错误仅 RJV-004。Jev 平均 route-call latency 为 278.893 ms，LLM 为 2164.128 ms；Jev 的 39 次真实 `usage.cost` 合计 0.000746802，baseline cost unavailable。详细分析见[实验报告](../../../tasks/archive/2026-09/09-25-openrouter-jev-router/experiment-report.md)。
 
 本轮按用户明确指示使用现有 `.env` 凭据，没有轮换；CLI 先移除继承的 `OPENROUTER_API_KEY`，再由 `--env-file .env` 加载，凭据值没有输出。artifact 保存在被 Git 忽略的 `data/evaluation/router-jev/paired-v1-2026-09-25.json`；对 artifact 的隐私扫描未发现 query、context、key 或 raw response。
 
