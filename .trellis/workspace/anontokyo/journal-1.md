@@ -1187,3 +1187,35 @@ Implemented Source Scope -> AI Conversation -> Turns web navigation: unselected 
 ### Next Steps
 
 - 等待 Gate 3 review；不生成 holdout，不进入 Stage 4。
+
+
+## Session 48: OpenRouter Jev case adjudication
+
+**Date**: 2026-09-25
+**Task**: OpenRouter Jev case adjudication
+**Branch**: `main`
+
+### Summary
+
+Recorded the final 16-case human adjudication: all original route hypotheses upheld with no label changes. Updated the evaluation report and Router ADR, kept production in shadow, and archived the completed task.
+
+### Main Changes
+
+- Added a machine-readable adjudication record with 8 standard and 8 planned cases.
+- Updated adjudicated metrics and failure analysis while preserving the original run input and artifact.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] Checked JSON case alignment and 8/8 label counts plus git diff --check; no tests run because this change is documentation and evaluation data only.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Measure Planner utility with forced-standard and forced-planned comparisons before considering production promotion.
