@@ -24,20 +24,22 @@ Provider migration 的能力/传输审计、reasoning_content 回放回归和 A�
 
 运行结果、Review、Comparison 和 Failure Diagnosis 写入独立 SQLite Evaluation Store，不写入 Canonical Chat Store。
 
-## Benchmark 当前状态与收尾入口
+## `resume-benchmark-v1` 最终状态（2026-09-25）
 
-`resume-benchmark-v1` 已完成 Development Stage 3：47 条人工裁决 GT，其中 Development 37 条、Calibration 10 条；五 Variant 的历史 Development baseline 共 185 次真实运行。Calibration 不计入正式分母；Gate 3 已冻结候选 commit `8805aa2`，冻结后 18 条 holdout 已全部人工确认、登记并完成一次性运行，随后生成了最终合并报告。该次运行因从冻结临时 worktree 启动时未注入主仓库 `.env`，90 个 holdout run 全部在 Query 设置校验阶段以 `SettingsError` 结束；因此 holdout 质量指标不可用，不能据此宣称 v1 的 holdout 质量。
+`resume-benchmark-v1` 的 Gate 4 文档收口已完成，Task 已按 Trellis 流程归档到 `.trellis/tasks/archive/2026-09/08-30-evaluation-benchmark-v1/`。GT 为 47/47 adjudicated（Development 37、Calibration 10），另有 Gate 3 冻结后确认的 Holdout 18；Calibration 不进入 headline denominator。历史 Development quality baseline 固定为 `7bac928` 的 37×5×1=185 runs。Gate 3 的 `8805aa2` Development candidate 是独立候选验收，不替换该 baseline。
+
+v1 Holdout 已按一次性 contract 执行并 sealed：90/90 在设置校验时以 `SettingsError` 结束，原因是冻结临时 worktree 未显式注入主仓库 `.env`。它没有发出 Provider 请求或生成 Answer，因此 holdout quality unavailable；v1 claim、raw/Evaluation/Trace 和报告均保持原样。后续独立 v2 recovery 使用相同 18 个已暴露 Case/GT，90 runs 中 52 completed、38 failed；它只能称为 known/reused holdout recovery validation，不能称 blind、unseen 或 independent generalization。
 
 - Gate 3 candidate Development 已在候选 commit `8805aa2` 的干净 worktree 完成新的 37×5=185 次真实运行；Environment gate 4/4、Gate 2 freeze verification 12/12、Development Case/Variant coverage 185/185 passed。结果写入 `data/evaluation/benchmark/gate3-final-development-real/` 与独立 `data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3`，并已写入 `data/evaluation/benchmark/gate3-final-freeze.json`。
-- 本轮 D-only Tier 2 Judge 写入 `data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`：21 judged、5 skipped、11 failed，状态为 partial；所有成功判定保持 `llm_assisted_provisional`。人工 packet `data/evaluation/benchmark/gate3-review/review.md`（12 条、六类各两条）已完成核验。
+- Gate 3 D-only Tier 2 Judge 写入 `data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`：21 judged、5 skipped、11 failed，状态为 partial；所有成功判定保持 `llm_assisted_provisional`。人工答案 packet `data/evaluation/benchmark/gate3-review/review.md`（12 条、六类各两条）记录了核验结果，但它不等于 claim-level Judge adjudication；生成的 `packet.json` 仍显示 `pending_human_review`。
 - Gate 3 人工核验已完成：6 条 `confirmed/confirmed_with_notes`、2 条内容 `fail`、4 条无答案的系统失败；结论只用于诊断，不把失败条目改写成通过。
 - Stage 4.0 候选 packet 是 `data/evaluation/benchmark/holdout/review.md`，18 条、六类各 3 条；用户已逐条确认（18/18 confirmed），Case JSON、Suite 和 retrieval query 均在同一目录，正文只存在本地 review packet。
 
-- [历史事实索引](reports/resume-benchmark-v1-fact-index.md)：baseline、post-fix measurement validation 与可引用数字的边界。
-- [任务验收记录](../.trellis/tasks/08-30-evaluation-benchmark-v1/validation.md)：真实运行、工程检查和当前停止点。
+- [最终事实索引](reports/resume-benchmark-v1-fact-index.md)：benchmark 生命周期、Development baseline、v1 sealed Holdout、v2 recovery、可引用数字和限制。
+- [归档任务验收记录](../.trellis/tasks/archive/2026-09/08-30-evaluation-benchmark-v1/validation.md)：真实运行、Gate 4 审计和工程检查。
 - 本地人工核验：`data/evaluation/benchmark/closure-review/review.md`（历史 D 答案诊断抽样）、`data/evaluation/benchmark/gate3-review/review.md`（候选 Development 的 12 条诊断抽样，已完成核验）和 `data/evaluation/benchmark/holdout/review.md`（18 条冻结后 holdout，18/18 confirmed）。这些材料与最终运行产物分开保存；本次 holdout 没有可用于质量率的已完成答案。
 
-当前收尾状态：人工审核、adjudication、`seal-holdout`、同一冻结 commit 的一次性运行和同版本合并均已完成。历史结果保持原样；登记、holdout 运行和 final report 使用独立输出目录。`stage3-final-real` 绑定历史 `7bac928`，禁止直接拿它与冻结后的 holdout 合并。
+Gate 4 结论：文档与证据收口通过，遗留限制明确保留为 v1 holdout quality unavailable、Tier 2 judge-human agreement 未建立。`full_available=true` 只说明 split identity 可合并，不说明 holdout 质量可用。`stage3-final-real` 仍绑定历史 `7bac928`；所有运行产物保持原样。后续要测 fresh holdout generalization，须另开 Trellis task 并建立新的冻结身份。
 
 2026-09-07 旧 key 的单条 Judge smoke 曾返回 `401 / CreditsError / Insufficient balance`；换 key 后，带 OpenCode Go session header 的独立短请求返回 `OK`（98 tokens）。首次 Judge smoke 暴露了 `finish_reason=length`，根因是 Judge 误用 Router/Planner 的 2048 completion budget；现改用独立的 final output budget 后，同一条 smoke 已完成（1 条、9 个 atomic claims，Grounded Claim Rate 0.667、Citation Correctness 0.000），仍保持 `llm_assisted_provisional`，不能当作人工结论。精确余额/配额不由当前兼容 API 暴露，不能据此反推旧的 29 条 Judge 失败原因。Judge 批次包含失败时输出 `status=partial`、`failed` 计数并返回非零退出码，每条保留错误原因；证据读取失败不再用空正文继续评分，已有结果文件损坏时显式拒绝覆盖。人工确认只升级实际检查过的条目。
 

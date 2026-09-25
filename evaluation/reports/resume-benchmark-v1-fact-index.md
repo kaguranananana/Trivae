@@ -1,244 +1,184 @@
-# `resume-benchmark-v1` Evaluation 事实索引
+# `resume-benchmark-v1` 最终 Evaluation 事实索引
+
+> 更新日期：2026-09-25。只汇总已有报告、raw records、Evaluation SQLite、Trace、冻结记录与人工 review；本次没有重跑 benchmark 或重算历史结果。
+
+## 0. Gate 4 结论
+
+- `resume-benchmark-v1` 的 Gate 4 文档与证据收口通过；Task 按 Trellis workflow 归档。
+- 历史 Development quality baseline 仍是 clean execution commit `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f` 的 **37 cases × 5 variants × 1 repetition = 185 runs**。
+- Gate 3 candidate execution commit `8805aa2bf58fcb2702817d54afe96bd819645db2` 的 185 条 Development run 是冻结前人工核验输入；它没有取代 `7bac928` baseline。
+- v1 Holdout 是一次性 sealed run：**90/90 `SettingsError`，quality unavailable**。合并报告的 `full_available=true` 只证明 split identity 一致，不表示 Holdout quality 可用。
+- v2 recovery 使用已暴露的同一组 Holdout Case/GT：**90 runs，52 completed、38 failed**。它属于 known/reused holdout recovery validation，不是 blind、unseen 或 fresh generalization。
+- Tier 2 Judge 输出未人工逐条 adjudicate，所有成功判定仍为 `llm_assisted_provisional`；本索引不把它写成事实正确率。
 
-> 更新日期：2026-09-08。本文是脱敏的文档型索引，只引用仓库已有的 Evaluation、Trace、SQLite 和 Git 证据；不包含聊天正文，也不产生新的 benchmark 运行。
+## 1. Benchmark 生命周期
+
+```text
+47 条人工裁决 GT
+├── Calibration 10（schema / measurement substrate 校准；不进 headline）
+└── Development 37
+    └── Gate 2 frozen Development baseline：7bac928，37×5=185 runs
+        └── measurement substrate post-fix validation：f247750，独立验证，不改写 baseline
 
-## 0. 结论先行
+Gate 3 candidate Development：8805aa2，37×5=185，完成 review 与 final freeze
+↓
+freeze 后生成 Holdout 18，18/18 人工确认并登记
+↓
+v1 Holdout：18×5=90 SettingsError → sealed；quality unavailable
+↓
+独立 v2 recovery：复用同一已暴露 Holdout；90 runs，52 completed / 38 failed
+↓
+Gate 4：结果边界、面试证据、问题记录核对完成；Task archive
+```
 
-- 当前边界是 **Stage 3 Complete / Gate 3 review pending**：候选 Development 已完成机器验收，人工答案核验和 Gate 3 freeze 仍待完成。
-- 可作为 Development quality baseline 的是冻结后的 `7bac928` clean run：Development 37 cases × A/B/C/C2/D 五个 Variant × 1 repetition = **185 次真实运行**。
-- 当前 Gate 3 候选 Development 使用 `8805aa2`，同一 Snapshot 下独立完成 185 次真实运行；它是本轮 review 输入，不在人工 review 前升级为最终 freeze，也不替换历史 baseline。
-- `f247750` 之后的 clean run 只用于验证两个 **Evaluation / measurement substrate bug** 的修复和 failure attribution 的可解释性；其中 C/C2/D 出现 provider timeout/connection window，不能替代 baseline，也不能重新推导 ablation quality。
-- Human GT 为 **47/47 adjudicated**：Accept 26、Modify 21、Reject 0；其中 Development 37，Calibration 10。Calibration 不进入 headline denominator。
-- Holdout 当前不存在：未生成、未查看、未评测。因此本文不声称 unseen、holdout 或 generalization result。
+## 2. Dataset / Freeze / Variant
 
-## 1. 证据地图与审计结果
+| Split | Case 数 | 状态与作用 |
+|---|---:|---|
+| Human GT 总数 | 47 | 47/47 adjudicated；Accept 26、Modify 21、Reject 0 |
+| Development | 37 | 六类：exact_lexical 10、citation_evidence 6、semantic_paraphrase 8、context_recovery 3、temporal_overview 6、zero_result 4 |
+| Calibration | 10 | 用于 schema / measurement substrate 校准，不计入正式 Development headline denominator |
+| v1 Holdout | 18 | Gate 3 freeze 后生成；六类各 3；18/18 人工确认并登记。Case/GT 后续已被流程看过 |
 
-| 事实 | 证据 | 审计结论 |
-| --- | --- | --- |
-| GT 人工裁决 | `data/evaluation/benchmark/gt-audit-stage3-final.json` | 47 cases、47 adjudicated、0 error、0 warning，passed |
-| Gate / freeze | `data/evaluation/benchmark/stage3-freeze-verification.json`、`evaluation/snapshots/resume-benchmark-v1-freeze.json` | freeze verification 12/12 passed；environment gate 4/4 passed |
-| Development baseline | `data/evaluation/benchmark/stage3-final-real/report.json`、`report.md` | 以 `7bac928` 为 execution commit，185 runs，作为冻结后的质量 baseline |
-| Gate 3 candidate Development | `data/evaluation/benchmark/gate3-final-development-real/report.json`、`raw-records.json` | 以 `8805aa2` 为 execution commit，185 runs，raw / SQLite / Trace 已对齐；待人工 review |
-| Post-fix validation | `data/evaluation/benchmark/stage3-root-cause-final-clean-real/report.json`、`report.md` | 185 runs，主要验证 failure attribution 和 Application lifecycle；不作为 ablation quality 结论 |
-| Module retrieval | `data/evaluation/benchmark/stage3-module-retrieval.json` | 27 个 Development retrieval query；exhaustive 使用 corpus scope，partial 使用 target scope |
-| Failure root cause | `.trellis/spec/project/problems/benchmark-root-cause-closure.md`、`43d282e`、`f247750` | 两个测量层缺陷已修复；系统 quality failure 仍保持可见 |
-| Regression / engineering checks | `tests/test_benchmark.py`、`tests/test_cli.py`、任务 `validation.md` | 全量 pytest 576 passed；ruff、mypy、diff check passed |
+Snapshot / Environment identity：canonical Snapshot 为 `snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14`；lexical FTS 有 473236 rows；semantic identity 为 Qwen/Qwen3-Embedding-0.6B、1024d、last-token pooling、normalized、chunker v1。Gate 2 freeze verification 为 12/12 passed，environment gate 为 4/4 passed。`DatasetSnapshot` 描述 canonical data；index identity、execution commit 与 benchmark metadata 由 Environment/freeze artifact 承载。
 
-Environment 的 canonical Snapshot 为 `snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14`；lexical FTS 为 473236 rows；semantic index 为 Qwen/Qwen3-Embedding-0.6B、1024d、last-token、normalized、chunker v1。五个 Variant 使用相同 provider/model/prompt 条件，差异由可用工具和 context override 明确表达。
+五个 Variant 的含义：
 
-## 2. Dataset / Variant / 可追溯性
+| Variant | 控制差异 | 可归因对照 |
+|---|---|---|
+| A `bench-lexical-only-v1` | lexical；context limit 0 | minimal control |
+| B `bench-lexical-semantic-v1` | A + semantic；context limit 0 | B−A：semantic surface |
+| C `bench-semantic-ctx-v1` | B + production auto context | C−B：自动 context expansion |
+| C2 `bench-semantic-ctx-tool-v1` | C + `get_message_context` | C2−C：显式 context tool |
+| D `bench-full-system-v1` | 七个 Agent-facing tools | 与 A/B/C/C2 是多变量比较 |
 
-### 2.1 Dataset 与 freeze
+正式运行经过 production `TrivaeApplication.query()` path，使用真实 Provider。baseline 的历史 Provider 是 `opencode-go / deepseek-v4-flash`；2026-09-11 的 Provider migration 不改写旧 Environment 或结果。
 
-| 项目 | 已验证事实 | 简历边界 |
-| --- | --- | --- |
-| Human GT | 47/47 adjudicated；Accept 26 / Modify 21 / Reject 0 | 可以写“建立并人工裁决 47 条 GT”；不能省略其中 Development/Calibration 划分 |
-| Development | 37 cases，六类覆盖：exact_lexical 10、citation_evidence 6、semantic_paraphrase 8、context_recovery 3、temporal_overview 6、zero_result 4 | 必须写 Development；不能写 unseen/holdout |
-| Calibration | 10 cases，作为 schema/measurement substrate 校准 slice | 不进入 headline denominator |
-| Holdout | 目录不存在，未生成、未查看、未评测 | 不能声称 generalization 或 holdout 结果 |
-| 冻结 | Gate 2 freeze record 已提交；环境 gate 4/4、freeze verification 12/12 | 可以写可复现的 Snapshot/Environment freeze 机制 |
+## 3. Development baseline：可追溯实测结果
 
-### 2.2 五个 Variant
+来源：`data/evaluation/benchmark/stage3-final-real/report.json` 与 `report.md`。表中指标为 weighted rate（numerator/denominator；case-macro；可用 case n）。这是 `7bac928` 的冻结 Development baseline，不是 Holdout。
 
-| Variant | 配置差异 | Ablation 解释 |
-| --- | --- | --- |
-| A `bench-lexical-only-v1` | lexical_search；`context_window_limit=0` | minimal control |
-| B `bench-lexical-semantic-v1` | A + semantic_search；`context_window_limit=0` | B−A 是 semantic surface 的单变量对照 |
-| C `bench-semantic-ctx-v1` | B + production default auto context expansion | C−B 是自动 context expansion 的单变量对照 |
-| C2 `bench-semantic-ctx-tool-v1` | C + `get_message_context` | C2−C 是显式 context tool 的单变量对照 |
-| D `bench-full-system-v1` | 七个 Agent-facing tools | 与 A/B/C/C2 的差异是多变量 full-system 差异，不用于单组件归因 |
+| Variant | Execution completed | Valid answer | Evidence recall | Context recovery | Expected fact answer coverage | False-zero guard | Verified zero |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A lexical-only | .811 (30/37; .811; n=37) | .757 (28/37; .757; n=37) | .800 (44/55; .733; n=20) | .000 (0/3; .000; n=3) | 1.000 (14/14; 1.000; n=14) | 1.000 (26/26) | .000 (0/4) |
+| B lexical+semantic | .973 (36/37; .973; n=37) | .919 (34/37; .919; n=37) | .738 (48/65; .641; n=26) | .000 (0/2; .000; n=2) | .875 (14/16; .875; n=16) | 1.000 (32/32) | 1.000 (4/4) |
+| C + auto context | .973 (36/37; .973; n=37) | .946 (35/37; .946; n=37) | .742 (49/66; .638; n=26) | .333 (1/3; .333; n=3) | .938 (15/16; .938; n=16) | .969 (31/32) | 1.000 (4/4) |
+| C2 + explicit context tool | 1.000 (37/37; 1.000; n=37) | .973 (36/37; .973; n=37) | .642 (43/67; .574; n=27) | .000 (0/3; .000; n=3) | .750 (12/16; .750; n=16) | .970 (32/33) | 1.000 (4/4) |
+| D full-system | 1.000 (37/37; 1.000; n=37) | 1.000 (37/37; 1.000; n=37) | .731 (49/67; .694; n=27) | .000 (0/3; .000; n=3) | .938 (15/16; .938; n=16) | 1.000 (33/33) | 1.000 (4/4) |
 
-每个 Variant 37 cases；A/B/C/C2/D 合计 185 runs。运行经过 production `TrivaeApplication.query()` path，使用真实 `opencode-go / deepseek-v4-flash` provider，不是 mock。
+- False-zero guard 的 1.000 表示可用的非空 GT cases 没有输出 false no-result；它不是错误率。
+- Verified zero 的 1.000 表示真实空结果 case 输出了可验证 no-result。
+- Evidence Recall 使用 GT target，不等于 corpus retrieval Recall；partial GT 只按 target/pool scope 解释。
+- Expected Fact Answer Coverage 只数规范化 alias 命中 `answer_text` 的 extractive facts。
+- Coverage status 在 A/B/C/C2 有 6 条 unavailable；D 为 4/6=.667。Truncation accuracy 依次为 A .333 (2/6)、B .500 (3/6)、C .500 (3/6)、C2 .500 (3/6)、D .667 (4/6)。
 
-可追溯性复核结果：post-fix raw records 为 185 条；post-fix Evaluation SQLite 的 `evaluation_runs` 和 `evaluation_results` 均为 185 条，每个 Variant 37 条；canonical Trace Store 中与 raw record 对应的 Trace 为 185 条，`context.prepared` 为 185 条。Gate 3 candidate 也保留 185 条 raw record、185 条 distinct Evaluation `run_id`、185 条 result 和 185 条对应 Trace，每条都有 `context.prepared`。对应证据为 `data/evaluation/benchmark/stage3-root-cause-final-clean-real/raw-records.json`、`data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`、`data/evaluation/benchmark/gate3-final-development-real/`、`data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3` 和本地 `data/trivae.sqlite3`。
+### 3.1 Ablation 结果边界
 
-## 3. 冻结后的 Development quality baseline
+- **B−A**：completion 和 valid answer 均增加 .162；paired evidence recall rate −.075、macro −.079，paired n=19。semantic 是互补通道，没有全面质量 uplift 证据。
+- **C−B**：context recovery +.500，但 paired n=2；evidence recall rate +.000、macro −.023，paired n=25。样本小，不支持稳定 context uplift。
+- **C2−C**：context recovery −.333，paired n=3；evidence recall rate −.091、macro −.042，paired n=26。没有显式 context tool 的稳定 uplift 证据。
+- D 是多变量 full-system variant；D−A 不能归因给某一个组件。
 
-### 3.1 Tier 1 指标总表
+### 3.2 Module retrieval
 
-来源统一为 `data/evaluation/benchmark/stage3-final-real/report.json` / `report.md`。格式为 `加权 rate (numerator/denominator；case-macro；n)`：加权 rate 保留事实条目分母，case-macro 是 case 等权均值，`n` 是该指标可用的 case 数。Provider/runtime 未完成的条件指标不会被放入条件分母，原因保留为 unavailable。
+来源：`data/evaluation/benchmark/stage3-module-retrieval.json`，27 个 Development query：10 个 exhaustive/corpus，17 个 partial/target。
 
-| Variant | execution completed | valid answer | evidence recall | context recovery | expected fact answer coverage | false-zero guard | verified zero |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| A lexical-only | .811 (30/37；.811；n=37) | .757 (28/37；.757；n=37) | .800 (44/55；.733；n=20) | .000 (0/3；.000；n=3) | 1.000 (14/14；1.000；n=14) | 1.000 (26/26) | .000 (0/4) |
-| B lexical+semantic | .973 (36/37；.973；n=37) | .919 (34/37；.919；n=37) | .738 (48/65；.641；n=26) | .000 (0/2；.000；n=2) | .875 (14/16；.875；n=16) | 1.000 (32/32) | 1.000 (4/4) |
-| C + auto context | .973 (36/37；.973；n=37) | .946 (35/37；.946；n=37) | .742 (49/66；.638；n=26) | .333 (1/3；.333；n=3) | .938 (15/16；.938；n=16) | .969 (31/32) | 1.000 (4/4) |
-| C2 + explicit context tool | 1.000 (37/37；1.000；n=37) | .973 (36/37；.973；n=37) | .642 (43/67；.574；n=27) | .000 (0/3；.000；n=3) | .750 (12/16；.750；n=16) | .970 (32/33) | 1.000 (4/4) |
-| D full-system | 1.000 (37/37；1.000；n=37) | 1.000 (37/37；1.000；n=37) | .731 (49/67；.694；n=27) | .000 (0/3；.000；n=3) | .938 (15/16；.938；n=16) | 1.000 (33/33) | 1.000 (4/4) |
+| Strategy | Scope | Recall@10 | Hit@10 | MRR@10 |
+|---|---|---:|---:|---:|
+| lexical | corpus，10 exhaustive queries / 33 relevant items | 1.000 (33/33; macro 1.000) | 1.000 (10/10) | 1.000 (10/10) |
+| semantic | corpus，10 exhaustive queries / 33 relevant items | .364 (12/33; macro .327) | .600 (6/10) | .550 (5.5/10) |
+| lexical | target，17 partial queries / 31 target items | .742 (23/31; macro .529) | .529 (9/17) | .426 (7.25/17) |
+| semantic | target，17 partial queries / 31 target items | .323 (10/31; macro .284) | .412 (7/17) | .281 (4.778/17) |
 
-指标释义：
+Lexical 的 33/33 只支持这 10 个可枚举 predicate query 的 corpus Recall@10，不外推到任意问题。该结果不证明 semantic 全面优于 lexical；module packet 的 context expansion positive recovery 为 lexical 0/3、semantic 0/3，样本不足以证明 production context uplift。
 
-- `false-zero guard` 的 1.000 表示非空 GT case 没有输出 false no-result；它不是“错误率 100%”。`verified zero` 的 1.000 表示真实空结果 case 输出了可验证的 no-result。
-- `evidence recall` 是最终 evidence 对 GT target 的命中率，不等于 corpus recall；partial/target GT 使用 target scope。
-- `expected fact answer coverage` 只统计有明确 alias、且 alias 命中 `answer_text` 的 extractive fact；evidence 中出现但答案没有写出不算命中。
-- `coverage_status_accuracy` 在 A/B/C/C2 因 Host-owned coverage artifact 有 6 条 unavailable；D 为 4/6 = .667。`truncation_accuracy` 分别为 A 2/6 = .333、B 3/6 = .500、C 3/6 = .500、C2 3/6 = .500、D 4/6 = .667。
+## 4. v1 sealed Holdout
 
-### 3.2 单变量 paired comparison
+| 项目 | 已核验事实 |
+|---|---|
+| Registration | Gate 3 freeze 后登记 18 个 ordered Case identity 与 canonical config；18/18 人工确认 |
+| Raw records | 90；五 Variant 各 18；90/90 status=`exception` |
+| Evaluation Store | `holdout-evaluation.sqlite3`：90 `evaluation_runs`、90 `evaluation_results` |
+| Trace | 90 个 trace_id，90 个对应 Trace 文件存在 |
+| Failure artifact | 90；分类值均为 `provider_failure`，底层异常为 `SettingsError` |
+| Quality result | unavailable：没有 Provider request、Answer 或可评分 Holdout quality value |
+| Sealed state | claim=`completed`；final report raw 275（Development 185 + Holdout 90）；五 Variant 各 55 |
 
-来源为同一 baseline report 的 `cross_variant.comparisons`。这些结果用于解释实验边界，不作为“稳定提升百分比”的简历数字。
+根因：正式命令从冻结临时 worktree 启动；CLI 默认只从当前目录读取 `.env`，worktree 缺少主仓库 `.env`，因此 `TRIVAE_MODEL_API_KEY` 在 Query settings validation 时缺失。它是 execution/configuration failure，不是 retrieval quality regression，也不是 Provider timeout/connection window。
 
-| 对照 | 可引用的真实结果 | 解读 | 简历 |
-| --- | --- | --- | --- |
-| B−A semantic | execution completed +.162（36/37 vs 30/37）；valid answer +.162（34/37 vs 28/37）；evidence recall paired rate −.075、macro −.079，paired n=19 | semantic 与 lexical 互补，但不是所有 Development query 的全面质量提升 | 不推荐写 uplift 百分比 |
-| C−B auto context | context recovery +.500，paired n=2；evidence recall rate +.000、macro −.023，paired n=25；valid answer +.027 | context recovery 样本太小，收益不稳定 | 不应写“显著提升” |
-| C2−C explicit context tool | context recovery −.333，paired n=3；evidence recall rate −.091、macro −.042，paired n=26；valid answer +.027 | 本轮没有支持显式 context tool 的稳定 uplift | 不推荐写提升比例 |
-| D vs others | D 是七工具 full-system，多变量差异 | 只能报告绝对结果，不能把 D−A 归因给某一个组件 | 不写单组件因果结论 |
+后续入口已在创建 Application/claim 前预检 settings；冻结 worktree 执行时显式使用 `--env-file PATH`。v1 claim 和产物不删除、不换目录、不补配置重跑。Final report 的 `full_available=true` 只表示 Development/Holdout environment 与 variant identity 可合并；Holdout quality matrix 仍为空。
 
-### 3.3 Module-level retrieval
+## 5. v2 recovery validation（known/reused Holdout）
 
-来源为 `data/evaluation/benchmark/stage3-module-retrieval.json`，共 27 个 query：10 个 exhaustive/corpus、17 个 partial/target。MRR 的 numerator 是 reciprocal-rank 之和，不是消息数量。
+- Identity 使用独立 recovery freeze、registration、claim、raw output 与 Evaluation SQLite；执行 commit 仍是 `8805aa2`。
+- 复用 v1 的 18 条 Case、GT 和已完成的 18/18 人工核验，按 5 variants 共执行 90 runs；raw / Evaluation SQLite / Trace 均为 90。
+- 实测：52 completed、38 failed。58 个 failure artifacts：provider_failure 38、retrieval_miss 8、answer_generation_error 4、coverage_error 3、zero_result_error 3、context_missing 1、ranking_failure 1。
+- `full_available=true` 仍仅表示 split identity 合并。Case/GT 已暴露，所以不能称为 blind、unseen、fresh holdout 或 independent generalization benchmark。
 
-| Strategy | GT scope | Recall@10 | Hit@10 | MRR@10 | 是否适合简历 |
-| --- | --- | ---: | ---: | ---: | --- |
-| lexical | corpus（10 queries；33 relevant items） | 1.000（33/33；macro 1.000） | 1.000（10/10） | 1.000（10/10） | 有条件：必须写 exhaustive/corpus predicate |
-| semantic | corpus（10 queries；33 relevant items） | .364（12/33；macro .327） | .600（6/10） | .550（5.5/10） | 不作为全面质量提升证据 |
-| lexical | target（17 queries；31 target items） | .742（23/31；macro .529） | .529（9/17） | .426（7.25/17） | 面试诊断可用，简历慎用 |
-| semantic | target（17 queries；31 target items） | .323（10/31；macro .284） | .412（7/17） | .281（4.778/17） | 面试诊断可用，简历慎用 |
+## 6. Gate 3 candidate 与 Tier 2 记录
 
-因此更准确的面试表述是：lexical 对可确定枚举的精确谓词表现稳定，semantic 为互补检索通道；不能把 semantic 写成全面优于 lexical。Module packet 的 context-expansion observation 为 lexical 0/3、semantic 0/3 positive recovery，样本不足且不代表完整 production context uplift。
+Gate 3 candidate Development 来源：`gate3-final-development-real/report.json`。commit 为 `8805aa2`；raw / Evaluation SQLite / Trace 各 185；138 completed、47 failed，failure artifacts 126。这个 provider run/window 与 `7bac928` 不同，不能与历史 baseline 宣称质量改善。
 
-### 3.4 运维诊断轴
+D-only Tier 2 Judge 来源：`gate3-final-development-judge-d.json`，37 条中 21 judged、5 skipped、11 failed，batch `partial`。所有成功判定与 239 个 atomic claims 保持 `llm_assisted_provisional`；0 个 claim 标为人工 adjudicated。Gate 3 的 12 条人工答案 review 不等于 claim-level Judge review，也没有生成 judge-human agreement / audit pass rate。
 
-D baseline 的 measured facts 为：latency mean 31,942.757 ms、P50 26,691 ms、P95 68,299 ms；tool calls mean 2.108、P50 2、P95 5；tool rounds mean 1.568、P50 1、P95 3；input tokens total 1,602,065、output tokens total 55,714、total tokens 1,657,779。它们只描述本地 Snapshot、当前 provider/model 和本次 Development run，不是生产 SLA，不建议放入简历主 bullet。
+Gate 3 `packet.json` 的 `pending_human_review` 与 `review.md` 内已记录的人工核验结果不一致。该元数据产物未被改写；本索引以人工 review 文档和 Task validation 的记录说明答案 review 已发生，同时明确它没有升级 Judge 状态。
 
-### 3.5 Gate 3 candidate final Development（人工 review 输入）
+## 7. Failure attribution / substrate evidence
 
-来源统一为 `data/evaluation/benchmark/gate3-final-development-real/report.json`。候选 commit 为 `8805aa2`，Environment 为 `data/evaluation/benchmark/gate3-candidate-environment.json`；raw 185 条、五个 Variant 各 37 条，其中 138 条 completed、47 条 failed。failure artifact 共 126 条：provider_failure 47、retrieval_miss 38、coverage_error 13、context_missing 12、ranking_failure 7、answer_generation_error 6、zero_result_error 3。失败数是诊断 artifact 数，可能多于 failed run 数。
+post-fix clean run (`f247750`) 的 raw / Evaluation SQLite / Trace 均为 185，failure artifacts 146：provider_failure 114、retrieval_miss 12、coverage_error 7、context_missing 4、ranking_failure 4、answer_generation_error 2、zero_result_error 3。114 条 provider failure 中 106 条集中在 C/C2/D，Trace 记录 `APITimeoutError` / `APIConnectionError` 与 `ROUTER_COMPLETION_TIMEOUT`；不用于这些 variant 的 retrieval/answer quality 结论。
 
-| Variant | execution completed | valid answer | evidence recall | expected fact answer coverage | context recovery |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| A lexical-only | .405 (15/37) | .405 (15/37) | .784 (29/37；n=15) | 1.000 (8/8；n=8) | .000 (0/3；n=3) |
-| B lexical+semantic | .486 (18/37) | .459 (17/37) | .636 (7/11；n=8) | 1.000 (1/1；n=1) | unavailable（0 个可用 case） |
-| C + auto context | .973 (36/37) | .946 (35/37) | .657 (44/67；n=27) | .875 (14/16；n=16) | .000 (0/3；n=3) |
-| C2 + explicit context tool | .919 (34/37) | .892 (33/37) | .672 (39/58；n=25) | .929 (13/14；n=14) | .000 (0/3；n=3) |
-| D full-system | .946 (35/37) | .865 (32/37) | .627 (37/59；n=25) | .857 (12/14；n=14) | .000 (0/3；n=3) |
+四个 `ranking_failure` 已在 direct retrieval 内观察到 GT relevant hits，但 rank 为 14–29；`not_observed_within_recorded_depth=0`。根因修复分别是保留 per-call direct rank 并排除 context call，以及让 benchmark Application/provider request/close 在同一 event loop。证据见 `benchmark-root-cause-closure.md` 与 `tests/test_benchmark.py` / `tests/test_cli.py`。
 
-这些数值只描述当前 provider/model 窗口下的 Development candidate，不能直接与 `7bac928` baseline 包装成改进结论；两者 execution commit、运行时间和 provider availability window 不同。`freeze-final` 已要求绑定这份完整 Development 输出，但人工 review 通过前不生成 Gate 3 freeze。
+## 8. Benchmark 能证明什么 / 不能证明什么
 
-本轮 D-only Tier 2 Judge 输出为 `data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`：37 条中 21 条成功判定、5 条因无 content blocks 跳过、11 条 `judge_failed`，批次状态 `partial`；Grounded Claim Rate macro 0.398、Citation Correctness macro 0.132。所有成功判定仍为 `llm_assisted_provisional`，人工 review packet 为 `data/evaluation/benchmark/gate3-review/review.md` 与 `packet.json`，共 12 条、六类各两条，全部 pending。
+**有证据支持：**
 
-## 4. Post-fix validation：只验证 measurement substrate
+- 建立并人工裁决 versioned GT / Case / Suite；明确 Development、Calibration、冻结后 Holdout 的身份与分母。
+- 将 Snapshot 与 Environment 分开冻结，检查 canonical count、lexical index、semantic identity 和 execution commit。
+- 在相同快照下对 A/B/C/C2/D 做 production `TrivaeApplication.query()` ablation；把 single-variable 对照与 full-system multi-variable 差异分开。
+- 关联 raw run、Evaluation Store、Trace 和 failure artifacts；v1 Holdout 的 90 条记录，以及 Development/post-fix 的 185 条记录均有对应链路。
+- 将 evaluation measurement substrate 问题与 Retrieval/Answer quality 问题拆分；保留 provider/configuration failure 的真实语义。
+- 执行一次性 sealed Holdout，并保留失败事实；v2 recovery 独立于 v1 claim。
 
-### 4.1 目的与运行完整性
+**没有证据支持：**
 
-post-fix clean artifact 为 `data/evaluation/benchmark/stage3-root-cause-final-clean-real/`，execution commit 为 `f247750`；独立 Evaluation SQLite 为 `data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`。它验证 failure attribution 与 Application/provider lifecycle 修复，不能覆盖冻结 baseline。
+- 线上 SLA、跨数据分布 generalization 或独立 fresh holdout 质量结论。
+- v1 Holdout quality rate（90/90 SettingsError）；`full_available=true` 不能替代它。
+- v2 recovery 是 blind/unseen/fresh holdout。
+- Semantic retrieval 全面优于 lexical；auto context 或 explicit context tool 有稳定 uplift。
+- Provider timeout 等同于 Retrieval regression，或 SettingsError 等同于系统回答错误。
+- D 的 valid AnswerArtifact rate 等同于 factual correctness；Tier 2 provisional Judge 等同于人工验证。
 
-| Variant | completed | 说明 |
-| --- | ---: | --- |
-| A | 31/37 | 仍有 provider failure，但可用于观察分类链 |
-| B | 35/37 | 仍有 provider failure，但可用于观察分类链 |
-| C | 5/37 | provider timeout/connection window，不能作为 C quality 结果 |
-| C2 | 0/37 | provider timeout/connection window，不能作为 C2 quality 结果 |
-| D | 0/37 | provider timeout/connection window，不能作为 D quality 结果 |
+## 9. 简历可用的 measured facts（推荐 3 条）
 
-114 条 `provider_failure` 中有 106 条来自 C/C2/D；Trace 中集中出现 `APITimeoutError`、`APIConnectionError` 和 `ROUTER_COMPLETION_TIMEOUT`，且 C2/D 没有首个 model turn。独立 recovery smoke 中 D 曾完成、C2 仍有一次 provider failure，因此应表述为 provider availability observation，不增加 retry、fallback 或 Variant 特判。
+1. **Production-path Evaluation 可追溯性**
+   - Metric：raw / Evaluation runs / Evaluation results / 对应 Trace 各 **185/185**；37 Development cases × 5 variants × 1 repetition。
+   - Split / identity：Gate 3 candidate Development acceptance；execution identity `gate3-final-development`。历史 Development quality baseline 仍单独固定为 `7bac928`，不由 candidate 替换。
+   - Execution commit：`8805aa2bf58fcb2702817d54afe96bd819645db2`。
+   - GT completeness：47/47 adjudicated（Development 37、Calibration 10）；本 candidate 只跑 Development，Calibration 不进分母。
+   - Scope / limitation：单一 canonical Snapshot 下的真实 `TrivaeApplication.query()` runs；证明 candidate 的运行与审计链，不代表 Holdout、线上 SLA 或事实正确率。
+   - Evidence：`gate3-final-development-real/report.json`、raw records、`gate3-final-development-evaluation.sqlite3`、对应 Trace、`gt-audit-stage3-final.json`。历史 baseline quality source 是 `stage3-final-real/report.json`，execution commit `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`。
 
-### 4.2 Failure attribution 结果
+2. **Freeze / Environment identity gate**
+   - Metric：Environment gate **4/4** passed；Gate 2 freeze verification **12/12** passed。
+   - Split / identity：`resume-benchmark-v1` Gate 2 frozen Development identity；随后用于固定 37-case Development baseline。
+   - Execution commit：freeze verification identity `b1f7b78ba802f853f9cd1cbf7433fe07b2f895c1`；baseline quality run commit `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f`。
+   - GT completeness：47/47 adjudicated；37 Development cases 被 baseline 测量，10 Calibration cases 排除。
+   - Scope / limitation：这是冻结前置条件核验，不是质量分数；只证明记录的 Snapshot、索引、GT、Environment 与 Variant 身份通过检查。
+   - Evidence：`stage3-freeze-verification.json`、`resume-benchmark-v1-freeze.json`、baseline `report.json`、`gt-audit-stage3-final.json`。
 
-post-fix failure artifact 共 146 条。下表是 observation 分类，不是一个可以直接换算成系统质量成功率的分母：
+3. **Failure diagnosis 可定位性**
+   - Metric：post-fix **4/185 runs** 出现已观察到 relevant hit 但 rank 超出 Hit@10 的 `ranking_failure`；rank 14–29，`not_observed_within_recorded_depth=0`；raw / Evaluation / Trace 各 185 条。
+   - Split / identity：37-case Development 的 post-fix measurement-substrate / failure-attribution validation，不是 baseline quality replacement。
+   - Execution commit：`f24775099cb2314772c7d409341e8ebceeceac23`。
+   - GT completeness：47/47 adjudicated；本次 failure audit 使用 37 Development cases 的 acceptance conditions。
+   - Scope / limitation：展示 failure classification 与 Trace 可定位性，不是 Retrieval quality uplift；同批次另有 114 个 Provider failures，不据此推导系统质量回退。
+   - Evidence：`stage3-root-cause-final-clean-real/report.json`、`failures/failures.json`、对应 Evaluation SQLite / Trace、`benchmark-root-cause-closure.md`。
 
-| Category | Count | 归因与解释 |
-| --- | ---: | --- |
-| provider_failure | 114 | provider/runtime terminal failure；本批次主要是外部 availability window |
-| retrieval_miss | 12 | completed direct retrieval 中没有 GT relevant hit；召回能力问题 |
-| coverage_error | 7 | completed run 未产出 GT 要求的 Host-owned coverage status；coverage/行为问题 |
-| context_missing | 4 | final evidence 缺少 GT required context；证据保留/上下文使用问题 |
-| ranking_failure | 4 | GT relevant hit 已被 direct search 观察到，但全部 rank > Hit@10；排序问题 |
-| answer_generation_error | 2 | finalization contract 未生成有效 AnswerArtifact |
-| zero_result_error | 3 | GT 要求非空，但答案输出 no-result signature |
-| `not_observed_within_recorded_depth` | 0 | post-fix 没有把记录深度不足误报成 ranking/retrieval 结论 |
-| `evaluation_infrastructure` | 0 | 本批次未观察到 Evaluation infrastructure failure artifact |
-| `router_tool_selection_error` | 0 | 本批次未观察到该分类 |
+**面试中可解释但不推荐做简历 headline：** lexical 在 `stage3-module-retrieval.json` 的 10 个 exhaustive/corpus query 上 Recall@10 为 33/33；artifact 保存了 Snapshot、QuerySet 与 Variant identity，但没有保存 execution commit，因此不把它作为 commit-pinned headline。该范围不外推到任意自然语言 query。
 
-4 个 `ranking_failure` 的 direct relevant ranks 为：
+**不能写的 claim：** v1 Holdout quality rate；v2 blind/unseen/fresh generalization；semantic 全面提升；context 稳定收益；“185 次 Holdout run”；`D 37/37 valid answer` 等同于事实正确；任何未人工 adjudicate 的 Judge rate 是 human-verified。
 
-| Case | Observed rank | 共同事实 |
-| --- | --- | --- |
-| `dev-lexical-deepseek-harness` | 15–17 | direct lexical call；`hit_at_k_observable=true` |
-| `dev-lexical-nanobot-wiki` | 23、26、29 | direct lexical call；`hit_at_k_observable=true` |
-| `dev-lexical-resume-miner` | 18–26 | direct lexical call；`hit_at_k_observable=true` |
-| `dev-lexical-vibe-game` | 14、20、22 | direct lexical call；`hit_at_k_observable=true` |
+## 10. Interview defense
 
-### 4.3 两个 Evaluation / measurement substrate bug
-
-#### Bug A：Failure Attribution
-
-旧 classifier 把多个 retrieval call 的 direct hit 全局混合后排序，丢失单次调用内部 rank；context expansion call 也可能被当成 direct ranking observation，于是 `retrieval_miss`、`ranking_failure` 和 `not_observed_within_recorded_depth` 的边界不可靠。
-
-修复后，per retrieval call 保留 `rank`、`tool_call_id`、`strategy` 和 `message_id`；`strategy=context` 被排除出 direct ranking；只有 GT relevant hit 已被观察到且 rank 超过 10 才记为 `ranking_failure`；真正没有 relevant hit 才记为 `retrieval_miss`；记录深度不足才记为 `not_observed_within_recorded_depth`。`43d282e` 与 `tests/test_benchmark.py` 提供 regression；post-fix 真实结果为 4 个 ranking failure、rank 14–29、not observed 0。
-
-#### Bug B：Benchmark Provider Lifecycle
-
-旧 CLI 在同步 Application context 内对每个 Variant 分别 `asyncio.run`，同一个 async provider client 因此跨 event loop 使用，Application close 也可能在不同 loop 中发生，最终触发 `Event loop is closed`。
-
-修复后，benchmark 主入口 async 化；所有 Variant 在同一个 event loop 内完成 Application enter、provider request、run projection 和 Application exit；保留同步 wrapper，但由 CLI 使用 async Application context。`f247750` 与 `tests/test_cli.py` 的 lifecycle regression 提供证据；全量 pytest 为 576 passed，ruff、mypy、diff check 均通过。
-
-这两项应定义为 **Evaluation / measurement substrate bug**，不是 `Trivae retrieval algorithm bug`。它们修复的是“如何测量和归因”，没有修改 GT、Variant 或 Retrieval quality behavior。
-
-## 5. Trivae 自身仍存在的 quality failure
-
-以下问题不能因 measurement substrate 修复而被宣称已经解决。它们是当前下一阶段优化空间；本轮不调参、不加 reranker/query rewrite/fusion，也不重新跑 Development benchmark。
-
-| Failure | 准确定义 | 当前证据 | 下一步边界 |
-| --- | --- | --- | --- |
-| `retrieval_miss` | GT relevant message 在 recorded direct retrieval 中没有出现 | post-fix 观察到 12 条；baseline 仍有 3 条明确 retrieval miss | 召回能力问题；不要与排序失败混称 |
-| `ranking_failure` | GT relevant message 已被 direct retrieval 召回，但落在 Hit@10 之后 | post-fix 观察到 4 条，rank 14–29 | 排序质量问题；不要写成“没有召回” |
-| `context_missing` | final evidence 没有包含 GT required context | baseline 13 条；post-fix 4 条，但 post-fix 受 provider window 影响 | context selection / evidence preservation 问题 |
-| `coverage_error` | GT 声明 coverage expectation，但 Artifact 没有匹配的 Host-owned coverage status | baseline 18 条；post-fix 7 条 | temporal coverage / projection 行为问题 |
-| `zero_result_error` | GT 要求非空，但模型输出 no-result signature | baseline 2 条；post-fix 3 条 | no-result calibration / answer behavior 问题 |
-| `answer_generation_error` | runtime completed 但 finalization contract 没有有效 AnswerArtifact | baseline 6 条；post-fix 2 条 | Answer/Citation finalization 问题 |
-
-baseline 中的 `not_observed_within_recorded_depth=57` 属于旧分类时代的 recorded-depth 结果，不能直接改名为 retrieval miss 或 ranking failure；post-fix 的 per-call projection 才提供了上述 12/4 的可解释 attribution。反过来，post-fix 的 114 条 provider failure 也不能计入 Trivae quality failure。
-
-## 6. 简历可写数字清单
-
-| 数字/事实 | 是否推荐写简历 | 推荐表达 | 证据路径 | 风险/限制 |
-| --- | --- | --- | --- | --- |
-| 47 条人工 GT | 推荐 | “整理并完成 47 条人工裁决 GT（Development 37、Calibration 10）” | `data/evaluation/benchmark/gt-audit-stage3-final.json` | Calibration 不进入 headline denominator；不是 47 条 holdout |
-| 37 条 Development case | 推荐 | “在 37 条 Development case 上建立固定评测集” | `data/evaluation/benchmark/stage3-final-real/report.json` | 必须保留 Development 标签 |
-| A/B/C/C2/D 五个 Variant | 推荐 | “设计 lexical/semantic/context/full-system 五 Variant ablation” | `evaluation/variants/`、baseline report | D 是多变量 full-system |
-| 185 次真实 production-path evaluation | 推荐 | “通过 production `TrivaeApplication.query()` 完成 37×5=185 次真实 provider 运行” | baseline raw/report、Evaluation SQLite | 1 repetition；不是 holdout/generalization |
-| Gate/freeze 机制 | 推荐 | “用 Snapshot/Environment gate 固定数据、索引和运行版本，并通过 freeze verification 12/12、environment gate 4/4” | `stage3-freeze-verification.json`、`resume-benchmark-v1-freeze.json` | 是可复现性证据，不是质量准确率 |
-| raw / SQLite / Trace 对齐 185 条 | 推荐 | “保留 run→Evaluation Store→Trace 的 185 条可追溯链路” | post-fix raw、Evaluation SQLite、`data/trivae.sqlite3` | Trace 正文不进入仓库；强调可追溯而非业务收益 |
-| lexical corpus Recall@10 = 33/33 | 有条件推荐 | “在 10 个 exhaustive/corpus predicate query 上，lexical Recall@10 为 33/33” | `data/evaluation/benchmark/stage3-module-retrieval.json` | 只限 corpus/exhaustive scope；不能泛化为全系统 Recall |
-| 4 个 ranking failure，rank 14–29 | 推荐用于诊断型 bullet | “可将排序失败定位到具体 direct rank（14–29）” | post-fix `failures.json`、`benchmark-root-cause-closure.md` | 这是可定位性证据，不是“质量提升 4%” |
-| 全量 pytest 576 passed | 推荐 | “补充 lifecycle/attribution regression 后全量 pytest 576 passed，ruff/mypy/diff check 通过” | 任务 `validation.md`、`tests/test_benchmark.py`、`tests/test_cli.py` | 工程质量事实，不是线上 SLA |
-| D baseline valid answer 37/37 | 有条件，不单独写 | 只能写成“Development delivery baseline 中 D 为 37/37 valid AnswerArtifact” | `stage3-final-real/report.json` | valid answer 是交付/契约指标，不等于回答事实正确；不能省略 Development |
-| D baseline false-zero guard 33/33 | 有条件，面试优先 | “在 33 个可用非空 case 中没有 false no-result” | baseline report | 不覆盖所有 case；不是 general accuracy |
-| B−A evidence recall −.075、C−B context +.500、C2−C −.333 | 不推荐 | 面试中说明“对照评估显示收益不稳定” | baseline report `cross_variant` | paired n 分别为 19、2、3；不能包装成稳定 uplift |
-| post-fix provider_failure 114 | 不推荐作为质量数字 | 只能说明“出现 provider availability window，未被归因到系统质量” | post-fix report、Trace | C/C2/D 占 106 条；不能写成 Trivae 质量下降 |
-| Tier 2 grounded/citation judge | 不推荐 | “Tier 2 保持 provisional，等待人工 adjudication” | `stage3-final-judge-d.json`、audit queue | 仅 8 条 judged、29 条 judge_failed、0 条人工确认 |
-| Holdout / generalization | 不应写 | “本轮未测量” | freeze/report metadata | Holdout 未生成、未查看、未评测 |
-
-## 7. 简历项目描述候选
-
-1. **建立高噪声群聊 Agent 的可复现 Evaluation Harness**：固定 Snapshot、Environment 和人工 GT，设计 A/B/C/C2/D 五个 Variant，在 37 条 Development case 上完成 185 次真实 production-path evaluation，并把运行结果、Evaluation Store、Trace 与 failure artifact 关联起来。
-   **Evidence:** `data/evaluation/benchmark/stage3-final-real/report.json`、`data/evaluation/benchmark/stage3-freeze-verification.json`、`evaluation/snapshots/resume-benchmark-v1-freeze.json`
-
-2. **构建 failure-driven diagnosis 链路**：保留每次 retrieval call 的 rank、tool_call_id、strategy 和 message_id，排除 context call 对 direct ranking 的干扰，将“未召回”与“已召回但 rank 14–29”拆分；post-fix 真实运行定位出 4 个 ranking failure，且 `not_observed_within_recorded_depth=0`。
-   **Evidence:** `43d282e`、`src/trivae/evaluation/benchmark/failures.py`、`tests/test_benchmark.py`、`data/evaluation/benchmark/stage3-root-cause-final-clean-real/failures/failures.json`
-
-3. **修复 Evaluation provider lifecycle**：将 benchmark runner async 化，让五个 Variant 在同一 event loop 内完成 Application enter、provider request 和 exit，并加入 lifecycle regression；post-fix raw/Evaluation/Trace 均保持 185 条可对齐记录，全量 pytest 576 passed。
-   **Evidence:** `f247750`、`src/trivae/evaluation/benchmark/orchestrator.py`、`src/trivae/interfaces/cli.py`、`tests/test_cli.py`、`data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`
-
-4. **用分层 GT scope 做 lexical/semantic 对照评估**：对 27 个 retrieval query 按 exhaustive/corpus 与 partial/target 分开统计 Recall@10、Hit@10、MRR@10；结果显示 lexical 在 10 个 exhaustive/corpus predicate query 上达到 Recall@10 33/33，semantic 作为互补通道而非全面替代。
-   **Evidence:** `data/evaluation/benchmark/stage3-module-retrieval.json`、`data/evaluation/benchmark/stage3-final-real/report.json`
-
-## 8. Interview Defense（16 个事实型追问）
-
-1. **为什么要自己做 Evaluation Harness？** 高噪声群聊 Agent 的最终答案同时受检索、上下文保留、模型输出、provider 和运行时影响；只看最终答案无法定位问题。Harness 将固定 Snapshot/GT/Variant、EvaluationRun、Trace、failure attribution 和可比指标串成可复现证据链。
-2. **47 条 GT 是怎么来的？** 当前仓库保留的是人工 adjudication 后的 versioned GT suite：47/47 已裁决，其中 Accept 26、Modify 21、Reject 0；Development 37，Calibration 10。具体 case identity 和要求以 `gt-audit-stage3-final.json` 及冻结 artifact 为准，不把未留存的过程细节补写成事实。
-3. **为什么 Calibration 不计入正式结果？** Calibration 用来校准 schema 和 measurement substrate，不代表正式 Development 质量样本；把它混入 headline denominator 会把校准数据和被测结果混在一起。因此正式 baseline 只用 37 条 Development case。
-4. **为什么需要 Gate 2 Freeze？** 它锁定 Snapshot、索引、GT、Environment、Variant configuration 和运行身份，使 A/B/C/C2/D 的差异可解释；本轮 freeze verification 为 12/12，environment gate 为 4/4。
-5. **5 个 Variant 分别比较什么？** A 是 lexical control；B 在 A 上加入 semantic search；C 再加入 production default auto context expansion；C2 再加入 `get_message_context`；D 是七个 Agent-facing tools 的 full-system candidate。D 与前四者是多变量差异，不能做单组件因果归因。
-6. **为什么不能只看最终答案正确率？** completion/valid answer 只能说明运行和输出契约是否完成，不能区分 relevant message 没召回、召回后排名过低、context 没保留、coverage artifact 缺失、provider 失败或答案生成失败，所以还要看 evidence、context、zero-result、Trace 和 failure category。
-7. **Recall@K、MRR、Evidence Recall 分别说明什么？** module Recall@K 衡量 GT relevant item 是否进入前 K；Hit@K 衡量 query 是否至少命中一个；MRR 还反映第一个命中的位置；Evidence Recall 衡量最终答案保留的 evidence 对 GT target 的命中。后者不是 corpus retrieval Recall，partial/target scope 不能和 exhaustive/corpus 混算。
-8. **Semantic 有没有稳定提升？** 没有足够证据支持全面提升。Module-level lexical 在 exhaustive/corpus predicate query 上 Recall@10 为 33/33，semantic 为 12/33；端到端 B−A 虽然 completion/valid answer 各上升 .162，但 paired evidence recall 为 −.075（n=19）。更准确的结论是 semantic 是互补通道。
-9. **Context expansion 有没有稳定提升？** 没有。C−B 的 context recovery 只在 paired n=2 上为 +.500，C2−C 在 paired n=3 上为 −.333，evidence recall 方向也不稳定；只能说完成了对照评估并保留限制。
-10. **Failure-driven analysis 发现了什么？** 先发现 failure attribution 把多个 retrieval call 全局混合，无法保留单次 rank；修复后 post-fix 真实运行出现 4 个可定位的 ranking failure，rank 为 14–29，`not_observed_within_recorded_depth=0`，并保留 retrieval/context/coverage/answer/zero-result 等剩余问题。
-11. **`retrieval_miss` 和 `ranking_failure` 有什么区别？** `retrieval_miss` 是 GT relevant message 没出现在 recorded direct retrieval；`ranking_failure` 是 relevant message 已经被 direct retrieval 观察到，但 rank 超过 Hit@10。本轮不能把后者笼统称为“没召回”。
-12. **这轮为什么修 Evaluation Bug，而不是 Retrieval Bug？** 本轮目标是先让测量和归因可信。Bug A 修复 per-call rank 与 context 排除，Bug B 修复跨 event loop 的 provider lifecycle；这些修复没有改变 GT、Variant 或 Retrieval behavior，剩余 retrieval/ranking/context 问题被显式保留下来供下一阶段处理。
-13. **provider timeout 为什么不能算 Variant 质量下降？** post-fix 的 114 条 `provider_failure` 中 106 条集中在 C/C2/D，Trace 记录 `APITimeoutError`、`APIConnectionError` 和 `ROUTER_COMPLETION_TIMEOUT`，C2/D 没有首个 model turn；这是 availability window，不能重新推导 ablation quality。
-14. **为什么现在没有 Holdout？** 用户范围明确要求本轮停止 Evaluation 扩展；当前 Holdout 未生成、未查看、未评测，Stage 3 只收口 Development 并保持 Ready for Gate 3。
-15. **没有 Holdout，这些数据能证明什么、不能证明什么？** 它能证明在冻结 Snapshot/Environment/GT 下，37 条 Development case 的可复现 baseline、Variant 对照边界、运行可追溯性和 failure diagnosis；不能证明 unseen、holdout、generalization 或线上 SLA。
-16. **如果之后继续做，Holdout 的作用是什么？** 在 Development 调整结束后，用独立 case、独立 GT 和固定评测协议测量未参与调参的数据，检查泛化与回归；Holdout 结果应单独报告，不能回填或替代本轮 Development baseline。
+20 个追问与事实证据映射见 [interview-defense.md 的 `resume-benchmark-v1` Gate 4 章节](../../.trellis/spec/project/interview-defense.md)。其中必须保持的边界：Calibration 不进入 headline；GT completeness 决定 corpus/target scope；v1 是 sealed SettingsError；v2 是 known/reused recovery；semantic/context uplift 不稳定；provider/configuration failure 不归成回答质量；Judge 保持 provisional。

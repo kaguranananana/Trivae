@@ -1,8 +1,8 @@
-# Validation: resume-benchmark-v1 Stage 3
+# Validation: resume-benchmark-v1 Gate 4 closure
 
 ## Completion boundary
 
-- Stage 3 status: **Complete / Gate 3 review complete / final freeze complete**；v1 Stage 4 registration、一次性 holdout run 和 final merge complete；复用 GT 的 v2 recovery validation 也已完成；当前等待 Gate 4 review。
+- Stage 3 status: **Complete / Gate 3 review complete / final freeze complete**；v1 Stage 4 registration、一次性 holdout run、final merge 和复用 GT 的 v2 recovery validation 均完成。Gate 4 文档/证据 review 于 2026-09-25 通过并带明示限制；Task 依 Trellis workflow 归档。
 - Final headline scope: Development only，37 cases × A/B/C/C2/D × 1 repetition = 185 runs。
 - v2 recovery scope：复用原 18 条 holdout Case、GT 和 18/18 人工核验；结果单独报告，不冒充全新 blind holdout 或 v1 headline。
 - calibration 10 cases 已排除 headline denominator；18 条 holdout 已全部人工确认并登记。正式 holdout 已运行一次并封存，但 90/90 run 均在设置校验阶段以 `SettingsError` exception 结束，没有可用答案或 holdout 质量指标；不得重跑 v1。
@@ -114,3 +114,40 @@ git diff --check                            → passed
 - 运行结果：90/90 run 已完成 claim；52 条 `completed`、38 条 `failed`；failure artifact 58 条，分类为 `provider_failure` 38、`retrieval_miss` 8、`answer_generation_error` 4、`coverage_error` 3、`zero_result_error` 3、`context_missing` 1、`ranking_failure` 1。
 - `data/evaluation/benchmark/final-report-v2-recovery/` 已完成合并，`full_available=true`；该字段只表示 split identity 一致。由于 18 条 Case/GT/裁决已被用户和开发流程看到，本轮必须称为 **recovery validation / known holdout**，不能称为 unseen、blind 或独立 generalization 结果。
 - v1 的 `holdout-run/`、claim 和 `final-report/` 保持原样；本轮没有 retry、补跑失败项或覆盖旧输出。
+
+## Gate 4 final review（2026-09-25）
+
+### Dataset / Development
+
+- GT audit：47 cases / 47 adjudicated；Development 37、Calibration 10；Calibration 不计入 headline denominator。Holdout registration 为 18 cases，18/18 人工确认。
+- Historical Development baseline：`7bac928`，37 cases × 5 variants × 1 repetition = 185；raw 185、Evaluation runs/results 各 185、对应 Trace 185。
+- Gate 3 candidate `8805aa2`：Development raw / Evaluation / Trace 各 185，Case×Variant coverage 185/185；另有 138 completed、47 failed。它不是替换历史 baseline 的 quality report。
+- Post-fix substrate validation `f247750`：raw / Evaluation / Trace 各 185；failure attribution 的类别和 Provider timeout window 见 `.trellis/spec/project/problems/benchmark-root-cause-closure.md`。
+
+### Holdout v1 / recovery v2
+
+- v1 registration：18 ordered Case identities；raw 90、Evaluation runs/results 各 90、Trace 90；所有 run 均 `SettingsError` exception，claim=`completed`，failure artifact 90。结论：v1 Holdout quality unavailable，sealed；不重跑。
+- v2 recovery：独立 freeze / registration / claim / output；raw / Evaluation / Trace 各 90，52 completed、38 failed，58 failure artifacts。它复用已暴露的 Holdout Case/GT，标为 known/reused recovery validation。
+- `full_available=true` 仅表示 Environment/Variant identity 可合并，不代表 Holdout quality available。
+
+### Documentation / unresolved limits
+
+- `validation.md`、`implement.md`、`evaluation/README.md`、`resume-benchmark-v1-fact-index.md`、`interview-defense.md` 已统一当前状态：Gate 3 完成，v1 sealed SettingsError，v2 known/reused recovery，Gate 4 通过并带限制。
+- Tier 2 Gate 3 D-only Judge 为 21 judged、5 skipped、11 failed；0 claim 人工 adjudicated。Gate 3 12-case 答案 review 不是 judge-human agreement。
+- `gate3-review/packet.json` 仍标 `pending_human_review`，与已填写 `gate3-review/review.md` 不一致。保留原始 packet；以 review 文档和 Task 中的审阅记录说明答案 review，不将其升级为 Judge adjudication。
+- v1 Holdout quality、fresh generalization、Tier 2 judge-human agreement 均未测量；Gate 4 不将这些未完成项包装成通过指标。
+
+### Gate 4 disposition
+
+Gate 4 **通过并带明示限制**：事实索引、面试 Defense、根因记录、Task 状态和归档闭环齐全；没有重跑 benchmark、改写 GT、覆盖历史 raw/SQLite/Trace/report 或修改 production Retrieval/Router/Planner/Agent Runtime。
+
+### Final quality checks
+
+| Command | Result |
+|---|---|
+| `uv run --extra dev pytest -q` | **Environment collection error**：`tests/test_process_warmup.py` 导入 `tqdm`，当前仅启用 dev extra 的环境未安装它；pytest 在 collection 阶段停止，0 tests executed。 |
+| `uv run --extra dev --with tqdm pytest -q` | **618 passed in 16.84s**；只在运行环境补入测试所需的已声明可选依赖，没有改项目依赖文件或历史 benchmark artifact。 |
+| `uv run --extra dev ruff check src tests` | **All checks passed** |
+| `uv run --extra dev mypy src` | **Success: no issues found in 114 source files** |
+| `git diff --check` | **passed** |
+| `git status` | 提交前仅有本次 Gate 4 文档修改；无 production code、Evaluation run 或历史结果文件变更。提交与 archive/journal 后的最终状态见 Git history / status。 |

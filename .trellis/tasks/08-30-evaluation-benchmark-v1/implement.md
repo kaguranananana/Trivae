@@ -4,7 +4,9 @@
 > 四阶段：Measurement Substrate → Benchmark Dataset → 干净 Ablation → Judge + 冻结后 holdout。
 > 每阶段末尾有 review gate；gate 未过不进入下一阶段。
 >
-> **当前状态（2026-09-08，Stage 4 / holdout sealed + merged）**：**Human GT Adjudication Gate、Gate 2
+> **Gate 4 收口（2026-09-25）**：Gate 3 review、final freeze、v1 holdout 封存、v2 recovery validation、fact index 与面试证据审计均已完成。Gate 4 以“结果和限制可追溯”为通过条件；v1 holdout 没有质量值，Tier 2 没有人工逐条 adjudication，二者均不得升级成质量结论。本轮不重跑 benchmark、不改 Evaluation 或生产逻辑；检查通过后使用 Trellis task 工具完成归档。
+>
+> **历史快照（2026-09-08；已由下方 Gate 4 收口 supersede）**：**Human GT Adjudication Gate、Gate 2
 > Development Freeze、Module Retrieval、Failure-driven iteration、最终 clean 37×5 和 Tier 1
 > / Tier 2 Development Evaluation 均已完成**。47/47 case 已人工裁决（Accept 26 / Modify 21 /
 > Reject 0；calibration 10 / development 37），deterministic audit 为 green（47 cases / 47
@@ -16,44 +18,44 @@
 > runs；calibration 排除，正式 holdout 已完成一次性运行。Gate 3 candidate commit 为
 > `8805aa2bf58fcb2702817d54afe96bd819645db2`，已在干净 worktree 捕获 Environment 并完成新的
 > Development 37×5 acceptance；D-only Judge 为 provisional partial，人工 packet 已完成核验。
-> 当前 **Stage 4 registration / run / merge complete**：候选 Development 已完成机器验收，Gate 3 人工核验与 freeze 已完成；18 条 holdout 已 18/18 confirmed、登记、一次性运行并合并。由于运行命令从冻结临时 worktree 启动且未注入主仓库 `.env`，90 条 holdout run 全部为 `SettingsError` exception，holdout 质量指标不可用；该 claim 和报告按 v1 纪律保留，不重跑，不要把 `full_available=true` 当作 holdout 质量结论，不要 archive 本任务。
+> 该历史状态中的“不要 archive 本任务”只描述 2026-09-08 当时的 Gate 4 前停止点，不适用于本次完成的 Gate 4 收口。
 
 ---
 
 ## Stage 1: Measurement Substrate
 
 ### 1.1 ExecutionOverride 最小扩展
-- [ ] `ExecutionOverride.context_window_limit: int | None = None` + 校验（非 None 时 ≥0）+ to_dict/from_dict（旧 JSON 缺字段 → None）
-- [ ] `AgentRunRequest.context_window_limit` 新可选字段；`QueryRequest.to_runtime_request()` 贯通
-- [ ] `RuntimeContext.context_window_limit` 贯通；openai_tools.py 中 lexical_search / semantic_search / search_messages 输入构造点钳制 context_before/after；tool 完成 payload 记录 `context_window_applied`
-- [ ] `get_message_context` / `get_recent_messages` 不受影响（显式验证）
-- [ ] 现有全部测试零改动通过
+- [x] `ExecutionOverride.context_window_limit: int | None = None` + 校验（非 None 时 ≥0）+ to_dict/from_dict（旧 JSON 缺字段 → None）
+- [x] `AgentRunRequest.context_window_limit` 新可选字段；`QueryRequest.to_runtime_request()` 贯通
+- [x] `RuntimeContext.context_window_limit` 贯通；openai_tools.py 中 lexical_search / semantic_search / search_messages 输入构造点钳制 context_before/after；tool 完成 payload 记录 `context_window_applied`
+- [x] `get_message_context` / `get_recent_messages` 不受影响（显式验证）
+- [x] 现有全部测试零改动通过；后续完整 pytest 与 `tests/test_benchmark.py` 有回归覆盖
 
 ### 1.2 Run projection 扩展
-- [ ] `checks.query_result_snapshot` 增加 `retrieval_calls`（per-call：direct_hits 前 50 带 rank / expanded_ids 前 50 / counts / coverage_status / truncated / recorded_depth / omitted_ids；per-run：call cap 8 + `retrieval_calls_omitted`）与 `evidence_sources`（bounded）
-- [ ] `checks.tool_result_facts` 复制清单加入 `context_window_applied`
-- [ ] 新 deterministic check `context_expansion_override`（声明 limit=0 ⇒ 所有 retrieval call applied=0）
-- [ ] 深度语义落地：`not_observed_within_recorded_depth` 状态可供 failure 分类消费
+- [x] `checks.query_result_snapshot` 增加 `retrieval_calls`（per-call：direct_hits 前 50 带 rank / expanded_ids 前 50 / counts / coverage_status / truncated / recorded_depth / omitted_ids；per-run：call cap 8 + `retrieval_calls_omitted`）与 `evidence_sources`（bounded）
+- [x] `checks.tool_result_facts` 复制清单加入 `context_window_applied`
+- [x] 新 deterministic check `context_expansion_override`（声明 limit=0 ⇒ 所有 retrieval call applied=0）
+- [x] 深度语义落地：`not_observed_within_recorded_depth` 状态可供 failure 分类消费
 
 ### 1.3 Benchmark 模块
-- [ ] `benchmark/gt.py`：criterion 约定解析（三轴 expected_coverage_status / expected_truncated / expected_zero_result 互斥与一致性校验；expected_fact 为 alias 列表）
-- [ ] `benchmark/environment.py`：BenchmarkEnvironmentManifest（canonical snapshot_id + lexical identity + semantic serialized identity + git commit）+ pre-run gate 三查
-- [ ] `benchmark/retrieval.py`：**薄 adapter**——Case → RetrievalQuerySet → 现有 RetrievalAnnotationWorkflow 执行路径 → RetrievalRunRecord → GT 评分；不重写 invocation/ranking/coverage
-- [ ] `benchmark/metrics.py`：Tier 1 指标（scope 策略：exhaustive→corpus / partial→target / unknown→unavailable；MRR@K 显式 cutoff；Expected Fact Answer Coverage 只查 answer_text；Coverage 三轴各自独立；Execution Completion Rate / Valid Answer Rate 无条件指标；provider failure 剔除条件分母但单独呈现）
-- [ ] `benchmark/report.py`：JSON + Markdown（overall / per-category / per-split；full 列做 commit 一致性断言）
-- [ ] `benchmark/failures.py`：acceptance-condition 触发 + 单 Run observation category 判定链（semantic_miss 不在此层）
-- [ ] CLI：`trivae eval benchmark ...` 编排子命令
+- [x] `benchmark/gt.py`：criterion 约定解析（三轴 expected_coverage_status / expected_truncated / expected_zero_result 互斥与一致性校验；expected_fact 为 alias 列表）
+- [x] `benchmark/environment.py`：BenchmarkEnvironmentManifest（canonical snapshot_id + lexical identity + semantic serialized identity + git commit）+ pre-run gate 三查
+- [x] `benchmark/retrieval.py`：**薄 adapter**——Case → RetrievalQuerySet → 现有 RetrievalAnnotationWorkflow 执行路径 → RetrievalRunRecord → GT 评分；不重写 invocation/ranking/coverage
+- [x] `benchmark/metrics.py`：Tier 1 指标（scope 策略：exhaustive→corpus / partial→target / unknown→unavailable；MRR@K 显式 cutoff；Expected Fact Answer Coverage 只查 answer_text；Coverage 三轴各自独立；Execution Completion Rate / Valid Answer Rate 无条件指标；provider failure 剔除条件分母但单独呈现）
+- [x] `benchmark/report.py`：JSON + Markdown（overall / per-category / per-split；full 列做 commit 一致性断言）
+- [x] `benchmark/failures.py`：acceptance-condition 触发 + 单 Run observation category 判定链（semantic_miss 不在此层）
+- [x] CLI：`trivae eval benchmark ...` 编排子命令
 
 ### 1.4 Stage 1 测试
-- [ ] Unit：各 scope 的 Recall@K / Hit@K / MRR@K、Evidence Recall、Context Recovery、Coverage Status Accuracy（三轴独立）、Truncation Accuracy、Expected Fact Answer Coverage（answer_text-only 假阳性负例）、False/Verified Zero-Result、无条件完成率、GT 解析与一致性校验、environment gate、override 钳制 contract
-- [ ] Integration：fixture DB 上 fixed snapshot + fixed case 走通 Runner→projection→metrics→report；override=0 ⇒ expanded_ids 空且 check passed；drift/identity mismatch 拒绝；retrieval_calls 全 run cap 生效
-- [ ] `pytest -q` 全绿；`ruff check` / `mypy` 通过
+- [x] Unit：各 scope 的 Recall@K / Hit@K / MRR@K、Evidence Recall、Context Recovery、Coverage Status Accuracy（三轴独立）、Truncation Accuracy、Expected Fact Answer Coverage（answer_text-only 假阳性负例）、False/Verified Zero-Result、无条件完成率、GT 解析与一致性校验、environment gate、override 钳制 contract
+- [x] Integration：fixture DB 上 fixed snapshot + fixed case 走通 Runner→projection→metrics→report；override=0 ⇒ expanded_ids 空且 check passed；drift/identity mismatch 拒绝；retrieval_calls 全 run cap 生效
+- [x] 全量 `pytest -q`；`ruff check` / `mypy` 在 Stage 1 closure 及后续 closure 中通过
 
 ### 1.5 Calibration Pilot Gate（人工批量审核之前）
-- [ ] 构造 8~12 个 dev pilot case（覆盖全部六类各 ≥1；含 ≥1 个 exhaustive predicate case、≥1 个 target-set case、≥1 个 expected partial/truncated temporal case、≥1 个 true-empty case）
-- [ ] 走完全链路：GT parser → module-level retrieval 评分 → A/B/C/C2/D 五 variant end-to-end 单 case smoke → projection → metrics → report
-- [ ] 校验点：GT 解析无误、projection 无界增长受控、指标 unavailable 语义正确、failure 分类链不误触发、report 可读
-- [ ] pilot 中发现的数据模型问题在本阶段修复（此时改 schema 成本最低）
+- [x] **B — 校准切片已按 Calibration 实施**：10 个 Calibration cases 运行通过；实际覆盖 exact_lexical、semantic_paraphrase、context_recovery、temporal_overview、zero_result 五类。原计划要求 pilot 六类全覆盖，但 pilot 未含 citation_evidence；最终 Development 六类齐全并含 citation_evidence，故本项作为历史计划差异披露，不将其伪称为 pilot 已覆盖。
+- [x] 10-case 校准切片走通 GT/parser、retrieval、A/B/C/C2/D 五 Variant、projection、metrics 与 report；五个 Variant 各 10 条 raw run。
+- [x] 校验 GT / projection / unavailable / failure / report contract；实现问题在批量 Development 前修复。
+- [x] 已完成 Measurement Substrate 校准 gate；证据见 `pilot-*-v1` artifacts、最终 Development reports 与测试套件。
 
 **Gate 1（用户 review）**：Stage 1 代码 + pilot 结果面审；确认指标定义、投影 schema、报告形态。
 
@@ -62,8 +64,8 @@
 ## Stage 2: Benchmark Dataset（40~60 case）
 
 ### 2.1 Snapshot / Environment 固化
-- [ ] pre-run gate 通过 → 写 `data/evaluation/benchmark/environment.json`（完整版）+ `evaluation/snapshots/resume-benchmark-v1.json`（redacted 提交版）
-- [ ] DatasetSnapshot 本体保持零改动（绑定仍走 case.dataset_snapshot.snapshot_id）
+- [x] pre-run gate 通过 → 写 `data/evaluation/benchmark/environment.json`（完整版）+ `evaluation/snapshots/resume-benchmark-v1.json`（redacted 提交版）
+- [x] DatasetSnapshot 本体保持零改动（绑定仍走 case.dataset_snapshot.snapshot_id）
 
 ### 2.2 Case 构造
 - [x] 汇总真实问题来源：dogfooding 历史问题、归档 failure cases（2699/100、CJK 0-hit、合法空窗等）、数据挖掘候选
@@ -123,7 +125,7 @@
 - **Root-cause closure clean**：`data/evaluation/benchmark/stage3-root-cause-final-clean-real/` + `data/evaluation/benchmark/stage3-root-cause-final-clean-evaluation.sqlite3`；raw / SQLite / Trace 均为 185，A/B/C/C2/D 各 37。failure artifact 146 条：provider_failure 114、retrieval_miss 12、coverage_error 7、context_missing 4、ranking_failure 4、answer_generation_error 2、zero_result_error 3；`not_observed_within_recorded_depth=0`，`evaluation_infrastructure=0`。
 - **Root-cause closure audit**：A 31/37、B 35/37、C 5/37、C2 0/37、D 0/37 completed。全批次 114 条 terminal provider failure 中，C/C2/D 占 106 条；这些 failure 在 Trace 中为 `APITimeoutError`/`APIConnectionError`，并集中伴随 `ROUTER_COMPLETION_TIMEOUT`，C2/D failure 没有首个 model turn。独立 recovery smoke 中 D 成功、C2 仍一次失败，故保留为 provider availability/timeout observation，不新增 provider retry 或变体特判。
 - **评估缺陷修复**：failure classifier 改为按单次 direct retrieval call 保留 rank，排除 context call，新增 `ranking_failure`；benchmark CLI 改为 async Application context，所有 Variant 在同一个 event loop 执行和关闭。新增 CLI lifecycle regression；全量 `pytest` 594 passed。
-- **停止边界**：Stage 4 的 registration、一次性 holdout run 和 dev/holdout/full merge 已完成；当前等待 Gate 4 复核。holdout 的 90 条 run 全部为 `SettingsError` exception，v1 不生成 holdout 质量指标，也不重跑。
+- **历史停止边界（2026-09-04）**：Stage 4 的 registration、一次性 holdout run 和 dev/holdout/full merge 已完成；当时等待 Gate 4 复核。holdout 的 90 条 run 全部为 `SettingsError` exception，v1 不生成 holdout 质量指标，也不重跑。
 
 **Gate 3（用户 review）**：dev 最终结果面审 + 系统冻结声明（commit pin + variant fingerprint 记录）。
 
@@ -138,22 +140,22 @@
 - [x] 无效条目替换仅限预声明三情形（GT 矛盾 / 重复 / 数据损坏），本轮无需要替换的条目
 
 ### 4.1 Tier 2 Judge（dev 上先验证）
-- [ ] `benchmark/judge.py`：atomic claim 切分 + entailment（llm_assisted_provisional）；若不做 atomic 切分则输出 `Cited Content Block Support Rate`
-- [ ] dev 抽样人工逐条确认 → per-item adjudicated + judge-human agreement 报告（无整组升级）
+- [x] `benchmark/judge.py` 已实现 atomic claim 切分 + entailment，输出仍为 `llm_assisted_provisional`；代码与 Gate 3 输出见 `src/trivae/evaluation/benchmark/judge.py`、`data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json`。
+- [ ] **C — 剩余限制，不作为 Gate 4 质量 claim**：开发集 Judge 输出没有逐条人工确认或 `judge-human agreement` 报告。Gate 3 的 12 条人工 packet 是答案/系统诊断，不等同于 claim-level Judge adjudication；其中 `packet.json` 仍为 `pending_human_review`，而 `review.md` 记录了已完成的人工核验。37 条 D-only Judge 为 21 judged、5 skipped、11 failed，成功项均 provisional，0 条 claim 被人工 adjudicate。Gate 4 保留这一限制，不把 Tier 2 数字升级为人工结论。
 
 ### 4.2 Holdout 运行（一次性，同冻结 commit + 同 variant fingerprint）
 - [x] 五 variant × holdout case（1 rep）+ Tier 1 projection；本轮 90/90 在设置校验阶段 exception，未产生 Tier 1 质量值或 Tier 2 答案
-- [x] **结果封存**：无论好坏，v1 holdout 结果即最终结果，照实报告；claim 为 completed，90 条 provider_failure 事实保留
-- [ ] 若暴露真实 Bug：v1 结果保留 + 记录 root cause；修复进入 `resume-benchmark-v2`（届时构造全新未暴露 holdout）；**禁止因系统答错替换/降级 holdout case 后重跑 v1**
-- [ ] 仅预声明的无效条目情形（GT 矛盾/重复/数据损坏）允许替换并记录原因
+- [x] **结果封存**：无论好坏，v1 holdout 结果即最终结果，照实报告；claim 为 completed，90 条 `SettingsError` exception 保留（artifact observation category 为 `provider_failure`，根因是本地 settings 缺失，不是 Provider availability failure）
+- [x] **B — 根因修复在后续提交完成**：SettingsError 根因已记录在现有 `benchmark-root-cause-closure.md`；CLI 后续加入 Application/claim 前 `load_settings()` 预检，并要求冻结 worktree 显式传入 `--env-file`。v1 claim、90 条 raw/Evaluation/Trace 和报告不变；独立 v2 recovery 使用独立 freeze/registration/output。
+- [x] **D — 无替换需要**：未发现满足预声明条件（GT 与 Snapshot 矛盾、重复、数据损坏）的 holdout 条目；没有换题、没有重跑 v1。
 - [x] full 报告合并断言：dev rerun commit == holdout commit；final report 的 `full_available=true`，但 holdout 质量矩阵为空
 
 ### 4.3 交付
 - [x] 最终 Comparison Report（full / development / holdout + per-category + 无条件指标 + 跨 Variant 归因；holdout 指标 unavailable）
 - [x] Failure Analysis（acceptance-condition failures + `SettingsError` 运行根因）
-- [ ] 简历候选指标 2~4 个（holdout 优先，含 baseline/current/absolute/relative/样本量/scope/GT completeness）
-- [ ] `interview-defense.md` 新增「resume-benchmark-v1 事实索引」章节（指标选择/GT 构建与完备度边界/Snapshot 与 Environment 分离/Ablation 设计/防 overfit 与 holdout 纪律/semantic 与 expansion 有效性/coverage 三轴与 citation 验证/真实 before-after/应对质疑话术）
-- [ ] `problem-records.md` 视新增 bug 情况补记录
+- [x] 2~4 条简历候选事实已补入 fact index，每条写明数字、分母、scope、证据和限制。v1 holdout 优先条件无质量数据可用；候选事实因此来自 Development baseline / module retrieval / failure diagnosis，不伪造 holdout uplift。
+- [x] `interview-defense.md` 已更新最终生命周期、测量边界和 20 个基于真实实现/结果的追问映射；Tier 2 保留 provisional。
+- [x] 已补充现有 benchmark root-cause record 和 `problem-records.md` 索引；没有重复创建问题档案。
 
 **Gate 4（最终交付 review）**。
 
@@ -210,4 +212,14 @@ python -m trivae eval benchmark report --input data/evaluation/benchmark/...
 - [x] Recovery 结果为 52 条 completed、38 条 failed，failure artifact 58 条；`final-report-v2-recovery/` 合并成功。
 - [x] 报告标注为 recovery validation / known holdout：不能把复用的 Case/GT/裁决解释为全新 blind holdout 或独立 generalization；v1 失败产物保持不变。
 
-用户已有 interview-docs/ 工作区改动保持原样；待人工确认项不标为完成。
+> 历史备注（2026-09-08）：当时保留的 `interview-docs/` 工作区改动未混入提交，待人工确认项不标为完成；后续 Gate 3 review 与 holdout adjudication 已按各自证据完成。
+
+## 2026-09-25 Gate 4 文档收口审计
+
+- **A — 已完成**：Gate 3 review、候选 freeze、18/18 holdout adjudication、一次性 v1 run 和 final merge 均有真实证据；v1 90 条全部 `SettingsError`，质量 unavailable。
+- **A — 已完成**：v2 recovery 是独立身份，90 条中 52 completed、38 failed，保留 58 个 failure artifact；继续标为 known/reused holdout。
+- **B — 已由后续实现 supersede**：`benchmark/judge.py` 在原计划 Stage 4 之前已实现并执行；Judge 失败原因可追踪，但成功判定仍 provisional。
+- **C — 明确保留的限制**：claim-level 人工 Judge adjudication / judge-human agreement 未完成。Gate 3 答案人工 review 不冒充 Judge agreement；本任务没有将 provisional 结果升级或用于简历质量 claim。
+- **D — 不适用**：v1 sealed holdout 不重跑；没有符合预声明规则的无效 Case，因此无需替换。
+- **Evidence discrepancy**：Gate 3 `packet.json` 的 `pending_human_review` 与 `review.md` 中已记录的 12 条人工核验状态不一致。以人工核验文档与 Task validation 记载的审阅结果作为 review evidence；不改写本地历史 packet，也不把这 12 条说成 Judge claim adjudication。
+- Gate 4 结论为 **通过并带明示限制**：已交付可审计事实、结果边界、问题记录和面试材料；不宣称 v1 holdout quality、fresh generalization、Judge-human agreement 或稳定 semantic/context uplift。

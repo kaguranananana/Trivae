@@ -161,3 +161,19 @@
 - 不增加检索算法、指标体系、重试、fallback；不改历史 GT/质量结果；不自动提交或冻结尚在修改的代码。
 
 验收：冻结/漂移、首次封存/重复拒绝、同版本合并/异版本 unavailable、Judge 原因保留有 deterministic tests；CLI 可用；ruff/mypy/完整 pytest 通过；README 给出可执行操作顺序。正式 provider 运行与人工裁决结果单独记录，不用测试代替。
+
+## 2026-09-25 Gate 4 交付核对
+
+本节记录最终实现与原始计划之间的差异；日期化的计划文字保留为历史，不代表当前状态。
+
+| 原始交付/验收 | Gate 4 结果 | 证据与边界 |
+|---|---|---|
+| Dataset / GT / split | 已完成 | GT 47/47 人工 adjudicated：Development 37、Calibration 10；冻结后生成并确认 Holdout 18。Calibration 不进入 headline denominator。 |
+| Calibration pilot gate | 已实施，类别覆盖与原计划有差异 | 五个 Variant 各执行 10 条 Calibration case；pilot 覆盖五类，不含 citation_evidence。完整 Development 六类齐全。差异见 `implement.md` Stage 1.5，不把 pilot 说成覆盖全部六类。 |
+| Freeze / variants / Development | 已完成 | 五 Variant；7bac928 历史冻结 Development baseline 为 37×5×1=185；Gate 3 candidate 另在 8805aa2 执行 185 条并完成 review/freeze，不替换历史 baseline。 |
+| Benchmark / failure report | 已完成并如实标注不可用结果 | v1 Holdout 18×5=90 已执行一次并 sealed；90/90 `SettingsError`，质量指标 unavailable。full identity merge 的 `full_available=true` 不表示 Holdout quality available。 |
+| 简历候选事实 | 部分满足原“Holdout 优先”偏好 | 由于 v1 无 Holdout quality values，fact index 只推荐有 denominator/scope/source/limitation 的 Development、retrieval-module 与 failure-diagnosis facts；不提供虚构或误称为 Holdout 的质量指标。v2 52/90 completed 只作为已暴露 Case 的 recovery validation 事实。 |
+| Tier 2 Judge | 实现完成，人工升级未完成 | Gate 3 D-only 输出为 21 judged、5 skipped、11 failed；成功判断仍 `llm_assisted_provisional`，没有 claim-level 人工 adjudication 或 judge-human agreement。Gate 3 的 12-case 答案 review 不当作该项完成。 |
+| Interview / problem record | 已完成 | 最终生命周期、20 个问题的证据映射和 `.env` holdout root cause 已写入现有项目文档；未新增重复 problem record。 |
+
+**Gate 4 决定**：按 v1 的一次性 sealed contract 结束本任务，结论为通过并带明示限制。剩余限制是 Holdout quality 未测量、Tier 2 人工 agreement 未建立；二者都不被写成成功结果。fresh holdout 泛化测试属于后续独立任务，不由本次文档收口触发。
