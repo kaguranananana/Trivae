@@ -1286,3 +1286,26 @@ Recorded the final 16-case human adjudication: all original route hypotheses uph
 ### Next Steps
 
 - 无；resume-benchmark-v1 已归档完成。
+
+
+## Session 51: Planner Utility Development paired evaluation
+
+**Date**: 2026-09-25
+**Task**: Planner Utility Development paired evaluation
+**Branch**: `main`
+
+### Summary
+
+冻结生产 forced-path 身份，完成 37x2 Development 与 24 次独立定向重复；报告 Planner 条件收益、空结果回归、latency/token 开销，验证并归档，不切换 shadow。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `49ddf91` | (see git log) |
+| `f94fffb` | (see git log) |
+| `2f5c2fb` | (see git log) |
+
+### Status
+
+[OK] **Completed**
