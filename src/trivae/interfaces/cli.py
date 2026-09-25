@@ -328,6 +328,11 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run_parser.add_argument("--variant", type=Path, action="append", required=True)
     benchmark_run_parser.add_argument("--output-dir", type=Path, required=True)
     benchmark_run_parser.add_argument("--repeat", type=int, default=1)
+    benchmark_run_parser.add_argument(
+        "--paired-by-case",
+        action="store_true",
+        help="Interleave variants for each Case to limit time-window drift in paired experiments",
+    )
     benchmark_retrieval_score_parser = benchmark_subparsers.add_parser(
         "retrieval-score", help="Deterministic module-level lexical/semantic scoring against benchmark GT"
     )
@@ -687,6 +692,7 @@ async def _run_benchmark_with_application(args: argparse.Namespace) -> dict[str,
             variant_paths=variant_paths,
             output_dir=args.output_dir,
             repetitions=args.repeat,
+            paired_by_case=args.paired_by_case,
         )
 
 

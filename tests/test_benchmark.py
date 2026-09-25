@@ -1237,6 +1237,32 @@ class TraceLimitationBoundTests(unittest.TestCase):
         self.assertEqual(failure["failure_detail_code"], "invalid_json")
 
 
+class PairedExecutionOrderTests(unittest.TestCase):
+    """配对运行按 Case 交替两路，降低 Provider 时间窗口漂移。"""
+
+    def test_paired_order_preserves_suite_identity_and_alternates_variants(self) -> None:
+        from trivae.evaluation.benchmark.orchestrator import _execution_units
+
+        suite = EvaluationSuite(
+            suite_id="paired-test",
+            version=1,
+            kind="core",
+            case_references=(CaseReference("case-a", 1), CaseReference("case-b", 1)),
+            description="paired order test",
+            created_at="2026-09-25T00:00:00+00:00",
+        )
+        variants = (
+            ControlledVariant("standard", "commit", "deepseek", "deepseek-flash"),
+            ControlledVariant("planned", "commit", "deepseek", "deepseek-flash"),
+        )
+        units = _execution_units(suite, variants, paired_by_case=True)
+        self.assertEqual(
+            [(unit.case_references[0].case_id, variant.variant_id) for unit, variant in units],
+            [("case-a", "standard"), ("case-a", "planned"), ("case-b", "standard"), ("case-b", "planned")],
+        )
+        self.assertEqual({unit.identity for unit, _ in units}, {suite.identity})
+
+
 class CaseAuditTests(unittest.TestCase):
     """GT 机器审计回归：存在性、zero-result 蕴含、category 形态、正文泄露、holdout 隔离。"""
 

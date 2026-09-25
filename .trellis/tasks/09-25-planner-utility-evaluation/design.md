@@ -12,6 +12,7 @@
 - 两个本轮 Variant pin 当前 execution commit、官方 DeepSeek、实际 Settings 与七 Tool surface、当前 Snapshot/索引、Evidence/Citation、context 和 Evaluation identity；除 `role`、`variant_id` 等识别字段外，配置差异仅为 forced route。`role` 与 ID 是展示身份，不是执行变量。
 - 独立 Environment manifest、Evaluation SQLite、raw、Trace projection、报告置于被 Git 忽略的本轮目录。正式运行时必须由干净 execution commit 产生 manifest；不在运行后改写执行代码。
 - Smoke 与 targeted repeat 使用独立 Suite、Evaluation DB 和输出目录；不得计入 74 run。
+- Benchmark 以 `--paired-by-case` 按同一 Case 的 standard→planned 顺序交替执行。首轮仪表 smoke 在先跑完 4 条 standard 后发生连续 Provider connection error；独立 fresh-client planned 探针成功，说明当次故障未证明 Planner 接口损坏。交替顺序缩短 A/B 时间间隔，但不消除同一窗口的 Provider 随机故障；原 smoke 保留为诊断记录，不作为正式结果。
 
 ## 判定与边界
 

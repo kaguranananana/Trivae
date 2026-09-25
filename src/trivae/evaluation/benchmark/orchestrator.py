@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -238,6 +238,24 @@ def load_cases_dir(cases_dir: Path) -> dict[str, EvaluationCaseBundle]:
     return cases
 
 
+def _execution_units(
+    suite: EvaluationSuite,
+    variants: Sequence[ControlledVariant],
+    *,
+    paired_by_case: bool,
+) -> tuple[tuple[EvaluationSuite, ControlledVariant], ...]:
+    """生成执行顺序；配对模式保持原 Suite identity 并交替执行同 Case 的两路。"""
+
+    if not paired_by_case:
+        return tuple((suite, variant) for variant in variants)
+    # 每个单 Case Suite 仍保留原 suite_id/version，Evaluation run 身份不会漂移。
+    return tuple(
+        (replace(suite, case_references=(reference,)), variant)
+        for reference in suite.case_references
+        for variant in variants
+    )
+
+
 async def run_benchmark_async(
     *,
     application: TrivaeApplication,
@@ -249,6 +267,7 @@ async def run_benchmark_async(
     output_dir: Path,
     repetitions: int = 1,
     holdout_sealed: bool = False,
+    paired_by_case: bool = False,
 ) -> dict[str, object]:
     """异步 benchmark 主入口：运行、评分和落盘共享调用方的 event loop。"""
 
@@ -271,10 +290,10 @@ async def run_benchmark_async(
 
     all_records: list[dict[str, object]] = []
     all_failures: list[BenchmarkFailure] = []
-    for variant in variants:
+    for selected_suite, variant in _execution_units(suite, variants, paired_by_case=paired_by_case):
         # 所有 Variant 共用同一个 loop，避免 provider client 跨 loop 保存连接状态。
         runs = await orchestrator.run_variant_suite(
-            suite=suite,
+            suite=selected_suite,
             cases=cases,
             variant=variant,
             repetitions=repetitions,
