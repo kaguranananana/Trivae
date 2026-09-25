@@ -1187,6 +1187,55 @@ class TraceLimitationBoundTests(unittest.TestCase):
             ("payload.model_visible_context[].output_projection.data.hits[].truncated",),
         )
 
+    def test_planner_projection_distinguishes_success_failure_and_absence(self) -> None:
+        """同一 Trace 投影必须区分未调用、成功、失败与真实 usage。"""
+
+        from trivae.evaluation.checks import operational_measurements
+
+        def trace_with(*items: TraceTimelineItem) -> TraceProjection:
+            return TraceProjection(
+                trace_id="trace:planner-test",
+                request_id="request:planner-test",
+                profile="normal",
+                started_at="2026-08-30T00:00:00+00:00",
+                terminal_at="2026-08-30T00:00:01+00:00",
+                terminal_status="completed",
+                completeness="complete",
+                timeline=items,
+                failures=(),
+                metrics=TraceMetrics(1.0, {}, (), (), {}, 0, 0),
+            )
+
+        def item(operation: str, payload: dict[str, object], duration_ms: float | None = None) -> TraceTimelineItem:
+            return TraceTimelineItem(
+                sequence=1,
+                stage="planner",
+                operation=operation,
+                phase="started" if operation == "planner.started" else "completed",
+                operation_id="planner",
+                parent_operation_id="query",
+                outcome="ok",
+                duration_ms=duration_ms,
+                limitations=(),
+                payload=payload,
+            )
+
+        self.assertEqual(operational_measurements(None, trace_with())["planner"], {"called": False, "status": "not_called"})
+        started = item("planner.started", {})
+        completed = item(
+            "planner.completed",
+            {"step_count": 1, "steps": [{"suggested_tools": ["lexical_search"]}], "provider": "deepseek", "model": "deepseek-flash", "usage": {"input_tokens": 12}},
+            123.0,
+        )
+        success = operational_measurements(None, trace_with(started, completed))["planner"]
+        self.assertEqual(success["status"], "completed")
+        self.assertEqual(success["suggested_tools"], ["lexical_search"])
+        self.assertEqual(success["usage"], {"input_tokens": 12})
+        failed = item("planner.failed", {"failure_category": "invalid_output", "failure_detail_code": "invalid_json"}, 87.0)
+        failure = operational_measurements(None, trace_with(started, failed))["planner"]
+        self.assertEqual(failure["status"], "failed")
+        self.assertEqual(failure["failure_detail_code"], "invalid_json")
+
 
 class CaseAuditTests(unittest.TestCase):
     """GT 机器审计回归：存在性、zero-result 蕴含、category 形态、正文泄露、holdout 隔离。"""

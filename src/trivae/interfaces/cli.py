@@ -664,6 +664,11 @@ def _run_retrieval_metrics_command(args: argparse.Namespace) -> int:
 async def _run_benchmark_with_application(args: argparse.Namespace) -> dict[str, object]:
     """在同一个 async context 内运行 benchmark 并关闭 Application。"""
 
+    # create-only 检查必须早于 Application 初始化，防止新实验污染已有评测库或覆盖旧报告。
+    if args.output_dir.exists():
+        raise EvaluationContractError(f"benchmark output directory already exists: {args.output_dir}")
+    if args.evaluation_database is not None and args.evaluation_database.exists():
+        raise EvaluationContractError(f"evaluation database already exists: {args.evaluation_database}")
     # Provider 配置必须在创建 Application 前校验，避免缺配置时逐 Case 重复写失败记录。
     load_settings()
     suite = EvaluationSuite.from_json(args.suite)

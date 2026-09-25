@@ -395,6 +395,7 @@ def operational_measurements(
         "tool_result_budget": tool_result_budget,
         # 这是公开 action sequence 的 observation；preferred tool 仍由诊断 Case 和人工/模型 Review 分开判断。
         "agent_tool_behavior": agent_tool_behavior_projection(result),
+        "planner": _planner_measurements(trace),
     }
     if trace is not None:
         limitations: list[str] = []
@@ -431,6 +432,47 @@ def operational_measurements(
         )
     measurements.update(_finalization_measurements(result, trace))
     return measurements
+
+
+def _planner_measurements(trace: TraceProjection | None) -> dict[str, object]:
+    """从 Planner Trace 提取有界执行事实，不推断 plan 是否改善了答案。"""
+
+    if trace is None:
+        return {"called": None, "status": "trace_unavailable"}
+    # started 是实际调用边界；没有该事件的 standard 路不应算作 Planner failure。
+    started = next((item for item in trace.timeline if item.operation == "planner.started"), None)
+    if started is None:
+        return {"called": False, "status": "not_called"}
+    # terminal event 按真实阶段记录成功或失败；异常同样由 failed event 显式暴露。
+    terminal = next(
+        (item for item in trace.timeline if item.operation in {"planner.completed", "planner.failed"}),
+        None,
+    )
+    if terminal is None:
+        return {"called": True, "status": "missing_terminal"}
+    payload = terminal.payload
+    steps = payload.get("steps")
+    suggested_tools: list[str] = []
+    if isinstance(steps, (tuple, list)):
+        for step in steps[:MAX_EVALUATION_ITEMS]:
+            if isinstance(step, Mapping) and isinstance(step.get("suggested_tools"), (tuple, list)):
+                for tool in step["suggested_tools"]:
+                    if isinstance(tool, str) and tool not in suggested_tools:
+                        suggested_tools.append(tool)
+    # usage 只复制 Provider 已返回的数字；没有 cost 时不从定价反推。
+    usage = payload.get("usage")
+    return {
+        "called": True,
+        "status": "completed" if terminal.operation == "planner.completed" else "failed",
+        "latency_ms": terminal.duration_ms,
+        "provider": payload.get("provider"),
+        "model": payload.get("model"),
+        "usage": dict(usage) if isinstance(usage, Mapping) else None,
+        "step_count": payload.get("step_count") if terminal.operation == "planner.completed" else None,
+        "suggested_tools": suggested_tools[:MAX_EVALUATION_ITEMS],
+        "failure_category": payload.get("failure_category"),
+        "failure_detail_code": payload.get("failure_detail_code"),
+    }
 
 
 _TOOL_RESULT_OPERATION_CATEGORIES = (
