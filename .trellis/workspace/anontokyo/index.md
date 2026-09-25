@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 49
+- **Total Sessions**: 50
 - **Last Active**: 2026-09-25
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1255 | Active |
+| `journal-1.md` | ~1288 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 50 | 2026-09-25 | Finalize archived Evaluation doc links | `943f22d510882bdd0ee7c5d198fc24dff84560ea` | `main` |
 | 49 | 2026-09-25 | Close resume benchmark v1 Gate 4 | `6736bdad978671cd0e8a20a3b85bc2dd0fcc7ec3`, `4f8c3a07b21b58263e2fc6ba635af4302e5d8a68`, `39b81be1f538386762babe5a0022788384ca0cc6` | `main` |
 | 48 | 2026-09-25 | OpenRouter Jev case adjudication | - | `main` |
 | 47 | 2026-09-01 | Complete resume-benchmark-v1 Stage 3 Development Evaluation | `7bac9282701bd0c21b58ce8e5a4f5cc52c87da9f` | `main` |

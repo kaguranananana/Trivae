@@ -1253,3 +1253,36 @@ Recorded the final 16-case human adjudication: all original route hypotheses uph
 ### Status
 
 [OK] **Completed**
+
+
+## Session 50: Finalize archived Evaluation doc links
+
+**Date**: 2026-09-25
+**Task**: Finalize archived Evaluation doc links
+**Branch**: `main`
+
+### Summary
+
+修复 Evaluation README 中指向已归档 Router/Jev 实验报告的旧链接，并复核 Gate 4 相关 8 份文档的相对链接全部可解析；未启动或修改 Planner Utility 实验。
+
+### Main Changes
+
+- 将 Evaluation README 的 Router/Jev 报告引用更新为现存 archive 路径。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `943f22d510882bdd0ee7c5d198fc24dff84560ea` | (see git log) |
+
+### Testing
+
+- [OK] 8 份相关文档的 Markdown 相对链接检查：0 broken links。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 无；resume-benchmark-v1 已归档完成。
