@@ -55,13 +55,18 @@
 - 优先用 Test / Evaluation / Metric / Regression 证明改善，避免主观判断。
 - 修复重要 Failure Case 后：保存 Failure Case → 加入测试集 → Regression Test。
 
-### 4. 文档沉淀规则
+### 4. uv CLI entry point
+
+- `pyproject.toml` 声明了 `[project.scripts]` 且源码使用 `src/` 布局时，`uv run <command>` 必须能安装当前项目。若没有 `[build-system]`，配置 `[tool.uv] package = true`；否则 uv 会只同步依赖并跳过脚本入口。
+- 改动打包配置后，用 `uv run <command> --help` 验证真实 entry point，而不只用 `PYTHONPATH=src` 导入模块。
+
+### 5. 文档沉淀规则
 
 - 重要问题 / 决策：按 problem-records.md 与 technical-decisions.md 沉淀。
 - 普通小 Bug：不制造文档。
 - 新约定 / 教训：`trellis-update-spec` 写入对应 spec。
 
-### 5. 提交规范
+### 6. 提交规范
 
 - 按 Trellis Phase 3.4：工作 commit 在前，归档 + journal 等 bookkeeping commit 在后。
 - 不 amend、不 push（除非用户明确要求）。

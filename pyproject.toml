@@ -28,6 +28,9 @@ dev = [
 [project.scripts]
 trivae = "trivae.interfaces.cli:main"
 
+[tool.uv]
+package = true
+
 [tool.trivae]
 source-directory = "src"
 
