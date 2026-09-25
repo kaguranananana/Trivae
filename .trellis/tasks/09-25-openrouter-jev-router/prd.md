@@ -19,11 +19,11 @@ Add an experimental OpenRouter Jev decision provider for only the existing RuleR
 
 ## Acceptance Criteria
 
-- [ ] Rule-first route behavior and all existing Router tests remain intact.
-- [ ] Jev configuration is independent from primary model configuration and missing key does not prevent application startup.
-- [ ] Unit tests cover Decisions payload/response mapping, bounded probabilities, failures, shadow isolation, Trace projection, and Evaluation override bypass.
-- [ ] A paired Router evaluation command and a versioned case manifest exist; its output contains no raw queries or provider payloads.
-- [ ] Report identifies dataset provenance/adjudication and refuses a promotion claim without sufficient human-adjudicated cases.
-- [ ] Run targeted checks and the repository test suite; report the actual results.
-- [ ] Attempt a real provider evaluation only with a safe, rotated OpenRouter key. If unavailable, leave real provider metrics explicitly blocked and provide the runnable command.
-- [ ] Record implementation/evaluation decision separately from the Stage 1.5 Router ADR.
+- [x] Rule-first route behavior and all existing Router tests remain intact.
+- [x] Jev configuration is independent from primary model configuration and missing key does not prevent application startup.
+- [x] Unit tests cover Decisions payload/response mapping, bounded probabilities, failures, shadow isolation, Trace projection, and Evaluation override bypass.
+- [x] A paired Router evaluation command and a versioned case manifest exist; its output contains no raw queries or provider payloads.
+- [x] Report identifies dataset provenance/adjudication and refuses a promotion claim without sufficient human-adjudicated cases.
+- [x] Targeted checks and the repository test suite were run; see the experiment report for current CLI regression and prior implementation checks.
+- [x] A real provider evaluation was run. The initial plan required a rotated key; the follow-up request on 2026-09-25 explicitly directed use of the existing `.env` key without rotation, and governed this run. See the experiment report for counts and privacy audit.
+- [x] Record implementation/evaluation decision separately from the Stage 1.5 Router ADR.
