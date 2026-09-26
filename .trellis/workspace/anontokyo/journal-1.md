@@ -1334,3 +1334,27 @@ Fixed zero-result aggregate evidence qualification and tightened temporal retrie
 ### Status
 
 [OK] **Completed**
+
+
+## Session 53: Planner Utility v3 validation
+
+**Date**: 2026-09-27
+**Task**: Planner Utility v3 validation
+**Branch**: `main`
+
+### Summary
+
+Finalized and preserved the v2 utility adjudication; traced dependent and archify failures; added a shared Runtime retrieval-anchor instruction and deterministic regression; ran 12 pinned v3 paired evaluations with 44 Provider invocations. Assistant review found repeated Planned benefit on archify, Standard advantage on dependent, and no control regressions. Kept Jev shadow and Holdout untouched; recorded full validation and limitations.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c712f79` | (see git log) |
+| `4a4675e` | (see git log) |
+| `70593fd` | (see git log) |
+| `a746fd6` | (see git log) |
+
+### Status
+
+[OK] **Completed**
