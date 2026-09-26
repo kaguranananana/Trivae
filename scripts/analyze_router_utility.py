@@ -20,6 +20,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--raw", type=Path, required=True)
     parser.add_argument("--evaluation-db", type=Path, required=True)
+    parser.add_argument("--canonical-db", type=Path, required=True)
     parser.add_argument("--standard-variant-id", required=True)
     parser.add_argument("--planned-variant-id", required=True)
     parser.add_argument("--routes", type=Path, required=True)
@@ -29,6 +30,7 @@ def main() -> None:
     pairs = load_treatment_pairs(
         args.raw,
         args.evaluation_db,
+        args.canonical_db,
         standard_variant_id=args.standard_variant_id,
         planned_variant_id=args.planned_variant_id,
     )

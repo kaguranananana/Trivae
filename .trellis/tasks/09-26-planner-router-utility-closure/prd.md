@@ -16,8 +16,8 @@
 
 ## 验收
 
-- [ ] zero-result Failure Case 有逐层证据、边界结论、最小修复或明确未修原因。
-- [ ] Suite、人工裁决模板、Router utility runner/analysis 与 preflight 可本地运行，旧 GT/holdout 未改。
-- [ ] 顺序平衡与身份契约有确定性测试。
-- [ ] 付费调用前静态估算最坏请求数，逐次 ledger；只有 Phase A 通过才执行有限真实验证。
-- [ ] 报告区分 measured、人工待裁决、假设和仅准备未运行，Jev 仍 shadow。
+- [x] zero-result Failure Case 有逐层证据、边界结论、最小修复或明确未修原因。
+- [x] Suite、人工裁决模板、Router utility runner/analysis 与 preflight 可本地运行，旧 GT/holdout 未改。
+- [x] 顺序平衡与身份契约有确定性测试。
+- [x] 付费调用前静态估算最坏请求数，逐次 ledger；只有 Phase A 通过才执行有限真实验证。
+- [x] 报告区分 measured、人工待裁决、假设和仅准备未运行，Jev 仍 shadow。

@@ -33,4 +33,6 @@
 
 生产继续 `shadow`。Planner-specific Development Suite、人工 utility 裁决模板、Rule/Jev 对照 forced-treatment 的分析链路已准备；新 Case 的 GT 适用性与 treatment label 仍待人工审核。zero-result 修复须经新配对真实复验，Router Utility 尚不足以支持推广。原 rollout 的误路由、availability、latency 和 cost 门槛仍待正式校准。
 
+2026-09-26 针对性验证中，Jev 对 `dev-zero-empty-3` 与 `dev-context-archify` 各完成一次 Decisions 请求，均返回 `standard_execution`，无 degradation；真实 `usage.cost` 合计 0.000050904。两条 route 已与当前 Snapshot 的 forced Standard/Planned run 配对进入 Router Utility 分析；人工 treatment label 仍 pending，因此两条均为 `unadjudicated`，不能声称 route utility accuracy。zero-result 的聚合行误拒已修，但 SQL-first 风险稳定性未证实；context recovery 新两对与历史收益方向不一致。生产继续 `shadow`。
+
 Stage 1.5 的 Router architecture decision 不因该实验而重写。升级或替换实验结论必须给出人工标签、完整对照和可复核的 failure cases。

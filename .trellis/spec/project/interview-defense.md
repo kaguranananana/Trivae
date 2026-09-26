@@ -1034,3 +1034,5 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - **真实 Failure Case**：`dev-zero-empty-3@v2` 三次 Standard verified-zero 3/3、Planned 0/3；第一次关键偏离是 Planned 在完整零条时间窗检索后继续执行 SQL，零计数统计行触发 Evidence finalizer 的 `INVALID_FINAL_OUTPUT`。`dev-zero-empty-1/2` 还有 SQL-first、缺少检索正证明的问题，不可归为单一 finalizer 根因。见 [根因记录](./problems/planner-zero-result.md)。
 - **设计取舍**：保持 SoftPlanner 软指导与共享 Runtime，不新增 step executor。只在完整零条时间窗证明存在时区分 SQL 聚合行与候选消息；SQL-only、partial、真实消息和冲突正计数继续拒绝。确定性测试证明 contract，真实稳定性要以新配对实验检验。
 - **Evaluation 边界**：Planner-specific Development Suite、人工 treatment adjudication contract 和 Jev Router Utility 分析已建立；新 Case 已暴露，不能作为 fresh Holdout。自动指标不能替代人工答案正确性，route label 不能证明 Planner 收益。生产 Jev 仍为 shadow；长期 rollout threshold 尚未校准。
+
+- **本轮针对性复验**：`dev-zero-empty-3` 在第一冻结版本 Planned 2/3 verified-zero，第三次 SQL-first 未获完整空检索；第二版本 2/2 verified-zero，但一次 Planner 输出截断并降级，成功 Plan 只有一次。聚合行误拒已修，SQL-first 稳定性仍未证实。`dev-context-archify` 新两对为 worse/same，与历史 better/better/same 冲突。47 次实际 Provider invocation、14 条 forced run 和 2 次 Jev route 已入本地账本；人工 utility 仍 pending，不报告 Router Utility accuracy。

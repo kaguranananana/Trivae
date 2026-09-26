@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import sqlite3
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -11,6 +14,7 @@ from trivae.evaluation.contracts import CaseReference, EvaluationSuite
 from trivae.evaluation.router_utility import (
     RouterUtilityError,
     analyze_router_utility,
+    load_treatment_pairs,
     run_jev_route_observations,
 )
 from trivae.query.router import RouterProviderResult
@@ -116,6 +120,44 @@ class RouterUtilityTests(unittest.TestCase):
                 review("harm", "standard_preferable", "s2", "p2"),
                 {"case_id": "unknown", "label": "uncertain", "review_status": "pending"},
             ]})
+
+    def test_treatment_pair_requires_result_and_canonical_trace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            raw_path = root / "raw.json"
+            evaluation_db = root / "evaluation.sqlite3"
+            canonical_db = root / "canonical.sqlite3"
+            records = [{
+                "run_id": f"run-{arm}", "case_id": "case", "variant_id": arm,
+                "trace_id": f"trace-{arm}", "run_status": "completed",
+                "metrics": [{"name": "valid_answer", "availability": "available", "value": 1.0}],
+                "operational_measurements": {"latency_ms": 10.0},
+            } for arm in ("standard", "planned")]
+            raw_path.write_text(json.dumps(records), encoding="utf-8")
+            with sqlite3.connect(evaluation_db) as db:
+                db.execute("CREATE TABLE evaluation_runs (run_id TEXT, case_id TEXT, variant_id TEXT, snapshot_id TEXT, started_at TEXT, trace_id TEXT)")
+                db.execute("CREATE TABLE evaluation_results (run_id TEXT)")
+                for index, arm in enumerate(("standard", "planned")):
+                    db.execute("INSERT INTO evaluation_runs VALUES (?,?,?,?,?,?)", (
+                        f"run-{arm}", "case", arm, "snapshot", f"2026-09-26T00:00:0{index}", f"trace-{arm}",
+                    ))
+                    db.execute("INSERT INTO evaluation_results VALUES (?)", (f"run-{arm}",))
+            with sqlite3.connect(canonical_db) as db:
+                db.execute("CREATE TABLE traces (trace_id TEXT)")
+                db.executemany("INSERT INTO traces VALUES (?)", [("trace-standard",), ("trace-planned",)])
+            args = (raw_path, evaluation_db, canonical_db)
+            variants = {"standard_variant_id": "standard", "planned_variant_id": "planned"}
+            self.assertEqual(len(load_treatment_pairs(*args, **variants)), 1)
+            with sqlite3.connect(evaluation_db) as db:
+                db.execute("DELETE FROM evaluation_results WHERE run_id='run-planned'")
+            with self.assertRaisesRegex(RouterUtilityError, "Evaluation result missing"):
+                load_treatment_pairs(*args, **variants)
+            with sqlite3.connect(evaluation_db) as db:
+                db.execute("INSERT INTO evaluation_results VALUES ('run-planned')")
+            with sqlite3.connect(canonical_db) as db:
+                db.execute("DELETE FROM traces WHERE trace_id='trace-planned'")
+            with self.assertRaisesRegex(RouterUtilityError, "canonical Trace identity mismatch"):
+                load_treatment_pairs(*args, **variants)
 
 
 if __name__ == "__main__":

@@ -13,5 +13,10 @@
     "dev-zero-empty-1@v2": "Mostly SQL-first; missing complete empty retrieval proof or additional SQL facts. Related tool-selection risk, not the same finalizer-only cause.",
     "dev-zero-empty-2@v2": "SQL-first and no complete empty retrieval proof in the Development observation. Related tool-selection risk, not the same finalizer-only cause."
   },
-  "status": "deterministic_fix_implemented; fresh Provider stability pending"
+  "status": "aggregate-row rejection fixed in deterministic and targeted real validation; SQL-first risk remains insufficiently validated after prompt correction",
+  "targeted_observations_20260926": {
+    "first_execution_version": "3 pairs; Standard verified-zero 3/3; Planned verified-zero 2/3; failure was SQL-first without complete empty retrieval",
+    "second_execution_version": "2 pairs; both arms verified-zero 2/2; one Planned Planner provider_length degradation, one successful Plan",
+    "promotion_decision": "No stable Planner zero-result claim or Router rollout claim from this targeted sample"
+  }
 }

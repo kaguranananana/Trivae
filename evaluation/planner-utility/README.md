@@ -26,3 +26,47 @@ Jev 旧 16 条人工 route label 仍属于 **Route Classification**。本文件�
 `scripts/run_router_utility_jev.py` 对相同 CaseBundle 仅调用 Rule gate 和 Jev；`scripts/analyze_router_utility.py` 离线连接 forced raw、Evaluation DB、Jev route 和人工裁决。完整 15×2 及重复实验只是准备状态，不在本轮预算内自动执行。
 
 本轮 Provider 预算按 **请求次数** 计算：通常目标 30～40，绝对上限 60。每次 paired run 预留两路最多 8 个 Runtime turn 加 1 个 Planner 请求，即 17 次；若还要在同一 Case 执行 Jev，额外预留 1 次。不得在剩余额度不足整对最坏上限时启动。每个小批完成后用 `scripts/build_provider_invocation_ledger.py` 读取该批 raw、canonical Trace 和 Jev routes，create-only 写入 ignored 本地 ledger，再决定下一批。账本按 `planner.started`、`model.turn.started` 和非 Rule gate Jev attempt 保守计数；失败/缺失 usage 仍占次数，cost 未返回则保持 unavailable。历史实验的 invocation 不计入本任务新增调用。
+
+下一轮正式实验在**新预算与人工 GT 审阅后**可使用以下命令。输出路径需保持不存在；在新干净 execution commit 先捕获 Environment 并运行 gate。若届时生产代码变化，必须重新 pin 两份 Variant。完整 15 Case × 1 对 forced treatment + 每 Case 最多 1 次 Jev route 的理论上界为 270 次 Provider invocation，因此本轮只准备命令，不执行。真实大实验应先按小型 Suite 分批运行、每批后更新 ledger；下方展示单批覆盖全 Suite 的完整入口及参数。
+
+```bash
+uv run --extra dev --with tqdm trivae eval --env-file .env benchmark capture-environment \
+  --database data/trivae.sqlite3 --benchmark resume-benchmark-v1 \
+  --output data/evaluation/planner-router-utility/next-paid/environment.json
+uv run --extra dev --with tqdm trivae eval --env-file .env benchmark gate \
+  --database data/trivae.sqlite3 \
+  --manifest data/evaluation/planner-router-utility/next-paid/environment.json
+uv run --extra dev --with tqdm trivae eval --env-file .env benchmark run \
+  --database data/trivae.sqlite3 \
+  --evaluation-database data/evaluation/planner-router-utility/next-paid/evaluation.sqlite3 \
+  --manifest data/evaluation/planner-router-utility/next-paid/environment.json \
+  --suite evaluation/suites/planner-utility-development-v1.json \
+  --cases-dir evaluation/cases/benchmark/dev \
+  --cases-dir evaluation/cases/planner-utility \
+  --variant evaluation/variants/planner-utility-standard-20260926-v2.json \
+  --variant evaluation/variants/planner-utility-planned-20260926-v2.json \
+  --paired-by-case --paired-order counterbalanced --repeat 1 \
+  --output-dir data/evaluation/planner-router-utility/next-paid/treatment
+uv run --extra dev python scripts/run_router_utility_jev.py \
+  --suite evaluation/suites/planner-utility-development-v1.json \
+  --cases-dir evaluation/cases/benchmark/dev \
+  --cases-dir evaluation/cases/planner-utility \
+  --env-file .env \
+  --output data/evaluation/planner-router-utility/next-paid/routes.json
+uv run --extra dev python scripts/build_provider_invocation_ledger.py \
+  --raw data/evaluation/planner-router-utility/next-paid/treatment/raw-records.json \
+  --routes data/evaluation/planner-router-utility/next-paid/routes.json \
+  --canonical-db data/trivae.sqlite3 \
+  --output data/evaluation/planner-router-utility/next-paid/provider-ledger.json
+uv run --extra dev python scripts/analyze_router_utility.py \
+  --raw data/evaluation/planner-router-utility/next-paid/treatment/raw-records.json \
+  --evaluation-db data/evaluation/planner-router-utility/next-paid/evaluation.sqlite3 \
+  --canonical-db data/trivae.sqlite3 \
+  --standard-variant-id planner-utility-standard-20260926-v2 \
+  --planned-variant-id planner-utility-planned-20260926-v2 \
+  --routes data/evaluation/planner-router-utility/next-paid/routes.json \
+  --adjudications evaluation/planner-utility/adjudication-v1.json \
+  --output data/evaluation/planner-router-utility/next-paid/router-utility.json
+```
+
+人工裁决前，最后一步仍会把方向标为 `unadjudicated`。审阅当前 run 后应在新的私有 adjudication artifact 中填写 `run_id`、Variant、Snapshot、reviewer、rationale 和质量轴，再用新的输出路径离线重算分析；不改写历史结果。

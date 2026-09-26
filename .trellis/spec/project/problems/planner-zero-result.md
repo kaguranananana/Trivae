@@ -16,4 +16,6 @@ Planned 模型最后也输出 `kind=no_result`。第一次失败发生于 Eviden
 
 `get_recent_messages` 对明确时间窗的完整零条结果仍是正证明。Evidence finalizer 只在该证明存在时允许数值型 SQL 聚合统计行并存；SQL-only、partial/error、实际消息行、非聚合行、同窗正计数冲突继续拒绝。Runtime prompt 明确完整零条时间窗已回答“是否有消息”，软计划建议的额外 SQL 不是必做步骤。Provider SDK 设 `max_retries=0`，使计费请求失败不自动重发。
 
-确定性测试覆盖上述正反边界；真实模型是否仍执行额外 SQL、三次回归是否稳定消失，要以修复后的新配对观察判断。没有放宽 GT、修改旧 run 或重新解释历史结果。生产 Router 继续 shadow。
+确定性测试覆盖上述正反边界。修复后的第一冻结版本做了三对真实观察：Standard 3/3 verified-zero；Planned 2/3 verified-zero。Planned 的两次成功分别是单次完整空检索，以及完整空检索后附加 schema/SQL 聚合；失败的一次从 schema 和 SQL 开始，没有取得 `get_recent_messages` 的完整空窗证明。该失败重现了独立的 Tool 选择风险，不能通过放宽 Evidence 正证明解决。
+
+因此进一步在 Planner 和 Runtime 的通用提示词中明确：同时询问一个时间窗是否有人发言及聊了什么，应先做 `get_recent_messages`；SQL count 不能单独支持 `kind=no_result`。第二冻结版本做了两对：两路答案均为 verified-zero，但第一次 Planned 的 Planner completion 以 `provider_length` 截断，随后 Runtime 按既有契约降级；只有第二次是成功生成 Plan 后取得完整空检索的有效观察。**结论是 SQL 聚合误拒已在确定性测试及真实路径证实修复，SQL-first 风险尚未获得足够重复证据证明稳定消失。**没有放宽 GT、修改旧 run 或重新解释历史结果。生产 Router 继续 shadow。

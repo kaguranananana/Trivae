@@ -96,6 +96,7 @@ async def run_jev_route_observations(
 def load_treatment_pairs(
     raw_path: Path,
     evaluation_database: Path,
+    canonical_database: Path,
     *,
     standard_variant_id: str,
     planned_variant_id: str,
@@ -107,10 +108,14 @@ def load_treatment_pairs(
         raise RouterUtilityError("treatment raw records must be an array")
     connection = sqlite3.connect(f"file:{evaluation_database.resolve()}?mode=ro", uri=True)
     try:
-        rows = connection.execute("SELECT run_id, case_id, variant_id, snapshot_id, started_at FROM evaluation_runs").fetchall()
+        rows = connection.execute(
+            "SELECT run_id, case_id, variant_id, snapshot_id, started_at, trace_id FROM evaluation_runs"
+        ).fetchall()
+        result_ids = {str(row[0]) for row in connection.execute("SELECT run_id FROM evaluation_results")}
     finally:
         connection.close()
     run_index = {str(row[0]): row for row in rows}
+    trace_ids: set[str] = set()
     grouped: dict[str, dict[str, list[tuple[str, Mapping[str, object], str]]]] = defaultdict(
         lambda: {"standard": [], "planned": []}
     )
@@ -120,15 +125,35 @@ def load_treatment_pairs(
         run_id = item.get("run_id")
         case_id = item.get("case_id")
         variant_id = item.get("variant_id")
-        if not isinstance(run_id, str) or not isinstance(case_id, str):
-            raise RouterUtilityError("raw record requires run_id and case_id")
+        trace_id = item.get("trace_id")
+        if not isinstance(run_id, str) or not isinstance(case_id, str) or not isinstance(trace_id, str):
+            raise RouterUtilityError("raw record requires run_id, case_id and trace_id")
         db_row = run_index.get(run_id)
-        if db_row is None or db_row[1] != case_id or db_row[2] != variant_id:
+        if db_row is None or db_row[1] != case_id or db_row[2] != variant_id or db_row[5] != trace_id:
             raise RouterUtilityError(f"Evaluation run identity mismatch: {run_id}")
+        if run_id not in result_ids:
+            raise RouterUtilityError(f"Evaluation result missing: {run_id}")
+        trace_ids.add(trace_id)
         arm = "standard" if variant_id == standard_variant_id else "planned" if variant_id == planned_variant_id else None
         if arm is None:
             raise RouterUtilityError(f"unexpected treatment variant: {variant_id}")
         grouped[case_id][arm].append((str(db_row[4]), item, str(db_row[3])))
+    if not trace_ids:
+        raise RouterUtilityError("treatment raw contains no runs")
+    # raw 与 Evaluation run 已绑定同一 trace_id；还需确认该 Trace 真正存在于 canonical Store。
+    connection = sqlite3.connect(f"file:{canonical_database.resolve()}?mode=ro", uri=True)
+    try:
+        placeholders = ",".join("?" for _ in trace_ids)
+        stored_trace_ids = {
+            str(row[0])
+            for row in connection.execute(
+                f"SELECT trace_id FROM traces WHERE trace_id IN ({placeholders})", tuple(trace_ids)
+            )
+        }
+    finally:
+        connection.close()
+    if trace_ids != stored_trace_ids:
+        raise RouterUtilityError("canonical Trace identity mismatch")
     pairs: list[dict[str, object]] = []
     for case_id, arms in sorted(grouped.items()):
         standard = sorted(arms["standard"], key=lambda row: row[0])
