@@ -1309,3 +1309,28 @@ Recorded the final 16-case human adjudication: all original route hypotheses uph
 ### Status
 
 [OK] **Completed**
+
+
+## Session 52: Planner Utility to Jev Router Utility closure
+
+**Date**: 2026-09-26
+**Task**: Planner Utility to Jev Router Utility closure
+**Branch**: `main`
+
+### Summary
+
+Fixed zero-result aggregate evidence qualification and tightened temporal retrieval guidance; built 15-case Planner utility suite, treatment adjudication contract, Jev Router Utility analysis, counterbalanced ordering, and invocation ledger. Ran seven targeted forced pairs plus two Jev decisions: 47 paid invocations, 14 raw/Evaluation/Trace identities aligned. SQL-first stability and treatment labels remain pending; Jev remains shadow. Full pytest 630 passed, Ruff/Mypy/Trellis passed; no push.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4524778` | (see git log) |
+| `112ebb5` | (see git log) |
+| `29522e1` | (see git log) |
+| `246112b` | (see git log) |
+| `6a0fd95` | (see git log) |
+
+### Status
+
+[OK] **Completed**
