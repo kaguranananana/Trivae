@@ -31,3 +31,10 @@
 ## 验收边界
 
 修复只有在 v3 targeted repeats 中呈现为可观察的 Tool args、候选集、Evidence 及答案差异，才能称为行为有效。Runtime prompt 的静态测试通过只证明契约文字存在。v3 小样本不能形成 treatment-wide、generalization 或 production rollout 结论。
+
+## v3 实测结果
+
+- `pu-dependent-mattpocock` 的 Planned 两次都没有复现 Standard 的 `matt skill` follow-up 查询，且两路都缺失同一个人工 required-context source。Planned 未在该 Case 上证明收益。
+- `dev-context-archify` 的 Planned 两次都恢复了 `好用` 与安装/使用上下文；Standard 两次都遗漏该 required context。该单一 Development Case 出现重复方向一致的 Planned-beneficial 信号。
+- aggregation 与 verified-zero 两组 controls 在两路均正确；完整运行、Evaluation result 与 Trace 各 12 条一一对齐。
+- 该 Case-level v3 assistant review 不改写被冻结的 v2 adjudication。逐 pair 结果、失败记录、usage 与限制见 `validation.md`。

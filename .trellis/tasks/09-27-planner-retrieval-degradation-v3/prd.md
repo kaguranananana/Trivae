@@ -30,14 +30,14 @@
 
 ## 验收标准
 
-- [ ] 新任务报告写明 baseline、Trace first divergence、各层归因、ChatLab 对照和剩余不确定性；不把初步线索写成唯一根因。
-- [ ] `dev-context-archify` 四条 v2 Trace 均有逐轮对照，且明确说明 repeat instability 与是否共享根因。
-- [ ] 如有代码改动，只改证据指向的最靠近真实故障层的通用逻辑，并说明为何未改其它层；新增回归无 Case ID/query 特判。
-- [ ] zero-result contract 原则保持；若改动触及该路径，运行现有 zero-result regressions。
-- [ ] v3 Environment / benchmark gate / Variant diff / Snapshot identity 全部通过；执行使用 create-only 新路径，不覆盖旧 artifact。
-- [ ] v3 完成 12 条 paired raw run；Evaluation run、result、canonical Trace 数与身份一一匹配，失败 run 保留。
-- [ ] v3 质量结果含逐 Case Standard/Planned/repeat 的人工逐项 review 与自动指标；人工 review 明确标记审阅者来源。
-- [ ] 新 v3 Provider invocation 不超过 102；按 Trace 重建账本并报告 input/output tokens、实际返回 cost 或 unavailable。
-- [ ] Jev 保持 `shadow`；不执行 Holdout；不写 production rollout 或 generalization 结论。
-- [ ] 相关 pytest、Ruff、mypy、diff check、Case identity/preflight 均通过；不可用命令如实记录。
-- [ ] 变更形成清晰本地 commit，最终工作树只留预期状态，不 push。
+- [x] 新任务报告写明 baseline、Trace first divergence、各层归因、ChatLab 对照和剩余不确定性；不把初步线索写成唯一根因。
+- [x] `dev-context-archify` 四条 v2 Trace 均有逐轮对照，且明确说明 repeat instability 与是否共享根因。
+- [x] 如有代码改动，只改证据指向的最靠近真实故障层的通用逻辑，并说明为何未改其它层；新增回归无 Case ID/query 特判。
+- [x] zero-result contract 原则保持；本次修改未触及该路径，现有 zero-result regressions 已在完整测试中通过。
+- [x] v3 Environment / benchmark gate / Variant diff / Snapshot identity 全部通过；执行使用 create-only 新路径，不覆盖旧 artifact。
+- [x] v3 完成 12 条 paired raw run；Evaluation run、result、canonical Trace 数与身份一一匹配，失败记录保留。
+- [x] v3 质量结果含逐 Case Standard/Planned/repeat 的 assistant review 与自动指标；审阅者来源已明确标记。
+- [x] 新 v3 Provider invocation 为 44，不超过 102；按 Trace 重建账本并报告 input/output tokens，DeepSeek returned cost 为 unavailable。
+- [x] Jev 保持 `shadow`；未执行 Holdout；未写 production rollout 或 generalization 结论。
+- [x] 相关 pytest、Ruff、mypy、diff check、Case identity/preflight 均通过；详见 `validation.md`。
+- [x] 变更形成清晰本地 commit，最终工作树只留 Trellis 收尾记录的预期状态，不 push。

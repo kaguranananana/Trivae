@@ -25,7 +25,7 @@ Jev 旧 16 条人工 route label 仍属于 **Route Classification**。本文件�
 
 `scripts/run_router_utility_jev.py` 对相同 CaseBundle 仅调用 Rule gate 和 Jev；`scripts/analyze_router_utility.py` 离线连接 forced raw、Evaluation DB、Jev route 和人工裁决。下方 15×2 命令是归档 v1 全量实验的复现参考；当前 root-cause / v3 工作只允许按新 Trellis task 中记录的 targeted Case、repeat 与预算执行，不据此启动 15 Case 全量运行。
 
-2026-09-26 已归档阶段的 Provider 预算按**请求次数**计算：目标 30～40、阶段上限 60；该阶段结束时 ledger 为 47。每组 paired run 预留两路最多 8 个 Runtime turn 加 1 个 Planner 请求，即 17 次；若还要在同一 Case 执行 Jev，额外预留 1 次。后续获准的 v2 dependent 与数值 control 运行又增加 27 次；截至 2026-09-27，从所有本地 raw 与 canonical Trace 起点重建的累计 ledger 为 74 次（Planner 11、Runtime 61、Existing Router LLM 0、Jev 2）。这 74 次是累计观测，不是新的预算上限。后续真实运行必须先为新批次计算单独的最坏调用上界，并在每批后重建 ledger。账本按 `planner.started`、`model.turn.started` 和非 Rule gate Jev attempt 保守计数；失败/缺失 usage 仍占次数，cost 未返回则保持 unavailable。
+2026-09-26 已归档阶段的 Provider 预算按**请求次数**计算：目标 30～40、阶段上限 60；该阶段结束时 ledger 为 47。每组 paired run 预留两路最多 8 个 Runtime turn 加 1 个 Planner 请求，即 17 次；若还要在同一 Case 执行 Jev，额外预留 1 次。后续获准的 v2 dependent 与数值 control 运行又增加 27 次；截至 v2 冻结点，从所有本地 raw 与 canonical Trace 起点重建的累计 ledger 为 74 次（Planner 11、Runtime 61、Existing Router LLM 0、Jev 2）。这 74 次是累计观测，不是新的预算上限。后续真实运行必须先为新批次计算单独的最坏调用上界，并在每批后重建 ledger。账本按 `planner.started`、`model.turn.started` 和非 Rule gate Jev attempt 保守计数；失败/缺失 usage 仍占次数，cost 未返回则保持 unavailable。
 
 以下是归档 v1 全量实验的复现参考，不是当前 v3 执行计划。当前 root-cause task 应先完成 Trace 归因，再只运行 dependent、archify、一个 negative control 与一个 zero-result Case。任何真实运行都要为自己的 paired repeat 数按两路各最多 8 个 Runtime turn、Planned 1 个 Planner request 计算理论上界；输出路径需保持不存在，并在新 execution commit 捕获 Environment 后运行 gate。历史 15 Case × 1 对 forced treatment + 每 Case 最多 1 次 Jev route 的理论上界为 270 次 Provider invocation。
 
@@ -73,4 +73,10 @@ uv run --extra dev python scripts/analyze_router_utility.py \
   --output data/evaluation/planner-router-utility/next-paid/router-utility.json
 ```
 
-对当前 v2 已绑定的 6 道 Case，离线分析可读取本文件夹的正式裁决；余下 9 道在新的 v2 run 产生前仍为 `unadjudicated`，即使它们已有旧 Variant 的历史人工观察。当前结果没有 `planned_beneficial`；Jev production 仍为 `shadow`，没有 Holdout 实验，也不支持 production rollout 或“复杂问题 → Planned”的结论。未来的新 run 仍须另建裁决 artifact，填写对应 run ID、Variant、Snapshot、reviewer、rationale 和质量轴，再用新输出路径分析；不能复用本次或历史标签冒充新 run 的人工审阅。
+对当前 v2 已绑定的 6 道 Case，离线分析可读取本文件夹的正式裁决；余下 9 道在新的 v2 run 产生前仍为 `unadjudicated`，即使它们已有旧 Variant 的历史人工观察。v2 冻结裁决没有 `planned_beneficial`；Jev production 仍为 `shadow`，没有 Holdout 实验，也不支持 production rollout 或“复杂问题 → Planned”的结论。未来的新 run 仍须另建裁决 artifact，填写对应 run ID、Variant、Snapshot、reviewer、rationale 和质量轴，再用新输出路径分析；不能复用本次或历史标签冒充新 run 的人工审阅。
+
+## Targeted v3 实测结果（2026-09-27）
+
+v3 按 pinned Runtime fix 完成 6 组 paired observation / 12 个 run：`pu-dependent-mattpocock` 与 `dev-context-archify` 各 2 组，aggregation 与 verified-zero 各 1 组。Raw、Evaluation run/result 与 canonical Trace 为 12/12/12/12，一一对齐。实际 Provider invocation 44/102（Planner 6、Runtime 38、Jev 0）；计入失败 Planner invocation；DeepSeek returned cost unavailable。依 Trace 重建的累计本地 ledger 为 118（Planner 17、Runtime 99、Existing Router LLM 0、Jev 2）。
+
+v3 的 assistant pairwise review 在 `dev-context-archify` 两次都发现 Planned 恢复了 `好用`/安装使用上下文，而 Standard 两次都遗漏；这是单一 Development Case 上重复方向一致的 `planned_beneficial` supervision candidate。`pu-dependent-mattpocock` 两次仍由 Standard 给出更完整的 firsthand 反馈；两路都漏同一个人工 required-context marker。Aggregation 和 verified-zero 两组 control 均正确。此报告内的 assistant review 不修改已冻结的 v2 人工裁决，也不构成用户 adjudication、treatment-wide utility 或 generalization 结论。Jev 保持 `shadow`，未访问 Holdout。逐 pair 结果、Trace IDs、错误分类和质量检查见 [v3 validation](../../.trellis/tasks/archive/2026-09/09-27-planner-retrieval-degradation-v3/validation.md)。

@@ -303,4 +303,10 @@ Benchmark 的 `--paired-order counterbalanced` 以 AB/BA 交替次序运行同 C
 
 后续 targeted v2 共 16 条当前 raw run，与 16 条 Evaluation run、16 条 Evaluation result 和 16 条 canonical Trace 对齐；覆盖 6 道 Case 的 8 组 paired observation。本地 9 份 raw batch 共 22 条 run。按 Trace request-start 和两条 Jev Decisions observation 重新构建的累计账本为 74 次 invocation：Planner 11、Runtime 61、Existing Router LLM 0、Jev 2。Jev 实际 returned cost 为 0.000050904；DeepSeek cost unavailable。账本事件内容与 ignored 本地 `provider-ledger-final-after-all-pu.json` 一致。
 
-`Jev` production 仍为 `shadow`；没有 Holdout 实验，没有 `planned_beneficial`，不支持 production rollout，也不能由复杂度推导 Planned route。下一阶段须先做 dependent 与 `dev-context-archify` Trace root-cause，再执行新 task 定义的 targeted v3；不启动 15 Case 全量运行。
+截至 v2 冻结时，`Jev` production 为 `shadow`，没有 Holdout 实验或 `planned_beneficial`；当时的下一阶段计划是先查 dependent 与 `dev-context-archify` Trace，再执行 targeted v3，不启动 15 Case 全量运行。该 v3 后续状态见下。
+
+### 2026-09-27 Planner Utility v3 closeout
+
+v3 已在 pin `70593fd` 上完成 6 组 paired observation、12 个 run；Environment gate、唯一 forced-route Variant diff 与 Snapshot identity 均通过，raw/Evaluation/result/Trace 身份 12/12/12/12 对齐。实际调用为 44/102（Planner 6、Runtime 38、Jev 0）；v3 DeepSeek monetary cost unavailable。相比 v2 冻结时 ledger 74 次，本地累计为 118 次。
+
+assistant review 在 `dev-context-archify` 两组重复中均发现 Planned 恢复关键使用反馈；dependent 两组仍由 Standard 给出更完整 firsthand context；aggregation 与 zero-result controls 无退化。这形成一个狭窄的 case-level Router Classification supervision candidate，不支持 treatment-wide utility 或 generalization。正式 v2 adjudication 保持不变，Jev 仍为 `shadow`，未访问 Holdout。详见 [Planner Utility v3 validation](../.trellis/tasks/archive/2026-09/09-27-planner-retrieval-degradation-v3/validation.md)。
