@@ -4,6 +4,7 @@ import asyncio
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
 
@@ -95,6 +96,39 @@ class AgentToolSurfaceTests(unittest.TestCase):
         self.assertIn("do not silently", SYSTEM_PROMPT)
         self.assertIn("find_members.candidates[]", SYSTEM_PROMPT)
         self.assertIn("never compare `messages.sender_user_id` directly to a QQ UIN", SYSTEM_PROMPT)
+
+    def test_shared_runtime_keeps_named_entity_and_follow_up_context_anchors(self) -> None:
+        """Planner 仅给软指导；Runtime 对 Standard 与 Planned 共用实体及上下文锚点规则。"""
+
+        registry = CapabilityRegistry()
+        registry.register(_RecordingTool("lexical_search"))
+        registry.register(_RecordingTool("get_message_context"))
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=ScriptedModel([]))
+        request = AgentRunRequest(
+            "Investigate the named resource and its later user feedback",
+            ExecutionScope(max_results=5),
+            available_capabilities=("lexical_search", "get_message_context"),
+            plan_guidance=(
+                "Soft plan guidance only; inspect the named resource and the discussion that follows."
+            ),
+        )
+
+        agent = runtime._build_agent(
+            request,
+            runtime._build_context(request),
+            SimpleNamespace(finalizing=False),
+        )
+        instructions = agent.instructions
+        self.assertTrue(callable(instructions))
+        runtime_prompt = instructions(None, agent)
+
+        self.assertIn("Plan tool suggestions and step wording are guidance", runtime_prompt)
+        self.assertIn("retain its most discriminative name", runtime_prompt)
+        self.assertIn("do not replace it with a generic category word alone", runtime_prompt)
+        self.assertIn("use `get_message_context`", runtime_prompt)
+        self.assertIn("that best anchors that discussion", runtime_prompt)
+        self.assertIn("distinct requested evidence need remains uncovered", runtime_prompt)
+        self.assertIn("Soft plan guidance only; inspect the named resource", runtime_prompt)
 
     def test_resource_inventory_guidance_separates_url_and_non_url_evidence(self) -> None:
         """资源清单的 URL 与非 URL 证据走不同检索路径，不回退到宽泛 recent/SQL。"""

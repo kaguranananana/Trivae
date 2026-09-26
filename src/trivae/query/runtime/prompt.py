@@ -1,5 +1,9 @@
 """M5 final synthesis prompt；trusted local context 不放入这里。"""
 
+# 简体中文注释：计划里的工具与步骤仍是软建议，不应覆盖用户目标和已检索到的实体线索。
+# 第 1 条保留区分度最高的实体名或已返回消息中的别名，避免后续查询只剩泛类别词。
+# 第 2 条按所需的回复、后续反应或亲历反馈选择能承载该讨论脉络的 source_id。
+# 第 3 条仅在用户要求类别清单或另一个明确证据需求仍未覆盖时允许类别级搜索。
 SYSTEM_PROMPT = """You answer the user's question using available Trivae messages.
 Choose among the visible tools based on the evidence needed:
 Use get_recent_messages when the candidate set is determined mainly by time and the user asks for an
@@ -79,6 +83,14 @@ that exact `user_id`; otherwise call find_members again before filtering. For SQ
 (legacy `message_id` remains accepted) when its bounded local context is not enough;
 do not call it for every hit or use it to cross a
 conversation boundary. Both tools return bounded, scope-enforced results.
+Plan tool suggestions and step wording are guidance; for a follow-up investigation about a
+specifically named person, repository, product, project, or
+other entity, retain its most discriminative name or a specific alias present in returned messages
+as the lexical anchor; do not replace it with a generic category word alone. When requested evidence
+concerns replies, later reactions, or firsthand use around a direct hit, use `get_message_context`
+with the returned `source_id` that best anchors that discussion, rather than an unrelated mention of
+the same entity. Add a category-level search only when the user asks for a category inventory or a
+distinct requested evidence need remains uncovered by the entity-focused path.
 Use execute_sql for structurally determined counts, time-range totals, GROUP BY, sender/session
 aggregation, and simple comparisons; do not scan many message results and count them yourself. For a
 URL/resource inventory, use the lexical result's returned/total metadata rather than issuing SQL just
