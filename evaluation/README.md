@@ -296,3 +296,11 @@ Development 自动指标给出 paired better 6 / same 26 / worse 5；context rec
 Benchmark 的 `--paired-order counterbalanced` 以 AB/BA 交替次序运行同 Case 两路，顺序及 unit 序列在首个请求前保存至 create-only `execution-order.json`，Suite/Case identity 不变；默认 `fixed` 仍是旧 standard→planned 顺序。`scripts/run_router_utility_jev.py` 只执行 Rule gate 与 Jev route，`scripts/analyze_router_utility.py` 离线连接 forced treatment、Evaluation DB、Jev route 和人工 utility 裁决，分别报告两种误路由与质量维度。当前所有 utility 标签均 pending；生产 Jev 继续 `shadow`。大规模正式实验只准备，不在本轮成本预算内自动运行。
 
 本轮针对性实测 7 对 forced treatment、2 次 Jev Decisions，共 47 次付费 Provider invocation；14 条 raw/Evaluation/Trace 身份对齐，Jev 两次均可用且返回 standard。两份 Router Utility 结果均成功生成，但人工 treatment label 仍为 pending，direction 保持 `unadjudicated`。完整账本及 Provider 真实 usage 保存在 ignored 本地实验目录；缺失的 DeepSeek cost 不推算。15 Case 全 Suite 若各跑 1 对并各做 1 次 Jev route，按两路各最多 8 个 Runtime turn、Planned 1 个 Planner request 和每 Case 最多 1 个 Jev request，理论上限为 **270 次**，不在本轮 60 次 ceiling 内。
+
+### 2026-09-27 后续状态
+
+上文保留的是 2026-09-26 归档阶段的测量状态。随后 15 道人工 review 已完成：6 道当前 v2 Case 按真实 Snapshot、Variant 与 run ID 正式裁决，9 道旧 Variant 只记历史判断。当前 v2 为 `planned_beneficial=0`、`standard_preferable=2`、`indifferent=4`、`uncertain=0`；跨版本 15 道人工观察为 `0 / 4 / 11 / 0`，不能当成单一 v2 统计。四个新增 Case 的 GT applicability 均人工 Accept。
+
+后续 targeted v2 共 16 条当前 raw run，与 16 条 Evaluation run、16 条 Evaluation result 和 16 条 canonical Trace 对齐；覆盖 6 道 Case 的 8 组 paired observation。本地 9 份 raw batch 共 22 条 run。按 Trace request-start 和两条 Jev Decisions observation 重新构建的累计账本为 74 次 invocation：Planner 11、Runtime 61、Existing Router LLM 0、Jev 2。Jev 实际 returned cost 为 0.000050904；DeepSeek cost unavailable。账本事件内容与 ignored 本地 `provider-ledger-final-after-all-pu.json` 一致。
+
+`Jev` production 仍为 `shadow`；没有 Holdout 实验，没有 `planned_beneficial`，不支持 production rollout，也不能由复杂度推导 Planned route。下一阶段须先做 dependent 与 `dev-context-archify` Trace root-cause，再执行新 task 定义的 targeted v3；不启动 15 Case 全量运行。

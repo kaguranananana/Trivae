@@ -1,5 +1,15 @@
 # Planner Utility → Jev Router Utility：针对性工程与真实验证
 
+## 2026-09-27 后续状态（补记，不改写 2026-09-26 当时记录）
+
+归档后完成了 15 道盲审与揭盲人工复核，并对新增四道 Case 进行 GT applicability adjudication。`evaluation/planner-utility/adjudication-v1.json` 中有 6 道 Case 绑定当前 v2 Snapshot、Variant 与真实 run IDs：`dev-zero-empty-3` 和 `dev-context-archify` 各有两组 paired observation，另有 `pu-dependent-mattpocock`、`pu-count-utc-day`、`pu-rank-utc-session`、`pu-aggregate-utc-types` 各一组。当前 v2 正式结果是 `planned_beneficial=0`、`standard_preferable=2`、`indifferent=4`、`uncertain=0`。另外 9 道是旧 Variant 的历史人工观察，没有填入当前 v2 的正式 run 绑定；15 道跨版本合计 `0 / 4 / 11 / 0` 仅为人工观察汇总。
+
+四个新增 `pu-*` Case 的 GT applicability 均由人工 Accept，原 GT 事实未改。`pu-dependent-mattpocock` 仍标明 target 非 corpus-exhaustive、required context 是人工检查点、retrieval 为 partial/truncated；未命中单条 target 不自动等同答案错误。人工逐题理由见 `evaluation/planner-utility/human-review-2026-09-27.md`。
+
+累计 Provider ledger 已从本地 9 份 raw batch、canonical Trace 起点与 Jev 路由观测重建：22 条 raw run、74 次 provider invocation（Planner 11、Runtime 61、Existing Router LLM 0、Jev Decisions 2）。事件内容与 `provider-ledger-final-after-all-pu.json` 一致；重建与存档只在同一时刻事件的稳定排序上不同。Planner 实际返回 input/output usage 为 5,356 / 16,028 tokens；Runtime 为 620,232 / 24,962 tokens；DeepSeek cost unavailable。Jev Decisions 返回 input/output 为 1,212 / 72 tokens，实际返回 cost 合计 0.000050904。此前 47 次是 dependent / count / ranking / aggregation v2 运行之前的归档阶段累计数，不代表当前累计数。
+
+当前 v2 的 16 条 raw run 与 Evaluation run、Evaluation result、canonical Trace identity 对齐，覆盖 6 道 Case 的 8 组 paired observation。四个新增 Case 的 GT applicability 保持 Accept，未改写 Holdout 或 canonical 数据。这次裁决仍没有正向 Planned treatment 证据。Jev production 保持 `shadow`；没有 Holdout 实验，也没有 rollout 或“复杂问题 → Planned”的依据。下一阶段单独建立 Retrieval Degradation Root-Cause task，先逐层对照 dependent 与 archify 的生产 Trace，再决定是否需要最小通用修复；本报告中的历史实验数据和原始结论保持原样。
+
 ## 身份与范围
 
 - 起点 commit：`d46b8f3`；Phase A 实现 commit：`4524778`。第一冻结实验环境 commit 为 `112ebb5`，第二冻结实验环境 commit 为 `246112b`；第二版本的 Planner/Runtime 提示词代码 commit 为 `29522e1`。

@@ -1,99 +1,191 @@
 {
   "schema_version": 1,
   "suite_identity": "planner-utility-development@v1",
-  "status": "pending_human_review",
+  "status": "partially_human_adjudicated",
   "labels_are_treatment_utility_not_route_classification": true,
   "cases": [
     {
       "case_id": "dev-zero-empty-3",
       "case_version": 2,
-      "review_status": "pending",
-      "label": "uncertain",
-      "reviewer": null,
-      "reviewed_at": null,
-      "snapshot_id": null,
-      "standard_variant_id": null,
-      "planned_variant_id": null,
-      "standard_run_ids": [],
-      "planned_run_ids": [],
+      "review_status": "human_adjudicated",
+      "label": "indifferent",
+      "reviewer": "user-provided-human-adjudication",
+      "reviewed_at": "2026-09-26T16:13:45+00:00",
+      "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "standard_variant_id": "planner-utility-standard-20260926-v2",
+      "planned_variant_id": "planner-utility-planned-20260926-v2",
+      "standard_run_ids": [
+        "eval-run:dev-zero-empty-3:v2:planner-utility-standard-20260926-v2:cca523abae4a492ba33bbef7dcace240",
+        "eval-run:dev-zero-empty-3:v2:planner-utility-standard-20260926-v2:14dd65d7b785465f8fc7b18c85778130"
+      ],
+      "planned_run_ids": [
+        "eval-run:dev-zero-empty-3:v2:planner-utility-planned-20260926-v2:d3da93d0b98d421f892694920273bc45",
+        "eval-run:dev-zero-empty-3:v2:planner-utility-planned-20260926-v2:d9b188ee712c451d96fb1210ca2893a4"
+      ],
       "quality_axes": {
-        "answer_correctness": "uncertain",
-        "evidence_completeness": "uncertain",
-        "context_recovery": "uncertain",
-        "groundedness_citation": "uncertain",
-        "zero_result_correctness": "uncertain",
-        "reliability": "uncertain"
+        "answer_correctness": {
+          "direction": "same",
+          "reason": "两轮均正确回答零消息。"
+        },
+        "evidence_completeness": {
+          "direction": "same",
+          "reason": "两轮均完成零结果判断。"
+        },
+        "context_recovery": {
+          "direction": "uncertain",
+          "reason": "零结果问题不考察对话上下文恢复。"
+        },
+        "groundedness_citation": {
+          "direction": "same",
+          "reason": "两路均无须消息引用，答案与零结果一致。"
+        },
+        "zero_result_correctness": {
+          "direction": "same",
+          "reason": "两轮均正确识别完整 UTC 空窗。"
+        },
+        "reliability": {
+          "direction": "same",
+          "reason": "两轮两路均正常完成。"
+        }
       },
-      "rationale": null,
+      "rationale": "两轮 Standard/Planned 均正确回答 2025-08-26 UTC 为 0 消息，没有实质答案质量差异。",
       "latency_token_tradeoff": null
     },
     {
       "case_id": "pu-dependent-mattpocock",
       "case_version": 1,
-      "review_status": "pending",
-      "label": "uncertain",
-      "reviewer": null,
-      "reviewed_at": null,
-      "snapshot_id": null,
-      "standard_variant_id": null,
-      "planned_variant_id": null,
-      "standard_run_ids": [],
-      "planned_run_ids": [],
+      "review_status": "human_adjudicated",
+      "label": "standard_preferable",
+      "reviewer": "user-provided-human-adjudication",
+      "reviewed_at": "2026-09-26T16:13:45+00:00",
+      "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "standard_variant_id": "planner-utility-standard-20260926-v2",
+      "planned_variant_id": "planner-utility-planned-20260926-v2",
+      "standard_run_ids": [
+        "eval-run:pu-dependent-mattpocock:v1:planner-utility-standard-20260926-v2:63ee8a29eb7a455abe6573a0b952ba21"
+      ],
+      "planned_run_ids": [
+        "eval-run:pu-dependent-mattpocock:v1:planner-utility-planned-20260926-v2:75abf06ead914998bdc023894be0a2e7"
+      ],
       "quality_axes": {
-        "answer_correctness": "uncertain",
-        "evidence_completeness": "uncertain",
-        "context_recovery": "uncertain",
-        "groundedness_citation": "uncertain",
-        "zero_result_correctness": "uncertain",
-        "reliability": "uncertain"
+        "answer_correctness": {
+          "direction": "standard",
+          "reason": "Standard 区分亲自使用正面反馈与未证实评价；Planned 将疑问当成反馈。"
+        },
+        "evidence_completeness": {
+          "direction": "standard",
+          "reason": "Standard 找到明确亲自使用证据，Planned 漏掉。"
+        },
+        "context_recovery": {
+          "direction": "same",
+          "reason": "两路均未命中指定 required context；该 target 非 corpus-exhaustive。"
+        },
+        "groundedness_citation": {
+          "direction": "standard",
+          "reason": "Planned 对疑问消息的反馈解释缺乏依据。"
+        },
+        "zero_result_correctness": {
+          "direction": "uncertain",
+          "reason": "本题不考察零结果。"
+        },
+        "reliability": {
+          "direction": "uncertain",
+          "reason": "当前 v2 仅一对观察，不评价跨运行稳定性。"
+        }
       },
-      "rationale": null,
+      "rationale": "Standard 找到“最近用 matt 的 skill”“基本是理想型”等明确亲自使用证据；Planned 漏掉这组强证据，并把“有人用过吗/全都好用？”疑问当成反馈。两边都没有命中指定 required context，context recovery 打平；该 target 集合未证明 corpus-exhaustive，单独漏掉指定消息不等于答案必错。",
       "latency_token_tradeoff": null
     },
     {
       "case_id": "dev-context-archify",
       "case_version": 1,
-      "review_status": "pending",
-      "label": "uncertain",
-      "reviewer": null,
-      "reviewed_at": null,
-      "snapshot_id": null,
-      "standard_variant_id": null,
-      "planned_variant_id": null,
-      "standard_run_ids": [],
-      "planned_run_ids": [],
+      "review_status": "human_adjudicated",
+      "label": "standard_preferable",
+      "reviewer": "user-provided-human-adjudication",
+      "reviewed_at": "2026-09-26T16:13:45+00:00",
+      "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "standard_variant_id": "planner-utility-standard-20260926-v2",
+      "planned_variant_id": "planner-utility-planned-20260926-v2",
+      "standard_run_ids": [
+        "eval-run:dev-context-archify:v1:planner-utility-standard-20260926-v2:95e441a537d64614bdc1f1e49dfe8b75",
+        "eval-run:dev-context-archify:v1:planner-utility-standard-20260926-v2:47d55525531045e7a920a3022214380c"
+      ],
+      "planned_run_ids": [
+        "eval-run:dev-context-archify:v1:planner-utility-planned-20260926-v2:7a1a4d9c35d24e5b95944f7c69a3f4c5",
+        "eval-run:dev-context-archify:v1:planner-utility-planned-20260926-v2:9b819a7f8c4c45729ed2b3bd30d44fdb"
+      ],
       "quality_axes": {
-        "answer_correctness": "uncertain",
-        "evidence_completeness": "uncertain",
-        "context_recovery": "uncertain",
-        "groundedness_citation": "uncertain",
-        "zero_result_correctness": "uncertain",
-        "reliability": "uncertain"
+        "answer_correctness": {
+          "direction": "standard",
+          "reason": "r1 Standard 找到正面反馈而 Planned 否认；r2 两路均漏掉。"
+        },
+        "evidence_completeness": {
+          "direction": "standard",
+          "reason": "r1 Standard 恢复关键群友回复；r2 两路同样遗漏。"
+        },
+        "context_recovery": {
+          "direction": "standard",
+          "reason": "r1 Standard 恢复推荐后的评价上下文；r2 两路均失败。"
+        },
+        "groundedness_citation": {
+          "direction": "standard",
+          "reason": "Standard 有一句安装推断过强，但 Planned 的无评价断言遗漏直接反馈。"
+        },
+        "zero_result_correctness": {
+          "direction": "uncertain",
+          "reason": "本题不考察零结果。"
+        },
+        "reliability": {
+          "direction": "uncertain",
+          "reason": "两轮中优势只出现在 r1，不宣称稳定胜出。"
+        }
       },
-      "rationale": null,
+      "rationale": "r1 Standard 找到“可以”“好东西”“好用”等群友反馈，Planned 错误断言没有实际评价；r2 双方都漏掉反馈。Standard 将“安装了以后咋用”推成已安装过于肯定，但总体仍优于 Planned。",
       "latency_token_tradeoff": null
     },
     {
       "case_id": "pu-count-utc-day",
       "case_version": 1,
-      "review_status": "pending",
-      "label": "uncertain",
-      "reviewer": null,
-      "reviewed_at": null,
-      "snapshot_id": null,
-      "standard_variant_id": null,
-      "planned_variant_id": null,
-      "standard_run_ids": [],
-      "planned_run_ids": [],
+      "review_status": "human_adjudicated",
+      "label": "indifferent",
+      "reviewer": "user-provided-human-adjudication",
+      "reviewed_at": "2026-09-26T16:13:45+00:00",
+      "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "standard_variant_id": "planner-utility-standard-20260926-v2",
+      "planned_variant_id": "planner-utility-planned-20260926-v2",
+      "standard_run_ids": [
+        "eval-run:pu-count-utc-day:v1:planner-utility-standard-20260926-v2:9d0bf702c730409982f0c7804303379f"
+      ],
+      "planned_run_ids": [
+        "eval-run:pu-count-utc-day:v1:planner-utility-planned-20260926-v2:2bed57400f4e44ad88c3091420834996"
+      ],
       "quality_axes": {
-        "answer_correctness": "uncertain",
-        "evidence_completeness": "uncertain",
-        "context_recovery": "uncertain",
-        "groundedness_citation": "uncertain",
-        "zero_result_correctness": "uncertain",
-        "reliability": "uncertain"
+        "answer_correctness": {
+          "direction": "same",
+          "reason": "两路均为 883。"
+        },
+        "evidence_completeness": {
+          "direction": "same",
+          "reason": "两路均给出所需总数。"
+        },
+        "context_recovery": {
+          "direction": "uncertain",
+          "reason": "本题不考察对话上下文恢复。"
+        },
+        "groundedness_citation": {
+          "direction": "same",
+          "reason": "两路引用校验均通过。"
+        },
+        "zero_result_correctness": {
+          "direction": "uncertain",
+          "reason": "本题不考察零结果。"
+        },
+        "reliability": {
+          "direction": "uncertain",
+          "reason": "仅一对当前 v2 观察。"
+        }
       },
-      "rationale": null,
+      "rationale": "两路均准确回答 UTC 当日总消息数 883；Standard 的消息类型拆分没有实质提升任务完成。",
       "latency_token_tradeoff": null
     },
     {
@@ -122,24 +214,46 @@
     {
       "case_id": "pu-rank-utc-session",
       "case_version": 1,
-      "review_status": "pending",
-      "label": "uncertain",
-      "reviewer": null,
-      "reviewed_at": null,
-      "snapshot_id": null,
-      "standard_variant_id": null,
-      "planned_variant_id": null,
-      "standard_run_ids": [],
-      "planned_run_ids": [],
+      "review_status": "human_adjudicated",
+      "label": "indifferent",
+      "reviewer": "user-provided-human-adjudication",
+      "reviewed_at": "2026-09-26T16:13:45+00:00",
+      "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "standard_variant_id": "planner-utility-standard-20260926-v2",
+      "planned_variant_id": "planner-utility-planned-20260926-v2",
+      "standard_run_ids": [
+        "eval-run:pu-rank-utc-session:v1:planner-utility-standard-20260926-v2:cfd20ef80d7d43c9a6007496c5e9ca46"
+      ],
+      "planned_run_ids": [
+        "eval-run:pu-rank-utc-session:v1:planner-utility-planned-20260926-v2:d185158e05fd437ebec2058488499cd0"
+      ],
       "quality_axes": {
-        "answer_correctness": "uncertain",
-        "evidence_completeness": "uncertain",
-        "context_recovery": "uncertain",
-        "groundedness_citation": "uncertain",
-        "zero_result_correctness": "uncertain",
-        "reliability": "uncertain"
+        "answer_correctness": {
+          "direction": "same",
+          "reason": "两路均正确给出第一名及 224 条。"
+        },
+        "evidence_completeness": {
+          "direction": "same",
+          "reason": "两路均包含用户要求的会话 ID 和消息数。"
+        },
+        "context_recovery": {
+          "direction": "uncertain",
+          "reason": "本题不考察对话上下文恢复。"
+        },
+        "groundedness_citation": {
+          "direction": "same",
+          "reason": "两路关键排名事实一致。"
+        },
+        "zero_result_correctness": {
+          "direction": "uncertain",
+          "reason": "本题不考察零结果。"
+        },
+        "reliability": {
+          "direction": "uncertain",
+          "reason": "仅一对当前 v2 观察。"
+        }
       },
-      "rationale": null,
+      "rationale": "两路均正确给出最多消息的会话 qq:677019167、224 条；完整排行与主要名次的展开差异不影响任务完成。",
       "latency_token_tradeoff": null
     },
     {
@@ -168,24 +282,46 @@
     {
       "case_id": "pu-aggregate-utc-types",
       "case_version": 1,
-      "review_status": "pending",
-      "label": "uncertain",
-      "reviewer": null,
-      "reviewed_at": null,
-      "snapshot_id": null,
-      "standard_variant_id": null,
-      "planned_variant_id": null,
-      "standard_run_ids": [],
-      "planned_run_ids": [],
+      "review_status": "human_adjudicated",
+      "label": "indifferent",
+      "reviewer": "user-provided-human-adjudication",
+      "reviewed_at": "2026-09-26T16:13:45+00:00",
+      "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "standard_variant_id": "planner-utility-standard-20260926-v2",
+      "planned_variant_id": "planner-utility-planned-20260926-v2",
+      "standard_run_ids": [
+        "eval-run:pu-aggregate-utc-types:v1:planner-utility-standard-20260926-v2:2131bc55434b416381829ffb149a2d54"
+      ],
+      "planned_run_ids": [
+        "eval-run:pu-aggregate-utc-types:v1:planner-utility-planned-20260926-v2:a2a83dad504d4ce2b318cd255372ad54"
+      ],
       "quality_axes": {
-        "answer_correctness": "uncertain",
-        "evidence_completeness": "uncertain",
-        "context_recovery": "uncertain",
-        "groundedness_citation": "uncertain",
-        "zero_result_correctness": "uncertain",
-        "reliability": "uncertain"
+        "answer_correctness": {
+          "direction": "same",
+          "reason": "两路均为 text=814、reply=17。"
+        },
+        "evidence_completeness": {
+          "direction": "same",
+          "reason": "两路消息类型统计一致。"
+        },
+        "context_recovery": {
+          "direction": "uncertain",
+          "reason": "本题不考察对话上下文恢复。"
+        },
+        "groundedness_citation": {
+          "direction": "same",
+          "reason": "两路统计事实一致。"
+        },
+        "zero_result_correctness": {
+          "direction": "uncertain",
+          "reason": "本题不考察零结果。"
+        },
+        "reliability": {
+          "direction": "uncertain",
+          "reason": "仅一对当前 v2 观察。"
+        }
       },
-      "rationale": null,
+      "rationale": "两路均正确给出 text=814、reply=17，其他消息类型也一致，没有实质质量差异。",
       "latency_token_tradeoff": null
     },
     {

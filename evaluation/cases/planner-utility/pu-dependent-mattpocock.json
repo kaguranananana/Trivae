@@ -157,7 +157,7 @@
     "source": "planner-utility-construction:pu-dependent-mattpocock",
     "method": "reuse canonical message pair from dev-context-mattpocock-1; new dependent query",
     "created_at": "2026-09-26T00:00:00+00:00",
-    "notes": "exposed known pair; new query and utility label await human review"
+    "notes": "human GT applicability adjudication 2026-09-27: Accept (GT unchanged); treatment utility reviewed separately"
   },
   "query": "先找到有人分享 mattpocock 的 skills 仓库并说明用法的消息，再沿这条讨论找到后续评价。分别说明推荐/用法与反馈是什么；如果反馈没有明确的亲自使用依据，请标明这一限制。",
   "reference_findings": [
@@ -171,12 +171,10 @@
         "target 集合未证明 corpus-exhaustive。"
       ],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "new dependent query not yet human-adjudicated"
-        ],
-        "method": "existing canonical message pair; query applicability pending human review",
+        "limitations": [],
+        "method": "existing canonical message pair; new dependent query applicability human-adjudicated 2026-09-27",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
         "source": "derived-from:dev-context-mattpocock-1"
@@ -210,12 +208,10 @@
       "finding_id": "context",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "new dependent query not yet human-adjudicated"
-        ],
-        "method": "existing canonical message pair; query applicability pending human review",
+        "limitations": [],
+        "method": "existing canonical message pair; new dependent query applicability human-adjudicated 2026-09-27",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
         "source": "derived-from:dev-context-mattpocock-1"
@@ -249,12 +245,10 @@
       "finding_id": "zero",
       "known_limitations": [],
       "provenance": {
-        "adjudicated": false,
+        "adjudicated": true,
         "created_at": "2026-08-30T00:00:00+00:00",
-        "limitations": [
-          "new dependent query not yet human-adjudicated"
-        ],
-        "method": "existing canonical message pair; query applicability pending human review",
+        "limitations": [],
+        "method": "existing canonical message pair; new dependent query applicability human-adjudicated 2026-09-27",
         "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
         "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
         "source": "derived-from:dev-context-mattpocock-1"
@@ -278,7 +272,7 @@
   ],
   "time_context": null,
   "uncertainty_constraints": [
-    "已知成对消息是目标证据，是否还有其他后续反馈未做 corpus-exhaustive 审计；该新 Query 的 GT 待人工确认。"
+    "已知成对消息是目标证据；target / required context 集合未证明 corpus-exhaustive，指定消息仅作为人工检查点。"
   ],
   "version": 1
 }
