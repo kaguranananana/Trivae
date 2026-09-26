@@ -29,6 +29,10 @@ Jev 旧 16 条人工 route label 仍属于 **Route Classification**。本文件�
 
 以下是归档 v1 全量实验的复现参考，不是当前 v3 执行计划。当前 root-cause task 应先完成 Trace 归因，再只运行 dependent、archify、一个 negative control 与一个 zero-result Case。任何真实运行都要为自己的 paired repeat 数按两路各最多 8 个 Runtime turn、Planned 1 个 Planner request 计算理论上界；输出路径需保持不存在，并在新 execution commit 捕获 Environment 后运行 gate。历史 15 Case × 1 对 forced treatment + 每 Case 最多 1 次 Jev route 的理论上界为 270 次 Provider invocation。
 
+## Targeted v3 execution pin（2026-09-27）
+
+Root cause 与 Runtime anchor-preservation 调整的代码版本为 `4a4675ef99fee00fc367ba7a98115a4fc5c51a82`。新的 Standard/Planned Variant 与两个小型 Suite 在 `targeted-v3-experiment.json`、`evaluation/variants/`、`evaluation/suites/` 中锁定；Controlled Variant configuration diff 仅为 `execution_override.forced_route`。focus 两题各跑两组配对观察，第二 repeat 反转 arm 顺序；`pu-aggregate-utc-types` 和 `dev-zero-empty-3` 各跑一组负控制。总计 6 组 pair / 12 个 run，Provider invocation 最坏上界 102；无 Jev 调用、自动重试或 Holdout。所有原始输出、Evaluation DB、Environment、Gate 与 ledger 使用全新 `data/evaluation/planner-router-utility/2026-09-27/v3/` 路径。运行结果与 reviewer 来源在新 Trellis task 的 validation 报告中补记。
+
 ```bash
 uv run --extra dev --with tqdm trivae eval --env-file .env benchmark capture-environment \
   --database data/trivae.sqlite3 --benchmark resume-benchmark-v1 \

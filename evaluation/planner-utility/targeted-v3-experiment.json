@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "experiment_id": "planner-utility-targeted-v3",
+  "implementation_commit": "4a4675ef99fee00fc367ba7a98115a4fc5c51a82",
+  "suite_family": "planner-utility-targeted-v3@v1",
+  "focus_suite": "evaluation/suites/planner-utility-focus-v3.json",
+  "control_suite": "evaluation/suites/planner-utility-controls-v3.json",
+  "variants": {
+    "standard": "evaluation/variants/planner-utility-standard-20260927-v3.json",
+    "planned": "evaluation/variants/planner-utility-planned-20260927-v3.json"
+  },
+  "batches": [
+    {
+      "batch_id": "focus-r1",
+      "suite": "focus",
+      "repeat": 1,
+      "paired_order": "counterbalanced",
+      "variant_order": ["planned", "standard"],
+      "case_ids": ["pu-dependent-mattpocock", "dev-context-archify"]
+    },
+    {
+      "batch_id": "focus-r2",
+      "suite": "focus",
+      "repeat": 1,
+      "paired_order": "counterbalanced",
+      "variant_order": ["standard", "planned"],
+      "case_ids": ["pu-dependent-mattpocock", "dev-context-archify"]
+    },
+    {
+      "batch_id": "controls-r1",
+      "suite": "controls",
+      "repeat": 1,
+      "paired_order": "counterbalanced",
+      "variant_order": ["planned", "standard"],
+      "case_ids": ["pu-aggregate-utc-types", "dev-zero-empty-3"]
+    }
+  ],
+  "expected_pairs": 6,
+  "expected_evaluation_runs": 12,
+  "max_runtime_turns_per_run": 8,
+  "max_planner_calls_per_planned_run": 1,
+  "jev_route_calls": 0,
+  "automatic_retries": 0,
+  "provider_invocation_upper_bound": 102,
+  "holdout_access": false,
+  "output_root": "data/evaluation/planner-router-utility/2026-09-27/v3"
+}
