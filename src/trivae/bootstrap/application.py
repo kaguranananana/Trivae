@@ -708,12 +708,22 @@ class TrivaeApplication:
                 completion = getattr(runtime, "complete_text", None)
                 if not callable(completion):
                     completion = None
-                planner_completion = getattr(runtime, "complete_text_with_observation", None)
-                if not callable(planner_completion):
-                    planner_completion = completion
+                router_completion = getattr(runtime, "complete_text_with_observation", None)
+                if not callable(router_completion):
+                    router_completion = completion
                 completion_request = getattr(runtime, "completion_request_projection", None)
-                planner_request = completion_request() if callable(completion_request) else None
-                # Planner/Router 的 LLM baseline 继续共享主 Runtime 的 completion boundary。
+                # Planner 在已实测 Provider 上使用独立的非思考请求；Router 继续原档位。
+                planner_completion = getattr(runtime, "complete_planner_text_with_observation", None)
+                if not callable(planner_completion):
+                    planner_completion = router_completion
+                planner_request_projection = getattr(runtime, "planner_completion_request_projection", None)
+                if callable(planner_request_projection):
+                    planner_request = planner_request_projection()
+                elif callable(completion_request):
+                    planner_request = completion_request()
+                else:
+                    planner_request = None
+                # 两者复用同一 Provider client；只有 Planner completion 的 mode 不同。
                 if self._router is None:
                     # 只有构造默认 Router 时才读取专属配置，注入 Router 的测试/调用方不受影响。
                     jev_settings = load_router_jev_settings()
@@ -725,7 +735,7 @@ class TrivaeApplication:
                         jev_provider = JevRouteDecisionProvider(jev_settings)
                     # completion boundary 同时保留 LLM usage/model observation，且仍使用主模型配置。
                     self._router = RuleRouter(
-                        completion=planner_completion,
+                        completion=router_completion,
                         decision_provider=jev_provider,
                         jev_enabled=jev_settings.enabled,
                         provider_mode=cast(Literal["existing_llm", "jev", "shadow"], jev_settings.mode),

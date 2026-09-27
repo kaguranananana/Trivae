@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import random
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 from statistics import mean, median
@@ -205,13 +206,17 @@ def write_packet(records: list[dict[str, object]], output_dir: Path, repeats: in
     (output_dir / "blind-key.json").write_text(json.dumps(key, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def metrics_for(records: list[dict[str, object]], repeats: int) -> dict[str, object]:
+def metrics_for(
+    records: list[dict[str, object]],
+    repeats: int,
+    variant_names: tuple[str, ...] = ("P0", "P1", "P1-B", "P2"),
+) -> dict[str, object]:
     """从原始 run 生成操作性指标；所有失败都保留在正式分母。"""
 
     metrics: dict[str, object] = {"case_count": len(CASE_IDS), "repeats": repeats, "provider_calls": len(records), "runtime_tool_loop_calls": 0, "cost_status": "unavailable", "variants": {}}
     variants = metrics["variants"]
     assert isinstance(variants, dict)
-    for variant in ("P0", "P1", "P1-B", "P2"):
+    for variant in variant_names:
         calls = [record for record in records if record["variant"] == variant]
         successes = [record for record in calls if record["parse_success"]]
         latencies = [float(record["latency_ms"]) for record in calls]
@@ -241,27 +246,39 @@ def metrics_for(records: list[dict[str, object]], repeats: int) -> dict[str, obj
     return metrics
 
 
-async def run(output_dir: Path, repeats: int) -> None:
+async def run(output_dir: Path, repeats: int, *, final: bool = False) -> None:
     """只调用 Planner completion；每次请求即时落盘，失败仍计入分母。"""
 
     output_dir.mkdir(parents=True, exist_ok=False)
     load_environment_file()
     settings = load_settings()
     runtime = OpenAIAgentsRuntimeAdapter(settings=settings)
-    nonthinking_runtime = NonThinkingAdapter(settings=settings)
     request = runtime.completion_request_projection()
-    nonthinking_request = nonthinking_runtime.completion_request_projection()
-    planners = {
+    planners: dict[str, SoftPlanner] = {
         "P0": P0Planner(runtime.complete_text_with_observation, completion_request=request),
         "P1": P1Planner(runtime.complete_text_with_observation, completion_request=request),
-        # P1-B 与 P2 共享压缩 prompt；只切换 thinking，隔离模式的影响。
-        "P1-B": SoftPlanner(runtime.complete_text_with_observation, completion_request=request, capability_metadata=CAPABILITY_METADATA),
-        "P2": SoftPlanner(nonthinking_runtime.complete_text_with_observation, completion_request=nonthinking_request, capability_metadata=CAPABILITY_METADATA),
     }
+    if final:
+        # 最终 P2 使用生产 adapter 的 Planner 专属请求，确保实验与候选实现同一边界。
+        planners["P2"] = SoftPlanner(
+            runtime.complete_planner_text_with_observation,
+            completion_request=runtime.planner_completion_request_projection(),
+            capability_metadata=CAPABILITY_METADATA,
+        )
+        variant_names = ("P0", "P1", "P2")
+        nonthinking_runtime = None
+    else:
+        # 第一轮归因实验保留压缩 prompt + thinking 的 P1-B 消融。
+        nonthinking_runtime = NonThinkingAdapter(settings=settings)
+        planners["P1-B"] = SoftPlanner(runtime.complete_text_with_observation, completion_request=request, capability_metadata=CAPABILITY_METADATA)
+        planners["P2"] = SoftPlanner(nonthinking_runtime.complete_text_with_observation, completion_request=nonthinking_runtime.completion_request_projection(), capability_metadata=CAPABILITY_METADATA)
+        variant_names = ("P0", "P1", "P1-B", "P2")
     cases = load_cases()
+    source_commit = subprocess.check_output(("git", "rev-parse", "HEAD"), cwd=ROOT, text=True).strip()
     # 运行配置先落盘，异常中断时保留精确身份与已完成调用。
     (output_dir / "run-config.json").write_text(json.dumps({
-        "experiment_id": "planner-p1-stability-development-v1",
+        "experiment_id": "planner-p1-stability-final-v3" if final else "planner-p1-stability-development-v1",
+        "source_commit": source_commit,
         "source_manifest": str(MANIFEST.relative_to(ROOT)),
         "case_ids": list(CASE_IDS), "repeats": repeats,
         "p0_source_commit": "12f2f75",
@@ -269,7 +286,11 @@ async def run(output_dir: Path, repeats: int) -> None:
         "p1_prompt_fixture": "evaluation/planner-p1-stability/frozen-p1-prompts.json",
         "provider": settings.provider, "model": settings.model_name,
         "completion_max_tokens": settings.completion_max_tokens,
-        "variants": {"P0": "frozen baseline, thinking low", "P1": "frozen previous candidate, thinking low", "P1-B": "compressed prompt ablation, thinking low", "P2": "compressed prompt candidate, thinking none"},
+        "variants": (
+            {"P0": "frozen baseline, thinking low", "P1": "frozen previous candidate, thinking low", "P2": "compressed v3 prompt, thinking none via production Planner completion"}
+            if final else
+            {"P0": "frozen baseline, thinking low", "P1": "frozen previous candidate, thinking low", "P1-B": "compressed prompt ablation, thinking low", "P2": "compressed prompt candidate, thinking none"}
+        ),
         "runtime_tool_loop_executed": False, "auto_retry": False,
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     records: list[dict[str, object]] = []
@@ -278,14 +299,14 @@ async def run(output_dir: Path, repeats: int) -> None:
             for case_index, case in enumerate(cases):
                 context = context_for(case)
                 for repeat in range(1, repeats + 1):
-                    # 每个 Case 内轮换四路；八个 Case 使各路线均匀落在每个顺位。
-                    base_order = ("P0", "P1", "P1-B", "P2")
+                    # 每个 Case/repeat 都轮换顺序，避免按版本整批运行造成时间漂移。
+                    base_order = variant_names
                     offset = (case_index + repeat - 1) % len(base_order)
                     for variant in base_order[offset:] + base_order[:offset]:
                         result = await planners[variant].plan(context)
                         observation = result.observation
                         record: dict[str, object] = {
-                            "run_id": f"p1s:{case['case_id']}:{variant}:r{repeat}",
+                            "run_id": f"{'p1s-final' if final else 'p1s'}:{case['case_id']}:{variant}:r{repeat}",
                             "case_id": case["case_id"],
                             "case_version": case["version"],
                             "source": case["source"],
@@ -317,16 +338,18 @@ async def run(output_dir: Path, repeats: int) -> None:
                         print(f"{record['run_id']} {'ok' if result.plan is not None else result.failure.detail_code}", flush=True)
     finally:
         await runtime.aclose()
-        await nonthinking_runtime.aclose()
+        if nonthinking_runtime is not None:
+            await nonthinking_runtime.aclose()
     write_packet(records, output_dir, repeats)
-    (output_dir / "metrics.json").write_text(json.dumps(metrics_for(records, repeats), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (output_dir / "metrics.json").write_text(json.dumps(metrics_for(records, repeats, variant_names), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--final", action="store_true")
     args = parser.parse_args()
     if args.repeats < 2:
         raise ValueError("Planner-only comparison requires at least two repetitions")
-    asyncio.run(run(args.output_dir, args.repeats))
+    asyncio.run(run(args.output_dir, args.repeats, final=args.final))

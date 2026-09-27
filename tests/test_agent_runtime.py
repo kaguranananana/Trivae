@@ -614,6 +614,12 @@ class RuntimeAdapterTests(unittest.TestCase):
         assert completions.kwargs is not None
         self.assertEqual(completions.kwargs["reasoning_effort"], "low")
         self.assertEqual(runtime.completion_request_projection()["reasoning_effort"], "low")
+        # Planner 专属请求只改变已实验验证的思考档位，Router 的低档位仍保持。
+        planner_result = asyncio.run(runtime.complete_planner_text_with_observation("return a JSON object"))
+        self.assertEqual(completions.kwargs["reasoning_effort"], "none")
+        self.assertEqual(planner_result.observation.request["reasoning_effort"], "none")
+        self.assertEqual(runtime.planner_completion_request_projection()["reasoning_effort"], "none")
+        self.assertEqual(runtime.completion_request_projection()["reasoning_effort"], "low")
 
     def test_deepseek_tool_turn_replays_reasoning_content_for_next_request(self) -> None:
         """锁定 Agents SDK 的 DeepSeek reasoning_content 回放，防止多轮工具请求 400。"""

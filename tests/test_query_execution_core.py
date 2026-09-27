@@ -155,6 +155,8 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("success_criteria MUST be a non-empty JSON array", prompt)
         self.assertIn("use get_recent_messages before SQL", prompt)
         self.assertIn("A SQL count alone is not verified zero-result evidence", prompt)
+        self.assertIn("do not plan for a hypothetical non-empty or insufficient first result", prompt)
+        self.assertIn("schema inspection before SQL as distinct goals", prompt)
 
     def test_prompt_receives_registered_purpose_and_planning_constraints(self) -> None:
         """锁定 Planner 输入与通用调查约束，不断言 Provider 一定输出某句 Plan。"""

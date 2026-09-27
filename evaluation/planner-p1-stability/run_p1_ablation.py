@@ -8,14 +8,15 @@ import json
 from dataclasses import asdict, replace
 from pathlib import Path
 
-from run_planner_only import NonThinkingAdapter, P1Planner, context_for, load_cases
+from run_planner_only import CAPABILITY_METADATA, NonThinkingAdapter, P1Planner, context_for, load_cases
 
 from trivae.config.dotenv import load_environment_file
 from trivae.config.settings import load_settings
+from trivae.query.planner import SoftPlanner
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
 
 
-async def run(output_dir: Path, repeats: int, mode: str, max_tokens: int | None) -> None:
+async def run(output_dir: Path, repeats: int, mode: str, max_tokens: int | None, prompt_version: str) -> None:
     """独立执行 24 次诊断调用；失败保留且不用于正式三路 gate。"""
 
     output_dir.mkdir(parents=True, exist_ok=False)
@@ -31,12 +32,18 @@ async def run(output_dir: Path, repeats: int, mode: str, max_tokens: int | None)
         runtime = OpenAIAgentsRuntimeAdapter(settings=replace(settings, completion_max_tokens=max_tokens))
         variant = f"P1-budget-{max_tokens}"
     request = runtime.completion_request_projection()
-    planner = P1Planner(runtime.complete_text_with_observation, completion_request=request)
+    # 冻结 P1 或使用当前压缩候选；两个 prompt 身份都记录在请求与配置中。
+    if prompt_version == "frozen-p1":
+        planner = P1Planner(runtime.complete_text_with_observation, completion_request=request)
+    else:
+        planner = SoftPlanner(runtime.complete_text_with_observation, completion_request=request, capability_metadata=CAPABILITY_METADATA)
+        variant = f"compact-{mode}-{max_tokens or settings.completion_max_tokens}"
     (output_dir / "run-config.json").write_text(json.dumps({
-        "experiment_id": f"p1-original-prompt-{mode}-ablation-v1",
+        "experiment_id": f"{prompt_version}-{mode}-ablation-v2",
         "p1_source_commit": "68286d569025718c88029b66bc028e89a5a10c72",
         "repeats": repeats, "provider": settings.provider, "model": settings.model_name,
         "variant": variant,
+        "prompt_version": prompt_version,
         "request": request, "runtime_tool_loop_executed": False, "auto_retry": False,
         "formal_gate_run": False,
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -81,7 +88,8 @@ if __name__ == "__main__":
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--mode", choices=("none", "budget"), required=True)
     parser.add_argument("--max-tokens", type=int)
+    parser.add_argument("--prompt", choices=("frozen-p1", "compact"), default="frozen-p1")
     args = parser.parse_args()
     if args.repeats < 2:
         raise ValueError("at least two independent repetitions are required")
-    asyncio.run(run(args.output_dir, args.repeats, args.mode, args.max_tokens))
+    asyncio.run(run(args.output_dir, args.repeats, args.mode, args.max_tokens, args.prompt))

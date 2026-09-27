@@ -1739,10 +1739,16 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             raise RuntimeError("provider completion returned no text")
         return result.content.strip()
 
-    def completion_request_projection(self) -> dict[str, object]:
+    def completion_request_projection(
+        self,
+        *,
+        reasoning_effort_override: ReasoningEffort | Literal["none"] | None = None,
+    ) -> dict[str, object]:
         """返回 Router/Planner completion 的 provider-facing 安全请求投影。"""
 
         # 这些字段是实际发送给 Chat Completions 的非敏感参数，不包含 API key/header。
+        # override 只用于已验证的 Planner treatment；默认 Router 仍使用模型 registry 档位。
+        effort = self._resolved_reasoning_effort() if reasoning_effort_override is None else reasoning_effort_override
         return {
             "provider": self._provider_name,
             "model": self._model_name,
@@ -1750,8 +1756,21 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             "max_tokens": self.completion_max_tokens,
             "json_mode": True,
             "response_format": dict(_FINAL_SYNTHESIS_RESPONSE_FORMAT),
-            "reasoning_effort": self._resolved_reasoning_effort(),
+            "reasoning_effort": effort,
         }
+
+    def planner_completion_request_projection(self) -> dict[str, object]:
+        """投影 Planner 专属完成请求，保证 Trace 与实际请求一致。"""
+
+        return self.completion_request_projection(reasoning_effort_override=self._planner_reasoning_effort())
+
+    def _planner_reasoning_effort(self) -> ReasoningEffort | Literal["none"] | None:
+        """仅对已实测的官方 DeepSeek Flash 关闭 Planner thinking。"""
+
+        # 当前 Planner-only 实验只验证了这一精确身份；其它 Provider 保留原有档位。
+        if self._provider_name == "deepseek" and self._model_name == "deepseek-flash":
+            return "none"
+        return self._resolved_reasoning_effort()
 
     def _resolved_reasoning_effort(self) -> ReasoningEffort | None:
         """复用同一精确能力 registry，保证 Agent、Planner 和 Router 请求一致。"""
@@ -1761,14 +1780,29 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             model_name=self._model_name,
         )
 
-    async def complete_text_with_observation(self, prompt: str) -> CompletionResult:
+    async def complete_planner_text_with_observation(self, prompt: str) -> CompletionResult:
+        """用与投影一致的 Planner treatment 进行一次 JSON completion。"""
+
+        return await self.complete_text_with_observation(
+            prompt,
+            reasoning_effort_override=self._planner_reasoning_effort(),
+        )
+
+    async def complete_text_with_observation(
+        self,
+        prompt: str,
+        *,
+        reasoning_effort_override: ReasoningEffort | Literal["none"] | None = None,
+    ) -> CompletionResult:
         """执行一次 JSON completion，并返回安全的 request/response/usage/finish 投影。"""
 
         if self._closed:
             raise RuntimeError("runtime is closed")
         if self._provider_client is None:
             raise RuntimeError("injected runtime model has no provider completion client")
-        request_projection = self.completion_request_projection()
+        request_projection = self.completion_request_projection(
+            reasoning_effort_override=reasoning_effort_override,
+        )
         started = perf_counter()
         response = await self._provider_client.chat.completions.create(
             model=self._model_name,
@@ -1780,7 +1814,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             # Router/Planner 都要求 JSON；显式 JSON mode 让 provider 不依赖裸 prompt 约束。
             response_format=cast(Any, _FINAL_SYNTHESIS_RESPONSE_FORMAT),
             max_tokens=self.completion_max_tokens,
-            reasoning_effort=self._resolved_reasoning_effort(),
+            reasoning_effort=cast(ReasoningEffort | Literal["none"] | None, request_projection["reasoning_effort"]),
         )
         # 只读取公开 choices/message 字段；不保存 SDK response 或 raw repr。
         choices = getattr(response, "choices", None)

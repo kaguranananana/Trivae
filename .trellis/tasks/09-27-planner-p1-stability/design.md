@@ -10,11 +10,13 @@
 
 ## Candidate strategy
 
-P2 只压缩重复的 Planner 全局规则与 capability 选择说明，不删除由旧实验支持的实体锚、direct-hit→context 关系、非机械双检索、聚合止于 SQL 和 zero-result 契约。canonical purpose 仍从 Registry metadata 读取，selection guidance 不维护第二份 Tool 说明。保持 2048 output ceiling、Plan schema、JSON mode、model、temperature、allowlist 与 parser 相同，以隔离 prompt 改动。若重复实验显示该压缩不足，则保留 negative result，不用加大 token 或重试冒充成功。
+归因实验表明只压缩 prompt 的 P1-B 仍有 5/24 次 `provider_length`；失败时 Provider 明细显示隐藏 reasoning token 消耗接近或达到 2048。压缩且关闭 thinking 的 P2-v1 为 24/24，但简单查询过度规划，不能 promotion。原 P1 prompt + 非思考也 24/24，却保留同类质量回退。P1 + 3072 budget 的 24/24 调用最高只消耗 2020 token，不能证明加预算是成功原因；因此不选直接提高上限。
+
+最终候选 P2-v3 保留 metadata canonical purpose，压缩重复的 Planner guidance，并用跨 Case 的通用质量约束明确必要证据关系、非机械双检索、无假设分支及 schema→SQL 顺序。它在探索性 3 repeats 中 24/24 有效，zero-result/aggregation/direct-lookup 的主要回退消失；需再经交错正式实验验证。Provider treatment 对已实测的官方 DeepSeek `deepseek-flash` Planner completion 指定 `reasoning_effort=none`，仍保留 2048、JSON mode、同一 parser/allowlist。其它 Provider 没有对应实测，不改其原 completion 档位。Router 继续原 `low`，Agent Runtime Tool Loop 与最终回答路径不变。
 
 ## Experiment and review
 
-沿用固定 Development Case 与 P0 模板；P1 要冻结上一轮提交对应的 prompt，避免 P2 的代码变动污染对照。每 Case/repeat 对 P0/P1/P2 交错 counterbalance。每次调用实时写 JSONL，之后生成指标和随机盲包。盲包只显示 A/B/C，key 单独落盘。assistant provisional review 与 human adjudication 分开。
+沿用固定 Development Case 与 P0 模板；P1 从上一轮真实请求冻结，避免 P2 的代码变动污染对照。最终每 Case/repeat 对 P0/P1/P2 交错 counterbalance，计划 5 repeats。每次调用实时写 JSONL，之后生成指标和随机盲包。盲包只显示 A/B/C，key 单独落盘。assistant provisional review 与 human adjudication 分开。
 
 ## Compatibility
 
