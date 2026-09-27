@@ -41,6 +41,8 @@ class CapabilityContractTests(LexicalRetrievalTests):
         envelope = self.registry.invoke("search_messages", request, scope)
 
         self.assertEqual(self.registry.names(), ("search_messages",))
+        # Planner 的用途描述必须来自当前注册的 Capability，而非另一个静态工具表。
+        self.assertEqual(self.registry.metadata(), (self.capability.metadata,))
         self.assertEqual(envelope.status, "ok")
         self.assertIsNotNone(envelope.data)
         assert envelope.data is not None

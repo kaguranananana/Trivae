@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from time import perf_counter
 from typing import Literal, Protocol
 
+from trivae.capabilities.contracts import CapabilityMetadata
 from trivae.query.completion import (
     CompletionCallback,
     CompletionResult,
@@ -22,6 +23,28 @@ _MAX_STEPS = 5
 _MAX_CRITERIA = 5
 _MAX_FIELD_LENGTH = 240
 _DEFAULT_COMPLETION_TIMEOUT_SECONDS = 20.0
+
+# 这里只记录 Planner 选用关系，Tool 的用途正文继续来自 CapabilityMetadata。
+# 新注册 Tool 必须显式补齐规划约束，避免 purpose 与选用规则悄悄漂移。
+_PLANNING_GUIDANCE = {
+    "lexical_search": "Prefer for named people, repositories, products, URLs and exact terms. Preserve a distinctive entity as the primary anchor; a generic category is supplementary only when the anchored path cannot cover the request.",
+    "search_messages": "Legacy exact-word retrieval; apply the same entity-anchor discipline as lexical_search.",
+    "semantic_search": "Use for conceptual recall when the user's wording may differ from messages; do not pair with lexical_search automatically.",
+    "get_message_context": "Use around a relevant direct hit for replies, local discussion, later reactions or firsthand feedback; select the share, recommendation, invitation or usage thread most related to the question, not an unrelated popularity update.",
+    "get_recent_messages": "Use for recent activity, a defined time window or topic discovery; the word 'later' in an entity investigation alone does not justify broad recent browsing.",
+    "find_members": "Use for identity resolution or same-name ambiguity, not to find who used a tool or expressed an opinion in message content.",
+    "get_schema": "Inspect physical schema when a deterministic count, rank, aggregation or structured filter needs SQL; it is not a result-verification step.",
+    "execute_sql": "Use for deterministic count, rank, aggregation and structured filtering. If its scoped result completely answers the requested fact, do not add retrieval just to verify it.",
+}
+
+
+@dataclass(frozen=True)
+class PlannerCapabilitySummary:
+    """Planner 独立读取的用途与选用约束；可用性仍由 QueryContext allowlist 决定。"""
+
+    name: str
+    purpose: str
+    planning_guidance: str
 
 
 @dataclass(frozen=True)
@@ -127,6 +150,7 @@ class SoftPlanner:
         *,
         completion_timeout_seconds: float = _DEFAULT_COMPLETION_TIMEOUT_SECONDS,
         completion_request: Mapping[str, object] | None = None,
+        capability_metadata: tuple[CapabilityMetadata, ...] = (),
     ) -> None:
         """不注入 completion 时明确返回 unavailable，不创建隐藏 provider。"""
 
@@ -136,6 +160,15 @@ class SoftPlanner:
         self._completion_timeout_seconds = completion_timeout_seconds
         # timeout 时 Provider 可能没有 response，因此预先保存非敏感 request projection。
         self._completion_request = {} if completion_request is None else dict(completion_request)
+        # purpose 直接取注册 Capability 的描述，避免 Planner 复制 Tool 文档。
+        self._capability_summaries = tuple(
+            PlannerCapabilitySummary(
+                name=metadata.name,
+                purpose=metadata.description,
+                planning_guidance=_PLANNING_GUIDANCE[metadata.name],
+            )
+            for metadata in capability_metadata
+        )
 
     @property
     def completion_timeout_seconds(self) -> float:
@@ -154,7 +187,7 @@ class SoftPlanner:
 
         if self._completion is None:
             return PlannerResult(None, PlannerFailure("unavailable", "planner completion is not configured"))
-        prompt = self._build_prompt(context)
+        prompt = self._build_prompt(context, self._capability_summaries)
         started = perf_counter()
         try:
             completion_result = await asyncio.wait_for(
@@ -281,11 +314,25 @@ class SoftPlanner:
         )
 
     @staticmethod
-    def _build_prompt(context: QueryContext) -> str:
+    def _build_prompt(
+        context: QueryContext,
+        capability_summaries: tuple[PlannerCapabilitySummary, ...] = (),
+    ) -> str:
         """把 bounded query context 编译为 provider-neutral JSON 规划请求。"""
 
         snapshot = json.dumps(dict(context.data_snapshot), ensure_ascii=False, default=str)
         history = "\n".join(f"{message.role}: {message.content}" for message in context.prior_context)
+        # allowlist 先过滤 summary；description 绝不能让未开放的 Tool 出现在 Planner 输入中。
+        allowed = set(context.available_capabilities)
+        summaries = [
+            {
+                "name": summary.name,
+                "purpose": summary.purpose,
+                "planning_guidance": summary.planning_guidance,
+            }
+            for summary in capability_summaries
+            if summary.name in allowed
+        ]
         return (
             "Create a concise soft plan for this Trivae query. Return JSON only with keys: "
             "version (1), title, intent, steps, success_criteria. "
@@ -296,6 +343,19 @@ class SoftPlanner:
             "most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a "
             "string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied "
             "capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. "
+            "Each step must add investigation value that Runtime cannot trivially infer from the user request. "
+            "Prefer one or two high-information steps over generic search, analyze, summarize or verify steps. "
+            "When a distinctive person, repository, product, project, URL or other entity is named, keep "
+            "that entity as the primary investigation anchor. Never replace it with a generic category alone. "
+            "Broaden to category-level recall only if entity-anchored evidence cannot cover a requested need. "
+            "For replies, later reactions, actual usage or firsthand feedback, describe the evidence relation: "
+            "identify the relevant direct share, recommendation, invitation or usage discussion first, then "
+            "inspect its replies or context. A later popularity update or repeated mention is not proof of use; "
+            "interest or intent to try is not firsthand experience. "
+            "Use capability planning guidance to suggest only tools that serve a necessary investigation goal. "
+            "Do not automatically pair lexical and semantic search, browse recent messages for an entity follow-up, "
+            "or resolve member identity for an ordinary who-used-or-said query. "
+            "A complete scoped deterministic count, rank or aggregation needs no extra retrieval verification. "
             "For a time-bounded question asking whether messages exist and what was discussed, suggest "
             "get_recent_messages before SQL: a complete empty window settles both questions. A SQL count "
             "alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm "
@@ -303,6 +363,7 @@ class SoftPlanner:
             f"locale: {context.locale}\nquery: {context.query}\n"
             f"prior model context:\n{history or '<none>'}\n"
             f"available capabilities: {list(context.available_capabilities)!r}\n"
+            f"capability summaries: {json.dumps(summaries, ensure_ascii=False)}\n"
             f"data snapshot: {snapshot}"
         )
 

@@ -381,6 +381,8 @@ execute_sql
 
 Planner 不需要完整 Tool JSON Schema、全部参数说明、SQL Manual 或完整错误码。完整 Tool Contract 留给 Agent Runtime。
 
+2026-09-27 Planner Quality Calibration 的实现把该概念收束为：`CapabilityRegistry.metadata()` 从当前已注册 Tool 的 Capability 读取 canonical `CapabilityMetadata.description`；Application 仅将其注入默认 `SoftPlanner`；Planner 另持有短的选用关系 guidance。Prompt 只显示 `QueryContext.available_capabilities` allowlist 内的摘要，且 parser 仍用同一 allowlist 过滤 suggested tools。`QueryContext` 与 Router 输入未增加 Planner 专属字段。该变更只改善软 Plan 文本，并未证明 Planned treatment 的最终答案收益；Planner-only Development 运行与失败详见 `09-27-planner-quality-calibration` 任务。
+
 ### 5.5 Planner 不应该获得的输入
 
 第一版以下内容不属于 Planner Input：

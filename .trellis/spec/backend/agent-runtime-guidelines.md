@@ -1,5 +1,46 @@
 # Agent Runtime and Query Execution Guidelines
 
+## Planner capability summary contract (2026-09-27)
+
+### 1. Scope / Trigger
+
+当新增或调整 Agent-facing Tool 时，Planner 必须知道该 Tool 的 canonical purpose 和规划选用关系，但不能获得执行参数控制权。
+
+### 2. Signatures
+
+```python
+CapabilityRegistry.metadata() -> tuple[CapabilityMetadata, ...]
+SoftPlanner(..., capability_metadata: tuple[CapabilityMetadata, ...] = ())
+SoftPlanner.plan(context: QueryContext) -> PlannerResult
+```
+
+### 3. Contracts
+
+`CapabilityMetadata.name/description` 由已注册 Tool 的 Capability 拥有；`SoftPlanner` 只拥有精简 `planning_guidance`。Application 构造默认 Planner 时注入 metadata，Router 继续只接收既有 `QueryContext`。Prompt 仅包含当前 `available_capabilities` 中的 summary；该 allowlist 仍是 Plan suggested tools 的合法性源。Plan 是一次性、bounded soft guidance，Runtime 保留实际 Tool 选择、参数和停止决策。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 已注册 Tool 缺少匹配 `CapabilityMetadata` | `CapabilityRegistry.metadata()` 显式 `ValueError`，不按名称伪造 purpose |
+| 新 Tool 尚无 Planner 选用约束 | 构造 summary 时显式失败，要求补齐而非静默空 guidance |
+| LLM 建议未在 allowlist 的 Tool | 原 Plan parser 过滤该名称 |
+| Provider length / invalid JSON / empty output | 保留已有 Planner failure 分类与 graceful skip；不自动重试 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：实体反馈问题用 lexical 主锚找到 direct share，再沿相关 discussion context 核查 firsthand feedback。
+- Base：简单 SQL count/rank 由 schema+SQL 完整回答，Plan 不增加 recent/context 复核。
+- Bad：`mattpocock 或 skills` 允许泛类别词独立替换实体，或把 `find_members` 用于“谁说过/谁用过”的消息内容问题。
+
+### 6. Tests Required
+
+Provider-free 测试断言 canonical purpose 注入、allowlist 过滤、通用实体/context/overplanning prompt 约束、未知 Tool 过滤、Plan bounds 和 failure classification。模型是否遵从软指导必须由重复 Planner-only Development 实验审阅，不能从 prompt 断言推出。
+
+### 7. Wrong vs Correct
+
+Wrong：把 SDK Tool 参数说明复制成第二份 Planner 文档，或给 `QueryContext` 增加 Router 不需要的 Planner 字段。Correct：Registry 读取已注册 Capability 的 metadata，Planner 只补选用关系，生产 allowlist 和 Runtime 自治边界不变。
+
 M4 Query Execution Core 与 M5 Evidence Finalization 的可执行边界。Router、Planner、QueryOrchestrator 和 Answer Finalizer 是 Trivae-owned application layer；OpenAI Agents SDK 只允许出现在 runtime adapter。当前实现按本地验证的 `openai-agents==0.22.0` 编写，后续升级必须重新验证本文件的行为契约。
 
 ## 1. Scope / Trigger

@@ -733,6 +733,7 @@ class TrivaeApplication:
                 self._planner = self._planner or SoftPlanner(
                     completion=planner_completion,
                     completion_request=planner_request,
+                    capability_metadata=self.capability_registry.metadata(),
                 )
                 self._query_orchestrator = QueryOrchestrator(
                     runtime,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from trivae.capabilities.contracts import (
+    CapabilityMetadata,
     ExecuteSQLInput,
     ExecutionScope,
     FindMembersInput,
@@ -72,3 +73,16 @@ class CapabilityRegistry:
         """返回确定性 registry 名称列表。"""
 
         return tuple(sorted(self._tools))
+
+    def metadata(self) -> tuple[CapabilityMetadata, ...]:
+        """从已注册 Tool 所持 Capability 读取 canonical 描述。"""
+
+        summaries = []
+        for name, tool in sorted(self._tools.items()):
+            # 每条描述必须来自当前注册的 Capability，不能按名字猜测另一套文档。
+            capability = getattr(tool, "capability", None)
+            metadata = getattr(capability, "metadata", None)
+            if not isinstance(metadata, CapabilityMetadata) or metadata.name != name:
+                raise ValueError(f"registered tool lacks matching capability metadata: {name}")
+            summaries.append(metadata)
+        return tuple(summaries)

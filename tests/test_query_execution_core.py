@@ -13,7 +13,7 @@ from agents.testing import ModelStep, ScriptedModel, assistant_message, function
 
 from trivae.bootstrap.application import create_application
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
-from trivae.capabilities.contracts import ToolEnvelope
+from trivae.capabilities.contracts import CapabilityMetadata, ToolEnvelope
 from trivae.config.settings import load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
 from trivae.query.contracts import QueryRequest
@@ -155,6 +155,64 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("success_criteria MUST be a non-empty JSON array", prompt)
         self.assertIn("suggest get_recent_messages before SQL", prompt)
         self.assertIn("A SQL count alone is not verified zero-result evidence", prompt)
+
+    def test_prompt_receives_registered_purpose_and_planning_constraints(self) -> None:
+        """锁定 Planner 输入与通用调查约束，不断言 Provider 一定输出某句 Plan。"""
+
+        metadata = (
+            CapabilityMetadata("lexical_search", "Canonical exact-word purpose", True, ("keyword",)),
+            CapabilityMetadata("semantic_search", "Canonical conceptual purpose", True, ("query",)),
+            CapabilityMetadata("get_message_context", "Canonical context purpose", True, ("message_id",)),
+            CapabilityMetadata("get_recent_messages", "Canonical temporal purpose", True, ("time_range",)),
+            CapabilityMetadata("find_members", "Canonical identity purpose", True, ("query",)),
+            CapabilityMetadata("get_schema", "Canonical schema purpose", True, ()),
+            CapabilityMetadata("execute_sql", "Canonical SQL purpose", True, ("sql",)),
+        )
+        captured: list[str] = []
+
+        def completion(prompt: str) -> str:
+            captured.append(prompt)
+            return json.dumps({
+                "version": 1,
+                "title": "Probe",
+                "intent": "evidence",
+                "steps": [{
+                    "goal": "Trace the relevant discussion",
+                    "suggested_tools": ["lexical_search", "unknown_tool"],
+                    "evidence_needed": ["direct and follow-up messages"],
+                }],
+                "success_criteria": ["Bounded conclusion"],
+            })
+
+        from trivae.query.contracts import QueryContext
+
+        # allowlist 仅开放 lexical，所有其余 metadata 都不能泄漏成可用工具。
+        context = QueryContext("named entity feedback", "zh-CN", (), {}, ("lexical_search",))
+        planner = SoftPlanner(completion, capability_metadata=metadata)
+        result = asyncio.run(planner.plan(context))
+        prompt = captured[0]
+        self.assertIn("Canonical exact-word purpose", prompt)
+        self.assertNotIn("Canonical conceptual purpose", prompt)
+        self.assertIn("primary investigation anchor", prompt)
+        self.assertIn("relevant direct share, recommendation, invitation or usage discussion", prompt)
+        self.assertIn("Each step must add investigation value", prompt)
+        self.assertIn("A complete scoped deterministic count, rank or aggregation", prompt)
+        self.assertIn("Do not automatically pair lexical and semantic search", prompt)
+        self.assertEqual(result.plan.steps[0].suggested_tools, ("lexical_search",))
+
+        # 全量 allowlist 下，各 Tool 的用途边界也必须进入同一 Planner prompt。
+        full_context = QueryContext("investigate", "zh-CN", (), {}, tuple(item.name for item in metadata))
+        asyncio.run(planner.plan(full_context))
+        full_prompt = captured[1]
+        for guidance in (
+            "do not pair with lexical_search automatically",
+            "not an unrelated popularity update",
+            "does not justify broad recent browsing",
+            "not to find who used a tool",
+            "it is not a result-verification step",
+            "do not add retrieval just to verify it",
+        ):
+            self.assertIn(guidance, full_prompt)
 
     def test_malformed_and_structurally_invalid_plan_fail_explicitly(self) -> None:
         malformed = asyncio.run(SoftPlanner(lambda _: "{bad").plan(self._context()))

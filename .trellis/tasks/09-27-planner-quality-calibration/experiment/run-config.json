@@ -1,0 +1,20 @@
+{
+  "source_manifest": "evaluation/planner-utility/manifest-v1.json",
+  "case_ids": [
+    "pu-dependent-mattpocock",
+    "dev-context-archify",
+    "pu-aggregate-utc-types",
+    "dev-zero-empty-3",
+    "dev-temporal-30d",
+    "dev-lexical-forge",
+    "dev-cite-archify",
+    "pu-rank-utc-session"
+  ],
+  "repeats": 3,
+  "p0_source_commit": "12f2f75",
+  "chatlab_commit": "3e0e0fbbfb2b80051d261d34bf8349d64ab4c6e8",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "completion_max_tokens": 2048,
+  "runtime_tool_loop_executed": false
+}

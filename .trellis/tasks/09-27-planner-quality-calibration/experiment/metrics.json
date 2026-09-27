@@ -1,0 +1,83 @@
+{
+  "case_count": 8,
+  "repeats": 3,
+  "provider_calls": 48,
+  "runtime_tool_loop_calls": 0,
+  "cost_status": "unavailable",
+  "variants": {
+    "P0": {
+      "calls": 24,
+      "parse_success": 21,
+      "parse_failure": 3,
+      "failure_detail_counts": {
+        "provider_length": 3
+      },
+      "finish_reason_counts": {
+        "stop": 21,
+        "length": 3
+      },
+      "usage_observed_calls": 24,
+      "input_tokens": 10494,
+      "output_tokens": 34250,
+      "total_tokens": 44744,
+      "latency_ms": {
+        "mean": 6525.4,
+        "median": 6340.4,
+        "min": 3118.8,
+        "max": 9215.5
+      },
+      "successful_plan_step_counts": {
+        "5": 2,
+        "4": 11,
+        "3": 8
+      },
+      "case_success": {
+        "dev-cite-archify": 3,
+        "dev-context-archify": 3,
+        "dev-lexical-forge": 3,
+        "dev-temporal-30d": 3,
+        "dev-zero-empty-3": 3,
+        "pu-aggregate-utc-types": 1,
+        "pu-dependent-mattpocock": 3,
+        "pu-rank-utc-session": 2
+      }
+    },
+    "P1": {
+      "calls": 24,
+      "parse_success": 19,
+      "parse_failure": 5,
+      "failure_detail_counts": {
+        "provider_length": 5
+      },
+      "finish_reason_counts": {
+        "stop": 19,
+        "length": 5
+      },
+      "usage_observed_calls": 24,
+      "input_tokens": 29982,
+      "output_tokens": 35151,
+      "total_tokens": 65133,
+      "latency_ms": {
+        "mean": 7212.7,
+        "median": 7365.2,
+        "min": 2982.5,
+        "max": 10768.9
+      },
+      "successful_plan_step_counts": {
+        "2": 12,
+        "3": 5,
+        "1": 2
+      },
+      "case_success": {
+        "dev-cite-archify": 1,
+        "dev-context-archify": 3,
+        "dev-lexical-forge": 3,
+        "dev-temporal-30d": 2,
+        "dev-zero-empty-3": 2,
+        "pu-aggregate-utc-types": 3,
+        "pu-dependent-mattpocock": 3,
+        "pu-rank-utc-session": 2
+      }
+    }
+  }
+}
