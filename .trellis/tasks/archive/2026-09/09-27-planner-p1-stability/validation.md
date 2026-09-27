@@ -1,5 +1,7 @@
 # Validation
 
+> 2026-09-27 补充：下文 `Gate` 的 `PASS` 记录的是 assistant provisional review 时点。assistant blind adjudication 完成后的最新 P2 promotion gate 为 `FAIL`；见 `experiment-final/assistant-blind-adjudication-unblinded.md`。代码测试结果不受这次文档揭盲影响。
+
 ## Formal Planner-only identity
 
 - 正式实验 `experiment-final/run-config.json`：source commit `d4b20deda37f71bf8e2c252d59aee5b0a0bacef3`，P0 prompt source `12f2f75eb1c9e52171ba04c35c8817ce2c6028b5`，P1 implementation/prompt source `68286d569025718c88029b66bc028e89a5a10c72`。
