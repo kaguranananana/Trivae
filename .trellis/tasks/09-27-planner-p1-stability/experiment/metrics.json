@@ -1,0 +1,142 @@
+{
+  "case_count": 8,
+  "repeats": 3,
+  "provider_calls": 96,
+  "runtime_tool_loop_calls": 0,
+  "cost_status": "unavailable",
+  "variants": {
+    "P0": {
+      "calls": 24,
+      "valid_plans": 19,
+      "failure_detail_counts": {
+        "provider_length": 5
+      },
+      "finish_reason_counts": {
+        "stop": 19,
+        "length": 5
+      },
+      "usage_totals": {
+        "input_tokens": 10494,
+        "output_tokens": 31093,
+        "total_tokens": 41587,
+        "reasoning_tokens": 25973
+      },
+      "reasoning_usage_observed_calls": 24,
+      "latency_ms": {
+        "mean": 6216.5,
+        "median": 5773.7
+      },
+      "mean_successful_plan_steps": 3.84,
+      "prompt_chars_mean": 1514.9,
+      "case_success": {
+        "pu-dependent-mattpocock": 3,
+        "dev-context-archify": 3,
+        "pu-aggregate-utc-types": 2,
+        "dev-zero-empty-3": 2,
+        "dev-temporal-30d": 3,
+        "dev-lexical-forge": 2,
+        "dev-cite-archify": 3,
+        "pu-rank-utc-session": 1
+      }
+    },
+    "P1": {
+      "calls": 24,
+      "valid_plans": 21,
+      "failure_detail_counts": {
+        "provider_length": 3
+      },
+      "finish_reason_counts": {
+        "stop": 21,
+        "length": 3
+      },
+      "usage_totals": {
+        "input_tokens": 29982,
+        "output_tokens": 33974,
+        "total_tokens": 63956,
+        "reasoning_tokens": 29325
+      },
+      "reasoning_usage_observed_calls": 24,
+      "latency_ms": {
+        "mean": 7201.3,
+        "median": 6430.7
+      },
+      "mean_successful_plan_steps": 2.14,
+      "prompt_chars_mean": 5567.9,
+      "case_success": {
+        "pu-dependent-mattpocock": 3,
+        "dev-context-archify": 3,
+        "pu-aggregate-utc-types": 3,
+        "dev-zero-empty-3": 2,
+        "dev-temporal-30d": 3,
+        "dev-lexical-forge": 3,
+        "dev-cite-archify": 1,
+        "pu-rank-utc-session": 3
+      }
+    },
+    "P1-B": {
+      "calls": 24,
+      "valid_plans": 19,
+      "failure_detail_counts": {
+        "provider_length": 5
+      },
+      "finish_reason_counts": {
+        "length": 5,
+        "stop": 19
+      },
+      "usage_totals": {
+        "input_tokens": 25422,
+        "output_tokens": 35569,
+        "total_tokens": 60991,
+        "reasoning_tokens": 31237
+      },
+      "reasoning_usage_observed_calls": 24,
+      "latency_ms": {
+        "mean": 7251.2,
+        "median": 7259.8
+      },
+      "mean_successful_plan_steps": 2.21,
+      "prompt_chars_mean": 4523.9,
+      "case_success": {
+        "pu-dependent-mattpocock": 1,
+        "dev-context-archify": 3,
+        "pu-aggregate-utc-types": 2,
+        "dev-zero-empty-3": 2,
+        "dev-temporal-30d": 3,
+        "dev-lexical-forge": 3,
+        "dev-cite-archify": 2,
+        "pu-rank-utc-session": 3
+      }
+    },
+    "P2": {
+      "calls": 24,
+      "valid_plans": 24,
+      "failure_detail_counts": {},
+      "finish_reason_counts": {
+        "stop": 24
+      },
+      "usage_totals": {
+        "input_tokens": 24822,
+        "output_tokens": 4035,
+        "total_tokens": 28857,
+        "reasoning_tokens": null
+      },
+      "reasoning_usage_observed_calls": 0,
+      "latency_ms": {
+        "mean": 1422.2,
+        "median": 1404.1
+      },
+      "mean_successful_plan_steps": 2.12,
+      "prompt_chars_mean": 4523.9,
+      "case_success": {
+        "pu-dependent-mattpocock": 3,
+        "dev-context-archify": 3,
+        "pu-aggregate-utc-types": 3,
+        "dev-zero-empty-3": 3,
+        "dev-temporal-30d": 3,
+        "dev-lexical-forge": 3,
+        "dev-cite-archify": 3,
+        "pu-rank-utc-session": 3
+      }
+    }
+  }
+}

@@ -28,8 +28,8 @@
 
 ## Acceptance criteria
 
-- [ ] 旧 P1 五次失败的完整 observation 和配对 P0 已可追溯，prompt 与输出行为分解可复核。
-- [ ] P2 改动具有通用设计理由，保留现有软规划架构与 contract。
-- [ ] 独立三路实验原始记录、指标、盲审包、映射和 provisional review 齐全。
-- [ ] 明确判为 PASS / FAIL / INCONCLUSIVE；只有可靠性与质量证据都支持时才建议三路 E2E。
-- [ ] 指定测试、静态检查与 diff check 通过；任务提交和仓库状态准确记录。
+- [x] 旧 P1 五次失败的完整 observation 和配对 P0 已可追溯，prompt 与输出行为分解可复核。
+- [x] P2 改动具有通用设计理由，保留现有软规划架构与 contract。
+- [x] 独立三路实验原始记录、指标、盲审包、映射和 provisional review 齐全。
+- [x] 明确判为 PASS / FAIL / INCONCLUSIVE；只有可靠性与质量证据都支持时才建议三路 E2E。
+- [x] 指定测试、静态检查与 diff check 通过；任务提交和仓库状态准确记录。

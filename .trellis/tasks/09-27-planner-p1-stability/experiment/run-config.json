@@ -1,0 +1,31 @@
+{
+  "experiment_id": "planner-p1-stability-development-v1",
+  "source_manifest": "evaluation/planner-utility/manifest-v1.json",
+  "case_ids": [
+    "pu-dependent-mattpocock",
+    "dev-context-archify",
+    "pu-aggregate-utc-types",
+    "dev-zero-empty-3",
+    "dev-temporal-30d",
+    "dev-lexical-forge",
+    "dev-cite-archify",
+    "pu-rank-utc-session"
+  ],
+  "repeats": 3,
+  "p0_source_commit": "12f2f75",
+  "p1_source_commit": "68286d569025718c88029b66bc028e89a5a10c72",
+  "p1_prompt_fixture": "evaluation/planner-p1-stability/frozen-p1-prompts.json",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "completion_max_tokens": 2048,
+  "variants": {
+    "P0": "frozen baseline, thinking low",
+    "P1": "frozen previous candidate, thinking low",
+    "P1-B": "compressed prompt ablation, thinking low",
+    "P2": "compressed prompt candidate, thinking none"
+  },
+  "runtime_tool_loop_executed": false,
+  "auto_retry": false,
+  "source_snapshot_commit": "fc99bb7",
+  "source_snapshot_note": "Commit was created after calls; request and prompt bytes are saved in each run."
+}

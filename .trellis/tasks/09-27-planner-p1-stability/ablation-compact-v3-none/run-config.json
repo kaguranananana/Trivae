@@ -1,0 +1,25 @@
+{
+  "experiment_id": "compact-v3-none-probe",
+  "p1_source_commit": "68286d569025718c88029b66bc028e89a5a10c72",
+  "repeats": 3,
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "variant": "compact-none-2048",
+  "prompt_version": "compact",
+  "request": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "temperature": 0,
+    "max_tokens": 2048,
+    "json_mode": true,
+    "response_format": {
+      "type": "json_object"
+    },
+    "reasoning_effort": "none"
+  },
+  "runtime_tool_loop_executed": false,
+  "auto_retry": false,
+  "formal_gate_run": false,
+  "prompt_snapshot": "exact prompt saved per run in runs.jsonl",
+  "matching_candidate_source_commit": "d4b20de"
+}

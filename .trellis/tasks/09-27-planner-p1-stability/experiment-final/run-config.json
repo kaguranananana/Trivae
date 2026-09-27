@@ -1,0 +1,29 @@
+{
+  "experiment_id": "planner-p1-stability-final-v3",
+  "source_commit": "d4b20deda37f71bf8e2c252d59aee5b0a0bacef3",
+  "source_manifest": "evaluation/planner-utility/manifest-v1.json",
+  "case_ids": [
+    "pu-dependent-mattpocock",
+    "dev-context-archify",
+    "pu-aggregate-utc-types",
+    "dev-zero-empty-3",
+    "dev-temporal-30d",
+    "dev-lexical-forge",
+    "dev-cite-archify",
+    "pu-rank-utc-session"
+  ],
+  "repeats": 5,
+  "p0_source_commit": "12f2f75",
+  "p1_source_commit": "68286d569025718c88029b66bc028e89a5a10c72",
+  "p1_prompt_fixture": "evaluation/planner-p1-stability/frozen-p1-prompts.json",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "completion_max_tokens": 2048,
+  "variants": {
+    "P0": "frozen baseline, thinking low",
+    "P1": "frozen previous candidate, thinking low",
+    "P2": "compressed v3 prompt, thinking none via production Planner completion"
+  },
+  "runtime_tool_loop_executed": false,
+  "auto_retry": false
+}

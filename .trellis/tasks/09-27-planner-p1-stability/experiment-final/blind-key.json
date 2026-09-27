@@ -1,0 +1,242 @@
+[
+  {
+    "review_id": "pu-dependent-mattpocock-r1",
+    "A": "P0",
+    "B": "P1",
+    "C": "P2"
+  },
+  {
+    "review_id": "pu-dependent-mattpocock-r2",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "pu-dependent-mattpocock-r3",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "pu-dependent-mattpocock-r4",
+    "A": "P0",
+    "B": "P2",
+    "C": "P1"
+  },
+  {
+    "review_id": "pu-dependent-mattpocock-r5",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-context-archify-r1",
+    "A": "P0",
+    "B": "P1",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-context-archify-r2",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-context-archify-r3",
+    "A": "P2",
+    "B": "P0",
+    "C": "P1"
+  },
+  {
+    "review_id": "dev-context-archify-r4",
+    "A": "P0",
+    "B": "P2",
+    "C": "P1"
+  },
+  {
+    "review_id": "dev-context-archify-r5",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "pu-aggregate-utc-types-r1",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "pu-aggregate-utc-types-r2",
+    "A": "P2",
+    "B": "P0",
+    "C": "P1"
+  },
+  {
+    "review_id": "pu-aggregate-utc-types-r3",
+    "A": "P2",
+    "B": "P1",
+    "C": "P0"
+  },
+  {
+    "review_id": "pu-aggregate-utc-types-r4",
+    "A": "P0",
+    "B": "P1",
+    "C": "P2"
+  },
+  {
+    "review_id": "pu-aggregate-utc-types-r5",
+    "A": "P2",
+    "B": "P0",
+    "C": "P1"
+  },
+  {
+    "review_id": "dev-zero-empty-3-r1",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-zero-empty-3-r2",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-zero-empty-3-r3",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-zero-empty-3-r4",
+    "A": "P2",
+    "B": "P1",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-zero-empty-3-r5",
+    "A": "P0",
+    "B": "P2",
+    "C": "P1"
+  },
+  {
+    "review_id": "dev-temporal-30d-r1",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-temporal-30d-r2",
+    "A": "P0",
+    "B": "P1",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-temporal-30d-r3",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-temporal-30d-r4",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-temporal-30d-r5",
+    "A": "P2",
+    "B": "P1",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-lexical-forge-r1",
+    "A": "P0",
+    "B": "P1",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-lexical-forge-r2",
+    "A": "P2",
+    "B": "P0",
+    "C": "P1"
+  },
+  {
+    "review_id": "dev-lexical-forge-r3",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-lexical-forge-r4",
+    "A": "P0",
+    "B": "P2",
+    "C": "P1"
+  },
+  {
+    "review_id": "dev-lexical-forge-r5",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-cite-archify-r1",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-cite-archify-r2",
+    "A": "P0",
+    "B": "P1",
+    "C": "P2"
+  },
+  {
+    "review_id": "dev-cite-archify-r3",
+    "A": "P2",
+    "B": "P0",
+    "C": "P1"
+  },
+  {
+    "review_id": "dev-cite-archify-r4",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "dev-cite-archify-r5",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "pu-rank-utc-session-r1",
+    "A": "P2",
+    "B": "P0",
+    "C": "P1"
+  },
+  {
+    "review_id": "pu-rank-utc-session-r2",
+    "A": "P1",
+    "B": "P0",
+    "C": "P2"
+  },
+  {
+    "review_id": "pu-rank-utc-session-r3",
+    "A": "P0",
+    "B": "P1",
+    "C": "P2"
+  },
+  {
+    "review_id": "pu-rank-utc-session-r4",
+    "A": "P1",
+    "B": "P2",
+    "C": "P0"
+  },
+  {
+    "review_id": "pu-rank-utc-session-r5",
+    "A": "P2",
+    "B": "P0",
+    "C": "P1"
+  }
+]

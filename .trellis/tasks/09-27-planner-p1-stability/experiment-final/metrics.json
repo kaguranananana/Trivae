@@ -1,0 +1,108 @@
+{
+  "case_count": 8,
+  "repeats": 5,
+  "provider_calls": 120,
+  "runtime_tool_loop_calls": 0,
+  "cost_status": "unavailable",
+  "variants": {
+    "P0": {
+      "calls": 40,
+      "valid_plans": 35,
+      "failure_detail_counts": {
+        "provider_length": 5
+      },
+      "finish_reason_counts": {
+        "stop": 35,
+        "length": 5
+      },
+      "usage_totals": {
+        "input_tokens": 17490,
+        "output_tokens": 55943,
+        "total_tokens": 73433,
+        "reasoning_tokens": 45394
+      },
+      "reasoning_usage_observed_calls": 40,
+      "latency_ms": {
+        "mean": 6703.0,
+        "median": 6539.8
+      },
+      "mean_successful_plan_steps": 3.94,
+      "prompt_chars_mean": 1514.9,
+      "case_success": {
+        "pu-dependent-mattpocock": 5,
+        "dev-context-archify": 5,
+        "pu-aggregate-utc-types": 5,
+        "dev-zero-empty-3": 4,
+        "dev-temporal-30d": 5,
+        "dev-lexical-forge": 3,
+        "dev-cite-archify": 4,
+        "pu-rank-utc-session": 4
+      }
+    },
+    "P1": {
+      "calls": 40,
+      "valid_plans": 36,
+      "failure_detail_counts": {
+        "provider_length": 4
+      },
+      "finish_reason_counts": {
+        "stop": 36,
+        "length": 4
+      },
+      "usage_totals": {
+        "input_tokens": 49970,
+        "output_tokens": 50752,
+        "total_tokens": 100722,
+        "reasoning_tokens": 42396
+      },
+      "reasoning_usage_observed_calls": 40,
+      "latency_ms": {
+        "mean": 6701.3,
+        "median": 6333.9
+      },
+      "mean_successful_plan_steps": 2.19,
+      "prompt_chars_mean": 5567.9,
+      "case_success": {
+        "pu-dependent-mattpocock": 5,
+        "dev-context-archify": 5,
+        "pu-aggregate-utc-types": 5,
+        "dev-zero-empty-3": 5,
+        "dev-temporal-30d": 4,
+        "dev-lexical-forge": 5,
+        "dev-cite-archify": 2,
+        "pu-rank-utc-session": 5
+      }
+    },
+    "P2": {
+      "calls": 40,
+      "valid_plans": 40,
+      "failure_detail_counts": {},
+      "finish_reason_counts": {
+        "stop": 40
+      },
+      "usage_totals": {
+        "input_tokens": 46330,
+        "output_tokens": 6504,
+        "total_tokens": 52834,
+        "reasoning_tokens": null
+      },
+      "reasoning_usage_observed_calls": 0,
+      "latency_ms": {
+        "mean": 1358.6,
+        "median": 1362.2
+      },
+      "mean_successful_plan_steps": 1.98,
+      "prompt_chars_mean": 5173.9,
+      "case_success": {
+        "pu-dependent-mattpocock": 5,
+        "dev-context-archify": 5,
+        "pu-aggregate-utc-types": 5,
+        "dev-zero-empty-3": 5,
+        "dev-temporal-30d": 5,
+        "dev-lexical-forge": 5,
+        "dev-cite-archify": 5,
+        "pu-rank-utc-session": 5
+      }
+    }
+  }
+}

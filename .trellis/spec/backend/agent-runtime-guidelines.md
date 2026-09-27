@@ -41,6 +41,52 @@ Provider-free 测试断言 canonical purpose 注入、allowlist 过滤、通用�
 
 Wrong：把 SDK Tool 参数说明复制成第二份 Planner 文档，或给 `QueryContext` 增加 Router 不需要的 Planner 字段。Correct：Registry 读取已注册 Capability 的 metadata，Planner 只补选用关系，生产 allowlist 和 Runtime 自治边界不变。
 
+## Planner completion stability contract (2026-09-27)
+
+### 1. Scope / Trigger
+
+DeepSeek `deepseek-flash` 的 Planner-only 实测表明，`finish_reason=length` 时隐藏 reasoning token 可以耗尽 2048 completion 上限，让可见 JSON 为空或不完整。该 treatment 只改变一次 Planner completion 的思考档位，不改变 Router、Agent Tool Loop 或 Plan schema。
+
+### 2. Signatures
+
+```python
+OpenAIAgentsRuntimeAdapter.completion_request_projection(*, reasoning_effort_override=None) -> dict[str, object]
+OpenAIAgentsRuntimeAdapter.complete_text_with_observation(prompt, *, reasoning_effort_override=None) -> CompletionResult
+OpenAIAgentsRuntimeAdapter.planner_completion_request_projection() -> dict[str, object]
+OpenAIAgentsRuntimeAdapter.complete_planner_text_with_observation(prompt) -> CompletionResult
+```
+
+### 3. Contracts
+
+- Application 默认 Router 仍注入 `complete_text_with_observation`；默认 `SoftPlanner` 注入 `complete_planner_text_with_observation`。两者复用同一 Provider client，Plan 仍经原 parser 和同一 Agent Runtime 的 soft guidance 路径。
+- 只有精确 `provider=deepseek`、`model=deepseek-flash` 的 Planner 请求指定 `reasoning_effort=none`；该组合由 Planner-only 重复实验验证。其它 Provider/模型维持 registry 的原档位，不能把未验证身份声称为 P2。
+- `temperature=0`、JSON mode、`completion_max_tokens=2048`、Plan 5/5 bounds、allowlist 和失败 skip 都不变。Router request projection 仍是 registry `low`。
+- completion usage 仅在 Provider 返回时包含 `reasoning_tokens`（来自 `completion_tokens_details.reasoning_tokens`）；缺失是 unknown，不是 0。`finish_reason=length` 仍先于 JSON parser 归为 `provider_length`，不 retry。
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| 官方 DeepSeek Flash Planner | request/Trace projection 都标 `reasoning_effort=none`；Provider 调用也必须为 none |
+| 同一 model 的 Router | request 继续为 `low`，不受 Planner treatment 影响 |
+| 未经实测的 Provider/model | Planner 使用原 registry 档位，不推断支持 none |
+| Provider 返回 reasoning token 明细 | usage 保存数值；缺失则省略字段 |
+| `finish_reason=length` 或空 response | Planner 显式分类并 skip，不扩大 token ceiling 或自动重试 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：完整 UTC 空窗问题的 Plan 只建议 `get_recent_messages`；Provider 成功返回 JSON 后仍由 Runtime 自行处理 Tool 结果。
+- Base：普通 Router 请求继续使用 `low` 与 2048 completion bound。
+- Bad：把 P2 非思考结论套到未测试 Provider、把 `reasoning_tokens` 缺失当零、或通过 retry/增大 2048 隐藏 `provider_length`。
+
+### 6. Tests Required
+
+Provider-free 测试需断言 Planner request 与实际 Provider 参数均为 none、Router 仍为 low、usage 只投影实际 reasoning 明细、Plan parser/allowlist/失败 skip 不变；模型语义质量必须用重复真实 Provider Planner-only 实验与盲审证据判断。不要把 prompt 字符串存在当作遵从证明。
+
+### 7. Wrong vs Correct
+
+Wrong：看到 P1 输入 token 变多就提高共享 `TRIVAE_COMPLETION_MAX_TOKENS` 或给 Planner 加重试。Correct：先保存 `finish_reason`、raw content、reasoning usage 和配对输出；仅为已验证的 Planner/model 使用独立 completion mode，同时保持 Router 与 Runtime contract。
+
 M4 Query Execution Core 与 M5 Evidence Finalization 的可执行边界。Router、Planner、QueryOrchestrator 和 Answer Finalizer 是 Trivae-owned application layer；OpenAI Agents SDK 只允许出现在 runtime adapter。当前实现按本地验证的 `openai-agents==0.22.0` 编写，后续升级必须重新验证本文件的行为契约。
 
 ## 1. Scope / Trigger
@@ -325,7 +371,7 @@ model value 是 `deepseek-v4-flash`，不是 `opencode-go/deepseek-v4-flash`。
 - Safe settings projection：只暴露 `api_key_configured: bool`，不暴露 key；Trace
   记录 provider/model/normalized usage，不记录 API key 或当前 base URL。
 - Usage canonical fields：`requests`、`input_tokens`、`output_tokens`、
-  `total_tokens`，以及 Provider 明确返回 cache-read 时的 `cached_input_tokens`。
+  `total_tokens`，以及 Provider 明确返回时的 `cached_input_tokens` 与 `reasoning_tokens`。
   缺失字段保持 absent/unknown，不写 `0`。
 - OpenCode Go compatibility：当 Agent 请求包含 tools 时，Runtime adapter 移除与其
   不兼容的 `response_format=json_object`；无 tools 时保留 structured-output 请求。
