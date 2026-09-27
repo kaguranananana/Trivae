@@ -1358,3 +1358,24 @@ Finalized and preserved the v2 utility adjudication; traced dependent and archif
 ### Status
 
 [OK] **Completed**
+
+
+## Session 54: Planner Quality Calibration
+
+**Date**: 2026-09-27
+**Task**: Planner Quality Calibration
+**Branch**: `codex/planner-quality-calibration`
+
+### Summary
+
+Added registry-backed Planner capability summaries and high-information soft-plan prompt; compared P0/P1 on eight exposed Development cases with three repeats each. P1 semantic guidance improved but provider_length rose 3/24 to 5/24, so no E2E promotion.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `68286d569025718c88029b66bc028e89a5a10c72` | (see git log) |
+
+### Status
+
+[OK] **Completed**
