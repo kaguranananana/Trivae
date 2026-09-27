@@ -1869,6 +1869,12 @@ def _project_usage_mapping(usage: Any) -> dict[str, int | float]:
     cached_input_tokens = _cached_input_tokens(usage)
     if cached_input_tokens is not None:
         projected["cached_input_tokens"] = cached_input_tokens
+    # Provider 若公开推理 token 明细，就保留数值以区分预算消耗与可见 JSON 长度。
+    # 缺失时保持 unknown，不能从总输出 token 或正文长度反推隐藏推理量。
+    completion_details = _public_value(usage, "completion_tokens_details")
+    reasoning_tokens = _first_numeric(completion_details, ("reasoning_tokens",))
+    if reasoning_tokens is not None:
+        projected["reasoning_tokens"] = reasoning_tokens
     return projected
 
 

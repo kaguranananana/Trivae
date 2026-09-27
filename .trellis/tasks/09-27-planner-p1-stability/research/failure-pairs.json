@@ -1,0 +1,680 @@
+[
+  {
+    "case_id": "dev-zero-empty-3",
+    "case_type": "verified_zero_result",
+    "repeat": 2,
+    "query": "按 UTC 时间算，2025-08-26 这天大家有没有发言？都在聊什么？",
+    "P1": {
+      "run_id": "pqc:dev-zero-empty-3:P1:r2",
+      "case_id": "dev-zero-empty-3",
+      "case_version": 2,
+      "source": "evaluation/cases/benchmark/dev/dev-zero-empty-3.json",
+      "repeat": 2,
+      "variant": "P1",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 9939.402875024825,
+      "provider_latency_ms": 9939.313124865294,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 1249,
+        "output_tokens": 2048,
+        "total_tokens": 3297,
+        "cached_input_tokens": 1024
+      },
+      "finish_reason": "length",
+      "parse_stage": "provider_response",
+      "failure_detail_code": "provider_length",
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. Each step must add investigation value that Runtime cannot trivially infer from the user request. Prefer one or two high-information steps over generic search, analyze, summarize or verify steps. When a distinctive person, repository, product, project, URL or other entity is named, keep that entity as the primary investigation anchor. Never replace it with a generic category alone. Broaden to category-level recall only if entity-anchored evidence cannot cover a requested need. For replies, later reactions, actual usage or firsthand feedback, describe the evidence relation: identify the relevant direct share, recommendation, invitation or usage discussion first, then inspect its replies or context. A later popularity update or repeated mention is not proof of use; interest or intent to try is not firsthand experience. Use capability planning guidance to suggest only tools that serve a necessary investigation goal. Do not automatically pair lexical and semantic search, browse recent messages for an entity follow-up, or resolve member identity for an ordinary who-used-or-said query. A complete scoped deterministic count, rank or aggregation needs no extra retrieval verification. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: 按 UTC 时间算，2025-08-26 这天大家有没有发言？都在聊什么？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ncapability summaries: [{\"name\": \"lexical_search\", \"purpose\": \"Search canonical messages by exact words with bounded local context.\", \"planning_guidance\": \"Prefer for named people, repositories, products, URLs and exact terms. Preserve a distinctive entity as the primary anchor; a generic category is supplementary only when the anchored path cannot cover the request.\"}, {\"name\": \"semantic_search\", \"purpose\": \"Search conversation meaning with local semantic embeddings. Use when wording differs from the question; use lexical_search for exact terms.\", \"planning_guidance\": \"Use for conceptual recall when the user's wording may differ from messages; do not pair with lexical_search automatically.\"}, {\"name\": \"get_recent_messages\", \"purpose\": \"Read the most recent canonical messages inside a time range for temporal browsing; sender_user_ids optionally restricts the query to canonical users.user_id values.\", \"planning_guidance\": \"Use for recent activity, a defined time window or topic discovery; the word 'later' in an entity investigation alone does not justify broad recent browsing.\"}, {\"name\": \"get_message_context\", \"purpose\": \"Recover a larger but bounded same-conversation context around a known message_id. Use only after lexical_search or semantic_search returned an important message whose local context is insufficient; do not call mechanically for every hit.\", \"planning_guidance\": \"Use around a relevant direct hit for replies, local discussion, later reactions or firsthand feedback; select the share, recommendation, invitation or usage thread most related to the question, not an unrelated popularity update.\"}, {\"name\": \"find_members\", \"purpose\": \"Find candidate members by nickname, group card, username/display name, alias-like remark, platform identity, or UIN. Return every bounded candidate with matching reasons and session memberships; do not assume a unique person when names are ambiguous.\", \"planning_guidance\": \"Use for identity resolution or same-name ambiguity, not to find who used a tool or expressed an opinion in message content.\"}, {\"name\": \"get_schema\", \"purpose\": \"Inspect the exposed physical SQLite schema before writing structured SQL. It returns canonical tables, public columns, and relationships; it does not return rows.\", \"planning_guidance\": \"Inspect physical schema when a deterministic count, rank, aggregation or structured filter needs SQL; it is not a result-verification step.\"}, {\"name\": \"execute_sql\", \"purpose\": \"Execute one bounded read-only SQL statement against the exposed canonical SQLite tables. The trusted ExecutionScope is enforced outside the SQL; no LIMIT is required in the statement.\", \"planning_guidance\": \"Use for deterministic count, rank, aggregation and structured filtering. If its scoped result completely answers the requested fact, do not add retrieval just to verify it.\"}]\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "",
+      "plan": null,
+      "failure": {
+        "code": "invalid_output",
+        "message": "planner completion was truncated by the provider",
+        "detail_code": "provider_length",
+        "parse_stage": "provider_response",
+        "diagnostic": null,
+        "exception_type": null
+      },
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": true,
+      "degradation_code": "invalid_output",
+      "parse_success": false
+    },
+    "P0_same_repeat": {
+      "run_id": "pqc:dev-zero-empty-3:P0:r2",
+      "case_id": "dev-zero-empty-3",
+      "case_version": 2,
+      "source": "evaluation/cases/benchmark/dev/dev-zero-empty-3.json",
+      "repeat": 2,
+      "variant": "P0",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 6362.515083048493,
+      "provider_latency_ms": 6362.446999875829,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 437,
+        "output_tokens": 1593,
+        "total_tokens": 2030,
+        "cached_input_tokens": 256
+      },
+      "finish_reason": "stop",
+      "parse_stage": "plan_validation",
+      "failure_detail_code": null,
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: 按 UTC 时间算，2025-08-26 这天大家有没有发言？都在聊什么？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "{\"version\":1,\"title\":\"UTC 2025-08-26 发言与讨论主题\",\"intent\":\"mixed\",\"steps\":[{\"goal\":\"获取 UTC 2025-08-26 全天消息窗口，判断是否有发言。\",\"suggested_tools\":[\"get_recent_messages\"],\"evidence_needed\":[\"UTC 2025-08-26 的消息记录\",\"完整空窗口或非空窗口\"]},{\"goal\":\"若有消息，归纳主要讨论主题与关键词。\",\"suggested_tools\":[\"lexical_search\",\"semantic_search\"],\"evidence_needed\":[\"消息文本样本\",\"主题或高频关键词\"]},{\"goal\":\"对代表性消息提取上下文，避免断章取义。\",\"suggested_tools\":[\"get_message_context\"],\"evidence_needed\":[\"相关消息前后文\"]},{\"goal\":\"仅当需要精确统计或复杂筛选时，再查表补充；完整空窗口不追加 SQL 复核。\",\"suggested_tools\":[\"get_schema\",\"execute_sql\"],\"evidence_needed\":[\"表结构\",\"按 UTC 日期筛选的计数或样本\"]}],\"success_criteria\":[\"明确回答 UTC 2025-08-26 是否有发言\",\"若有发言，概括主要讨论主题与内容\",\"结论基于消息文本或完整空窗口，而非仅 SQL 计数\",\"不重复用 SQL 验证完整空窗口\"]}",
+      "plan": {
+        "version": 1,
+        "title": "UTC 2025-08-26 发言与讨论主题",
+        "intent": "mixed",
+        "steps": [
+          {
+            "goal": "获取 UTC 2025-08-26 全天消息窗口，判断是否有发言。",
+            "suggested_tools": [
+              "get_recent_messages"
+            ],
+            "evidence_needed": [
+              "UTC 2025-08-26 的消息记录",
+              "完整空窗口或非空窗口"
+            ]
+          },
+          {
+            "goal": "若有消息，归纳主要讨论主题与关键词。",
+            "suggested_tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "evidence_needed": [
+              "消息文本样本",
+              "主题或高频关键词"
+            ]
+          },
+          {
+            "goal": "对代表性消息提取上下文，避免断章取义。",
+            "suggested_tools": [
+              "get_message_context"
+            ],
+            "evidence_needed": [
+              "相关消息前后文"
+            ]
+          },
+          {
+            "goal": "仅当需要精确统计或复杂筛选时，再查表补充；完整空窗口不追加 SQL 复核。",
+            "suggested_tools": [
+              "get_schema",
+              "execute_sql"
+            ],
+            "evidence_needed": [
+              "表结构",
+              "按 UTC 日期筛选的计数或样本"
+            ]
+          }
+        ],
+        "success_criteria": [
+          "明确回答 UTC 2025-08-26 是否有发言",
+          "若有发言，概括主要讨论主题与内容",
+          "结论基于消息文本或完整空窗口，而非仅 SQL 计数",
+          "不重复用 SQL 验证完整空窗口"
+        ]
+      },
+      "failure": null,
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": false,
+      "degradation_code": null,
+      "parse_success": true
+    }
+  },
+  {
+    "case_id": "dev-temporal-30d",
+    "case_type": "large_temporal_window",
+    "repeat": 2,
+    "query": "最近30天群里的主要话题有哪些？",
+    "P1": {
+      "run_id": "pqc:dev-temporal-30d:P1:r2",
+      "case_id": "dev-temporal-30d",
+      "case_version": 2,
+      "source": "evaluation/cases/benchmark/dev/dev-temporal-30d.json",
+      "repeat": 2,
+      "variant": "P1",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 10768.880374962464,
+      "provider_latency_ms": 10768.834500107914,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 1236,
+        "output_tokens": 2048,
+        "total_tokens": 3284,
+        "cached_input_tokens": 1024
+      },
+      "finish_reason": "length",
+      "parse_stage": "provider_response",
+      "failure_detail_code": "provider_length",
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. Each step must add investigation value that Runtime cannot trivially infer from the user request. Prefer one or two high-information steps over generic search, analyze, summarize or verify steps. When a distinctive person, repository, product, project, URL or other entity is named, keep that entity as the primary investigation anchor. Never replace it with a generic category alone. Broaden to category-level recall only if entity-anchored evidence cannot cover a requested need. For replies, later reactions, actual usage or firsthand feedback, describe the evidence relation: identify the relevant direct share, recommendation, invitation or usage discussion first, then inspect its replies or context. A later popularity update or repeated mention is not proof of use; interest or intent to try is not firsthand experience. Use capability planning guidance to suggest only tools that serve a necessary investigation goal. Do not automatically pair lexical and semantic search, browse recent messages for an entity follow-up, or resolve member identity for an ordinary who-used-or-said query. A complete scoped deterministic count, rank or aggregation needs no extra retrieval verification. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: 最近30天群里的主要话题有哪些？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ncapability summaries: [{\"name\": \"lexical_search\", \"purpose\": \"Search canonical messages by exact words with bounded local context.\", \"planning_guidance\": \"Prefer for named people, repositories, products, URLs and exact terms. Preserve a distinctive entity as the primary anchor; a generic category is supplementary only when the anchored path cannot cover the request.\"}, {\"name\": \"semantic_search\", \"purpose\": \"Search conversation meaning with local semantic embeddings. Use when wording differs from the question; use lexical_search for exact terms.\", \"planning_guidance\": \"Use for conceptual recall when the user's wording may differ from messages; do not pair with lexical_search automatically.\"}, {\"name\": \"get_recent_messages\", \"purpose\": \"Read the most recent canonical messages inside a time range for temporal browsing; sender_user_ids optionally restricts the query to canonical users.user_id values.\", \"planning_guidance\": \"Use for recent activity, a defined time window or topic discovery; the word 'later' in an entity investigation alone does not justify broad recent browsing.\"}, {\"name\": \"get_message_context\", \"purpose\": \"Recover a larger but bounded same-conversation context around a known message_id. Use only after lexical_search or semantic_search returned an important message whose local context is insufficient; do not call mechanically for every hit.\", \"planning_guidance\": \"Use around a relevant direct hit for replies, local discussion, later reactions or firsthand feedback; select the share, recommendation, invitation or usage thread most related to the question, not an unrelated popularity update.\"}, {\"name\": \"find_members\", \"purpose\": \"Find candidate members by nickname, group card, username/display name, alias-like remark, platform identity, or UIN. Return every bounded candidate with matching reasons and session memberships; do not assume a unique person when names are ambiguous.\", \"planning_guidance\": \"Use for identity resolution or same-name ambiguity, not to find who used a tool or expressed an opinion in message content.\"}, {\"name\": \"get_schema\", \"purpose\": \"Inspect the exposed physical SQLite schema before writing structured SQL. It returns canonical tables, public columns, and relationships; it does not return rows.\", \"planning_guidance\": \"Inspect physical schema when a deterministic count, rank, aggregation or structured filter needs SQL; it is not a result-verification step.\"}, {\"name\": \"execute_sql\", \"purpose\": \"Execute one bounded read-only SQL statement against the exposed canonical SQLite tables. The trusted ExecutionScope is enforced outside the SQL; no LIMIT is required in the statement.\", \"planning_guidance\": \"Use for deterministic count, rank, aggregation and structured filtering. If its scoped result completely answers the requested fact, do not add retrieval just to verify it.\"}]\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "",
+      "plan": null,
+      "failure": {
+        "code": "invalid_output",
+        "message": "planner completion was truncated by the provider",
+        "detail_code": "provider_length",
+        "parse_stage": "provider_response",
+        "diagnostic": null,
+        "exception_type": null
+      },
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": true,
+      "degradation_code": "invalid_output",
+      "parse_success": false
+    },
+    "P0_same_repeat": {
+      "run_id": "pqc:dev-temporal-30d:P0:r2",
+      "case_id": "dev-temporal-30d",
+      "case_version": 2,
+      "source": "evaluation/cases/benchmark/dev/dev-temporal-30d.json",
+      "repeat": 2,
+      "variant": "P0",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 4814.514999976382,
+      "provider_latency_ms": 4814.433583058417,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 424,
+        "output_tokens": 1018,
+        "total_tokens": 1442,
+        "cached_input_tokens": 256
+      },
+      "finish_reason": "stop",
+      "parse_stage": "plan_validation",
+      "failure_detail_code": null,
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: 最近30天群里的主要话题有哪些？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "{\"version\":1,\"title\":\"最近30天群内主要话题概览\",\"intent\":\"summary\",\"steps\":[{\"goal\":\"检索最近30天群消息，确认窗口内是否有消息及总体活跃度\",\"suggested_tools\":[\"get_recent_messages\"],\"evidence_needed\":[\"最近30天消息列表\",\"时间范围与消息数量\"]},{\"goal\":\"按关键词与语义聚类提取高频话题\",\"suggested_tools\":[\"lexical_search\",\"semantic_search\"],\"evidence_needed\":[\"高频词或短语\",\"代表性消息片段\",\"话题聚类结果\"]},{\"goal\":\"补充关键话题的上下文，避免断章取义\",\"suggested_tools\":[\"get_message_context\"],\"evidence_needed\":[\"相关消息前后文\",\"关键讨论脉络\"]}],\"success_criteria\":[\"明确列出最近30天内的主要话题（通常3-5个）\",\"每个话题有来自该时间窗的消息证据支持\",\"若窗口内无消息，则直接说明无近期讨论而非推测话题\",\"话题概括简洁且不混入30天外内容\"]}",
+      "plan": {
+        "version": 1,
+        "title": "最近30天群内主要话题概览",
+        "intent": "summary",
+        "steps": [
+          {
+            "goal": "检索最近30天群消息，确认窗口内是否有消息及总体活跃度",
+            "suggested_tools": [
+              "get_recent_messages"
+            ],
+            "evidence_needed": [
+              "最近30天消息列表",
+              "时间范围与消息数量"
+            ]
+          },
+          {
+            "goal": "按关键词与语义聚类提取高频话题",
+            "suggested_tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "evidence_needed": [
+              "高频词或短语",
+              "代表性消息片段",
+              "话题聚类结果"
+            ]
+          },
+          {
+            "goal": "补充关键话题的上下文，避免断章取义",
+            "suggested_tools": [
+              "get_message_context"
+            ],
+            "evidence_needed": [
+              "相关消息前后文",
+              "关键讨论脉络"
+            ]
+          }
+        ],
+        "success_criteria": [
+          "明确列出最近30天内的主要话题（通常3-5个）",
+          "每个话题有来自该时间窗的消息证据支持",
+          "若窗口内无消息，则直接说明无近期讨论而非推测话题",
+          "话题概括简洁且不混入30天外内容"
+        ]
+      },
+      "failure": null,
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": false,
+      "degradation_code": null,
+      "parse_success": true
+    }
+  },
+  {
+    "case_id": "dev-cite-archify",
+    "case_type": "direct_lookup",
+    "repeat": 2,
+    "query": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+    "P1": {
+      "run_id": "pqc:dev-cite-archify:P1:r2",
+      "case_id": "dev-cite-archify",
+      "case_version": 1,
+      "source": "evaluation/cases/benchmark/dev/dev-cite-archify.json",
+      "repeat": 2,
+      "variant": "P1",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 9220.954125048593,
+      "provider_latency_ms": 9220.76516598463,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 1243,
+        "output_tokens": 2048,
+        "total_tokens": 3291,
+        "cached_input_tokens": 1024
+      },
+      "finish_reason": "length",
+      "parse_stage": "provider_response",
+      "failure_detail_code": "provider_length",
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. Each step must add investigation value that Runtime cannot trivially infer from the user request. Prefer one or two high-information steps over generic search, analyze, summarize or verify steps. When a distinctive person, repository, product, project, URL or other entity is named, keep that entity as the primary investigation anchor. Never replace it with a generic category alone. Broaden to category-level recall only if entity-anchored evidence cannot cover a requested need. For replies, later reactions, actual usage or firsthand feedback, describe the evidence relation: identify the relevant direct share, recommendation, invitation or usage discussion first, then inspect its replies or context. A later popularity update or repeated mention is not proof of use; interest or intent to try is not firsthand experience. Use capability planning guidance to suggest only tools that serve a necessary investigation goal. Do not automatically pair lexical and semantic search, browse recent messages for an entity follow-up, or resolve member identity for an ordinary who-used-or-said query. A complete scoped deterministic count, rank or aggregation needs no extra retrieval verification. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: archify 项目最近发展怎么样？star 数有被提到过吗？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ncapability summaries: [{\"name\": \"lexical_search\", \"purpose\": \"Search canonical messages by exact words with bounded local context.\", \"planning_guidance\": \"Prefer for named people, repositories, products, URLs and exact terms. Preserve a distinctive entity as the primary anchor; a generic category is supplementary only when the anchored path cannot cover the request.\"}, {\"name\": \"semantic_search\", \"purpose\": \"Search conversation meaning with local semantic embeddings. Use when wording differs from the question; use lexical_search for exact terms.\", \"planning_guidance\": \"Use for conceptual recall when the user's wording may differ from messages; do not pair with lexical_search automatically.\"}, {\"name\": \"get_recent_messages\", \"purpose\": \"Read the most recent canonical messages inside a time range for temporal browsing; sender_user_ids optionally restricts the query to canonical users.user_id values.\", \"planning_guidance\": \"Use for recent activity, a defined time window or topic discovery; the word 'later' in an entity investigation alone does not justify broad recent browsing.\"}, {\"name\": \"get_message_context\", \"purpose\": \"Recover a larger but bounded same-conversation context around a known message_id. Use only after lexical_search or semantic_search returned an important message whose local context is insufficient; do not call mechanically for every hit.\", \"planning_guidance\": \"Use around a relevant direct hit for replies, local discussion, later reactions or firsthand feedback; select the share, recommendation, invitation or usage thread most related to the question, not an unrelated popularity update.\"}, {\"name\": \"find_members\", \"purpose\": \"Find candidate members by nickname, group card, username/display name, alias-like remark, platform identity, or UIN. Return every bounded candidate with matching reasons and session memberships; do not assume a unique person when names are ambiguous.\", \"planning_guidance\": \"Use for identity resolution or same-name ambiguity, not to find who used a tool or expressed an opinion in message content.\"}, {\"name\": \"get_schema\", \"purpose\": \"Inspect the exposed physical SQLite schema before writing structured SQL. It returns canonical tables, public columns, and relationships; it does not return rows.\", \"planning_guidance\": \"Inspect physical schema when a deterministic count, rank, aggregation or structured filter needs SQL; it is not a result-verification step.\"}, {\"name\": \"execute_sql\", \"purpose\": \"Execute one bounded read-only SQL statement against the exposed canonical SQLite tables. The trusted ExecutionScope is enforced outside the SQL; no LIMIT is required in the statement.\", \"planning_guidance\": \"Use for deterministic count, rank, aggregation and structured filtering. If its scoped result completely answers the requested fact, do not add retrieval just to verify it.\"}]\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "",
+      "plan": null,
+      "failure": {
+        "code": "invalid_output",
+        "message": "planner completion was truncated by the provider",
+        "detail_code": "provider_length",
+        "parse_stage": "provider_response",
+        "diagnostic": null,
+        "exception_type": null
+      },
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": true,
+      "degradation_code": "invalid_output",
+      "parse_success": false
+    },
+    "P0_same_repeat": {
+      "run_id": "pqc:dev-cite-archify:P0:r2",
+      "case_id": "dev-cite-archify",
+      "case_version": 1,
+      "source": "evaluation/cases/benchmark/dev/dev-cite-archify.json",
+      "repeat": 2,
+      "variant": "P0",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 6570.861499989405,
+      "provider_latency_ms": 6570.679375203326,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 431,
+        "output_tokens": 1482,
+        "total_tokens": 1913,
+        "cached_input_tokens": 256
+      },
+      "finish_reason": "stop",
+      "parse_stage": "plan_validation",
+      "failure_detail_code": null,
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: archify 项目最近发展怎么样？star 数有被提到过吗？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "{\"version\":1,\"title\":\"Archify 项目近期发展与 star 数提及核查\",\"intent\":\"mixed\",\"steps\":[{\"goal\":\"检索近期窗口内与 Archify 项目相关的消息，判断最近发展动态。\",\"suggested_tools\":[\"get_recent_messages\"],\"evidence_needed\":[\"带时间戳的近期 Archify 相关消息\"]},{\"goal\":\"在消息中搜索 Archify 与 star/GitHub stars/star 数等关键词的明确提及。\",\"suggested_tools\":[\"lexical_search\",\"semantic_search\"],\"evidence_needed\":[\"包含 star 表述且指向 Archify 的消息片段\"]},{\"goal\":\"对可能提及 star 数的命中消息获取上下文，确认是否真的在说 Archify 及具体数值。\",\"suggested_tools\":[\"get_message_context\"],\"evidence_needed\":[\"命中消息前后文、作者与时间\"]},{\"goal\":\"汇总近期发展并给出 star 数是否被提到的结论。\",\"suggested_tools\":[],\"evidence_needed\":[\"近期动态摘要与 star 提及/未提及的证据\"]}],\"success_criteria\":[\"给出 Archify 近期发展的简明摘要并附时间范围\",\"明确回答 star 数是否被提到过\",\"若有提及，给出具体 star 数和上下文\",\"若未提及，说明检索依据而非无证据断言\"]}",
+      "plan": {
+        "version": 1,
+        "title": "Archify 项目近期发展与 star 数提及核查",
+        "intent": "mixed",
+        "steps": [
+          {
+            "goal": "检索近期窗口内与 Archify 项目相关的消息，判断最近发展动态。",
+            "suggested_tools": [
+              "get_recent_messages"
+            ],
+            "evidence_needed": [
+              "带时间戳的近期 Archify 相关消息"
+            ]
+          },
+          {
+            "goal": "在消息中搜索 Archify 与 star/GitHub stars/star 数等关键词的明确提及。",
+            "suggested_tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "evidence_needed": [
+              "包含 star 表述且指向 Archify 的消息片段"
+            ]
+          },
+          {
+            "goal": "对可能提及 star 数的命中消息获取上下文，确认是否真的在说 Archify 及具体数值。",
+            "suggested_tools": [
+              "get_message_context"
+            ],
+            "evidence_needed": [
+              "命中消息前后文、作者与时间"
+            ]
+          },
+          {
+            "goal": "汇总近期发展并给出 star 数是否被提到的结论。",
+            "suggested_tools": [],
+            "evidence_needed": [
+              "近期动态摘要与 star 提及/未提及的证据"
+            ]
+          }
+        ],
+        "success_criteria": [
+          "给出 Archify 近期发展的简明摘要并附时间范围",
+          "明确回答 star 数是否被提到过",
+          "若有提及，给出具体 star 数和上下文",
+          "若未提及，说明检索依据而非无证据断言"
+        ]
+      },
+      "failure": null,
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": false,
+      "degradation_code": null,
+      "parse_success": true
+    }
+  },
+  {
+    "case_id": "dev-cite-archify",
+    "case_type": "direct_lookup",
+    "repeat": 3,
+    "query": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+    "P1": {
+      "run_id": "pqc:dev-cite-archify:P1:r3",
+      "case_id": "dev-cite-archify",
+      "case_version": 1,
+      "source": "evaluation/cases/benchmark/dev/dev-cite-archify.json",
+      "repeat": 3,
+      "variant": "P1",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 10423.048124881461,
+      "provider_latency_ms": 10422.991750063375,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 1243,
+        "output_tokens": 2048,
+        "total_tokens": 3291,
+        "cached_input_tokens": 1024
+      },
+      "finish_reason": "length",
+      "parse_stage": "provider_response",
+      "failure_detail_code": "provider_length",
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. Each step must add investigation value that Runtime cannot trivially infer from the user request. Prefer one or two high-information steps over generic search, analyze, summarize or verify steps. When a distinctive person, repository, product, project, URL or other entity is named, keep that entity as the primary investigation anchor. Never replace it with a generic category alone. Broaden to category-level recall only if entity-anchored evidence cannot cover a requested need. For replies, later reactions, actual usage or firsthand feedback, describe the evidence relation: identify the relevant direct share, recommendation, invitation or usage discussion first, then inspect its replies or context. A later popularity update or repeated mention is not proof of use; interest or intent to try is not firsthand experience. Use capability planning guidance to suggest only tools that serve a necessary investigation goal. Do not automatically pair lexical and semantic search, browse recent messages for an entity follow-up, or resolve member identity for an ordinary who-used-or-said query. A complete scoped deterministic count, rank or aggregation needs no extra retrieval verification. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: archify 项目最近发展怎么样？star 数有被提到过吗？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ncapability summaries: [{\"name\": \"lexical_search\", \"purpose\": \"Search canonical messages by exact words with bounded local context.\", \"planning_guidance\": \"Prefer for named people, repositories, products, URLs and exact terms. Preserve a distinctive entity as the primary anchor; a generic category is supplementary only when the anchored path cannot cover the request.\"}, {\"name\": \"semantic_search\", \"purpose\": \"Search conversation meaning with local semantic embeddings. Use when wording differs from the question; use lexical_search for exact terms.\", \"planning_guidance\": \"Use for conceptual recall when the user's wording may differ from messages; do not pair with lexical_search automatically.\"}, {\"name\": \"get_recent_messages\", \"purpose\": \"Read the most recent canonical messages inside a time range for temporal browsing; sender_user_ids optionally restricts the query to canonical users.user_id values.\", \"planning_guidance\": \"Use for recent activity, a defined time window or topic discovery; the word 'later' in an entity investigation alone does not justify broad recent browsing.\"}, {\"name\": \"get_message_context\", \"purpose\": \"Recover a larger but bounded same-conversation context around a known message_id. Use only after lexical_search or semantic_search returned an important message whose local context is insufficient; do not call mechanically for every hit.\", \"planning_guidance\": \"Use around a relevant direct hit for replies, local discussion, later reactions or firsthand feedback; select the share, recommendation, invitation or usage thread most related to the question, not an unrelated popularity update.\"}, {\"name\": \"find_members\", \"purpose\": \"Find candidate members by nickname, group card, username/display name, alias-like remark, platform identity, or UIN. Return every bounded candidate with matching reasons and session memberships; do not assume a unique person when names are ambiguous.\", \"planning_guidance\": \"Use for identity resolution or same-name ambiguity, not to find who used a tool or expressed an opinion in message content.\"}, {\"name\": \"get_schema\", \"purpose\": \"Inspect the exposed physical SQLite schema before writing structured SQL. It returns canonical tables, public columns, and relationships; it does not return rows.\", \"planning_guidance\": \"Inspect physical schema when a deterministic count, rank, aggregation or structured filter needs SQL; it is not a result-verification step.\"}, {\"name\": \"execute_sql\", \"purpose\": \"Execute one bounded read-only SQL statement against the exposed canonical SQLite tables. The trusted ExecutionScope is enforced outside the SQL; no LIMIT is required in the statement.\", \"planning_guidance\": \"Use for deterministic count, rank, aggregation and structured filtering. If its scoped result completely answers the requested fact, do not add retrieval just to verify it.\"}]\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "",
+      "plan": null,
+      "failure": {
+        "code": "invalid_output",
+        "message": "planner completion was truncated by the provider",
+        "detail_code": "provider_length",
+        "parse_stage": "provider_response",
+        "diagnostic": null,
+        "exception_type": null
+      },
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": true,
+      "degradation_code": "invalid_output",
+      "parse_success": false
+    },
+    "P0_same_repeat": {
+      "run_id": "pqc:dev-cite-archify:P0:r3",
+      "case_id": "dev-cite-archify",
+      "case_version": 1,
+      "source": "evaluation/cases/benchmark/dev/dev-cite-archify.json",
+      "repeat": 3,
+      "variant": "P0",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 5442.113916855305,
+      "provider_latency_ms": 5442.036207998171,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 431,
+        "output_tokens": 1135,
+        "total_tokens": 1566,
+        "cached_input_tokens": 256
+      },
+      "finish_reason": "stop",
+      "parse_stage": "plan_validation",
+      "failure_detail_code": null,
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: archify 项目最近发展怎么样？star 数有被提到过吗？\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "{\"version\":1,\"title\":\"archify 近期发展与 star 提及查询计划\",\"intent\":\"mixed\",\"steps\":[{\"goal\":\"获取最近消息窗口，检查 archify 相关讨论与 star 提及。\",\"suggested_tools\":[\"get_recent_messages\"],\"evidence_needed\":[\"完整空窗口即证明近期无 archify 消息和 star 提及\",\"非空窗口中的 archify 消息\"]},{\"goal\":\"在消息中检索 archify 项目进展与 star 关键词。\",\"suggested_tools\":[\"lexical_search\",\"semantic_search\"],\"evidence_needed\":[\"包含 archify 的消息片段\",\"包含 star 或 star 数的消息片段\"]},{\"goal\":\"对命中的 archify 消息获取上下文，确认发展情况与 star 数说法。\",\"suggested_tools\":[\"get_message_context\"],\"evidence_needed\":[\"消息前后文\",\"发展描述或 star 数具体值/说法\"]}],\"success_criteria\":[\"返回 archify 近期发展的证据摘要\",\"明确回答 star 数是否被提及\",\"若提及则给出具体消息依据；若未提及则给出检索范围\"]}",
+      "plan": {
+        "version": 1,
+        "title": "archify 近期发展与 star 提及查询计划",
+        "intent": "mixed",
+        "steps": [
+          {
+            "goal": "获取最近消息窗口，检查 archify 相关讨论与 star 提及。",
+            "suggested_tools": [
+              "get_recent_messages"
+            ],
+            "evidence_needed": [
+              "完整空窗口即证明近期无 archify 消息和 star 提及",
+              "非空窗口中的 archify 消息"
+            ]
+          },
+          {
+            "goal": "在消息中检索 archify 项目进展与 star 关键词。",
+            "suggested_tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "evidence_needed": [
+              "包含 archify 的消息片段",
+              "包含 star 或 star 数的消息片段"
+            ]
+          },
+          {
+            "goal": "对命中的 archify 消息获取上下文，确认发展情况与 star 数说法。",
+            "suggested_tools": [
+              "get_message_context"
+            ],
+            "evidence_needed": [
+              "消息前后文",
+              "发展描述或 star 数具体值/说法"
+            ]
+          }
+        ],
+        "success_criteria": [
+          "返回 archify 近期发展的证据摘要",
+          "明确回答 star 数是否被提及",
+          "若提及则给出具体消息依据；若未提及则给出检索范围"
+        ]
+      },
+      "failure": null,
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": false,
+      "degradation_code": null,
+      "parse_success": true
+    }
+  },
+  {
+    "case_id": "pu-rank-utc-session",
+    "case_type": "ranking",
+    "repeat": 3,
+    "query": "按 UTC 时间算，2026-08-15 哪个会话发言最多？请给出会话 ID 和消息数。",
+    "P1": {
+      "run_id": "pqc:pu-rank-utc-session:P1:r3",
+      "case_id": "pu-rank-utc-session",
+      "case_version": 1,
+      "source": "evaluation/cases/planner-utility/pu-rank-utc-session.json",
+      "repeat": 3,
+      "variant": "P1",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 9858.64150011912,
+      "provider_latency_ms": 9858.557582832873,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 1254,
+        "output_tokens": 2048,
+        "total_tokens": 3302,
+        "cached_input_tokens": 1024
+      },
+      "finish_reason": "length",
+      "parse_stage": "provider_response",
+      "failure_detail_code": "provider_length",
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. Each step must add investigation value that Runtime cannot trivially infer from the user request. Prefer one or two high-information steps over generic search, analyze, summarize or verify steps. When a distinctive person, repository, product, project, URL or other entity is named, keep that entity as the primary investigation anchor. Never replace it with a generic category alone. Broaden to category-level recall only if entity-anchored evidence cannot cover a requested need. For replies, later reactions, actual usage or firsthand feedback, describe the evidence relation: identify the relevant direct share, recommendation, invitation or usage discussion first, then inspect its replies or context. A later popularity update or repeated mention is not proof of use; interest or intent to try is not firsthand experience. Use capability planning guidance to suggest only tools that serve a necessary investigation goal. Do not automatically pair lexical and semantic search, browse recent messages for an entity follow-up, or resolve member identity for an ordinary who-used-or-said query. A complete scoped deterministic count, rank or aggregation needs no extra retrieval verification. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: 按 UTC 时间算，2026-08-15 哪个会话发言最多？请给出会话 ID 和消息数。\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ncapability summaries: [{\"name\": \"lexical_search\", \"purpose\": \"Search canonical messages by exact words with bounded local context.\", \"planning_guidance\": \"Prefer for named people, repositories, products, URLs and exact terms. Preserve a distinctive entity as the primary anchor; a generic category is supplementary only when the anchored path cannot cover the request.\"}, {\"name\": \"semantic_search\", \"purpose\": \"Search conversation meaning with local semantic embeddings. Use when wording differs from the question; use lexical_search for exact terms.\", \"planning_guidance\": \"Use for conceptual recall when the user's wording may differ from messages; do not pair with lexical_search automatically.\"}, {\"name\": \"get_recent_messages\", \"purpose\": \"Read the most recent canonical messages inside a time range for temporal browsing; sender_user_ids optionally restricts the query to canonical users.user_id values.\", \"planning_guidance\": \"Use for recent activity, a defined time window or topic discovery; the word 'later' in an entity investigation alone does not justify broad recent browsing.\"}, {\"name\": \"get_message_context\", \"purpose\": \"Recover a larger but bounded same-conversation context around a known message_id. Use only after lexical_search or semantic_search returned an important message whose local context is insufficient; do not call mechanically for every hit.\", \"planning_guidance\": \"Use around a relevant direct hit for replies, local discussion, later reactions or firsthand feedback; select the share, recommendation, invitation or usage thread most related to the question, not an unrelated popularity update.\"}, {\"name\": \"find_members\", \"purpose\": \"Find candidate members by nickname, group card, username/display name, alias-like remark, platform identity, or UIN. Return every bounded candidate with matching reasons and session memberships; do not assume a unique person when names are ambiguous.\", \"planning_guidance\": \"Use for identity resolution or same-name ambiguity, not to find who used a tool or expressed an opinion in message content.\"}, {\"name\": \"get_schema\", \"purpose\": \"Inspect the exposed physical SQLite schema before writing structured SQL. It returns canonical tables, public columns, and relationships; it does not return rows.\", \"planning_guidance\": \"Inspect physical schema when a deterministic count, rank, aggregation or structured filter needs SQL; it is not a result-verification step.\"}, {\"name\": \"execute_sql\", \"purpose\": \"Execute one bounded read-only SQL statement against the exposed canonical SQLite tables. The trusted ExecutionScope is enforced outside the SQL; no LIMIT is required in the statement.\", \"planning_guidance\": \"Use for deterministic count, rank, aggregation and structured filtering. If its scoped result completely answers the requested fact, do not add retrieval just to verify it.\"}]\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "{\"version\":1,\"title\":\"UTC 2026-08-15 会话发言量排名\",\"intent\":\"comparison\",\"steps\":[{\"goal\":\"检查 SQLite 模式，定位消息表、会话/会话 ID 字段和 UTC 时间戳字段，确认日期过滤方式。\",\"suggested_tools\":[\"get_schema\"],\"evidence_needed\":[\"消息表名\",\"会话 ID 列\",\"消息时间戳列\",\"UTC 日期转换依据\"]},{\"goal\":\"按 UTC 2026-08-15 对消息做分组计数，按消息数降序取最多会话，返回会话 ID 与消息数。\",\"",
+      "plan": null,
+      "failure": {
+        "code": "invalid_output",
+        "message": "planner completion was truncated by the provider",
+        "detail_code": "provider_length",
+        "parse_stage": "provider_response",
+        "diagnostic": null,
+        "exception_type": null
+      },
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": true,
+      "degradation_code": "invalid_output",
+      "parse_success": false
+    },
+    "P0_same_repeat": {
+      "run_id": "pqc:pu-rank-utc-session:P0:r3",
+      "case_id": "pu-rank-utc-session",
+      "case_version": 1,
+      "source": "evaluation/cases/planner-utility/pu-rank-utc-session.json",
+      "repeat": 3,
+      "variant": "P0",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latency_ms": 8912.063666852191,
+      "provider_latency_ms": 8911.963375052437,
+      "request": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "temperature": 0,
+        "max_tokens": 2048,
+        "json_mode": true,
+        "response_format": {
+          "type": "json_object"
+        },
+        "reasoning_effort": "low"
+      },
+      "usage": {
+        "input_tokens": 442,
+        "output_tokens": 2048,
+        "total_tokens": 2490,
+        "cached_input_tokens": 256
+      },
+      "finish_reason": "length",
+      "parse_stage": "provider_response",
+      "failure_detail_code": "provider_length",
+      "prompt": "Create a concise soft plan for this Trivae query. Return JSON only with keys: version (1), title, intent, steps, success_criteria. intent MUST be exactly one of: summary, trend, relationship, search, comparison, evidence, mixed. steps MUST be a JSON array with 1 to 5 objects. Each step MUST have a non-empty string goal, suggested_tools as a JSON array of strings (it may be empty), and evidence_needed as a JSON array of strings (it may be empty). success_criteria MUST be a non-empty JSON array of strings with at most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. For a time-bounded question asking whether messages exist and what was discussed, suggest get_recent_messages before SQL: a complete empty window settles both questions. A SQL count alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm a complete empty retrieval.\nlocale: zh-CN\nquery: 按 UTC 时间算，2026-08-15 哪个会话发言最多？请给出会话 ID 和消息数。\nprior model context:\n<none>\navailable capabilities: ['lexical_search', 'semantic_search', 'get_recent_messages', 'get_message_context', 'find_members', 'get_schema', 'execute_sql']\ndata snapshot: {\"message_count\": 473236, \"first_timestamp\": 1753011800000, \"last_timestamp\": 1786847688000, \"lexical_index\": {\"message_count\": 473236, \"present\": true}}",
+      "response_content": "",
+      "plan": null,
+      "failure": {
+        "code": "invalid_output",
+        "message": "planner completion was truncated by the provider",
+        "detail_code": "provider_length",
+        "parse_stage": "provider_response",
+        "diagnostic": null,
+        "exception_type": null
+      },
+      "cost": {
+        "status": "unavailable"
+      },
+      "degraded": true,
+      "degradation_code": "invalid_output",
+      "parse_success": false
+    }
+  }
+]

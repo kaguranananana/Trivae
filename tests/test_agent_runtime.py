@@ -561,6 +561,7 @@ class RuntimeAdapterTests(unittest.TestCase):
                         prompt_tokens=11,
                         completion_tokens=2048,
                         total_tokens=2059,
+                        completion_tokens_details=SimpleNamespace(reasoning_tokens=2048),
                     ),
                 )
 
@@ -575,6 +576,7 @@ class RuntimeAdapterTests(unittest.TestCase):
         assert result.observation is not None
         self.assertEqual(result.observation.finish_reason, "length")
         self.assertEqual(result.observation.usage["output_tokens"], 2048)
+        self.assertEqual(result.observation.usage["reasoning_tokens"], 2048)
         self.assertNotIn("cached_input_tokens", result.observation.usage)
         self.assertEqual(result.observation.request["max_tokens"], 2048)
         self.assertTrue(result.observation.request["json_mode"])

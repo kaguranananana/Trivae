@@ -153,7 +153,7 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("summary, trend, relationship, search, comparison, evidence, mixed", prompt)
         self.assertIn("steps MUST be a JSON array", prompt)
         self.assertIn("success_criteria MUST be a non-empty JSON array", prompt)
-        self.assertIn("suggest get_recent_messages before SQL", prompt)
+        self.assertIn("use get_recent_messages before SQL", prompt)
         self.assertIn("A SQL count alone is not verified zero-result evidence", prompt)
 
     def test_prompt_receives_registered_purpose_and_planning_constraints(self) -> None:
@@ -196,8 +196,8 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("primary investigation anchor", prompt)
         self.assertIn("relevant direct share, recommendation, invitation or usage discussion", prompt)
         self.assertIn("Each step must add investigation value", prompt)
-        self.assertIn("A complete scoped deterministic count, rank or aggregation", prompt)
-        self.assertIn("Do not automatically pair lexical and semantic search", prompt)
+        self.assertIn("A complete scoped SQL count, rank or aggregation", prompt)
+        self.assertIn("Do not mechanically pair lexical and semantic search", prompt)
         self.assertEqual(result.plan.steps[0].suggested_tools, ("lexical_search",))
 
         # 全量 allowlist 下，各 Tool 的用途边界也必须进入同一 Planner prompt。
@@ -206,13 +206,19 @@ class PlannerTests(unittest.TestCase):
         full_prompt = captured[1]
         for guidance in (
             "do not pair with lexical_search automatically",
-            "not an unrelated popularity update",
-            "does not justify broad recent browsing",
-            "not to find who used a tool",
-            "it is not a result-verification step",
-            "do not add retrieval just to verify it",
+            "ignore unrelated popularity updates",
+            "does not justify broad browsing",
+            "not who used a tool",
+            "not result verification",
+            "stop after a complete answer",
         ):
             self.assertIn(guidance, full_prompt)
+        # purpose 必须逐字来自 Registry；短 guidance 不能复制另一份完整 Tool 用途正文。
+        summaries = json.loads(full_prompt.split("capability summaries: ", 1)[1].split("\ndata snapshot:", 1)[0])
+        for item, source in zip(summaries, metadata, strict=True):
+            self.assertEqual(item["purpose"], source.description)
+            self.assertNotIn(item["purpose"], item["planning_guidance"])
+            self.assertLess(len(item["planning_guidance"]), 170)
 
     def test_malformed_and_structurally_invalid_plan_fail_explicitly(self) -> None:
         malformed = asyncio.run(SoftPlanner(lambda _: "{bad").plan(self._context()))
