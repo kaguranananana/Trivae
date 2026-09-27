@@ -1379,3 +1379,26 @@ Added registry-backed Planner capability summaries and high-information soft-pla
 ### Status
 
 [OK] **Completed**
+
+
+## Session 55: Planner P1 completion stability calibration
+
+**Date**: 2026-09-27
+**Task**: Planner P1 completion stability calibration
+**Branch**: `codex/planner-p1-stability`
+
+### Summary
+
+Attributed DeepSeek Planner length to reasoning-token exhaustion; preserved quality through concise P2 guidance and Planner-only nonthinking request; completed 120-call five-repeat Development gate, blind packet, validation, and Trellis archival.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fc99bb7` | (see git log) |
+| `d4b20de` | (see git log) |
+| `1ab20de` | (see git log) |
+
+### Status
+
+[OK] **Completed**
