@@ -1,5 +1,7 @@
 # Implementation and decision record
 
+> 历史 P2 实施记录。2026-09-28 生产 prompt 已直接恢复到 `68286d5` 的 P1；保留的只有 Planner 专属 non-thinking Provider 配置。当前工程结论见 `final-conclusion.md` 的「Minimal production closure」，本文件下述 P2 prompt 不再是生产实现。
+
 ## Problem / Motivation
 
 旧 Planner-only 任务中 P1 valid Plan 为 19/24、P0 为 21/24，五次 P1 `provider_length` 妨碍进入 E2E。原始五次有四次可见正文为空；本任务将近端根因定位为 DeepSeek thinking 消耗 2048 completion budget，而非可见 Plan 字段普遍过长。

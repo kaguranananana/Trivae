@@ -16,7 +16,7 @@ SoftPlanner.plan(context: QueryContext) -> PlannerResult
 
 ### 3. Contracts
 
-`CapabilityMetadata.name/description` 由已注册 Tool 的 Capability 拥有；`SoftPlanner` 只拥有精简 `planning_guidance`。Application 构造默认 Planner 时注入 metadata，Router 继续只接收既有 `QueryContext`。Prompt 仅包含当前 `available_capabilities` 中的 summary；该 allowlist 仍是 Plan suggested tools 的合法性源。Plan 是一次性、bounded soft guidance，Runtime 保留实际 Tool 选择、参数和停止决策。
+`CapabilityMetadata.name/description` 由已注册 Tool 的 Capability 拥有；`SoftPlanner` 只拥有 Tool 选用关系的 `planning_guidance`。生产 prompt 直接采用 `68286d569025718c88029b66bc028e89a5a10c72` 的 P1 文字和 capability guidance。Application 构造默认 Planner 时注入 metadata，Router 继续只接收既有 `QueryContext`。Prompt 仅包含当前 `available_capabilities` 中的 summary；该 allowlist 仍是 Plan suggested tools 的合法性源。Plan 是一次性、bounded soft guidance，Runtime 保留实际 Tool 选择、参数和停止决策。
 
 ### 4. Validation & Error Matrix
 
@@ -45,7 +45,7 @@ Wrong：把 SDK Tool 参数说明复制成第二份 Planner 文档，或给 `Que
 
 ### 1. Scope / Trigger
 
-DeepSeek `deepseek-flash` 的 Planner-only 实测表明，`finish_reason=length` 时隐藏 reasoning token 可以耗尽 2048 completion 上限，让可见 JSON 为空或不完整。该 treatment 只改变一次 Planner completion 的思考档位，不改变 Router、Agent Tool Loop 或 Plan schema。
+DeepSeek `deepseek-flash` 的 Planner-only 实测表明，`finish_reason=length` 时隐藏 reasoning token 可以耗尽 2048 completion 上限，让可见 JSON 为空或不完整。当前生产组合是 **P1 canonical prompt + Planner 专属 non-thinking**；后者只改变一次 Planner completion 的思考档位，不改变 Router、Agent Tool Loop 或 Plan schema。历史 P2 同时改 prompt 和 thinking，不能作为这个组合的单变量质量证据。
 
 ### 2. Signatures
 
@@ -59,7 +59,7 @@ OpenAIAgentsRuntimeAdapter.complete_planner_text_with_observation(prompt) -> Com
 ### 3. Contracts
 
 - Application 默认 Router 仍注入 `complete_text_with_observation`；默认 `SoftPlanner` 注入 `complete_planner_text_with_observation`。两者复用同一 Provider client，Plan 仍经原 parser 和同一 Agent Runtime 的 soft guidance 路径。
-- 只有精确 `provider=deepseek`、`model=deepseek-flash` 的 Planner 请求指定 `reasoning_effort=none`；该组合由 Planner-only 重复实验验证。其它 Provider/模型维持 registry 的原档位，不能把未验证身份声称为 P2。
+- 只有精确 `provider=deepseek`、`model=deepseek-flash` 的 Planner 请求指定 `reasoning_effort=none`；已有 `ablation-p1-nonthinking/` 用原 P1 prompt、2048 completion 上限实测 24/24 有效、0 次 `provider_length`。其它 Provider/模型维持 registry 的原档位。该 Development 观察不证明失败率为零，也不证明 Plan 质量完全保持。
 - `temperature=0`、JSON mode、`completion_max_tokens=2048`、Plan 5/5 bounds、allowlist 和失败 skip 都不变。Router request projection 仍是 registry `low`。
 - completion usage 仅在 Provider 返回时包含 `reasoning_tokens`（来自 `completion_tokens_details.reasoning_tokens`）；缺失是 unknown，不是 0。`finish_reason=length` 仍先于 JSON parser 归为 `provider_length`，不 retry。
 
@@ -75,13 +75,13 @@ OpenAIAgentsRuntimeAdapter.complete_planner_text_with_observation(prompt) -> Com
 
 ### 5. Good / Base / Bad Cases
 
-- Good：完整 UTC 空窗问题的 Plan 只建议 `get_recent_messages`；Provider 成功返回 JSON 后仍由 Runtime 自行处理 Tool 结果。
+- Good：Planner 对精确 DeepSeek Flash 请求 `none`，Provider 成功返回 JSON 后仍由 Runtime 自行处理 Tool 结果。
 - Base：普通 Router 请求继续使用 `low` 与 2048 completion bound。
-- Bad：把 P2 非思考结论套到未测试 Provider、把 `reasoning_tokens` 缺失当零、或通过 retry/增大 2048 隐藏 `provider_length`。
+- Bad：把 Planner 非思考结论套到未测试 Provider、把 `reasoning_tokens` 缺失当零、或通过 retry/增大 2048 隐藏 `provider_length`。
 
 ### 6. Tests Required
 
-Provider-free 测试需断言 Planner request 与实际 Provider 参数均为 none、Router 仍为 low、usage 只投影实际 reasoning 明细、Plan parser/allowlist/失败 skip 不变；模型语义质量必须用重复真实 Provider Planner-only 实验与盲审证据判断。不要把 prompt 字符串存在当作遵从证明。
+Provider-free 测试需断言 P1 prompt 关键规则、Planner request 与实际 Provider 参数均为 none、Router 仍为 low、usage 只投影实际 reasoning 明细、Plan parser/allowlist/失败 skip 不变。已有消融中原 P1 prompt + none 虽 24/24 有效，zero-result 与 cite-archify 的 Plan 质量仍有疑点；不能从 prompt 字符串或这 24 次 Development 调用推断模型一定遵从所有规划规则。
 
 ### 7. Wrong vs Correct
 

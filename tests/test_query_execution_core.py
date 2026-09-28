@@ -153,10 +153,13 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("summary, trend, relationship, search, comparison, evidence, mixed", prompt)
         self.assertIn("steps MUST be a JSON array", prompt)
         self.assertIn("success_criteria MUST be a non-empty JSON array", prompt)
-        self.assertIn("use get_recent_messages before SQL", prompt)
+        self.assertIn("suggest get_recent_messages before SQL", prompt)
         self.assertIn("A SQL count alone is not verified zero-result evidence", prompt)
-        self.assertIn("do not plan for a hypothetical non-empty or insufficient first result", prompt)
-        self.assertIn("schema inspection before SQL as distinct goals", prompt)
+        # P2 的非思考 prompt 补丁不属于 canonical P1；锁定这两个治疗因素的边界。
+        self.assertNotIn("Plan evidence-gathering steps only", prompt)
+        self.assertNotIn("do not plan for a hypothetical non-empty or insufficient first result", prompt)
+        self.assertNotIn("Suggest one tool per step", prompt)
+        self.assertNotIn("begin with lexical_search alone", prompt)
 
     def test_prompt_receives_registered_purpose_and_planning_constraints(self) -> None:
         """锁定 Planner 输入与通用调查约束，不断言 Provider 一定输出某句 Plan。"""
@@ -198,8 +201,8 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("primary investigation anchor", prompt)
         self.assertIn("relevant direct share, recommendation, invitation or usage discussion", prompt)
         self.assertIn("Each step must add investigation value", prompt)
-        self.assertIn("A complete scoped SQL count, rank or aggregation", prompt)
-        self.assertIn("Do not mechanically pair lexical and semantic search", prompt)
+        self.assertIn("A complete scoped deterministic count, rank or aggregation", prompt)
+        self.assertIn("Do not automatically pair lexical and semantic search", prompt)
         self.assertEqual(result.plan.steps[0].suggested_tools, ("lexical_search",))
 
         # 全量 allowlist 下，各 Tool 的用途边界也必须进入同一 Planner prompt。
@@ -208,19 +211,18 @@ class PlannerTests(unittest.TestCase):
         full_prompt = captured[1]
         for guidance in (
             "do not pair with lexical_search automatically",
-            "ignore unrelated popularity updates",
-            "does not justify broad browsing",
-            "not who used a tool",
-            "not result verification",
-            "stop after a complete answer",
+            "not an unrelated popularity update",
+            "does not justify broad recent browsing",
+            "not to find who used a tool",
+            "it is not a result-verification step",
+            "do not add retrieval just to verify it",
         ):
             self.assertIn(guidance, full_prompt)
-        # purpose 必须逐字来自 Registry；短 guidance 不能复制另一份完整 Tool 用途正文。
+        # purpose 必须逐字来自 Registry；P1 guidance 只补 Tool 选用关系。
         summaries = json.loads(full_prompt.split("capability summaries: ", 1)[1].split("\ndata snapshot:", 1)[0])
         for item, source in zip(summaries, metadata, strict=True):
             self.assertEqual(item["purpose"], source.description)
             self.assertNotIn(item["purpose"], item["planning_guidance"])
-            self.assertLess(len(item["planning_guidance"]), 170)
 
     def test_malformed_and_structurally_invalid_plan_fail_explicitly(self) -> None:
         malformed = asyncio.run(SoftPlanner(lambda _: "{bad").plan(self._context()))

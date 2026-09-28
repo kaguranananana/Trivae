@@ -27,15 +27,14 @@ _DEFAULT_COMPLETION_TIMEOUT_SECONDS = 20.0
 # 这里只记录 Planner 选用关系，Tool 的用途正文继续来自 CapabilityMetadata。
 # 新注册 Tool 必须显式补齐规划约束，避免 purpose 与选用规则悄悄漂移。
 _PLANNING_GUIDANCE = {
-    # purpose 已来自 Registry；这里只保留选用边界，避免重复完整 Tool 文档。
-    "lexical_search": "Prefer for named entities, URLs and exact terms.",
-    "search_messages": "Legacy exact-word retrieval; preserve named-entity anchors.",
-    "semantic_search": "For conceptual recall; do not pair with lexical_search automatically.",
-    "get_message_context": "For replies or feedback, deepen the most relevant direct share, recommendation, invitation or usage hit; ignore unrelated popularity updates.",
-    "get_recent_messages": "For time windows or topic discovery; 'later' alone does not justify broad browsing.",
-    "find_members": "For identity ambiguity, not who used a tool or expressed an opinion in message content.",
-    "get_schema": "For structured SQL preparation, not result verification.",
-    "execute_sql": "For scoped counts, ranks or filters; stop after a complete answer.",
+    "lexical_search": "Prefer for named people, repositories, products, URLs and exact terms. Preserve a distinctive entity as the primary anchor; a generic category is supplementary only when the anchored path cannot cover the request.",
+    "search_messages": "Legacy exact-word retrieval; apply the same entity-anchor discipline as lexical_search.",
+    "semantic_search": "Use for conceptual recall when the user's wording may differ from messages; do not pair with lexical_search automatically.",
+    "get_message_context": "Use around a relevant direct hit for replies, local discussion, later reactions or firsthand feedback; select the share, recommendation, invitation or usage thread most related to the question, not an unrelated popularity update.",
+    "get_recent_messages": "Use for recent activity, a defined time window or topic discovery; the word 'later' in an entity investigation alone does not justify broad recent browsing.",
+    "find_members": "Use for identity resolution or same-name ambiguity, not to find who used a tool or expressed an opinion in message content.",
+    "get_schema": "Inspect physical schema when a deterministic count, rank, aggregation or structured filter needs SQL; it is not a result-verification step.",
+    "execute_sql": "Use for deterministic count, rank, aggregation and structured filtering. If its scoped result completely answers the requested fact, do not add retrieval just to verify it.",
 }
 
 
@@ -344,27 +343,23 @@ class SoftPlanner:
             "most 5 items. Do not use a sentence or explanation as intent. Do not use null, an object, or a "
             "string where an array is required. Do not wrap the JSON in Markdown fences. Use only the supplied "
             "capabilities. The plan is guidance only, not an executable workflow. Keep every text concise. "
-            # 全局规则只讲调查关系；Tool 选择条件由上面的短 guidance 承载。
-            "Each step must add investigation value beyond the query; prefer one or two high-information "
-            "steps over generic search, analysis, summary or verification. Keep a named entity as the "
-            "primary investigation anchor, never a generic category alone; broaden only when anchored "
-            "evidence cannot answer a requested need. For follow-up or actual-use feedback, find the "
-            "relevant direct share, recommendation, invitation or usage discussion, then inspect its "
-            "replies or context. A popularity update, repeated mention or intent to try is not firsthand use. "
-            "Do not mechanically pair lexical and semantic search, browse recent messages for an entity "
-            "follow-up, or use find_members for message-content questions. A complete scoped SQL count, "
-            "rank or aggregation needs no retrieval verification. For a time-bounded question asking whether "
-            "messages exist and what was discussed, use get_recent_messages before SQL: a complete empty "
-            "window answers both. A SQL count alone is not verified zero-result evidence; do not add "
-            "schema or SQL to recheck a complete empty retrieval. Plan evidence-gathering steps only: "
-            "do not add answer-synthesis steps. A later tool step needs an evidence relation explicitly "
-            "requested by the user; do not plan for a hypothetical non-empty or insufficient first result. "
-            "Suggest one tool per step, with schema inspection before SQL as distinct goals. "
-            "For a named entity, begin with "
-            "lexical_search alone; use semantic_search only if anchored results cannot cover the requested "
-            "evidence, never list both in one step. For a time-window topic overview, begin with "
-            "get_recent_messages; add search or context only for a specific requested evidence relation. A complete "
-            "empty window ends the investigation.\n"
+            "Each step must add investigation value that Runtime cannot trivially infer from the user request. "
+            "Prefer one or two high-information steps over generic search, analyze, summarize or verify steps. "
+            "When a distinctive person, repository, product, project, URL or other entity is named, keep "
+            "that entity as the primary investigation anchor. Never replace it with a generic category alone. "
+            "Broaden to category-level recall only if entity-anchored evidence cannot cover a requested need. "
+            "For replies, later reactions, actual usage or firsthand feedback, describe the evidence relation: "
+            "identify the relevant direct share, recommendation, invitation or usage discussion first, then "
+            "inspect its replies or context. A later popularity update or repeated mention is not proof of use; "
+            "interest or intent to try is not firsthand experience. "
+            "Use capability planning guidance to suggest only tools that serve a necessary investigation goal. "
+            "Do not automatically pair lexical and semantic search, browse recent messages for an entity follow-up, "
+            "or resolve member identity for an ordinary who-used-or-said query. "
+            "A complete scoped deterministic count, rank or aggregation needs no extra retrieval verification. "
+            "For a time-bounded question asking whether messages exist and what was discussed, suggest "
+            "get_recent_messages before SQL: a complete empty window settles both questions. A SQL count "
+            "alone is not verified zero-result evidence; do not add schema or SQL solely to reconfirm "
+            "a complete empty retrieval.\n"
             f"locale: {context.locale}\nquery: {context.query}\n"
             f"prior model context:\n{history or '<none>'}\n"
             f"available capabilities: {list(context.available_capabilities)!r}\n"

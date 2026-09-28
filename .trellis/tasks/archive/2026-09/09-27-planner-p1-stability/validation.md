@@ -1,5 +1,7 @@
 # Validation
 
+> 2026-09-28 工程收口：生产 prompt 已恢复 P1，Planner non-thinking 单独保留。下文 P0/P1/P2 三路数字均为历史实验，不代表当前生产配置；本轮仅做 provider-free 验证，结果见末尾。
+
 > 2026-09-27 补充：下文 `Gate` 的 `PASS` 记录的是 assistant provisional review 时点。assistant blind adjudication 完成后的最新 P2 promotion gate 为 `FAIL`；见 `experiment-final/assistant-blind-adjudication-unblinded.md`。代码测试结果不受这次文档揭盲影响。
 
 ## Formal Planner-only identity
@@ -42,3 +44,13 @@
 ## Gate
 
 `PASS` — **限于已暴露 Development Case 的 Planner-only quality/reliability gate**。P2 40/40 有效、不劣于本轮 P0 35/40；`provider_length` 由本轮 P1 4/40 降为 0/40，探索性同提示 24/24 也无此类失败；主要 Plan 质量收益在 assistant provisional review 中无明显整体回退，prompt/token/latency 已记录，原始失败和盲包齐全，检查通过。样本规模无法证明真实失败概率为零；人工盲审待完成，尤其检查 cite-archify 的 recent 选用。可准备下一阶段 `Standard vs Planned-P0 vs Planned-P2` 设计，但本轮不运行 E2E，也不作生产 gate 或收益声明。
+
+## 2026-09-28 provider-free production closure
+
+- Git ancestry：P1 源提交 `68286d569025718c88029b66bc028e89a5a10c72` 是本分支当前 HEAD 的祖先；本地 `origin/main` 仍在较早 P0 提交。只从 P1 源提交恢复生产 `planner.py`，旧实验记录未改。
+- `git diff --quiet 68286d569025718c88029b66bc028e89a5a10c72 -- src/trivae/query/planner.py`：通过；整份生产文件与 P1 源提交一致。
+- 无 Provider 的离线核对：生产 `SoftPlanner` 使用七个真实 Capability metadata 构造八条固定 Development Context；8/8 条完整 prompt 与 `frozen-p1-prompts.json` 的原 P1 实际请求逐字一致。
+- 已有 `ablation-p1-nonthinking/runs.jsonl` 独立复算：24 条调用，24 条有 Plan，0 条 `provider_length`；request 均是精确 DeepSeek Flash、`reasoning_effort=none`、`max_tokens=2048`。这不是本轮新实验，也不证明真实失败率为零或 Plan 质量完全保持。
+- `.venv/bin/pytest -q tests/test_query_execution_core.py tests/test_agent_runtime.py`：69 passed；完整 `.venv/bin/pytest -q`：632 passed。
+- `.venv/bin/ruff check src tests evaluation/planner-p1-stability`：passed；`.venv/bin/mypy src`：115 source files passed；`git diff --check`：passed。
+- 本轮未调用付费 Provider，未运行 E2E、盲审或 Holdout；Router、Jev、Agent Runtime、Retrieval、Evidence/Citation 和 positive-proof contract 均未改动。
