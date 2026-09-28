@@ -1,0 +1,42 @@
+[
+  {
+    "case_id": "pu-aggregate-utc-types",
+    "A": "low",
+    "B": "none"
+  },
+  {
+    "case_id": "dev-context-archify",
+    "A": "none",
+    "B": "low"
+  },
+  {
+    "case_id": "pu-dependent-mattpocock",
+    "A": "low",
+    "B": "none"
+  },
+  {
+    "case_id": "dev-zero-empty-3",
+    "A": "low",
+    "B": "none"
+  },
+  {
+    "case_id": "dev-lexical-forge",
+    "A": "low",
+    "B": "none"
+  },
+  {
+    "case_id": "pu-rank-utc-session",
+    "A": "low",
+    "B": "none"
+  },
+  {
+    "case_id": "dev-temporal-30d",
+    "A": "none",
+    "B": "low"
+  },
+  {
+    "case_id": "dev-cite-archify",
+    "A": "low",
+    "B": "none"
+  }
+]

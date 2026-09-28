@@ -1,0 +1,75 @@
+{
+  "actual_provider_attempts": 16,
+  "completed_records": 16,
+  "paired_cases": 8,
+  "single_variable_verified": true,
+  "monetary_cost": "unavailable",
+  "treatments": {
+    "low": {
+      "valid_plans": 6,
+      "calls": 8,
+      "failure_categories": {
+        "provider_length": 2,
+        "parse_failure": 0,
+        "generation_error": 0,
+        "timeout": 0,
+        "unavailable": 0,
+        "aborted": 0
+      },
+      "latency_ms": {
+        "mean": 6699.84,
+        "median": 5987.8
+      },
+      "tokens": {
+        "input_tokens": {
+          "observed_calls": 8,
+          "total": 9994,
+          "mean": 1249.25
+        },
+        "completion_tokens": {
+          "observed_calls": 8,
+          "total": 10808,
+          "mean": 1351
+        },
+        "reasoning_tokens": {
+          "observed_calls": 8,
+          "total": 9107,
+          "mean": 1138.38
+        }
+      }
+    },
+    "none": {
+      "valid_plans": 8,
+      "calls": 8,
+      "failure_categories": {
+        "provider_length": 0,
+        "parse_failure": 0,
+        "generation_error": 0,
+        "timeout": 0,
+        "unavailable": 0,
+        "aborted": 0
+      },
+      "latency_ms": {
+        "mean": 1301.3,
+        "median": 1309.2
+      },
+      "tokens": {
+        "input_tokens": {
+          "observed_calls": 8,
+          "total": 9794,
+          "mean": 1224.25
+        },
+        "completion_tokens": {
+          "observed_calls": 8,
+          "total": 1308,
+          "mean": 163.5
+        },
+        "reasoning_tokens": {
+          "observed_calls": 0,
+          "total": "unknown",
+          "mean": "unknown"
+        }
+      }
+    }
+  }
+}

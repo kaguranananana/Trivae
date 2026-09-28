@@ -1,0 +1,16 @@
+{"run_order": 1, "case_id": "pu-dependent-mattpocock", "treatment": "low"}
+{"run_order": 2, "case_id": "pu-dependent-mattpocock", "treatment": "none"}
+{"run_order": 3, "case_id": "dev-context-archify", "treatment": "none"}
+{"run_order": 4, "case_id": "dev-context-archify", "treatment": "low"}
+{"run_order": 5, "case_id": "pu-aggregate-utc-types", "treatment": "low"}
+{"run_order": 6, "case_id": "pu-aggregate-utc-types", "treatment": "none"}
+{"run_order": 7, "case_id": "dev-zero-empty-3", "treatment": "none"}
+{"run_order": 8, "case_id": "dev-zero-empty-3", "treatment": "low"}
+{"run_order": 9, "case_id": "dev-temporal-30d", "treatment": "low"}
+{"run_order": 10, "case_id": "dev-temporal-30d", "treatment": "none"}
+{"run_order": 11, "case_id": "dev-lexical-forge", "treatment": "none"}
+{"run_order": 12, "case_id": "dev-lexical-forge", "treatment": "low"}
+{"run_order": 13, "case_id": "dev-cite-archify", "treatment": "low"}
+{"run_order": 14, "case_id": "dev-cite-archify", "treatment": "none"}
+{"run_order": 15, "case_id": "pu-rank-utc-session", "treatment": "none"}
+{"run_order": 16, "case_id": "pu-rank-utc-session", "treatment": "low"}
