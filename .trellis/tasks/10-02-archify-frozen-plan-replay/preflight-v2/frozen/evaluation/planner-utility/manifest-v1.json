@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "suite_id": "planner-utility-development@v1",
+  "snapshot_source": "evaluation/snapshots/resume-benchmark-v1.json",
+  "source_suite": "resume-benchmark-dev@v2",
+  "fresh": false,
+  "blind": false,
+  "utility_labels": "pending human treatment adjudication; workload type is a hypothesis, not a route label",
+  "cases": [
+    {
+      "case_id": "dev-zero-empty-3",
+      "case_version": 2,
+      "workload_slice": "verified_zero_result",
+      "exposure": "historical_regression_3_of_3",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-zero-empty-3.json"
+    },
+    {
+      "case_id": "pu-dependent-mattpocock",
+      "case_version": 1,
+      "workload_slice": "dependent_investigation",
+      "exposure": "new_exposed_candidate",
+      "case_bundle": "evaluation/cases/planner-utility/pu-dependent-mattpocock.json"
+    },
+    {
+      "case_id": "dev-context-archify",
+      "case_version": 1,
+      "workload_slice": "context_recovery",
+      "exposure": "historical_better_better_same",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-context-archify.json"
+    },
+    {
+      "case_id": "pu-count-utc-day",
+      "case_version": 1,
+      "workload_slice": "count",
+      "exposure": "new_sql_fact_human_review_pending",
+      "case_bundle": "evaluation/cases/planner-utility/pu-count-utc-day.json"
+    },
+    {
+      "case_id": "dev-context-mattpocock-1",
+      "case_version": 2,
+      "workload_slice": "context_recovery",
+      "exposure": "historical_development_exposed",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-context-mattpocock-1.json"
+    },
+    {
+      "case_id": "pu-rank-utc-session",
+      "case_version": 1,
+      "workload_slice": "ranking",
+      "exposure": "new_sql_fact_human_review_pending",
+      "case_bundle": "evaluation/cases/planner-utility/pu-rank-utc-session.json"
+    },
+    {
+      "case_id": "dev-context-mattpocock-2",
+      "case_version": 1,
+      "workload_slice": "context_recovery",
+      "exposure": "historical_development_exposed",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-context-mattpocock-2.json"
+    },
+    {
+      "case_id": "pu-aggregate-utc-types",
+      "case_version": 1,
+      "workload_slice": "aggregation",
+      "exposure": "new_sql_fact_human_review_pending",
+      "case_bundle": "evaluation/cases/planner-utility/pu-aggregate-utc-types.json"
+    },
+    {
+      "case_id": "dev-cite-archify",
+      "case_version": 1,
+      "workload_slice": "direct_lookup",
+      "exposure": "historical_development_exposed",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-cite-archify.json"
+    },
+    {
+      "case_id": "dev-lexical-forge",
+      "case_version": 1,
+      "workload_slice": "exact_lexical",
+      "exposure": "historical_unstable_better_worse_same",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-lexical-forge.json"
+    },
+    {
+      "case_id": "dev-para-ai-interest",
+      "case_version": 2,
+      "workload_slice": "semantic_lookup",
+      "exposure": "historical_development_exposed",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-para-ai-interest.json"
+    },
+    {
+      "case_id": "dev-temporal-7d",
+      "case_version": 1,
+      "workload_slice": "ordinary_summary",
+      "exposure": "historical_development_exposed",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-temporal-7d.json"
+    },
+    {
+      "case_id": "dev-temporal-30d",
+      "case_version": 2,
+      "workload_slice": "large_temporal_window",
+      "exposure": "historical_development_exposed",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-temporal-30d.json"
+    },
+    {
+      "case_id": "dev-zero-empty-1",
+      "case_version": 2,
+      "workload_slice": "verified_zero_result",
+      "exposure": "historical_unstable_overall_zero_failed_3_of_3",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-zero-empty-1.json"
+    },
+    {
+      "case_id": "dev-zero-empty-2",
+      "case_version": 2,
+      "workload_slice": "verified_zero_result",
+      "exposure": "historical_development_exposed",
+      "case_bundle": "evaluation/cases/benchmark/dev/dev-zero-empty-2.json"
+    }
+  ]
+}

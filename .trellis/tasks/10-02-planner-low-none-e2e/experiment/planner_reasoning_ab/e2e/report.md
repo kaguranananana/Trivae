@@ -2,6 +2,8 @@
 
 本轮第一阶段已完整执行并停止在 **Gate A**：在 8 个 exposed Development Case 的配对观察中，`none` 臂有 **2 条实质最终质量回退**（Archify star 叙述矛盾、30 天总结的昵称/消息内容与来源错配），同时有 3 条质量改善、3 条相同。不存在普遍单向优势。**这些是真实 E2E 输出差异，不是 Plan 文本评分；单次配对仍不足以证明它们由 Planner semantic difference 稳定、因果性地产生。** 本轮没有改生产配置、没有追加第二阶段或全量 Development。
 
+后续独立的 [4 次冻结 Plan 重放](../../../../10-02-archify-frozen-plan-replay/experiment/report.md) 已完成，未重现 Archify 原 none 的两处错误，观察到同 guidance 下的下游方差；不更改本报告的原始分母、盲审或 Gate A。后续 HTTP 原始参数核验也补充了归因：下文“canonical calls”指 normalized Trace 参数；模型实际恢复时传入 source_id，由既有 SDK resolver 映射为 canonical message_id，并非模型自行生成该 ID。
+
 ## 1. Experiment identity
 
 | 项 | 事实 |

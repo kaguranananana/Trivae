@@ -797,3 +797,35 @@ Provider-free 断言 deterministic AB/BA、唯一 serialization diff、unknown u
 ### 7. Wrong vs Correct
 
 Wrong：看到 Finalizer validated 就宣布 citation precision=1，或把作者昵称当 normalized message content。Correct：provenance validation 与语义 entailment 分层记录；复核原始 ToolResult 的 content、author、session、时间与 citation binding。
+
+## 15. Frozen Plan Runtime replay contract（2026-10-02）
+
+### 1. Scope / Trigger
+
+需要区分已保存 Plan 的 guidance 与下游运行方差时，只重放固定有效 Plan，不重新请求 Planner，不在实验中修复生产行为。
+
+### 2. Signatures
+
+`run_frozen_plan_replay.py --output PATH [--source PATH] [--seed INTEGER] [--preflight-only]` 固定 Archify 两份 Plan 各两次。`FrozenPlanner.plan(QueryContext) -> PlannerResult` 返回原 Plan，observation=None，不伪造历史 Provider usage 或 latency。
+
+### 3. Contracts
+
+通过生产 parser 读取 Plan 后逐字段保持原样；生产 renderer 生成 guidance。两侧首个实际 HTTP body 剥离精确 guidance 后必须相等；同 guidance 的原始 body 也核对相等。Runtime reasoning 固定生产 low，low/none 标签仅表示来源。Snapshot 的 created_at 是 materialize 观测时间，不属于数据变化，其余完整字段比较；SDK ModelSettings 使用 to_json_dict() 保存可序列化语义。
+
+`get_message_context(message_id="m1-1")` 把 alias 交给 canonical lookup，产生 MESSAGE_NOT_FOUND；`get_message_context(source_id="m1-1")` 经既有 SDK resolver 生成 canonical message_id。normalized Trace 的 canonical arguments 不能冒充模型原始 arguments，归因须连接 HTTP function arguments 与 Tool Trace。
+
+### 4. Validation & Error Matrix
+
+源 Plan 失败/解析改变 → 拒绝；源码/快照/初始 body 污染 → 保留已落盘 attempt 并停止；真实 Tool error → 记录并继续既有 Runtime，不新增自动重试或 message_id alias 兼容；semantic 判断 → 与 machine facts 分开，并标明是否盲审。
+
+### 5. Good / Base / Bad Cases
+
+Good：同一 guidance 下观察到不同 context 参数后，分别归因检索遗漏与合成错误。Base：Provider cache 保留生产语义。Bad：4 次结果宣布质量等价，或把未固定 ToolResult 的重放当作纯 Answerer 方差实验。
+
+### 6. Tests Required
+
+四次 AB/BA、有效 Plan 原样与无 Provider 注入、production Orchestrator guidance 透传、初始输入/schema/settings 隔离、materialize 时间变化不隐藏消息数变化。真实工件复核 HTTP / normalized model-turn / Tool sequence 数量与公开原始参数。
+
+### 7. Wrong vs Correct
+
+Wrong：看到恢复后的 Trace canonical ID，声称模型已自行选择 canonical ID。Correct：保存 Provider `source_id` 与 adapter 归一化后的 `message_id`，明确映射 ownership。

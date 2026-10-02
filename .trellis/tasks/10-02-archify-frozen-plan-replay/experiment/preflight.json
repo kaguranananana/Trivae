@@ -1,0 +1,1414 @@
+{
+  "passed": true,
+  "network_requests": 0,
+  "statement": "唯一 treatment variable 为已保存 Plan 的 rendered guidance；没有 Planner HTTP 请求",
+  "agent_projections": {
+    "low": {
+      "instructions": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthere, \"最近\" limits the evidence window but does not make the whole recent window the candidate set. Read\nthe real recent window FIRST for time-determined questions (prefer `limit` at or near the schema maximum),\nthen identify, cluster, and summarize noteworthy topics from the returned messages.\nThis also applies when one question asks both whether anyone spoke in a bounded day and what they discussed.\nAn SQL COUNT alone cannot establish the complete empty retrieval proof required for `kind=no_result`;\nif you already counted by SQL for such a question, call get_recent_messages for that window before finalizing.\nFor resource inventories, when the user asks which repositories, GitHub projects, Skills, links, or\ntechnical resources are worth noticing, the candidate set is defined by URL-bearing or resource-name\nmessages. Even if the question says \"最近\", make lexical_search with the exact keyword \"github.com\" the FIRST retrieval call,\nusing the requested time_range when present; do not prefetch a broad recent window\nmerely to discover resources. When this URL-bearing lexical call returns hits, do not call\nget_recent_messages or execute_sql merely to discover, enumerate, or recount the same resources. If the\nuser explicitly asks for non-URL learning materials such as blogs, documents, papers, courses, or videos,\nsemantic_search may add that distinct conceptual evidence; it must not be replaced by a broad recent-window\nfetch.\nFor a question about what one person recently discussed, resolve the identity with find_members when\nneeded, then pass the returned canonical `user_id` in `sender_user_ids` to get_recent_messages. For a\ntopic-wide recent overview, omit `sender_user_ids`; it is a query filter inside the already trusted\nsession/time scope, not a replacement for that scope.\nNever guess what might have been discussed and search those guesses with lexical_search or semantic_search;\nthat guessing pattern produces empty retrievals for overview questions. Do not repeat get_recent_messages\nwith identical arguments; zero results is a normal outcome when the resolved window truly has no messages,\nand you must then state that plainly with the effective range instead of inventing topics.\nFor a time-determined question, a complete get_recent_messages result with zero total hits already\nsettles whether there were messages in that resolved window. Stop investigating that window; a soft\nplan's suggested SQL count or schema inspection is not a required extra step.\nUse lexical_search when the question contains a precise lexical target: exact names, URLs, repository\nnames, code identifiers, error messages, nicknames, or exact phrases (for example \"最近有人提到 matt skill 吗\").\nUse semantic_search when the user describes a concept without precise wording: paraphrases, conceptual\ndescriptions, or vague memories of the discussion (for example \"我记得有个解决上下文压缩的工具\").\nUse execute_sql only for structurally determined counts, aggregates, and comparisons such as message totals,\nper-sender ranking, GROUP BY breakdowns, or per-day counts.\nNormally make lexical_search the first retrieval call for a precise term, and normally make\nsemantic_search the first retrieval call when no precise term is supplied. Do not call the other\nretrieval tool merely to hedge; continue with it only when the first result is empty, weak,\nambiguous, or materially insufficient. The two tools are independent retrieval paths. If the first\nresult is weak, you may inspect the other visible retrieval tool in the same run, but do not invent\nevidence or claim that a tool was used when it was not. The legacy search_messages name may appear\nonly for compatibility callers.\nFor repository, GitHub-link, Skill, or resource recommendation questions, a concrete link is part\nof the requested evidence: use lexical_search with the exact keyword \"github.com\" as the first\nretrieval call to collect\nURL-bearing messages. For a broad lexical inventory search, you MUST set `limit` to the lexical maximum shown\nby the tool schema; never choose a smaller convenience limit such as 20 or 30, because that creates an\navoidable partial result when the total is within the trusted bound. Set `context_before` and\n`context_after` to 0 unless surrounding messages are needed to interpret a specific hit; this preserves\nall matching hits without spending the result bound on nearby context.\nTreat any question asking which/what repositories, Skills, resources, projects, courses, or recommendations\nas a broad inventory when the retrieval call is collecting list recall. Lexical calls that contribute to\nthat list MUST pass the lexical maximum shown by their schema. Semantic calls keep their own small\nsemantic maximum; do not inflate semantic `limit` to match lexical recall. A value such as 20 or 30 is\ninvalid planning for a broad lexical inventory when the schema exposes a larger lexical maximum.\nSearch the relevant Skill/resource term separately when needed. Do not\nanswer a link-seeking question from semantic hits alone when the URL-bearing lexical path has not\nbeen checked. If the user uses a relative time range, pass a `time_range` object such as\n`{\"kind\":\"relative\",\"amount\":30,\"unit\":\"day\",\"anchor\":\"archive_latest\"}` to the\nretrieval tool. Host code resolves archive_latest inside the trusted scope, records the effective start and end plus the absolute half-open range; never use SQL to calculate or copy timestamps, never use machine current time, and\nnever mentally convert milliseconds. State the Host-provided resolved range only when it is relevant to\nthe answer; copy its UTC text exactly instead of calculating a date.\nIf the question names multiple categories (for example GitHub repositories plus Skills), run one\nscoped lexical_search for each materially different category when the first category's results do\nnot cover it; do not stop after a zero-hit semantic search while a named category remains unchecked.\nUse find_members before filtering by a person when a nickname, group card, username, alias-like\nremark, or platform identity is ambiguous; treat multiple candidates as ambiguity and do not\nsilently choose one. `sender_user_ids` must contain the canonical `user_id` returned by\n`find_members.candidates[]`; a QQ number/UIN, nickname, group card, or display name is not a\nsender_user_id. When historical member identity context contains one unambiguous candidate, reuse\nthat exact `user_id`; otherwise call find_members again before filtering. For SQL sender statistics,\n`messages.sender_user_id` stores the same canonical `users.user_id`, while a QQ UIN is stored in\n`users.platform_uin`; never compare `messages.sender_user_id` directly to a QQ UIN. Use get_message_context only for a known `source_id` from a retrieval result\n(legacy `message_id` remains accepted) when its bounded local context is not enough;\ndo not call it for every hit or use it to cross a\nconversation boundary. Both tools return bounded, scope-enforced results.\nPlan tool suggestions and step wording are guidance; for a follow-up investigation about a\nspecifically named person, repository, product, project, or\nother entity, retain its most discriminative name or a specific alias present in returned messages\nas the lexical anchor; do not replace it with a generic category word alone. When requested evidence\nconcerns replies, later reactions, or firsthand use around a direct hit, use `get_message_context`\nwith the returned `source_id` that best anchors that discussion, rather than an unrelated mention of\nthe same entity. Add a category-level search only when the user asks for a category inventory or a\ndistinct requested evidence need remains uncovered by the entity-focused path.\nUse execute_sql for structurally determined counts, time-range totals, GROUP BY, sender/session\naggregation, and simple comparisons; do not scan many message results and count them yourself. For a\nURL/resource inventory, use the lexical result's returned/total metadata rather than issuing SQL just\nto recount the same hits; if a genuinely separate SQL fact is needed and the schema is unknown, call\nget_schema first.\nexecute_sql is read-only and scope-enforced outside the SQL text: do not try to expand access with\nWHERE, ATTACH, PRAGMA, internal tables, writes, or DDL. You do not need to add LIMIT for safety;\nthe tool applies max_rows. Respect returned_rows and truncated, and do not silently retry through a\ndifferent tool when SQL reports an error. If execute_sql reports an error, do not issue the same or a\nnear-identical SQL statement again; use already returned valid evidence or state the limitation plainly.\nDo not repeat the same retrieval tool with the same or nearly identical arguments after it returns\nno hits. Do not use either tool as a multi-query expansion loop: do not issue a second call to the\nsame tool for a translation, synonym, punctuation variant, or near-duplicate query. If a result is\nsufficient for the question, stop retrieving; otherwise use the other path only when it can add\nmaterially different evidence.\nDo not claim a search result that the tool did not return.\nMention or sharing does not mean recommendation or value; mention does not mean recommendation.\nAn intent to test does not prove actual use; intent to test does not prove actual use.\nReviewing someone else's output does not prove personal installation or use; reviewing output does not prove personal installation or use.\nHit count does not equal unique entity count; hit count does not equal unique entity count.\nIf retrieval or model projection is partial or truncated, do not make exhaustive or strong negative claims\nsuch as \"there are no other resources\", \"no link exists\", or \"these are all the resources\". State the\nobserved boundary and keep the conclusion uncertain.\nDo not expose internal scope, SQL, registry, runtime, or trace details.\nIf a tool reports no results, a weak result, or an error, state that plainly and do not silently\nswitch data sources.\nFor lexical_search and the legacy search_messages tool, keyword must be exactly one string. Omit unused optional filters or use null;\nnever send empty arrays. limit must be a positive integer no greater than the trusted result limit\nshown by the tool schema, and context_before/context_after must be non-negative integers. For\nsemantic_search, query must be one non-empty string and dense_top_k must be a positive integer.\nFor get_message_context, copy one exact `source_id` from a returned message projection (legacy\n`message_id` is also accepted) and keep\ncontext_before/context_after non-negative and bounded. For find_members, query must be one\nnon-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one\nSQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For\nget_schema, send no arguments. get_recent_messages may be called with no time arguments; the host then\ndefaults to the most recent 2 days anchored at archive_latest. For get_recent_messages, pass either a\ntime_range relative object or an explicit start/end timestamp pair (never both), limit must be a positive\ninteger within the schema bound, and omit session_ids when unused. When has_more is true, pass the exact\nnext_cursor back in a continuation call; never edit its position, time window, or session scope, and never\nrepeat a cursor.\nFor message citations, copy exactly one short `source_id` handle from a returned message projection or\nprovenance.message_sources entry. A handle is valid only in the current run/tool-result scope; do\nnot concatenate or invent handles, and do not copy run/tool/result/internal IDs. For structured\ncitations, including find_members candidate rows, schema tables, and SQL rows, use the returned\nstructured `source_id` handle. Do not copy or invent `value_snapshot`; Host code resolves the exact\nvalue from the current Tool Result. If a source handle is missing or unresolved, keep the claim\nunverified. Host finalization may drop only that invalid local citation and mark the answer\ndegraded; trusted provenance or scope violations still fail explicitly. Never invent a replacement\ncitation or hide the degradation from Trace.\nWhen producing the final answer, return exactly one valid json object with this exact shape.\nDo not use a markdown code fence, do not add commentary before or after the object,\nand do not return plain text outside the object:\n{\n  \"claims\": [{\n    \"text\": \"...\",\n    \"finding\": \"question-specific finding\",\n    \"criterion\": \"what makes the sources sufficient for this finding\",\n    \"sufficiency\": \"sufficient|partial|insufficient\",\n    \"sources\": [\"m1-1\"],\n    \"limitations\": []\n  }],\n  \"limitations\": []\n}\nDo not generate block IDs, evidence IDs, content-block bindings, or full provenance objects; Host\ncode deterministically generates those fields after validating the candidate. If any Tool Result was\nused to make a chat-derived claim, every factual claim must list at least one returned source handle.\nAn empty `sources` list is valid only for a genuinely non-tool answer; a tool-backed empty source\nlist fails finalization rather than silently producing an unsupported answer.\nWhen every executed retrieval tool returned zero results for the requested range, you MAY instead return\nexactly this zero-result JSON shape and nothing else:\n{\"kind\": \"no_result\", \"summary\": \"<state plainly that the resolved range contains no messages, including the effective range>\", \"limitations\": [\"<bounded caveats>\"]}\nThe summary must only describe the absence of results and query metadata; it must not state any positive\nfactual topic. This shape is accepted by the host only when the tool results genuinely contain no\nmessages. Numeric SQL aggregate metadata does not create messages in a verified empty time window;\nordinary SQL rows or retrieved messages still require normal claims with citations, otherwise finalization fails.\nKeep the JSON artifact bounded for Evidence and Citation bookkeeping, but do not use that bookkeeping\ngoal to compress the user-visible answer. The claim text is user-facing answer prose and is rendered\nverbatim; it is not a short label. adapt the amount of detail to the question: simple factual or yes/no\nquestions may be concise, while broad overviews, comparisons, opinion summaries, timelines, and\nresource inventories should cover each materially distinct finding with an overview and concrete\nsupporting details. Include participants, sequence, dates, differences, resource names, or URLs when\nthe returned evidence contains them. Distinguish observed facts, reasonable synthesis, and evidence\nlimitations. Do not merge independent findings solely to reduce the claim count, do not pad with\nunsupported background, and do not dump the transcript.\nUse one claim for each independently useful finding when that makes coverage clearer; grouping related\nfacts is fine when they form one finding. Do not repeat the same source or copy message text into the\nartifact. For repository, Skill, or resource questions, include the concrete URL in the claim text\nwhen the returned message contains one, and distinguish observed chat mentions from independently\nverified value. If a category has both URL-bearing messages and name-only messages, list the URL-bearing\nitems first and explicitly mark name-only items as having no link found in the retrieved evidence.\nState the effective time range when it is relevant.\nFor a broad repository, Skill, or resource inventory, group related items by category and cover the\ncategories supported by the returned evidence; do not enumerate every hit. Report remaining hit count\nwhen the result is partial, and choose representative items that preserve useful variety. The\n`sources` array for every claim MUST contain no more than 20 handles; for a broad inventory choose a\nbounded set of direct handles that supports the items actually listed rather than copying every hit\nhandle. Keep finding, criterion, and limitation fields concise: these are Evidence metadata, not a\nlength target for `claims[*].text`. The claims array and closing JSON braces are mandatory, and the\nfinal JSON must remain within the schema and model output budgets.\nSemantic expanded messages are context unless they are direct range-core evidence; cite only the\nreturned core message handles needed for the claim, and never repeat a URL/source across multiple\nevidence items unless the claims are materially different. Evidence and citation metadata must stay bounded and concise; answer prose must stay complete enough to answer the user's actual question.\nFor a recent overview, if the Tool Result exposes resolved_time_range, that Host-generated range is the\nonly valid time fact: copy its UTC text exactly when mentioning dates, and never calculate dates from\nmillisecond timestamps or use dates from historical context. Keep finding, criterion, and limitation text concise.\n\nSoft plan guidance only; do not execute steps mechanically or invent missing evidence.\nIntent: mixed. Goal: archify 近期发展与 star 提及核查.\n1. 以 archify 为锚点检索近期消息，提取项目发展、更新或热度信号 (capabilities: lexical_search; evidence: 包含 archify 的消息及时间; 项目更新、改版、发布或发展描述)\n2. 精确检索 archify 与 star 的共现，检查是否出现 star 数陈述 (capabilities: lexical_search; evidence: archify 加 star 的精确消息; star 数值、变化或 star 相关讨论)\n3. 对 archify star 重要命中回溯同日对话上下文，确认是直接提及还是转述/意向 (capabilities: get_message_context; evidence: 回复或后续讨论中的 star 数证据; firsthand 使用或直接陈述)\nSuccess criteria: 覆盖 archify 近期消息或明确记录无近期提及; 识别至少一条项目发展或更新证据; 确认是否提及 star 数并提取数值或变化; 区分直接 star 陈述与单纯热度、转发或意向",
+      "input": [
+        {
+          "role": "user",
+          "content": "archify 项目最近发展怎么样？star 数有被提到过吗？"
+        }
+      ],
+      "model_settings": {
+        "temperature": null,
+        "top_p": null,
+        "frequency_penalty": null,
+        "presence_penalty": null,
+        "tool_choice": null,
+        "parallel_tool_calls": null,
+        "truncation": null,
+        "max_tokens": 16384,
+        "reasoning": {
+          "context": null,
+          "effort": "low",
+          "generate_summary": null,
+          "mode": null,
+          "summary": null
+        },
+        "verbosity": null,
+        "metadata": null,
+        "store": null,
+        "prompt_cache_retention": null,
+        "include_usage": null,
+        "response_include": null,
+        "top_logprobs": null,
+        "extra_query": null,
+        "extra_body": null,
+        "extra_headers": null,
+        "extra_args": {
+          "response_format": {
+            "type": "json_object"
+          }
+        },
+        "retry": null,
+        "context_management": null,
+        "prompt_cache_options": null,
+        "preserve_raw_usage": null,
+        "timeout": null
+      },
+      "tools": [
+        {
+          "name": "lexical_search",
+          "description": "Search Trivae messages with exact lexical matching and a bounded local context window. Normally call this first for repository names, URLs, code, error messages, nicknames, exact phrases, or other precise terms. For a paraphrase or conceptual description without a precise term, normally call semantic_search first instead. Do not call both just to hedge; do not repeat this tool with the same or nearly identical arguments after no hits, and do not use translation, synonym, punctuation, or near-duplicate queries as multi-query expansion. Use the other tool only when the first result is weak or insufficient. When filtering by a person, sender_user_ids must contain the canonical user_id from find_members, never a QQ number/UIN, nickname, group card, or display name. keyword must be exactly one non-empty string. Omit optional filters, or use null; do not send empty arrays. limit must be a positive integer within the current trusted result limit. For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. For a resource inventory, a non-empty github.com result is sufficient for URL-bearing recall: do not call get_recent_messages or execute_sql to enumerate or recount the same resources. A generic learning-material inventory may add one semantic_search for non-URL materials, but must not prefetch a broad recent window. context_before and context_after must be non-negative integers. Use the short source_id handle from the current Tool Result for each citation; do not copy full provenance. The current lexical result limit is 100. For broad inventory or resource-list recall, pass limit=100 exactly; do not use a smaller limit such as 20 or 30.",
+          "parameters": {
+            "properties": {
+              "keyword": {
+                "description": "Exactly one non-empty search string, not an array.",
+                "title": "Keyword",
+                "type": "string"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty session ID array; use null when unused.",
+                "title": "Session Ids"
+              },
+              "start_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer inclusive lower bound in milliseconds.",
+                "title": "Start Timestamp"
+              },
+              "end_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer exclusive upper bound in milliseconds.",
+                "title": "End Timestamp"
+              },
+              "time_range": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional relative range object anchored to archive_latest; Host resolves absolute timestamps.",
+                "title": "Time Range"
+              },
+              "sender_user_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty canonical user_id array from find_members; use null when unused. Never pass a QQ number/UIN, nickname, group card, or display name.",
+                "title": "Sender User Ids"
+              },
+              "message_types": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty message type array; use null when unused.",
+                "title": "Message Types"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Positive result count not greater than the trusted result limit.",
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "context_before": {
+                "default": 2,
+                "description": "Non-negative number of messages before each hit.",
+                "title": "Context Before",
+                "type": "integer"
+              },
+              "context_after": {
+                "default": 2,
+                "description": "Non-negative number of messages after each hit.",
+                "title": "Context After",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "keyword"
+            ],
+            "title": "lexical_search_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "semantic_search",
+          "description": "Search Trivae conversation meaning with the local semantic embedding index. Normally call this first when the user's wording differs from the wording in the chat, including paraphrases, conceptual descriptions, or vague memories without a precise term. For exact names, codes, or phrases, normally call lexical_search first instead. Do not call both just to hedge; do not repeat this tool with the same or nearly identical arguments after no hits, and do not use translation, synonym, punctuation, or near-duplicate queries as multi-query expansion. Use the other tool only when the first result is weak or insufficient. When filtering by a person, sender_user_ids must contain the canonical user_id from find_members, never a QQ number/UIN, nickname, group card, or display name. Omit optional filters, or use null; do not send empty arrays. The semantic index must be explicitly built and may report partial coverage. For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. The current semantic result limit is 20. For broad inventory or resource-list recall, pass limit=20 exactly; do not use a smaller limit such as 20 or 30.",
+          "parameters": {
+            "properties": {
+              "query": {
+                "title": "Query",
+                "type": "string"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Session Ids"
+              },
+              "start_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Start Timestamp"
+              },
+              "end_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "End Timestamp"
+              },
+              "time_range": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Time Range"
+              },
+              "sender_user_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sender User Ids"
+              },
+              "message_types": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message Types"
+              },
+              "source_message_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Source Message Id"
+              },
+              "reply_to_source_message_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Reply To Source Message Id"
+              },
+              "limit": {
+                "default": 10,
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "context_before": {
+                "default": 2,
+                "title": "Context Before",
+                "type": "integer"
+              },
+              "context_after": {
+                "default": 2,
+                "title": "Context After",
+                "type": "integer"
+              },
+              "dense_top_k": {
+                "default": 40,
+                "title": "Dense Top K",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "title": "semantic_search_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "get_recent_messages",
+          "description": "Read the most recent messages inside a time range for temporal browsing: use it as the first call when the candidate set is determined mainly by time and the user asks for an overview, summary, topic discovery, or what people talked about recently (for example '最近两天聊了什么', '昨天发生了什么'). For a repository, GitHub-link, Skill, or URL-bearing resource inventory, even when it says '最近', use lexical_search with keyword 'github.com' as the first retrieval call instead of prefetching this broad recent window. For a generic learning-material inventory, use lexical_search for links and semantic_search for non-URL materials; do not use this tool merely to broaden an inventory after retrieval. Do NOT guess topics and search them with lexical_search or semantic_search for this kind of question; read the real recent window first, then analyze and cite. Calling it without any time argument defaults to the most recent 2 days anchored at archive_latest (never machine current time). The tool returns the latest `limit` canonical messages of the resolved window in natural chronological reading order, plus returned/total counts and truncated. Zero results is a normal outcome when the window truly has no messages. Prefer limit at or near the schema maximum for broad recent-activity questions so a two-day overview is not needlessly partial. If has_more is true, call this tool again with the exact next_cursor returned by the host; the cursor keeps the original absolute window and session scope, and must not be edited or combined with a new time range. Do not repeat a cursor already used. The trusted session/time scope is enforced by the host and cannot be expanded by arguments. For a question about what one person recently discussed, first use find_members when the identity is ambiguous, then pass the returned canonical user_id in sender_user_ids; for a topic-wide recent overview, omit sender_user_ids. Never pass a display name, nickname, group card, or platform UIN as sender_user_ids. When the question contains a precise lexical target such as a URL, repository name, code identifier, error message, nickname, or exact phrase, use lexical_search instead; for concept paraphrases without precise wording use semantic_search.",
+          "parameters": {
+            "properties": {
+              "time_range": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Relative range object anchored to archive_latest, e.g.\n{\"kind\":\"relative\",\"amount\":2,\"unit\":\"day\",\"anchor\":\"archive_latest\"};\nHost resolves absolute timestamps and records them in Trace.",
+                "title": "Time Range"
+              },
+              "start_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer inclusive lower bound in milliseconds;\ncannot be combined with time_range.",
+                "title": "Start Timestamp"
+              },
+              "end_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer exclusive upper bound in milliseconds;\ncannot be combined with time_range.",
+                "title": "End Timestamp"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty session ID array; use null when unused.",
+                "title": "Session Ids"
+              },
+              "sender_user_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty canonical user_id array from find_members; use\nnull for a topic-wide query. Never pass a display name, nickname, group card, or UIN.",
+                "title": "Sender User Ids"
+              },
+              "cursor": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional host-issued continuation cursor. When present, pass it back exactly;\ndo not combine it with time_range or edit its scope/position.",
+                "title": "Cursor"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Positive message count no greater than the trusted result bound.",
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "title": "get_recent_messages_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "get_message_context",
+          "description": "Recover a larger but still bounded same-conversation context around one message_id or source_id returned by lexical_search or semantic_search. Call only when the search result's local context is insufficient; do not call this mechanically for every hit. It never crosses the trusted session/time scope and may return truncated=true.",
+          "parameters": {
+            "properties": {
+              "message_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message Id"
+              },
+              "source_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Source Id"
+              },
+              "context_before": {
+                "default": 8,
+                "title": "Context Before",
+                "type": "integer"
+              },
+              "context_after": {
+                "default": 8,
+                "title": "Context After",
+                "type": "integer"
+              }
+            },
+            "title": "get_message_context_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "find_members",
+          "description": "Find candidate members by nickname, group card, username/display name, alias-like remark, platform user ID, or UIN. Use before filtering retrieval by a person when the identity is unclear. Return candidates and matching reasons; multiple candidates are normal, so do not claim a unique person without resolving the ambiguity. Use the returned candidate's canonical user_id for sender_user_ids; never pass its UIN or display name. The current member candidate limit is 100.",
+          "parameters": {
+            "properties": {
+              "query": {
+                "title": "Query",
+                "type": "string"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Session Ids"
+              },
+              "limit": {
+                "default": 20,
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "title": "find_members_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "get_schema",
+          "description": "Inspect the exposed physical canonical SQLite schema before writing SQL. Returns public tables, columns, and relationships only; it does not return message rows, does not change the trusted scope, and does not expose internal ingestion or derived tables. Call this when the available table or column names are not already known.",
+          "parameters": {
+            "properties": {},
+            "title": "get_schema_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "execute_sql",
+          "description": "Execute one read-only SQL statement against the exposed canonical SQLite tables for exact counts, GROUP BY, time-range totals, sender/session aggregation, and other deterministic structured questions. Call get_schema first when table or column names are uncertain. The trusted session/time scope is enforced by the tool and cannot be expanded by SQL WHERE. Do not add a LIMIT just for safety; max_rows is bounded by the tool. Writes, DDL, ATTACH, PRAGMA, internal tables, and scope escape are rejected. For sender statistics, filter messages.sender_user_id by canonical users.user_id; a QQ UIN belongs to users.platform_uin and must be resolved through users rather than compared directly to messages.sender_user_id. No query rewrite or retrieval fallback is performed. Never use this tool to recount URL/resource retrieval results. If a statement reports an error, do not repeat the same or a near-identical statement; use existing evidence or state the limitation. Respect returned_rows and truncated in the result when citing rows. The current SQL result row limit is 100.",
+          "parameters": {
+            "properties": {
+              "sql": {
+                "title": "Sql",
+                "type": "string"
+              },
+              "max_rows": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Max Rows",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "sql"
+            ],
+            "title": "execute_sql_args",
+            "type": "object"
+          },
+          "strict": false
+        }
+      ]
+    },
+    "none": {
+      "instructions": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthere, \"最近\" limits the evidence window but does not make the whole recent window the candidate set. Read\nthe real recent window FIRST for time-determined questions (prefer `limit` at or near the schema maximum),\nthen identify, cluster, and summarize noteworthy topics from the returned messages.\nThis also applies when one question asks both whether anyone spoke in a bounded day and what they discussed.\nAn SQL COUNT alone cannot establish the complete empty retrieval proof required for `kind=no_result`;\nif you already counted by SQL for such a question, call get_recent_messages for that window before finalizing.\nFor resource inventories, when the user asks which repositories, GitHub projects, Skills, links, or\ntechnical resources are worth noticing, the candidate set is defined by URL-bearing or resource-name\nmessages. Even if the question says \"最近\", make lexical_search with the exact keyword \"github.com\" the FIRST retrieval call,\nusing the requested time_range when present; do not prefetch a broad recent window\nmerely to discover resources. When this URL-bearing lexical call returns hits, do not call\nget_recent_messages or execute_sql merely to discover, enumerate, or recount the same resources. If the\nuser explicitly asks for non-URL learning materials such as blogs, documents, papers, courses, or videos,\nsemantic_search may add that distinct conceptual evidence; it must not be replaced by a broad recent-window\nfetch.\nFor a question about what one person recently discussed, resolve the identity with find_members when\nneeded, then pass the returned canonical `user_id` in `sender_user_ids` to get_recent_messages. For a\ntopic-wide recent overview, omit `sender_user_ids`; it is a query filter inside the already trusted\nsession/time scope, not a replacement for that scope.\nNever guess what might have been discussed and search those guesses with lexical_search or semantic_search;\nthat guessing pattern produces empty retrievals for overview questions. Do not repeat get_recent_messages\nwith identical arguments; zero results is a normal outcome when the resolved window truly has no messages,\nand you must then state that plainly with the effective range instead of inventing topics.\nFor a time-determined question, a complete get_recent_messages result with zero total hits already\nsettles whether there were messages in that resolved window. Stop investigating that window; a soft\nplan's suggested SQL count or schema inspection is not a required extra step.\nUse lexical_search when the question contains a precise lexical target: exact names, URLs, repository\nnames, code identifiers, error messages, nicknames, or exact phrases (for example \"最近有人提到 matt skill 吗\").\nUse semantic_search when the user describes a concept without precise wording: paraphrases, conceptual\ndescriptions, or vague memories of the discussion (for example \"我记得有个解决上下文压缩的工具\").\nUse execute_sql only for structurally determined counts, aggregates, and comparisons such as message totals,\nper-sender ranking, GROUP BY breakdowns, or per-day counts.\nNormally make lexical_search the first retrieval call for a precise term, and normally make\nsemantic_search the first retrieval call when no precise term is supplied. Do not call the other\nretrieval tool merely to hedge; continue with it only when the first result is empty, weak,\nambiguous, or materially insufficient. The two tools are independent retrieval paths. If the first\nresult is weak, you may inspect the other visible retrieval tool in the same run, but do not invent\nevidence or claim that a tool was used when it was not. The legacy search_messages name may appear\nonly for compatibility callers.\nFor repository, GitHub-link, Skill, or resource recommendation questions, a concrete link is part\nof the requested evidence: use lexical_search with the exact keyword \"github.com\" as the first\nretrieval call to collect\nURL-bearing messages. For a broad lexical inventory search, you MUST set `limit` to the lexical maximum shown\nby the tool schema; never choose a smaller convenience limit such as 20 or 30, because that creates an\navoidable partial result when the total is within the trusted bound. Set `context_before` and\n`context_after` to 0 unless surrounding messages are needed to interpret a specific hit; this preserves\nall matching hits without spending the result bound on nearby context.\nTreat any question asking which/what repositories, Skills, resources, projects, courses, or recommendations\nas a broad inventory when the retrieval call is collecting list recall. Lexical calls that contribute to\nthat list MUST pass the lexical maximum shown by their schema. Semantic calls keep their own small\nsemantic maximum; do not inflate semantic `limit` to match lexical recall. A value such as 20 or 30 is\ninvalid planning for a broad lexical inventory when the schema exposes a larger lexical maximum.\nSearch the relevant Skill/resource term separately when needed. Do not\nanswer a link-seeking question from semantic hits alone when the URL-bearing lexical path has not\nbeen checked. If the user uses a relative time range, pass a `time_range` object such as\n`{\"kind\":\"relative\",\"amount\":30,\"unit\":\"day\",\"anchor\":\"archive_latest\"}` to the\nretrieval tool. Host code resolves archive_latest inside the trusted scope, records the effective start and end plus the absolute half-open range; never use SQL to calculate or copy timestamps, never use machine current time, and\nnever mentally convert milliseconds. State the Host-provided resolved range only when it is relevant to\nthe answer; copy its UTC text exactly instead of calculating a date.\nIf the question names multiple categories (for example GitHub repositories plus Skills), run one\nscoped lexical_search for each materially different category when the first category's results do\nnot cover it; do not stop after a zero-hit semantic search while a named category remains unchecked.\nUse find_members before filtering by a person when a nickname, group card, username, alias-like\nremark, or platform identity is ambiguous; treat multiple candidates as ambiguity and do not\nsilently choose one. `sender_user_ids` must contain the canonical `user_id` returned by\n`find_members.candidates[]`; a QQ number/UIN, nickname, group card, or display name is not a\nsender_user_id. When historical member identity context contains one unambiguous candidate, reuse\nthat exact `user_id`; otherwise call find_members again before filtering. For SQL sender statistics,\n`messages.sender_user_id` stores the same canonical `users.user_id`, while a QQ UIN is stored in\n`users.platform_uin`; never compare `messages.sender_user_id` directly to a QQ UIN. Use get_message_context only for a known `source_id` from a retrieval result\n(legacy `message_id` remains accepted) when its bounded local context is not enough;\ndo not call it for every hit or use it to cross a\nconversation boundary. Both tools return bounded, scope-enforced results.\nPlan tool suggestions and step wording are guidance; for a follow-up investigation about a\nspecifically named person, repository, product, project, or\nother entity, retain its most discriminative name or a specific alias present in returned messages\nas the lexical anchor; do not replace it with a generic category word alone. When requested evidence\nconcerns replies, later reactions, or firsthand use around a direct hit, use `get_message_context`\nwith the returned `source_id` that best anchors that discussion, rather than an unrelated mention of\nthe same entity. Add a category-level search only when the user asks for a category inventory or a\ndistinct requested evidence need remains uncovered by the entity-focused path.\nUse execute_sql for structurally determined counts, time-range totals, GROUP BY, sender/session\naggregation, and simple comparisons; do not scan many message results and count them yourself. For a\nURL/resource inventory, use the lexical result's returned/total metadata rather than issuing SQL just\nto recount the same hits; if a genuinely separate SQL fact is needed and the schema is unknown, call\nget_schema first.\nexecute_sql is read-only and scope-enforced outside the SQL text: do not try to expand access with\nWHERE, ATTACH, PRAGMA, internal tables, writes, or DDL. You do not need to add LIMIT for safety;\nthe tool applies max_rows. Respect returned_rows and truncated, and do not silently retry through a\ndifferent tool when SQL reports an error. If execute_sql reports an error, do not issue the same or a\nnear-identical SQL statement again; use already returned valid evidence or state the limitation plainly.\nDo not repeat the same retrieval tool with the same or nearly identical arguments after it returns\nno hits. Do not use either tool as a multi-query expansion loop: do not issue a second call to the\nsame tool for a translation, synonym, punctuation variant, or near-duplicate query. If a result is\nsufficient for the question, stop retrieving; otherwise use the other path only when it can add\nmaterially different evidence.\nDo not claim a search result that the tool did not return.\nMention or sharing does not mean recommendation or value; mention does not mean recommendation.\nAn intent to test does not prove actual use; intent to test does not prove actual use.\nReviewing someone else's output does not prove personal installation or use; reviewing output does not prove personal installation or use.\nHit count does not equal unique entity count; hit count does not equal unique entity count.\nIf retrieval or model projection is partial or truncated, do not make exhaustive or strong negative claims\nsuch as \"there are no other resources\", \"no link exists\", or \"these are all the resources\". State the\nobserved boundary and keep the conclusion uncertain.\nDo not expose internal scope, SQL, registry, runtime, or trace details.\nIf a tool reports no results, a weak result, or an error, state that plainly and do not silently\nswitch data sources.\nFor lexical_search and the legacy search_messages tool, keyword must be exactly one string. Omit unused optional filters or use null;\nnever send empty arrays. limit must be a positive integer no greater than the trusted result limit\nshown by the tool schema, and context_before/context_after must be non-negative integers. For\nsemantic_search, query must be one non-empty string and dense_top_k must be a positive integer.\nFor get_message_context, copy one exact `source_id` from a returned message projection (legacy\n`message_id` is also accepted) and keep\ncontext_before/context_after non-negative and bounded. For find_members, query must be one\nnon-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one\nSQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For\nget_schema, send no arguments. get_recent_messages may be called with no time arguments; the host then\ndefaults to the most recent 2 days anchored at archive_latest. For get_recent_messages, pass either a\ntime_range relative object or an explicit start/end timestamp pair (never both), limit must be a positive\ninteger within the schema bound, and omit session_ids when unused. When has_more is true, pass the exact\nnext_cursor back in a continuation call; never edit its position, time window, or session scope, and never\nrepeat a cursor.\nFor message citations, copy exactly one short `source_id` handle from a returned message projection or\nprovenance.message_sources entry. A handle is valid only in the current run/tool-result scope; do\nnot concatenate or invent handles, and do not copy run/tool/result/internal IDs. For structured\ncitations, including find_members candidate rows, schema tables, and SQL rows, use the returned\nstructured `source_id` handle. Do not copy or invent `value_snapshot`; Host code resolves the exact\nvalue from the current Tool Result. If a source handle is missing or unresolved, keep the claim\nunverified. Host finalization may drop only that invalid local citation and mark the answer\ndegraded; trusted provenance or scope violations still fail explicitly. Never invent a replacement\ncitation or hide the degradation from Trace.\nWhen producing the final answer, return exactly one valid json object with this exact shape.\nDo not use a markdown code fence, do not add commentary before or after the object,\nand do not return plain text outside the object:\n{\n  \"claims\": [{\n    \"text\": \"...\",\n    \"finding\": \"question-specific finding\",\n    \"criterion\": \"what makes the sources sufficient for this finding\",\n    \"sufficiency\": \"sufficient|partial|insufficient\",\n    \"sources\": [\"m1-1\"],\n    \"limitations\": []\n  }],\n  \"limitations\": []\n}\nDo not generate block IDs, evidence IDs, content-block bindings, or full provenance objects; Host\ncode deterministically generates those fields after validating the candidate. If any Tool Result was\nused to make a chat-derived claim, every factual claim must list at least one returned source handle.\nAn empty `sources` list is valid only for a genuinely non-tool answer; a tool-backed empty source\nlist fails finalization rather than silently producing an unsupported answer.\nWhen every executed retrieval tool returned zero results for the requested range, you MAY instead return\nexactly this zero-result JSON shape and nothing else:\n{\"kind\": \"no_result\", \"summary\": \"<state plainly that the resolved range contains no messages, including the effective range>\", \"limitations\": [\"<bounded caveats>\"]}\nThe summary must only describe the absence of results and query metadata; it must not state any positive\nfactual topic. This shape is accepted by the host only when the tool results genuinely contain no\nmessages. Numeric SQL aggregate metadata does not create messages in a verified empty time window;\nordinary SQL rows or retrieved messages still require normal claims with citations, otherwise finalization fails.\nKeep the JSON artifact bounded for Evidence and Citation bookkeeping, but do not use that bookkeeping\ngoal to compress the user-visible answer. The claim text is user-facing answer prose and is rendered\nverbatim; it is not a short label. adapt the amount of detail to the question: simple factual or yes/no\nquestions may be concise, while broad overviews, comparisons, opinion summaries, timelines, and\nresource inventories should cover each materially distinct finding with an overview and concrete\nsupporting details. Include participants, sequence, dates, differences, resource names, or URLs when\nthe returned evidence contains them. Distinguish observed facts, reasonable synthesis, and evidence\nlimitations. Do not merge independent findings solely to reduce the claim count, do not pad with\nunsupported background, and do not dump the transcript.\nUse one claim for each independently useful finding when that makes coverage clearer; grouping related\nfacts is fine when they form one finding. Do not repeat the same source or copy message text into the\nartifact. For repository, Skill, or resource questions, include the concrete URL in the claim text\nwhen the returned message contains one, and distinguish observed chat mentions from independently\nverified value. If a category has both URL-bearing messages and name-only messages, list the URL-bearing\nitems first and explicitly mark name-only items as having no link found in the retrieved evidence.\nState the effective time range when it is relevant.\nFor a broad repository, Skill, or resource inventory, group related items by category and cover the\ncategories supported by the returned evidence; do not enumerate every hit. Report remaining hit count\nwhen the result is partial, and choose representative items that preserve useful variety. The\n`sources` array for every claim MUST contain no more than 20 handles; for a broad inventory choose a\nbounded set of direct handles that supports the items actually listed rather than copying every hit\nhandle. Keep finding, criterion, and limitation fields concise: these are Evidence metadata, not a\nlength target for `claims[*].text`. The claims array and closing JSON braces are mandatory, and the\nfinal JSON must remain within the schema and model output budgets.\nSemantic expanded messages are context unless they are direct range-core evidence; cite only the\nreturned core message handles needed for the claim, and never repeat a URL/source across multiple\nevidence items unless the claims are materially different. Evidence and citation metadata must stay bounded and concise; answer prose must stay complete enough to answer the user's actual question.\nFor a recent overview, if the Tool Result exposes resolved_time_range, that Host-generated range is the\nonly valid time fact: copy its UTC text exactly when mentioning dates, and never calculate dates from\nmillisecond timestamps or use dates from historical context. Keep finding, criterion, and limitation text concise.\n\nSoft plan guidance only; do not execute steps mechanically or invent missing evidence.\nIntent: mixed. Goal: Archify 项目近期发展与 star 数提及.\n1. 检索 Archify 项目相关的近期讨论，定位项目发展动态与 star 数提及 (capabilities: lexical_search, semantic_search; evidence: 包含 Archify 的消息及其上下文; 提及 star 数的具体消息)\n2. 围绕关键命中消息查看同会话上下文，确认发展动态与 star 数讨论的完整语境 (capabilities: get_message_context; evidence: 关键消息的回复与后续讨论)\nSuccess criteria: 识别 Archify 项目近期发展相关的讨论内容; 确认是否有消息提及 Archify 的 star 数并给出具体数值或变化; 引用相关消息作为证据",
+      "input": [
+        {
+          "role": "user",
+          "content": "archify 项目最近发展怎么样？star 数有被提到过吗？"
+        }
+      ],
+      "model_settings": {
+        "temperature": null,
+        "top_p": null,
+        "frequency_penalty": null,
+        "presence_penalty": null,
+        "tool_choice": null,
+        "parallel_tool_calls": null,
+        "truncation": null,
+        "max_tokens": 16384,
+        "reasoning": {
+          "context": null,
+          "effort": "low",
+          "generate_summary": null,
+          "mode": null,
+          "summary": null
+        },
+        "verbosity": null,
+        "metadata": null,
+        "store": null,
+        "prompt_cache_retention": null,
+        "include_usage": null,
+        "response_include": null,
+        "top_logprobs": null,
+        "extra_query": null,
+        "extra_body": null,
+        "extra_headers": null,
+        "extra_args": {
+          "response_format": {
+            "type": "json_object"
+          }
+        },
+        "retry": null,
+        "context_management": null,
+        "prompt_cache_options": null,
+        "preserve_raw_usage": null,
+        "timeout": null
+      },
+      "tools": [
+        {
+          "name": "lexical_search",
+          "description": "Search Trivae messages with exact lexical matching and a bounded local context window. Normally call this first for repository names, URLs, code, error messages, nicknames, exact phrases, or other precise terms. For a paraphrase or conceptual description without a precise term, normally call semantic_search first instead. Do not call both just to hedge; do not repeat this tool with the same or nearly identical arguments after no hits, and do not use translation, synonym, punctuation, or near-duplicate queries as multi-query expansion. Use the other tool only when the first result is weak or insufficient. When filtering by a person, sender_user_ids must contain the canonical user_id from find_members, never a QQ number/UIN, nickname, group card, or display name. keyword must be exactly one non-empty string. Omit optional filters, or use null; do not send empty arrays. limit must be a positive integer within the current trusted result limit. For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. For a resource inventory, a non-empty github.com result is sufficient for URL-bearing recall: do not call get_recent_messages or execute_sql to enumerate or recount the same resources. A generic learning-material inventory may add one semantic_search for non-URL materials, but must not prefetch a broad recent window. context_before and context_after must be non-negative integers. Use the short source_id handle from the current Tool Result for each citation; do not copy full provenance. The current lexical result limit is 100. For broad inventory or resource-list recall, pass limit=100 exactly; do not use a smaller limit such as 20 or 30.",
+          "parameters": {
+            "properties": {
+              "keyword": {
+                "description": "Exactly one non-empty search string, not an array.",
+                "title": "Keyword",
+                "type": "string"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty session ID array; use null when unused.",
+                "title": "Session Ids"
+              },
+              "start_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer inclusive lower bound in milliseconds.",
+                "title": "Start Timestamp"
+              },
+              "end_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer exclusive upper bound in milliseconds.",
+                "title": "End Timestamp"
+              },
+              "time_range": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional relative range object anchored to archive_latest; Host resolves absolute timestamps.",
+                "title": "Time Range"
+              },
+              "sender_user_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty canonical user_id array from find_members; use null when unused. Never pass a QQ number/UIN, nickname, group card, or display name.",
+                "title": "Sender User Ids"
+              },
+              "message_types": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty message type array; use null when unused.",
+                "title": "Message Types"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Positive result count not greater than the trusted result limit.",
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "context_before": {
+                "default": 2,
+                "description": "Non-negative number of messages before each hit.",
+                "title": "Context Before",
+                "type": "integer"
+              },
+              "context_after": {
+                "default": 2,
+                "description": "Non-negative number of messages after each hit.",
+                "title": "Context After",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "keyword"
+            ],
+            "title": "lexical_search_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "semantic_search",
+          "description": "Search Trivae conversation meaning with the local semantic embedding index. Normally call this first when the user's wording differs from the wording in the chat, including paraphrases, conceptual descriptions, or vague memories without a precise term. For exact names, codes, or phrases, normally call lexical_search first instead. Do not call both just to hedge; do not repeat this tool with the same or nearly identical arguments after no hits, and do not use translation, synonym, punctuation, or near-duplicate queries as multi-query expansion. Use the other tool only when the first result is weak or insufficient. When filtering by a person, sender_user_ids must contain the canonical user_id from find_members, never a QQ number/UIN, nickname, group card, or display name. Omit optional filters, or use null; do not send empty arrays. The semantic index must be explicitly built and may report partial coverage. For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. The current semantic result limit is 20. For broad inventory or resource-list recall, pass limit=20 exactly; do not use a smaller limit such as 20 or 30.",
+          "parameters": {
+            "properties": {
+              "query": {
+                "title": "Query",
+                "type": "string"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Session Ids"
+              },
+              "start_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Start Timestamp"
+              },
+              "end_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "End Timestamp"
+              },
+              "time_range": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Time Range"
+              },
+              "sender_user_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sender User Ids"
+              },
+              "message_types": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message Types"
+              },
+              "source_message_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Source Message Id"
+              },
+              "reply_to_source_message_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Reply To Source Message Id"
+              },
+              "limit": {
+                "default": 10,
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "context_before": {
+                "default": 2,
+                "title": "Context Before",
+                "type": "integer"
+              },
+              "context_after": {
+                "default": 2,
+                "title": "Context After",
+                "type": "integer"
+              },
+              "dense_top_k": {
+                "default": 40,
+                "title": "Dense Top K",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "title": "semantic_search_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "get_recent_messages",
+          "description": "Read the most recent messages inside a time range for temporal browsing: use it as the first call when the candidate set is determined mainly by time and the user asks for an overview, summary, topic discovery, or what people talked about recently (for example '最近两天聊了什么', '昨天发生了什么'). For a repository, GitHub-link, Skill, or URL-bearing resource inventory, even when it says '最近', use lexical_search with keyword 'github.com' as the first retrieval call instead of prefetching this broad recent window. For a generic learning-material inventory, use lexical_search for links and semantic_search for non-URL materials; do not use this tool merely to broaden an inventory after retrieval. Do NOT guess topics and search them with lexical_search or semantic_search for this kind of question; read the real recent window first, then analyze and cite. Calling it without any time argument defaults to the most recent 2 days anchored at archive_latest (never machine current time). The tool returns the latest `limit` canonical messages of the resolved window in natural chronological reading order, plus returned/total counts and truncated. Zero results is a normal outcome when the window truly has no messages. Prefer limit at or near the schema maximum for broad recent-activity questions so a two-day overview is not needlessly partial. If has_more is true, call this tool again with the exact next_cursor returned by the host; the cursor keeps the original absolute window and session scope, and must not be edited or combined with a new time range. Do not repeat a cursor already used. The trusted session/time scope is enforced by the host and cannot be expanded by arguments. For a question about what one person recently discussed, first use find_members when the identity is ambiguous, then pass the returned canonical user_id in sender_user_ids; for a topic-wide recent overview, omit sender_user_ids. Never pass a display name, nickname, group card, or platform UIN as sender_user_ids. When the question contains a precise lexical target such as a URL, repository name, code identifier, error message, nickname, or exact phrase, use lexical_search instead; for concept paraphrases without precise wording use semantic_search.",
+          "parameters": {
+            "properties": {
+              "time_range": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Relative range object anchored to archive_latest, e.g.\n{\"kind\":\"relative\",\"amount\":2,\"unit\":\"day\",\"anchor\":\"archive_latest\"};\nHost resolves absolute timestamps and records them in Trace.",
+                "title": "Time Range"
+              },
+              "start_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer inclusive lower bound in milliseconds;\ncannot be combined with time_range.",
+                "title": "Start Timestamp"
+              },
+              "end_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional integer exclusive upper bound in milliseconds;\ncannot be combined with time_range.",
+                "title": "End Timestamp"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty session ID array; use null when unused.",
+                "title": "Session Ids"
+              },
+              "sender_user_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional non-empty canonical user_id array from find_members; use\nnull for a topic-wide query. Never pass a display name, nickname, group card, or UIN.",
+                "title": "Sender User Ids"
+              },
+              "cursor": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional host-issued continuation cursor. When present, pass it back exactly;\ndo not combine it with time_range or edit its scope/position.",
+                "title": "Cursor"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Positive message count no greater than the trusted result bound.",
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "title": "get_recent_messages_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "get_message_context",
+          "description": "Recover a larger but still bounded same-conversation context around one message_id or source_id returned by lexical_search or semantic_search. Call only when the search result's local context is insufficient; do not call this mechanically for every hit. It never crosses the trusted session/time scope and may return truncated=true.",
+          "parameters": {
+            "properties": {
+              "message_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message Id"
+              },
+              "source_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Source Id"
+              },
+              "context_before": {
+                "default": 8,
+                "title": "Context Before",
+                "type": "integer"
+              },
+              "context_after": {
+                "default": 8,
+                "title": "Context After",
+                "type": "integer"
+              }
+            },
+            "title": "get_message_context_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "find_members",
+          "description": "Find candidate members by nickname, group card, username/display name, alias-like remark, platform user ID, or UIN. Use before filtering retrieval by a person when the identity is unclear. Return candidates and matching reasons; multiple candidates are normal, so do not claim a unique person without resolving the ambiguity. Use the returned candidate's canonical user_id for sender_user_ids; never pass its UIN or display name. The current member candidate limit is 100.",
+          "parameters": {
+            "properties": {
+              "query": {
+                "title": "Query",
+                "type": "string"
+              },
+              "session_ids": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Session Ids"
+              },
+              "limit": {
+                "default": 20,
+                "title": "Limit",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "title": "find_members_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "get_schema",
+          "description": "Inspect the exposed physical canonical SQLite schema before writing SQL. Returns public tables, columns, and relationships only; it does not return message rows, does not change the trusted scope, and does not expose internal ingestion or derived tables. Call this when the available table or column names are not already known.",
+          "parameters": {
+            "properties": {},
+            "title": "get_schema_args",
+            "type": "object"
+          },
+          "strict": false
+        },
+        {
+          "name": "execute_sql",
+          "description": "Execute one read-only SQL statement against the exposed canonical SQLite tables for exact counts, GROUP BY, time-range totals, sender/session aggregation, and other deterministic structured questions. Call get_schema first when table or column names are uncertain. The trusted session/time scope is enforced by the tool and cannot be expanded by SQL WHERE. Do not add a LIMIT just for safety; max_rows is bounded by the tool. Writes, DDL, ATTACH, PRAGMA, internal tables, and scope escape are rejected. For sender statistics, filter messages.sender_user_id by canonical users.user_id; a QQ UIN belongs to users.platform_uin and must be resolved through users rather than compared directly to messages.sender_user_id. No query rewrite or retrieval fallback is performed. Never use this tool to recount URL/resource retrieval results. If a statement reports an error, do not repeat the same or a near-identical statement; use existing evidence or state the limitation. Respect returned_rows and truncated in the result when citing rows. The current SQL result row limit is 100.",
+          "parameters": {
+            "properties": {
+              "sql": {
+                "title": "Sql",
+                "type": "string"
+              },
+              "max_rows": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Max Rows",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "sql"
+            ],
+            "title": "execute_sql_args",
+            "type": "object"
+          },
+          "strict": false
+        }
+      ]
+    }
+  },
+  "case": {
+    "schema_version": 1,
+    "case_id": "dev-cite-archify",
+    "version": 1,
+    "suite_tags": [
+      "category:citation_evidence",
+      "benchmark:development"
+    ],
+    "dataset_snapshot": {
+      "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+      "canonical_database_identity": "sqlite-canonical-v1:sources=[{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1028505110\",\"file_name\":\"27届计算机就业抱团沉淀交流群(1028505110).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"cs61abc全量(1039179741).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:cs61abc全量(1039179741).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc_1039179741_20260816_103251726.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc增量_1039179741_20260728_011844132.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260726_224650625.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260816_102935377.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群111_1040412855_20260816_102330790.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群_1040412855_20260726_225644381.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"识海(吉祥物是西娅公主)(750807478).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"贺兰の计算机技术交流群(383550736).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:贺兰の计算机技术交流群(383550736).json\"}]",
+      "schema_version": "canonical-m1-v1",
+      "source_identity": "[{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1028505110\",\"file_name\":\"27届计算机就业抱团沉淀交流群(1028505110).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"cs61abc全量(1039179741).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:cs61abc全量(1039179741).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc_1039179741_20260816_103251726.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc增量_1039179741_20260728_011844132.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260726_224650625.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260816_102935377.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群111_1040412855_20260816_102330790.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群_1040412855_20260726_225644381.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"识海(吉祥物是西娅公主)(750807478).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"贺兰の计算机技术交流群(383550736).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:贺兰の计算机技术交流群(383550736).json\"}]",
+      "message_count": 473236,
+      "relevant_time_range": [
+        1753011800000,
+        1786847688000
+      ],
+      "deterministic_fingerprint": "{\"first_timestamp\":1753011800000,\"last_timestamp\":1786847688000,\"lexical_index\":{\"message_count\":473236,\"present\":true},\"message_count\":473236,\"schema_version\":\"canonical-m1-v1\",\"sources\":[{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1028505110\",\"file_name\":\"27届计算机就业抱团沉淀交流群(1028505110).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"cs61abc全量(1039179741).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:cs61abc全量(1039179741).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc_1039179741_20260816_103251726.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc增量_1039179741_20260728_011844132.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260726_224650625.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260816_102935377.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群111_1040412855_20260816_102330790.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群_1040412855_20260726_225644381.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"识海(吉祥物是西娅公主)(750807478).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"贺兰の计算机技术交流群(383550736).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:贺兰の计算机技术交流群(383550736).json\"}]}",
+      "created_at": "2026-08-30T10:13:24.315+00:00",
+      "status": "available",
+      "manifest": {
+        "first_timestamp": 1753011800000,
+        "last_timestamp": 1786847688000,
+        "lexical_index": {
+          "message_count": 473236,
+          "present": true
+        },
+        "message_count": 473236,
+        "schema_version": "canonical-m1-v1",
+        "sources": [
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "1028505110",
+            "file_name": "27届计算机就业抱团沉淀交流群(1028505110).json",
+            "format_version": "5.5.64",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "1039179741",
+            "file_name": "cs61abc全量(1039179741).json",
+            "format_version": "5.5.64",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:cs61abc全量(1039179741).json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "1039179741",
+            "file_name": "group_cs61abc_1039179741_20260816_103251726.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "1039179741",
+            "file_name": "group_cs61abc增量_1039179741_20260728_011844132.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "831907794",
+            "file_name": "group_一群开心快乐的小奶龙_831907794_20260726_224359371.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "831907794",
+            "file_name": "group_一群开心快乐的小奶龙_831907794_20260816_103546938.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "677019167",
+            "file_name": "group_星河社（星河大学）_677019167_20260726_224650625.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "677019167",
+            "file_name": "group_星河社（星河大学）_677019167_20260816_102935377.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "1040412855",
+            "file_name": "group_爪哇就业交流群111_1040412855_20260816_102330790.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "1040412855",
+            "file_name": "group_爪哇就业交流群_1040412855_20260726_225644381.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "750807478",
+            "file_name": "group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "383550736",
+            "file_name": "group_贺兰の计算机技术交流群_383550736_20260816_104025089.json",
+            "format_version": "0.1.0",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "750807478",
+            "file_name": "识海(吉祥物是西娅公主)(750807478).json",
+            "format_version": "5.5.64",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json"
+          },
+          {
+            "adapter": "qq_chat_exporter",
+            "external_chat_id": "383550736",
+            "file_name": "贺兰の计算机技术交流群(383550736).json",
+            "format_version": "5.5.64",
+            "platform": "qq",
+            "source_id": "qq_chat_exporter:贺兰の计算机技术交流群(383550736).json"
+          }
+        ]
+      }
+    },
+    "data_access_scope": {
+      "allowed_session_ids": null,
+      "start_timestamp": null,
+      "end_timestamp": null,
+      "max_results": 100
+    },
+    "query": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+    "locale": "zh-CN",
+    "time_context": null,
+    "reference_findings": [
+      {
+        "finding_id": "relevant",
+        "criterion": "gt.relevant",
+        "expected_semantics": "包含 tt-a1i/archify 的消息（LIKE 全库扫描枚举，共 3 条）",
+        "reference_evidence": [
+          {
+            "evidence_id": "ev:qq:1039179741:7665652181386089161",
+            "relation": "supports",
+            "source_type": "message",
+            "locator": {
+              "internal_message_id": "qq:1039179741:7665652181386089161"
+            },
+            "why_relevant": "包含关键词 tt-a1i/archify",
+            "provenance": {
+              "source": "deterministic-construction:shared",
+              "created_at": "2026-08-30T00:00:00+00:00",
+              "method": "deterministic LIKE scan / manual pick",
+              "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+              "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+              "adjudicated": true,
+              "limitations": []
+            }
+          },
+          {
+            "evidence_id": "ev:qq:1039179741:7670742957499269309",
+            "relation": "supports",
+            "source_type": "message",
+            "locator": {
+              "internal_message_id": "qq:1039179741:7670742957499269309"
+            },
+            "why_relevant": "包含关键词 tt-a1i/archify",
+            "provenance": {
+              "source": "deterministic-construction:shared",
+              "created_at": "2026-08-30T00:00:00+00:00",
+              "method": "deterministic LIKE scan / manual pick",
+              "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+              "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+              "adjudicated": true,
+              "limitations": []
+            }
+          },
+          {
+            "evidence_id": "ev:qq:1039179741:7673819648921352381",
+            "relation": "supports",
+            "source_type": "message",
+            "locator": {
+              "internal_message_id": "qq:1039179741:7673819648921352381"
+            },
+            "why_relevant": "包含关键词 tt-a1i/archify",
+            "provenance": {
+              "source": "deterministic-construction:shared",
+              "created_at": "2026-08-30T00:00:00+00:00",
+              "method": "deterministic LIKE scan / manual pick",
+              "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+              "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+              "adjudicated": true,
+              "limitations": []
+            }
+          }
+        ],
+        "annotation_completeness": "exhaustive",
+        "provenance": {
+          "source": "deterministic-construction:dev-cite-archify",
+          "created_at": "2026-08-30T00:00:00+00:00",
+          "method": "deterministic LIKE scan; hit_count=3",
+          "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+          "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+          "adjudicated": true,
+          "limitations": []
+        },
+        "known_limitations": [],
+        "critical": false
+      },
+      {
+        "finding_id": "zero",
+        "criterion": "gt.expected_zero_result",
+        "expected_semantics": "false",
+        "reference_evidence": [],
+        "annotation_completeness": "exhaustive",
+        "provenance": {
+          "source": "deterministic-construction:dev-cite-archify",
+          "created_at": "2026-08-30T00:00:00+00:00",
+          "method": "predicate scan proves non-empty",
+          "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+          "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+          "adjudicated": true,
+          "limitations": []
+        },
+        "known_limitations": [],
+        "critical": false
+      },
+      {
+        "finding_id": "fact",
+        "criterion": "gt.expected_fact",
+        "expected_semantics": "[\"tt-a1i/archify\"]",
+        "reference_evidence": [],
+        "annotation_completeness": "exhaustive",
+        "provenance": {
+          "source": "deterministic-construction:dev-cite-archify",
+          "created_at": "2026-08-30T00:00:00+00:00",
+          "method": "extractive fact; citation required",
+          "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+          "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+          "adjudicated": true,
+          "limitations": []
+        },
+        "known_limitations": [],
+        "critical": true
+      }
+    ],
+    "uncertainty_constraints": [
+      "期望答案明确引用来源消息。"
+    ],
+    "negative_constraints": [
+      "不得无 citation 输出事实 claim。"
+    ],
+    "critical_requirements": [
+      "每个事实 claim 至少一个可解析 source handle。"
+    ],
+    "diagnostic_expectations": null,
+    "review_policy": {
+      "rubric_version": "m7-v1",
+      "reviewer_types": [
+        "human"
+      ],
+      "quality_axes": [
+        "retrieval_recall",
+        "evidence_coverage",
+        "citation_validity",
+        "claim_evidence_entailment",
+        "enumeration_completeness",
+        "overclaim_unsupported_inference",
+        "user_facing_readability"
+      ],
+      "blind_pairwise": true,
+      "human_adjudication_on_disagreement": true
+    },
+    "provenance": {
+      "source": "dev-construction:dev-cite-archify",
+      "method": "deterministic LIKE scan (3 hits); human adjudicated 2026-08-31",
+      "created_at": "2026-08-30T00:00:00+00:00",
+      "notes": "human adjudication 2026-08-31: Accept (GT unchanged)"
+    }
+  },
+  "source": ".trellis/tasks/10-02-planner-low-none-e2e/experiment/planner_reasoning_ab/e2e"
+}

@@ -1,0 +1,29 @@
+{
+  "seed": 20261003,
+  "order": [
+    {
+      "case_id": "dev-cite-archify",
+      "order": 1,
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "case_id": "dev-cite-archify",
+      "order": 2,
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "case_id": "dev-cite-archify",
+      "order": 3,
+      "treatment": "none",
+      "attempt": 2
+    },
+    {
+      "case_id": "dev-cite-archify",
+      "order": 4,
+      "treatment": "low",
+      "attempt": 2
+    }
+  ]
+}

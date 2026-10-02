@@ -1,0 +1,91 @@
+{
+  "review_source": "root unblinded factual audit; not independent blind review or human adjudication",
+  "original_none_failure_reproduced": {
+    "none_r1": false,
+    "none_r2": false
+  },
+  "runs": [
+    {
+      "treatment": "low",
+      "attempt": 1,
+      "findings": [
+        {
+          "kind": "retrieval_context_omission",
+          "detail": "7k/gallery not in any returned ToolResult; earlier share was not deepened. All three narrow GT messages still selected.",
+          "message_id": "qq:1039179741:7665652145777619588"
+        },
+        {
+          "kind": "answer_duration_error",
+          "claim_id": "claim-1",
+          "quote": "说明这两个月里",
+          "detail": "Stated interval is 30 days, not two months."
+        }
+      ]
+    },
+    {
+      "treatment": "none",
+      "attempt": 1,
+      "findings": [
+        {
+          "kind": "targeted_original_errors_absent",
+          "detail": "7k then 9.5k reported; no unique-number contradiction; 真的假的 retrieved but not selected/attributed."
+        },
+        {
+          "kind": "supplementary_noise",
+          "detail": "Generic star lexical query returns partial unrelated-project evidence; numbers correctly disambiguated, increases tokens without necessary core Archify coverage."
+        }
+      ]
+    },
+    {
+      "treatment": "none",
+      "attempt": 2,
+      "findings": [
+        {
+          "kind": "targeted_original_errors_absent",
+          "detail": "7k then 9.5k supported; no unique-number contradiction or unsupported reaction. No generic star search."
+        }
+      ]
+    },
+    {
+      "treatment": "low",
+      "attempt": 2,
+      "findings": [
+        {
+          "kind": "evidence_answer_temporal_relation_error",
+          "claim_id": "claim-2",
+          "evidence_id": "e2",
+          "quote": "此外在同一天的更早消息中",
+          "source_ids": [
+            "qq:1039179741:7665652145777619588",
+            "qq:1039179741:7670742957499269309"
+          ],
+          "timestamps_utc": [
+            "2026-07-23T09:25:23Z",
+            "2026-08-06T02:40:20Z"
+          ],
+          "detail": "Both correct timestamps retrieved and selected; incorrect same-day relation added by Evidence/Answer."
+        },
+        {
+          "kind": "unsupported_broad_negative_claim",
+          "claim_id": "claim-4",
+          "detail": "archify AND star zero matches only support same-message exact-term absence; not all context discussions or other references. No counterexample is claimed."
+        }
+      ]
+    }
+  ],
+  "tool_failure_attribution": {
+    "runs_affected": 4,
+    "calls": 7,
+    "wrong_provider_argument": {
+      "message_id": "m1-*"
+    },
+    "correct_recovery_argument": {
+      "source_id": "m1-*"
+    },
+    "resolver_owner": "existing GetMessageContextSDKToolAdapter / RuntimeContext",
+    "normalized_trace_argument": "canonical message_id after handle resolution",
+    "schema_observation": "description conflates both locator names; property descriptions absent",
+    "causal_limit": "ambiguity observed, but schema wording intervention not tested"
+  },
+  "conclusion": "Identical first requests within each frozen guidance produced downstream variation. Original none errors did not recur twice; this does not prove quality equivalence or erase prior Gate A. ToolResult was not fixed, so variance cannot be attributed solely to Answerer."
+}

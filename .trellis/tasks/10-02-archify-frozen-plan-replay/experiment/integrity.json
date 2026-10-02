@@ -1,0 +1,10 @@
+{
+  "logical_runs": 4,
+  "frozen_planner_calls": 4,
+  "planner_provider_requests": 0,
+  "actual_provider_requests": 16,
+  "provider_responses": 16,
+  "retry_count": 0,
+  "actual_initial_inputs_equal_except_guidance": true,
+  "code_and_snapshot_unchanged": true
+}

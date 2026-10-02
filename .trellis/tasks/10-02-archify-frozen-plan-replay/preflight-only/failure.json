@@ -1,0 +1,7 @@
+{
+  "stage": "provider_free_preflight",
+  "exception": "RuntimeError: snapshot changed since the original experiment",
+  "root_cause": "materialization created_at incorrectly compared as dataset content",
+  "formal_attempts": 0,
+  "deepseek_requests": 0
+}

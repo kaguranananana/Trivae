@@ -2,6 +2,8 @@
 
 2026-10-02 的真实生产 low/none targeted E2E 使用 `run_p1_e2e.py`，走现有 EvaluationRunner → Application.query。固定 8 Case、16 runs、63 实际 Provider requests；出现 2 条 none 臂最终质量回退，按 Gate A 停止扩大。完整身份、隔离验证、盲审、工具链路与成本边界见 [report.md](../../.trellis/tasks/10-02-planner-low-none-e2e/experiment/planner_reasoning_ab/e2e/report.md)。以下内容仍为历史 Planner-only 实验记录。
 
+同日后续 `run_frozen_plan_replay.py` 完成 Archify 两份固定 Plan 各两次重放，4 runs / 16 downstream HTTP，Planner HTTP=0。原 none 两处错误没有重现，同一 guidance 下出现检索与时间关系方差；详见 [冻结 Plan 重放报告](../../.trellis/tasks/10-02-archify-frozen-plan-replay/experiment/report.md)。该局部归因实验不撤销此前 Gate A，也不证明质量等价。
+
 > 历史实验目录：下文 P2 指压缩 v3 prompt + non-thinking 的旧 treatment，不是当前生产 prompt。2026-09-28 的生产收口直接恢复 `68286d5` 的 P1 prompt，只保留 DeepSeek Flash Planner 专属 `reasoning_effort=none`。已有 `ablation-p1-nonthinking/` 的 24/24 有效、0 次 `provider_length` 是 Development 观察；没有新的付费运行或质量保持结论。
 
 当前源码下的 `--final` 路径会把生产 Planner prompt 标为历史 P2，**不再复现旧 P2 treatment**；下方命令仅作为历史执行记录保留，不应用来追加对比数据。原始 `run-config.json`、`runs.jsonl` 与盲审 artifact 保持原样。

@@ -1,0 +1,83 @@
+{
+  "low": {
+    "plan": {
+      "version": 1,
+      "title": "archify 近期发展与 star 提及核查",
+      "intent": "mixed",
+      "steps": [
+        {
+          "goal": "以 archify 为锚点检索近期消息，提取项目发展、更新或热度信号",
+          "suggested_tools": [
+            "lexical_search"
+          ],
+          "evidence_needed": [
+            "包含 archify 的消息及时间",
+            "项目更新、改版、发布或发展描述"
+          ]
+        },
+        {
+          "goal": "精确检索 archify 与 star 的共现，检查是否出现 star 数陈述",
+          "suggested_tools": [
+            "lexical_search"
+          ],
+          "evidence_needed": [
+            "archify 加 star 的精确消息",
+            "star 数值、变化或 star 相关讨论"
+          ]
+        },
+        {
+          "goal": "对 archify star 重要命中回溯同日对话上下文，确认是直接提及还是转述/意向",
+          "suggested_tools": [
+            "get_message_context"
+          ],
+          "evidence_needed": [
+            "回复或后续讨论中的 star 数证据",
+            "firsthand 使用或直接陈述"
+          ]
+        }
+      ],
+      "success_criteria": [
+        "覆盖 archify 近期消息或明确记录无近期提及",
+        "识别至少一条项目发展或更新证据",
+        "确认是否提及 star 数并提取数值或变化",
+        "区分直接 star 陈述与单纯热度、转发或意向"
+      ]
+    },
+    "guidance": "Soft plan guidance only; do not execute steps mechanically or invent missing evidence.\nIntent: mixed. Goal: archify 近期发展与 star 提及核查.\n1. 以 archify 为锚点检索近期消息，提取项目发展、更新或热度信号 (capabilities: lexical_search; evidence: 包含 archify 的消息及时间; 项目更新、改版、发布或发展描述)\n2. 精确检索 archify 与 star 的共现，检查是否出现 star 数陈述 (capabilities: lexical_search; evidence: archify 加 star 的精确消息; star 数值、变化或 star 相关讨论)\n3. 对 archify star 重要命中回溯同日对话上下文，确认是直接提及还是转述/意向 (capabilities: get_message_context; evidence: 回复或后续讨论中的 star 数证据; firsthand 使用或直接陈述)\nSuccess criteria: 覆盖 archify 近期消息或明确记录无近期提及; 识别至少一条项目发展或更新证据; 确认是否提及 star 数并提取数值或变化; 区分直接 star 陈述与单纯热度、转发或意向"
+  },
+  "none": {
+    "plan": {
+      "version": 1,
+      "title": "Archify 项目近期发展与 star 数提及",
+      "intent": "mixed",
+      "steps": [
+        {
+          "goal": "检索 Archify 项目相关的近期讨论，定位项目发展动态与 star 数提及",
+          "suggested_tools": [
+            "lexical_search",
+            "semantic_search"
+          ],
+          "evidence_needed": [
+            "包含 Archify 的消息及其上下文",
+            "提及 star 数的具体消息"
+          ]
+        },
+        {
+          "goal": "围绕关键命中消息查看同会话上下文，确认发展动态与 star 数讨论的完整语境",
+          "suggested_tools": [
+            "get_message_context"
+          ],
+          "evidence_needed": [
+            "关键消息的回复与后续讨论"
+          ]
+        }
+      ],
+      "success_criteria": [
+        "识别 Archify 项目近期发展相关的讨论内容",
+        "确认是否有消息提及 Archify 的 star 数并给出具体数值或变化",
+        "引用相关消息作为证据"
+      ]
+    },
+    "guidance": "Soft plan guidance only; do not execute steps mechanically or invent missing evidence.\nIntent: mixed. Goal: Archify 项目近期发展与 star 数提及.\n1. 检索 Archify 项目相关的近期讨论，定位项目发展动态与 star 数提及 (capabilities: lexical_search, semantic_search; evidence: 包含 Archify 的消息及其上下文; 提及 star 数的具体消息)\n2. 围绕关键命中消息查看同会话上下文，确认发展动态与 star 数讨论的完整语境 (capabilities: get_message_context; evidence: 关键消息的回复与后续讨论)\nSuccess criteria: 识别 Archify 项目近期发展相关的讨论内容; 确认是否有消息提及 Archify 的 star 数并给出具体数值或变化; 引用相关消息作为证据"
+  }
+}
