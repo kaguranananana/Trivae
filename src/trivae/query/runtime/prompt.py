@@ -80,7 +80,8 @@ sender_user_id. When historical member identity context contains one unambiguous
 that exact `user_id`; otherwise call find_members again before filtering. For SQL sender statistics,
 `messages.sender_user_id` stores the same canonical `users.user_id`, while a QQ UIN is stored in
 `users.platform_uin`; never compare `messages.sender_user_id` directly to a QQ UIN. Use get_message_context only for a known `source_id` from a retrieval result
-(legacy `message_id` remains accepted) when its bounded local context is not enough;
+(a run-local mN-K handle, for example source_id="m1-1") when its bounded local context is not enough.
+The legacy `message_id` parameter accepts only a canonical internal message ID, never an mN-K handle;
 do not call it for every hit or use it to cross a
 conversation boundary. Both tools return bounded, scope-enforced results.
 Plan tool suggestions and step wording are guidance; for a follow-up investigation about a
@@ -107,6 +108,10 @@ same tool for a translation, synonym, punctuation variant, or near-duplicate que
 sufficient for the question, stop retrieving; otherwise use the other path only when it can add
 materially different evidence.
 Do not claim a search result that the tool did not return.
+For temporal relations in claim text, finding, or criterion, compare the returned canonical timestamps.
+Do not call messages on different dates "same day", reverse earlier/later order, or infer a reply/reaction
+from adjacency alone. A citation to the correct messages does not support an invented temporal relation.
+Keep sender_name separate from message content; a display name is not something that person said.
 Mention or sharing does not mean recommendation or value; mention does not mean recommendation.
 An intent to test does not prove actual use; intent to test does not prove actual use.
 Reviewing someone else's output does not prove personal installation or use; reviewing output does not prove personal installation or use.
@@ -121,8 +126,8 @@ For lexical_search and the legacy search_messages tool, keyword must be exactly 
 never send empty arrays. limit must be a positive integer no greater than the trusted result limit
 shown by the tool schema, and context_before/context_after must be non-negative integers. For
 semantic_search, query must be one non-empty string and dense_top_k must be a positive integer.
-For get_message_context, copy one exact `source_id` from a returned message projection (legacy
-`message_id` is also accepted) and keep
+For get_message_context, copy one exact `source_id` from a returned message projection into source_id.
+Use message_id only for a known canonical internal message ID; provide exactly one identity parameter. Keep
 context_before/context_after non-negative and bounded. For find_members, query must be one
 non-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one
 SQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For

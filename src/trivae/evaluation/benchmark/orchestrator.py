@@ -440,7 +440,7 @@ def judge_records(
     import asyncio
 
     from trivae.capabilities.contracts import GetMessageContextInput
-    from trivae.evaluation.benchmark.judge import LLMClaimJudge
+    from trivae.evaluation.benchmark.judge import LLMClaimJudge, canonical_message_excerpt
 
     cases = load_cases_dir(cases_dir)
     judge = LLMClaimJudge(settings)
@@ -516,7 +516,10 @@ def judge_records(
                 messages = getattr(envelope.data, "messages", ())
                 if not messages:
                     raise EvaluationContractError(f"judge evidence {message_id}: source message unavailable")
-                excerpts[message_id] = messages[0].normalized_content
+                # 日期关系属于 grounded claim 检查；正文 alone 不足以验证“同一天”。
+                excerpts[message_id] = canonical_message_excerpt(
+                    timestamp_ms=messages[0].timestamp, content=messages[0].normalized_content,
+                )
             judgment = asyncio.run(
                 judge.judge(
                     run_id=run_id,

@@ -829,3 +829,13 @@ Good：同一 guidance 下观察到不同 context 参数后，分别归因检索
 ### 7. Wrong vs Correct
 
 Wrong：看到恢复后的 Trace canonical ID，声称模型已自行选择 canonical ID。Correct：保存 Provider `source_id` 与 adapter 归一化后的 `message_id`，明确映射 ownership。
+
+
+## 16. Context source identity 与 temporal evidence regression（2026-10-02）
+
+- `GetMessageContextSDKToolAdapter` 的真实 SDK/Pydantic schema 优先公开 `source_id`：当前 run-local `mN-K` handle（如 `m1-1`）必须填此字段。`message_id` 只接受 canonical internal message ID；两字段互斥，保留 canonical 直接查询，不按形状做 silent alias fallback。
+- ToolResult projection 的 source_id 与模型 schema/prompt 语义保持一致。source_id 经既有 RuntimeContext resolver 后，Capability normalized Trace 记录 canonical message_id；model_output/HTTP 原始 arguments 保留 Provider 所给字段。不能从归一化 ID 推断模型自行生成了 canonical ID。
+- 真实 low-r2 两条消息日期相隔1185297秒，旧 Claim/finding/criterion 写成同日。保存于 `evaluation/regressions/archify-temporal-relation.json`，不改原 artifact/GT。Runtime prompt 要求时间关系来自 canonical 时间戳，并且不能从邻接猜 reply/reaction。
+- 既有 benchmark Tier2 Judge 的 canonical evidence excerpt 必须保留 UTC 时间，正文放入独立 message_content 标签。引用存在不是 citation entailment 证明；finding 自己不能证明来源关系。
+- Provider-free regression 稳定否定已明确记录的错误日期关系并验证 Judge 输入/parser；没有通用自然语言 temporal checker 或生产语义硬拒绝，不能从 mock verdict 推出真实 Judge 准确率。
+- 验证见 `test_context_source_contract.py`、`test_temporal_relation_regression.py`、`test_benchmark_judge.py`；工程收口见本轮 task 的 report/validation。

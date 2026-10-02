@@ -61,7 +61,7 @@ def test_provider_error_is_recorded_in_failed_item(tmp_path, settings):
     """单条 provider 错误落盘，完整原因不被异常类名覆盖。"""
     app = _application()
     app.invoke_tool.return_value = SimpleNamespace(
-        error=None, data=SimpleNamespace(messages=[SimpleNamespace(normalized_content="原始证据")]),
+        error=None, data=SimpleNamespace(messages=[SimpleNamespace(timestamp=1784798723000, normalized_content="原始证据")]),
     )
     output = tmp_path / "judgments.json"
     with patch.object(LLMClaimJudge, "judge", new_callable=AsyncMock, side_effect=EvaluationContractError("provider timeout after 20s")):
@@ -150,3 +150,18 @@ def test_judge_uses_provider_session_contract(settings, provider, expected):
     create_kwargs = client.chat.completions.create.call_args.kwargs
     assert create_kwargs["reasoning_effort"] == "low"
     assert create_kwargs["max_tokens"] == settings.max_output_tokens
+
+
+def test_existing_judge_entrypoint_preserves_canonical_time_in_evidence(tmp_path, settings):
+    """真实 judge_records 投影包含来源日期，不能只测试孤立的格式函数。"""
+    app = _application()
+    app.invoke_tool.return_value = SimpleNamespace(error=None,
+        data=SimpleNamespace(messages=[SimpleNamespace(timestamp=1784798723000, normalized_content="已经7k了")]))
+    response = json.dumps({"claims": [{"block_id": "b1", "text": "错误同日关系", "is_factual": True, "supported": False}],
+        "citations": []})
+    with patch.object(LLMClaimJudge, "_complete", new_callable=AsyncMock, return_value=response) as complete:
+        result = _run(app, settings, tmp_path / "judgments.json")
+    assert result["failed"] == 0
+    excerpt = complete.call_args.args[0]["evidence_excerpts"]["m1"]
+    assert "2026-07-23T09:25:23Z" in excerpt
+    assert "message_content: 已经7k了" in excerpt

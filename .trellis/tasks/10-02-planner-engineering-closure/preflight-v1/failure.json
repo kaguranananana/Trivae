@@ -1,0 +1,7 @@
+{
+  "type": "EvaluationContractError",
+  "message": "runtime_configuration.api_key_configured must not contain secrets",
+  "formal_attempts": 0,
+  "provider_calls": 0,
+  "preflight_failure": true
+}

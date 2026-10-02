@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Mapping, Sequence
 
 from openai import AsyncOpenAI, OpenAIError
@@ -41,12 +42,24 @@ content blocks、每个 block 的 citation 绑定（指向的 evidence 摘要）
    supported | partially_supported | unsupported | insufficient_evidence
 
 规则：只能基于给出的 evidence 摘要判断，不得使用外部知识；evidence 摘要不含所需信息时
-verdict 用 insufficient_evidence。对每个 content block 至少输出一条 atomic claim；
+verdict 用 insufficient_evidence。来源的 timestamp_utc 是 canonical 时间事实，message_content 是消息正文。
+逐项核对同一天、较早/较晚、回复/反应关系；引用正确消息不等于支持额外关系，
+相邻消息本身不证明回复。不要把 Evidence finding 自己的关系描述当作来源事实。
+对每个 content block 至少输出一条 atomic claim；
 对输入的每个 citation 绑定恰好输出一条 verdict。
 仅返回 JSON object：
 {"claims":[{"block_id":"...","text":"...","is_factual":true,"supported":true}],
  "citations":[{"content_block_id":"...","evidence_ids":["..."],"verdict":"supported"}]}
 """
+
+
+def canonical_message_excerpt(*, timestamp_ms: int, content: str) -> str:
+    """Judge 复用 canonical 日期和正文；先保留日期，避免正文截断隐藏关系事实。"""
+
+    # canonical 时间以毫秒保存；只在 Host 中转换为明确的 UTC 文本。
+    timestamp_utc = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).isoformat().replace("+00:00", "Z")
+    # 标签把元数据与消息正文分开；既有 Judge 的 bounded excerpt 会保留前面的时间。
+    return f"timestamp_utc: {timestamp_utc}\nmessage_content: {content}"
 
 
 @dataclass(frozen=True)

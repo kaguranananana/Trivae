@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from agents import RunContextWrapper, function_tool
+from pydantic import Field
 
 from trivae.capabilities.contracts import (
     CapabilityContractError,
@@ -555,8 +556,10 @@ class GetMessageContextSDKToolAdapter:
         """创建接受 legacy message_id 或当前 Tool Result source_id 的 bounded context tool。"""
 
         description = (
-            "Recover a larger but still bounded same-conversation context around one message_id or source_id "
-            "returned by lexical_search or semantic_search. Call only when the search result's local "
+            "Recover a larger but still bounded same-conversation context around one returned message. "
+            "Prefer source_id for a run-local mN-K handle (for example m1-1) from a ToolResult. "
+            "Use message_id only for a canonical internal message ID, never for a source handle. "
+            "Provide exactly one identity parameter. Call only when the search result's local "
             "context is insufficient; do not call this mechanically for every hit. It never crosses "
             "the trusted session/time scope and may return truncated=true."
         )
@@ -569,8 +572,18 @@ class GetMessageContextSDKToolAdapter:
         )
         async def get_message_context(
             context: RunContextWrapper[RuntimeContext],
-            message_id: str | None = None,
-            source_id: str | None = None,
+            # 字段说明进入 SDK/Pydantic 生成的真实 schema；短 handle 必须显式填 source_id。
+            source_id: Annotated[str | None, Field(description=(
+                "A run-local message source handle in mN-K form, for example m1-1 or m2-3, "
+                "copied exactly from a current ToolResult source_id. Prefer this parameter for returned messages. "
+                "Provide source_id or message_id, never both."
+            ))] = None,
+            # canonical ID 保持原有直接查询能力，不将误填的 handle 静默转换成别名。
+            message_id: Annotated[str | None, Field(description=(
+                "Legacy canonical internal message ID, for example qq:1039179741:7670742957499269309. "
+                "Do not put a run-local mN-K source handle such as m1-1 here; use source_id for that. "
+                "Provide message_id or source_id, never both."
+            ))] = None,
             context_before: int = 8,
             context_after: int = 8,
         ) -> dict[str, object]:

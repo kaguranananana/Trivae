@@ -1,0 +1,164 @@
+diff --git a/src/trivae/evaluation/benchmark/judge.py b/src/trivae/evaluation/benchmark/judge.py
+index c380b73..fc63090 100644
+--- a/src/trivae/evaluation/benchmark/judge.py
++++ b/src/trivae/evaluation/benchmark/judge.py
+@@ -12,6 +12,7 @@ from __future__ import annotations
+ 
+ import json
+ from dataclasses import dataclass, field
++from datetime import UTC, datetime
+ from typing import Mapping, Sequence
+ 
+ from openai import AsyncOpenAI, OpenAIError
+@@ -41,7 +42,10 @@ content blocks、每个 block 的 citation 绑定（指向的 evidence 摘要）
+    supported | partially_supported | unsupported | insufficient_evidence
+ 
+ 规则：只能基于给出的 evidence 摘要判断，不得使用外部知识；evidence 摘要不含所需信息时
+-verdict 用 insufficient_evidence。对每个 content block 至少输出一条 atomic claim；
++verdict 用 insufficient_evidence。来源的 timestamp_utc 是 canonical 时间事实，message_content 是消息正文。
++逐项核对同一天、较早/较晚、回复/反应关系；引用正确消息不等于支持额外关系，
++相邻消息本身不证明回复。不要把 Evidence finding 自己的关系描述当作来源事实。
++对每个 content block 至少输出一条 atomic claim；
+ 对输入的每个 citation 绑定恰好输出一条 verdict。
+ 仅返回 JSON object：
+ {"claims":[{"block_id":"...","text":"...","is_factual":true,"supported":true}],
+@@ -49,6 +53,15 @@ verdict 用 insufficient_evidence。对每个 content block 至少输出一条 a
+ """
+ 
+ 
++def canonical_message_excerpt(*, timestamp_ms: int, content: str) -> str:
++    """Judge 复用 canonical 日期和正文；先保留日期，避免正文截断隐藏关系事实。"""
++
++    # canonical 时间以毫秒保存；只在 Host 中转换为明确的 UTC 文本。
++    timestamp_utc = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).isoformat().replace("+00:00", "Z")
++    # 标签把元数据与消息正文分开；既有 Judge 的 bounded excerpt 会保留前面的时间。
++    return f"timestamp_utc: {timestamp_utc}\nmessage_content: {content}"
++
++
+ @dataclass(frozen=True)
+ class ClaimJudgment:
+     """一条 atomic factual claim 的判定；adjudicated 只能由人工置位。"""
+diff --git a/src/trivae/evaluation/benchmark/orchestrator.py b/src/trivae/evaluation/benchmark/orchestrator.py
+index 21db21a..4784e6c 100644
+--- a/src/trivae/evaluation/benchmark/orchestrator.py
++++ b/src/trivae/evaluation/benchmark/orchestrator.py
+@@ -440,7 +440,7 @@ def judge_records(
+     import asyncio
+ 
+     from trivae.capabilities.contracts import GetMessageContextInput
+-    from trivae.evaluation.benchmark.judge import LLMClaimJudge
++    from trivae.evaluation.benchmark.judge import LLMClaimJudge, canonical_message_excerpt
+ 
+     cases = load_cases_dir(cases_dir)
+     judge = LLMClaimJudge(settings)
+@@ -516,7 +516,10 @@ def judge_records(
+                 messages = getattr(envelope.data, "messages", ())
+                 if not messages:
+                     raise EvaluationContractError(f"judge evidence {message_id}: source message unavailable")
+-                excerpts[message_id] = messages[0].normalized_content
++                # 日期关系属于 grounded claim 检查；正文 alone 不足以验证“同一天”。
++                excerpts[message_id] = canonical_message_excerpt(
++                    timestamp_ms=messages[0].timestamp, content=messages[0].normalized_content,
++                )
+             judgment = asyncio.run(
+                 judge.judge(
+                     run_id=run_id,
+diff --git a/src/trivae/query/runtime/openai_tools.py b/src/trivae/query/runtime/openai_tools.py
+index c05b180..820db2b 100644
+--- a/src/trivae/query/runtime/openai_tools.py
++++ b/src/trivae/query/runtime/openai_tools.py
+@@ -2,9 +2,10 @@
+ 
+ from __future__ import annotations
+ 
+-from typing import TYPE_CHECKING, Any, cast
++from typing import TYPE_CHECKING, Annotated, Any, cast
+ 
+ from agents import RunContextWrapper, function_tool
++from pydantic import Field
+ 
+ from trivae.capabilities.contracts import (
+     CapabilityContractError,
+@@ -555,8 +556,10 @@ class GetMessageContextSDKToolAdapter:
+         """创建接受 legacy message_id 或当前 Tool Result source_id 的 bounded context tool。"""
+ 
+         description = (
+-            "Recover a larger but still bounded same-conversation context around one message_id or source_id "
+-            "returned by lexical_search or semantic_search. Call only when the search result's local "
++            "Recover a larger but still bounded same-conversation context around one returned message. "
++            "Prefer source_id for a run-local mN-K handle (for example m1-1) from a ToolResult. "
++            "Use message_id only for a canonical internal message ID, never for a source handle. "
++            "Provide exactly one identity parameter. Call only when the search result's local "
+             "context is insufficient; do not call this mechanically for every hit. It never crosses "
+             "the trusted session/time scope and may return truncated=true."
+         )
+@@ -569,8 +572,18 @@ class GetMessageContextSDKToolAdapter:
+         )
+         async def get_message_context(
+             context: RunContextWrapper[RuntimeContext],
+-            message_id: str | None = None,
+-            source_id: str | None = None,
++            # 字段说明进入 SDK/Pydantic 生成的真实 schema；短 handle 必须显式填 source_id。
++            source_id: Annotated[str | None, Field(description=(
++                "A run-local message source handle in mN-K form, for example m1-1 or m2-3, "
++                "copied exactly from a current ToolResult source_id. Prefer this parameter for returned messages. "
++                "Provide source_id or message_id, never both."
++            ))] = None,
++            # canonical ID 保持原有直接查询能力，不将误填的 handle 静默转换成别名。
++            message_id: Annotated[str | None, Field(description=(
++                "Legacy canonical internal message ID, for example qq:1039179741:7670742957499269309. "
++                "Do not put a run-local mN-K source handle such as m1-1 here; use source_id for that. "
++                "Provide message_id or source_id, never both."
++            ))] = None,
+             context_before: int = 8,
+             context_after: int = 8,
+         ) -> dict[str, object]:
+diff --git a/src/trivae/query/runtime/prompt.py b/src/trivae/query/runtime/prompt.py
+index 5900320..c46f89d 100644
+--- a/src/trivae/query/runtime/prompt.py
++++ b/src/trivae/query/runtime/prompt.py
+@@ -80,7 +80,8 @@ sender_user_id. When historical member identity context contains one unambiguous
+ that exact `user_id`; otherwise call find_members again before filtering. For SQL sender statistics,
+ `messages.sender_user_id` stores the same canonical `users.user_id`, while a QQ UIN is stored in
+ `users.platform_uin`; never compare `messages.sender_user_id` directly to a QQ UIN. Use get_message_context only for a known `source_id` from a retrieval result
+-(legacy `message_id` remains accepted) when its bounded local context is not enough;
++(a run-local mN-K handle, for example source_id="m1-1") when its bounded local context is not enough.
++The legacy `message_id` parameter accepts only a canonical internal message ID, never an mN-K handle;
+ do not call it for every hit or use it to cross a
+ conversation boundary. Both tools return bounded, scope-enforced results.
+ Plan tool suggestions and step wording are guidance; for a follow-up investigation about a
+@@ -107,6 +108,10 @@ same tool for a translation, synonym, punctuation variant, or near-duplicate que
+ sufficient for the question, stop retrieving; otherwise use the other path only when it can add
+ materially different evidence.
+ Do not claim a search result that the tool did not return.
++For temporal relations in claim text, finding, or criterion, compare the returned canonical timestamps.
++Do not call messages on different dates "same day", reverse earlier/later order, or infer a reply/reaction
++from adjacency alone. A citation to the correct messages does not support an invented temporal relation.
++Keep sender_name separate from message content; a display name is not something that person said.
+ Mention or sharing does not mean recommendation or value; mention does not mean recommendation.
+ An intent to test does not prove actual use; intent to test does not prove actual use.
+ Reviewing someone else's output does not prove personal installation or use; reviewing output does not prove personal installation or use.
+@@ -121,8 +126,8 @@ For lexical_search and the legacy search_messages tool, keyword must be exactly
+ never send empty arrays. limit must be a positive integer no greater than the trusted result limit
+ shown by the tool schema, and context_before/context_after must be non-negative integers. For
+ semantic_search, query must be one non-empty string and dense_top_k must be a positive integer.
+-For get_message_context, copy one exact `source_id` from a returned message projection (legacy
+-`message_id` is also accepted) and keep
++For get_message_context, copy one exact `source_id` from a returned message projection into source_id.
++Use message_id only for a known canonical internal message ID; provide exactly one identity parameter. Keep
+ context_before/context_after non-negative and bounded. For find_members, query must be one
+ non-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one
+ SQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For
+diff --git a/tests/test_benchmark_judge.py b/tests/test_benchmark_judge.py
+index 0923b69..1aa78bc 100644
+--- a/tests/test_benchmark_judge.py
++++ b/tests/test_benchmark_judge.py
+@@ -61,7 +61,7 @@ def test_provider_error_is_recorded_in_failed_item(tmp_path, settings):
+     """单条 provider 错误落盘，完整原因不被异常类名覆盖。"""
+     app = _application()
+     app.invoke_tool.return_value = SimpleNamespace(
+-        error=None, data=SimpleNamespace(messages=[SimpleNamespace(normalized_content="原始证据")]),
++        error=None, data=SimpleNamespace(messages=[SimpleNamespace(timestamp=1784798723000, normalized_content="原始证据")]),
+     )
+     output = tmp_path / "judgments.json"
+     with patch.object(LLMClaimJudge, "judge", new_callable=AsyncMock, side_effect=EvaluationContractError("provider timeout after 20s")):
