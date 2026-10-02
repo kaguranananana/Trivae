@@ -1036,3 +1036,12 @@ Trace owns append-only execution projection; Agent owns topic semantics, not tim
 - **Evaluation 边界**：Planner-specific Development Suite、人工 treatment adjudication contract 和 Jev Router Utility 分析已建立；新 Case 已暴露，不能作为 fresh Holdout。自动指标不能替代人工答案正确性，route label 不能证明 Planner 收益。生产 Jev 仍为 shadow；长期 rollout threshold 尚未校准。
 
 - **本轮针对性复验**：`dev-zero-empty-3` 在第一冻结版本 Planned 2/3 verified-zero，第三次 SQL-first 未获完整空检索；第二版本 2/2 verified-zero，但一次 Planner 输出截断并降级，成功 Plan 只有一次。聚合行误拒已修，SQL-first 稳定性仍未证实。`dev-context-archify` 新两对为 worse/same，与历史 better/better/same 冲突。47 次实际 Provider invocation、14 条 forced run 和 2 次 Jev route 已入本地账本；人工 utility 仍 pending，不报告 Router Utility accuracy。
+
+## Planner 最终工程收口（2026-10-03）
+
+- **失败链路**：Frozen replay 4/4误填message_id，七次MESSAGE_NOT_FOUND；resolver本来正确，真实SDK字段description缺失，模型可见source handle与canonical ID语义混淆。最小修复schema/prompt，保留canonical能力和显式失败，无silent alias。
+- **关系回归**：7k/9.5k来源日期相隔13天17小时14分57秒，旧Claim/finding却称同日。保存真实fixture，既有Judge输入补canonical UTC时间；结构Citation正确不代表关系成立。离线测试不是通用semantic checker。
+- **配置取舍**：P1 Planner专属none为completion reliability/latency，Router与Runtime独立low。历史24/24有效和targeted低截断支持该决定，不证明none最终质量高于low。Frozen guidance仍有Runtime检索/选择/合成方差。
+- **本轮事实**：execution14de11f，八条已暴露Development Case、16次配对、54实际HTTP；Planned8/8valid，11次context都用正确source_id。mean E2E8.169→10.266秒，tokens285065→296703，金额unavailable。
+- **工程结论**：限制使用、保留架构、路由继续保守，Jev shadow不变。局部组织/续页收益伴随旧context遗漏、7k覆盖退步和新duration错误，不能包装成整体质量提升。low/none与本轮validation closed，无新付费实验计划。
+- **证据边界**：主代理非盲来源复核，不是人工裁决、独立盲审、统计优势或fresh泛化。完整证据：[report.md](../../tasks/10-02-planner-engineering-closure/report.md)、[ADR](./technical-decisions/planner-engineering-closure.md)。

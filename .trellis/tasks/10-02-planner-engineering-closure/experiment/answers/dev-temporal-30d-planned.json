@@ -1,0 +1,1135 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "这个问题的检索窗口是 [2026-07-17T02:34:48.000Z, 2026-08-16T02:34:48.001Z)（最近 30 天），窗口内共有 73,863 条消息；但单次只能取回最新 100 条，我用两次调用共取回最新 200 条（约窗口末尾一天多的对话）。因此下面的“主要话题”只是这个末尾切片里显现的话题，不能代表整 30 天的完整热度排序。"
+    },
+    {
+      "block_id": "claim-2",
+      "text": "在取回的切片里，最集中的话题是 AI 编码工具与模型订阅：有人讨论 opencode 内存占用（“一个 hello 一百兆”“64g 的内存都不够他吃的”，后又说“一个 hello 两百兆”）、改用 pi、给 AI 装 websearch/superpower 插件并用 podman 限制访问权限；也有人吐槽 20 美元 Claude 订阅“和写代码的任务绝缘了”、Anthropic 的 50% 额度已推迟两次，以及“涨价是为了赶走用户、把算力留给 coding 场景”。"
+    },
+    {
+      "block_id": "claim-3",
+      "text": "与上一个话题直接相关的具体资源链接：有群友分享了 https://github.com/openai/codex-plugin-cc ，并称自己“拿 openAI 的那个插件接入 Codex 写代码了”。同一切片里还有一条非 GitHub 的站点链接 https://www.wallofportfolios.in/?company=All （被评价为“这个网站设计师大多都是印度的”）。"
+    },
+    {
+      "block_id": "claim-4",
+      "text": "第二类反复出现的话题是就业、实习与秋招焦虑：有人问“现在真实批约面节奏啥样的”，有人发“秋招迷茫了看一看”的视频，也有人表达“不想秋招怎么办，感觉还啥也不会，全部都要现学”，还有“我一定要加入腾讯”这类表态。"
+    },
+    {
+      "block_id": "claim-5",
+      "text": "第三类是群内的社交玩梗与人身调侃，尤其在“贺兰の计算机技术交流群”里形成刷屏：“hl”梗与性相关玩笑持续多轮（有人感叹“我的眼睛”“越来越怪了”，也有人评论“这群已经变成 impart 群了吗”“其实是性压抑交流群”“hl 除了技术什么都交流群”）。此外还有 Steam 黄油节、群友恋爱八卦等闲聊内容。"
+    },
+    {
+      "block_id": "claim-6",
+      "text": "另外还有零散的技术/硬件讨论：本地跑大模型或工具时的机器性能（“骗你的 mac 也吃不消”“win 本跑 dsh 感觉要燃尽了，以后还是老老实实用 mac”）、git 误跟踪视频文件导致仓库膨胀、以及“我可以通过手机微信远程 codex 了”这类远程使用方式。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    },
+    {
+      "content_block_id": "claim-2",
+      "evidence_ids": [
+        "e2"
+      ]
+    },
+    {
+      "content_block_id": "claim-3",
+      "evidence_ids": [
+        "e3"
+      ]
+    },
+    {
+      "content_block_id": "claim-4",
+      "evidence_ids": [
+        "e4"
+      ]
+    },
+    {
+      "content_block_id": "claim-5",
+      "evidence_ids": [
+        "e5"
+      ]
+    },
+    {
+      "content_block_id": "claim-6",
+      "evidence_ids": [
+        "e6"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "先说明证据边界：30 天窗口总量 73,863 条，实际只覆盖最新 200 条",
+      "criterion": "工具返回的 total_hits=73863、returned_count=100、coverage status=partial 与 resolved_time_range",
+      "sufficiency": "partial",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674312631032669204",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674312631032669204",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "Shih-ch'i",
+              "timestamp_ms": 1786815149000,
+              "timezone": "UTC",
+              "excerpt": "玩了快半个月了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674312631032669204",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674452384529131796",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674452384529131796",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "楚玉衡",
+              "timestamp_ms": 1786847688000,
+              "timezone": "UTC",
+              "excerpt": "[图片:B39DCED3AF4385156650E70F0C567ABF.jpg]",
+              "excerpt_truncated": false,
+              "source_message_id": "7674452384529131796",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674291012804142341",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674291012804142341",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "楚玉衡",
+              "timestamp_ms": 1786810116000,
+              "timezone": "UTC",
+              "excerpt": "咱们glm可是超越盘古的国产第一模型呢",
+              "excerpt_truncated": false,
+              "source_message_id": "7674291012804142341",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674312239299578745",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674312239299578745",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "Shih-ch'i",
+              "timestamp_ms": 1786815058000,
+              "timezone": "UTC",
+              "excerpt": "然后我们就开始搞旮旯给木剧情",
+              "excerpt_truncated": false,
+              "source_message_id": "7674312239299578745",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "30 天共 73,863 条消息，未做全窗口逐条覆盖，无法给出跨整月的话题频次排名"
+      ]
+    },
+    {
+      "evidence_id": "e2",
+      "finding": "AI 编码工具/订阅成本是切片中出现频率最高、讨论最具体的一类话题",
+      "criterion": "多条不同作者的连续对话围绕 opencode/pi/Codex 插件、Claude 与 Anthropic 订阅额度展开",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674327859634192996",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674327859634192996",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "彩笔",
+              "timestamp_ms": 1786818695000,
+              "timezone": "UTC",
+              "excerpt": "他们涨价目的就是为了赶走用户",
+              "excerpt_truncated": false,
+              "source_message_id": "7674327859634192996",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674328006359463962",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674328006359463962",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "彩笔",
+              "timestamp_ms": 1786818728000,
+              "timezone": "UTC",
+              "excerpt": "然后对coding 场景做优化",
+              "excerpt_truncated": false,
+              "source_message_id": "7674328006359463962",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577629",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577629",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "彩笔",
+              "timestamp_ms": 1786818755000,
+              "timezone": "UTC",
+              "excerpt": "其他像算命/聊天这种希望都赶走",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577629",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577641",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577641",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Aqua",
+              "timestamp_ms": 1786819822000,
+              "timezone": "UTC",
+              "excerpt": "opencode就差全天下打广告找人用了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577641",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357966",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357966",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "Aqua",
+              "timestamp_ms": 1786821876000,
+              "timezone": "UTC",
+              "excerpt": "还是明确了昨天的认知，20刀Claude和写代码的任务绝缘了。",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357966",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357960",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357960",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "浅仪式",
+              "timestamp_ms": 1786822791000,
+              "timezone": "UTC",
+              "excerpt": "过几天那个50%的额度，不知道会不会取消，已经推迟两次了，如果真取消了，那20刀真完蛋了\nAnthropic也快完蛋吧",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357960",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577653",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577653",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786843600000,
+              "timezone": "UTC",
+              "excerpt": "我现在只用pi",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577653",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577659",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577659",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786843624000,
+              "timezone": "UTC",
+              "excerpt": "opencode有时候会有内存溢出",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577659",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577665",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577665",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786843636000,
+              "timezone": "UTC",
+              "excerpt": "一个hello 一百兆",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577665",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577671",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577671",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786843647000,
+              "timezone": "UTC",
+              "excerpt": "我64g的内存都不够他吃的",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577671",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577696",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577696",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786844270000,
+              "timezone": "UTC",
+              "excerpt": "就纯pi",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577696",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577708",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577708",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786844306000,
+              "timezone": "UTC",
+              "excerpt": "现在还在考虑用不用superpower",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577708",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577720",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577720",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786844336000,
+              "timezone": "UTC",
+              "excerpt": "然后整个ai运行在podman里去控制访问权限",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577720",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674448935863431616",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674448935863431616",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786846885000,
+              "timezone": "UTC",
+              "excerpt": "一个hello 两百兆",
+              "excerpt_truncated": false,
+              "source_message_id": "7674448935863431616",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674448990659150082",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674448990659150082",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786846897000,
+              "timezone": "UTC",
+              "excerpt": "我感觉有可能触发了什么git检查",
+              "excerpt_truncated": false,
+              "source_message_id": "7674448990659150082",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:831907794:7674305710465489908",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674305710465489908",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "已深度思考 0 秒",
+              "timestamp_ms": 1786813538000,
+              "timezone": "UTC",
+              "excerpt": "win 本跑 dsh 感觉要燃尽了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674305710465489908",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:831907794:7674305874462638942",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674305874462638942",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "已深度思考 0 秒",
+              "timestamp_ms": 1786813576000,
+              "timezone": "UTC",
+              "excerpt": "游戏本有点吃不消了，以后还是老老实实用 mac 吧",
+              "excerpt_truncated": false,
+              "source_message_id": "7674305874462638942",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "仅为窗口末尾切片内的观察，非整月频次统计"
+      ]
+    },
+    {
+      "evidence_id": "e3",
+      "finding": "切片中出现的可点链接，其中包含一个 GitHub 仓库",
+      "criterion": "消息 urls 字段中返回的完整 URL",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7674445704568577774",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7674445704568577774",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "find",
+              "timestamp_ms": 1786820882000,
+              "timezone": "UTC",
+              "excerpt": "https://www.wallofportfolios.in/?company=All",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577774",
+              "urls": [
+                "https://www.wallofportfolios.in/?company=All"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357860",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357860",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "Aqua",
+              "timestamp_ms": 1786842905000,
+              "timezone": "UTC",
+              "excerpt": "我拿openAI的那个插件接入Codex写代码了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357860",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357839",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357839",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "Aqua",
+              "timestamp_ms": 1786843724000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/openai/codex-plugin-cc 就这个",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357839",
+              "urls": [
+                "https://github.com/openai/codex-plugin-cc"
+              ]
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "只反映取回切片中的链接，不代表整月唯一的资源分享；是否值得使用未在群内给出直接结论"
+      ]
+    },
+    {
+      "evidence_id": "e4",
+      "finding": "就业/秋招/求职是切片中另一条清晰的话题线",
+      "criterion": "多条来自不同会话、不同作者的求职相关发言",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:750807478:7674445704568577302",
+            "session_id": "qq:750807478",
+            "internal_message_id": "qq:750807478:7674445704568577302",
+            "snapshot": {
+              "session_display": "识海(吉祥物是西娅公主)",
+              "author_display": "𝙍𝙪𝙞𝙔𝙞𝙚𝙧",
+              "timestamp_ms": 1786816361000,
+              "timezone": "UTC",
+              "excerpt": "现在真实批约面节奏啥样的",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577302",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577545",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577545",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "楚玉衡",
+              "timestamp_ms": 1786815369000,
+              "timezone": "UTC",
+              "excerpt": "我一定要加入腾讯",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577545",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674291143248057042",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674291143248057042",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "楚玉衡",
+              "timestamp_ms": 1786810146000,
+              "timezone": "UTC",
+              "excerpt": "不想秋招怎么办",
+              "excerpt_truncated": false,
+              "source_message_id": "7674291143248057042",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674291164729316125",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674291164729316125",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "楚玉衡",
+              "timestamp_ms": 1786810151000,
+              "timezone": "UTC",
+              "excerpt": "感觉还啥也不会",
+              "excerpt_truncated": false,
+              "source_message_id": "7674291164729316125",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674291198463125976",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674291198463125976",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "楚玉衡",
+              "timestamp_ms": 1786810158000,
+              "timezone": "UTC",
+              "excerpt": "全部都要现学，太痛苦了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674291198463125976",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:1040412855:7674445704568578980",
+            "session_id": "qq:1040412855",
+            "internal_message_id": "qq:1040412855:7674445704568578980",
+            "snapshot": {
+              "session_display": "爪哇就业交流群111",
+              "author_display": "区–破茧为蝇",
+              "timestamp_ms": 1786811769000,
+              "timezone": "UTC",
+              "excerpt": "秋招迷茫了看一看",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568578980",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "样本量小，只能说明该话题在切片内存在且较活跃"
+      ]
+    },
+    {
+      "evidence_id": "e5",
+      "finding": "群内社交玩梗/闲聊构成了切片中数量最庞大的一类内容",
+      "criterion": "同一会话内连续多轮互动，并有其他群友对该氛围的元评论",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577595",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577595",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "聊斋仙",
+              "timestamp_ms": 1786820008000,
+              "timezone": "UTC",
+              "excerpt": "早知道就不在睡前看一眼你群聊天记录了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577595",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577601",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577601",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "聊斋仙",
+              "timestamp_ms": 1786820014000,
+              "timezone": "UTC",
+              "excerpt": "我的眼睛",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577601",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577578",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577578",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "安",
+              "timestamp_ms": 1786815482000,
+              "timezone": "UTC",
+              "excerpt": "越来越怪了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577578",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674303485234454596",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674303485234454596",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "kwings",
+              "timestamp_ms": 1786812581000,
+              "timezone": "UTC",
+              "excerpt": "这群已经变成impart群了吗",
+              "excerpt_truncated": false,
+              "source_message_id": "7674303485234454596",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674303485234454581",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674303485234454581",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "星",
+              "timestamp_ms": 1786812981000,
+              "timezone": "UTC",
+              "excerpt": "我记得我进的是技术群",
+              "excerpt_truncated": false,
+              "source_message_id": "7674303485234454581",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674303485234454575",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674303485234454575",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "404E",
+              "timestamp_ms": 1786813008000,
+              "timezone": "UTC",
+              "excerpt": "hl除了技术什么都交流群",
+              "excerpt_truncated": false,
+              "source_message_id": "7674303485234454575",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674303838201856621",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674303838201856621",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "好想变成蔬菜，这样群友就能吃我的茎叶了",
+              "timestamp_ms": 1786813102000,
+              "timezone": "UTC",
+              "excerpt": "其实是性压抑交流群",
+              "excerpt_truncated": false,
+              "source_message_id": "7674303838201856621",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674305473543045384",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674305473543045384",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "好想变成蔬菜，这样群友就能吃我的茎叶了",
+              "timestamp_ms": 1786813483000,
+              "timezone": "UTC",
+              "excerpt": "[图片:f0eb279ac70c81679a566d909780c265.png]以防大家不知道，steam在开黄油节",
+              "excerpt_truncated": false,
+              "source_message_id": "7674305473543045384",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674311771653513744",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674311771653513744",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "咕嘟彩与流浪猫",
+              "timestamp_ms": 1786814949000,
+              "timezone": "UTC",
+              "excerpt": "真27压抑群",
+              "excerpt_truncated": false,
+              "source_message_id": "7674311771653513744",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:383550736:7674291262317508521",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674291262317508521",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "咕嘟彩与流浪猫",
+              "timestamp_ms": 1786810174000,
+              "timezone": "UTC",
+              "excerpt": "楚神这是真谈上了吗",
+              "excerpt_truncated": false,
+              "source_message_id": "7674291262317508521",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "含成人向玩笑，此处仅作话题归纳"
+      ]
+    },
+    {
+      "evidence_id": "e6",
+      "finding": "本地硬件性能与远程/自动化使用方式是切片中的次要话题",
+      "criterion": "多条围绕设备性能、git 仓库问题、远程调用工具的发言",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674313295652046687",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674313295652046687",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "奶龙大学校长",
+              "timestamp_ms": 1786815304000,
+              "timezone": "UTC",
+              "excerpt": "骗你的mac也吃不消",
+              "excerpt_truncated": false,
+              "source_message_id": "7674313295652046687",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:750807478:7674445704568577353",
+            "session_id": "qq:750807478",
+            "internal_message_id": "qq:750807478:7674445704568577353",
+            "snapshot": {
+              "session_display": "识海(吉祥物是西娅公主)",
+              "author_display": "2725814906",
+              "timestamp_ms": 1786845347000,
+              "timezone": "UTC",
+              "excerpt": "我可以通过手机微信远程codex了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577353",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674448990659150082",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674448990659150082",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786846897000,
+              "timezone": "UTC",
+              "excerpt": "我感觉有可能触发了什么git检查",
+              "excerpt_truncated": false,
+              "source_message_id": "7674448990659150082",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674449082184505751",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674449082184505751",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786846918000,
+              "timezone": "UTC",
+              "excerpt": "那段时间我的git有问题，把一些视频用git跟踪了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674449082184505751",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:831907794:7674305710465489908",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674305710465489908",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "已深度思考 0 秒",
+              "timestamp_ms": 1786813538000,
+              "timezone": "UTC",
+              "excerpt": "win 本跑 dsh 感觉要燃尽了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674305710465489908",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-575ec8e42dd8424188d3ee25c16b0d2d",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d/tool-call/2/result",
+            "result_item_id": "message/qq:831907794:7674305874462638942",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674305874462638942",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "已深度思考 0 秒",
+              "timestamp_ms": 1786813576000,
+              "timezone": "UTC",
+              "excerpt": "游戏本有点吃不消了，以后还是老老实实用 mac 吧",
+              "excerpt_truncated": false,
+              "source_message_id": "7674305874462638942",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "属于零散讨论，未形成连续主题帖"
+      ]
+    }
+  ],
+  "limitations": [
+    "30 天窗口内共 73,863 条消息，两次检索只覆盖最新 200 条（约窗口末尾一天多的对话），因此话题清单与热度排序仅适用于该切片，无法给出整月的完整话题分布",
+    "未按日/按会话做聚合统计，具体热度高低仍是基于阅读的粗略判断而非计数结果",
+    "涉及成人向玩笑的内容只做话题归类，未展开原文",
+    "tool_result_partial",
+    "retrieval_partial",
+    "retrieval_truncated",
+    "coverage:partial"
+  ],
+  "resolved_time_range": {
+    "kind": "relative",
+    "amount": 30,
+    "unit": "day",
+    "anchor": "archive_latest",
+    "anchor_timestamp": 1786847688000,
+    "resolved_start_timestamp": 1784255688000,
+    "resolved_end_timestamp": 1786847688001,
+    "anchor_utc": "2026-08-16T02:34:48.000Z",
+    "resolved_start_utc": "2026-07-17T02:34:48.000Z",
+    "resolved_end_utc": "2026-08-16T02:34:48.001Z",
+    "resolved_interval_utc": "[2026-07-17T02:34:48.000Z, 2026-08-16T02:34:48.001Z)"
+  },
+  "retrieval_coverage": {
+    "status": "partial",
+    "basis": "canonical_store",
+    "covered_units": 200,
+    "eligible_units": 73863,
+    "unit": "message",
+    "retrieved_count": 200,
+    "has_more": true
+  }
+}

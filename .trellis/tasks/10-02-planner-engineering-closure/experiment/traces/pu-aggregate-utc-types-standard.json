@@ -1,0 +1,1801 @@
+[
+  {
+    "schema_version": 1,
+    "event_id": "event-fbea3d6dec8d4d7e914ea0a5c9f5e7ee",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 1,
+    "occurred_at": "2026-10-02T10:18:47.873+00:00",
+    "observed_at": "2026-10-02T10:18:47.873+00:00",
+    "stage": "query",
+    "operation": "query.received",
+    "phase": "started",
+    "operation_id": "query",
+    "parent_operation_id": null,
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": null,
+      "execution_override": {
+        "context_window_limit": null,
+        "forced_route": "standard_execution"
+      },
+      "query": "按 UTC 时间算，2026-08-15 的 text 消息和 reply 消息各有多少条？",
+      "scope": {
+        "allowed_session_ids": null,
+        "end_timestamp": null,
+        "max_results": 100,
+        "start_timestamp": null
+      },
+      "trace_profile": "normal"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-37cdff36b1274129979a045709f21fcf",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 2,
+    "occurred_at": "2026-10-02T10:18:47.876+00:00",
+    "observed_at": "2026-10-02T10:18:47.876+00:00",
+    "stage": "context",
+    "operation": "context.prepared",
+    "phase": "completed",
+    "operation_id": "context",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "a589bb58fac64df0b8d7ba6532484bf6",
+      "prior_context_count": 0
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-1a30ca0665cd441b83609d0d7d83c649",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 3,
+    "occurred_at": "2026-10-02T10:18:47.877+00:00",
+    "observed_at": "2026-10-02T10:18:47.877+00:00",
+    "stage": "router",
+    "operation": "router.bypassed",
+    "phase": "skipped",
+    "operation_id": "router",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "execution_override": {
+        "context_window_limit": null,
+        "forced_route": "standard_execution"
+      },
+      "route": "standard_execution"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-af71f3af59ff4e679a0ee47bb073eece",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 4,
+    "occurred_at": "2026-10-02T10:18:47.880+00:00",
+    "observed_at": "2026-10-02T10:18:47.880+00:00",
+    "stage": "router",
+    "operation": "router.decision",
+    "phase": "completed",
+    "operation_id": "router",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "confidence": 1.0,
+      "degradation_code": null,
+      "degraded": false,
+      "execution_override": {
+        "context_window_limit": null,
+        "forced_route": "standard_execution"
+      },
+      "model": null,
+      "primary_latency_ms": null,
+      "probabilities": null,
+      "provider": null,
+      "provider_error_type": null,
+      "reason": "explicit evaluation override: standard_execution",
+      "route": "standard_execution",
+      "shadow_latency_ms": null,
+      "source": "evaluation_override",
+      "usage": null
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-d15e256e0fe7473bad4814e5ff813aa0",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 5,
+    "occurred_at": "2026-10-02T10:18:47.882+00:00",
+    "observed_at": "2026-10-02T10:18:47.882+00:00",
+    "stage": "runtime",
+    "operation": "runtime.run",
+    "phase": "started",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "parent_operation_id": null,
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "run_started"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-8c65518140074b888f2992bd51c38d3b",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 6,
+    "occurred_at": "2026-10-02T10:18:48.059+00:00",
+    "observed_at": "2026-10-02T10:18:48.059+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "started",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:1",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "model_visible_context": [
+        {
+          "content": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthe",
+          "role": "system"
+        },
+        {
+          "content": "按 UTC 时间算，2026-08-15 的 text 消息和 reply 消息各有多少条？",
+          "role": "user"
+        }
+      ],
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "turn_started",
+      "tool_round": 1
+    },
+    "limitations": [
+      "payload.model_visible_context[0].content.truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-73ca9aa6128d41c4937d63a44cb12a34",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 7,
+    "occurred_at": "2026-10-02T10:18:48.967+00:00",
+    "observed_at": "2026-10-02T10:18:48.967+00:00",
+    "stage": "tool",
+    "operation": "tool.call.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {},
+      "tool_name": "get_schema"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-ec94d2560ea946c69c89d95354e8c2b8",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 8,
+    "occurred_at": "2026-10-02T10:18:48.969+00:00",
+    "observed_at": "2026-10-02T10:18:48.969+00:00",
+    "stage": "retrieval",
+    "operation": "schema.inspect.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1:schema.inspect",
+    "parent_operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {},
+      "tool_name": "get_schema"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-0b1caf4a85ba4edf98afebe13c4f6ccb",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 9,
+    "occurred_at": "2026-10-02T10:18:48.972+00:00",
+    "observed_at": "2026-10-02T10:18:48.972+00:00",
+    "stage": "retrieval",
+    "operation": "schema.inspect.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1:schema.inspect",
+    "parent_operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+    "outcome": "ok",
+    "duration_ms": 1.6594999979133718,
+    "payload": {
+      "partial": false,
+      "returned_tables": 4,
+      "table_names": [
+        "chat_sessions",
+        "users",
+        "memberships",
+        "messages"
+      ],
+      "tool_name": "get_schema",
+      "truncated": false
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-ce050177a71b4ca0bb57ed969a8be442",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 10,
+    "occurred_at": "2026-10-02T10:18:48.973+00:00",
+    "observed_at": "2026-10-02T10:18:48.973+00:00",
+    "stage": "tool",
+    "operation": "tool.call.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": 5.461458000354469,
+    "payload": {
+      "error_code": null,
+      "status": "ok",
+      "tool_name": "get_schema"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-675f1958e65d4dbcbdfd04005e2d7f41",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 11,
+    "occurred_at": "2026-10-02T10:18:48.977+00:00",
+    "observed_at": "2026-10-02T10:18:48.977+00:00",
+    "stage": "model",
+    "operation": "model.output",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:1",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "observable_output": [
+        {
+          "arguments": "{}",
+          "call_id": "call_00_C7NZ5vkUugAZJ3CTOgI71973",
+          "name": "get_schema",
+          "type": "function_call"
+        }
+      ],
+      "provider": "deepseek",
+      "provider_observation": {
+        "output_shape": {
+          "assistant_content_part_count": 0,
+          "assistant_empty_text_parts": 0,
+          "assistant_message_count": 0,
+          "assistant_nonempty_text_parts": 0,
+          "assistant_text_chars": 0,
+          "metadata_only_item_count": 0,
+          "output_is_sequence": true,
+          "output_item_count": 2,
+          "output_item_types": [
+            "reasoning",
+            "function_call"
+          ],
+          "output_item_types_truncated": false,
+          "reasoning_item_count": 1,
+          "tool_call_count": 1,
+          "tool_result_count": 0
+        },
+        "request_id": null,
+        "response_id": "__fake_id__",
+        "transport_attempts": [
+          {
+            "chunk_count": 52,
+            "finish_reason": "tool_calls",
+            "request_id": null,
+            "response_id": "205cf120-7bdf-4e0e-b7df-bdeab62e32fb",
+            "status_code": 200,
+            "stream_completed": true,
+            "transport": "chat_completions_stream",
+            "usage": {
+              "cached_input_tokens": 7424,
+              "input_tokens": 7622,
+              "output_tokens": 71,
+              "reasoning_tokens": 48,
+              "total_tokens": 7693
+            }
+          }
+        ],
+        "usage": {
+          "cached_input_tokens": 7424,
+          "input_tokens": 7622,
+          "output_tokens": 71,
+          "requests": 1,
+          "total_tokens": 7693
+        }
+      },
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "model_output",
+      "tool_round": 1
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-638634953a8c44069da3deb3b21dbf79",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 12,
+    "occurred_at": "2026-10-02T10:18:48.979+00:00",
+    "observed_at": "2026-10-02T10:18:48.979+00:00",
+    "stage": "model",
+    "operation": "model.usage",
+    "phase": "observed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:1",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "usage_update",
+      "usage": {
+        "cached_input_tokens": 7424,
+        "input_tokens": 7622,
+        "output_tokens": 71,
+        "requests": 1,
+        "total_tokens": 7693
+      }
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-2ffe7b6018784a76b0bf5b17bdcedbe8",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 13,
+    "occurred_at": "2026-10-02T10:18:48.979+00:00",
+    "observed_at": "2026-10-02T10:18:48.979+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.started",
+    "phase": "started",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:runtime-tool:eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "tool_started",
+      "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+      "tool_name": "get_schema",
+      "tool_round": 1
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-86af6d3f10354e2aa0579aeadc8364f8",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 14,
+    "occurred_at": "2026-10-02T10:18:48.980+00:00",
+    "observed_at": "2026-10-02T10:18:48.980+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.completed",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:runtime-tool:eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "omitted_context_messages": 0,
+      "omitted_hit_messages": 0,
+      "omitted_messages": 0,
+      "projected_messages": 0,
+      "projection_truncated": false,
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "tool_completed",
+      "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/1",
+      "tool_name": "get_schema",
+      "tool_result_budget": {
+        "budget_mode": "dynamic",
+        "context_window_source": "verified_model_registry",
+        "context_window_tokens": 1000000,
+        "effective_per_call_tool_result_budget": 128000,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "per_call_tool_result_cap": 128000,
+        "per_call_tool_result_ceiling": 128000,
+        "per_call_tool_result_percent": 50,
+        "projected_tool_result_tokens": 1839,
+        "remaining_run_tool_evidence_budget_after_call": 248161,
+        "remaining_run_tool_evidence_budget_before_call": 250000,
+        "run_tool_evidence_budget": 250000,
+        "run_tool_evidence_cap": 256000,
+        "run_tool_evidence_percent": 25,
+        "truncated": false
+      },
+      "tool_round": 1,
+      "tool_status": "ok"
+    },
+    "limitations": [
+      "payload.tool_result_budget.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-e8c0244bb8634606834a8cc72ca111b4",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 15,
+    "occurred_at": "2026-10-02T10:18:48.981+00:00",
+    "observed_at": "2026-10-02T10:18:48.981+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:1",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "turn_completed",
+      "tool_round": 1
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-454e372542804152820fb8fd7ffbd189",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 16,
+    "occurred_at": "2026-10-02T10:18:49.142+00:00",
+    "observed_at": "2026-10-02T10:18:49.142+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "started",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:2",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "model_visible_context": [
+        {
+          "content": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthe",
+          "role": "system"
+        },
+        {
+          "content": "按 UTC 时间算，2026-08-15 的 text 消息和 reply 消息各有多少条？",
+          "role": "user"
+        },
+        {
+          "arguments": "{}",
+          "call_id": "call_00_C7NZ5vkUugAZJ3CTOgI71973",
+          "name": "get_schema",
+          "type": "function_call"
+        },
+        {
+          "call_id": "call_00_C7NZ5vkUugAZJ3CTOgI71973",
+          "output": "{'status': 'ok', 'data': {'strategy': 'schema', 'tables': [{'name': 'chat_sessions', 'columns': [{'name': 'session_id', 'data_type': 'TEXT', 'nullable': True, 'primary_key': True, 'default_value': None}, {'name': 'platform', 'data_type': 'TEXT', 'nullable': False, 'primary_key': False, 'default_value': None}, {'name': 'external_chat_id', 'data_type': 'TEXT', 'nullable': False, 'primary_key': False, 'default_value': None}, {'name': 'name', 'data_type': 'TEXT', 'nullable': False, 'primary_key': False, 'defaul",
+          "output_projection": {
+            "data": {
+              "coverage": {
+                "basis": "canonical_physical_schema_public_projection",
+                "status": "complete"
+              },
+              "metadata": {
+                "details": {
+                  "exposed_tables": "[DEPTH_LIMITED]",
+                  "hidden_table_policy": "[DEPTH_LIMITED]"
+                },
+                "filters": {
+                  "tables": "[DEPTH_LIMITED]"
+                },
+                "latency_ms": 1.637250003113877,
+                "ordering": "public table declaration order, physical column order"
+              },
+              "partial": false,
+              "returned_tables": 4,
+              "strategy": "schema",
+              "tables": [
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                }
+              ],
+              "truncated": false
+            },
+            "error": null,
+            "meta": {
+              "omitted_messages": 0,
+              "projected_count": 0,
+              "projected_messages": 0,
+              "returned_tables": 4,
+              "truncated": false
+            },
+            "model_projection": {
+              "estimated_tokens": 1839,
+              "omitted_context_messages": 0,
+              "omitted_hit_messages": 0,
+              "omitted_messages": 0,
+              "projected_count": 0,
+              "projected_messages": 0,
+              "token_budget": 128000,
+              "truncated": false
+            },
+            "provenance": {
+              "message_sources": [],
+              "structured_sources": [
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "tool_result_scope": "1"
+            },
+            "status": "ok"
+          },
+          "type": "function_call_output"
+        }
+      ],
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "turn_started",
+      "tool_round": 2
+    },
+    "limitations": [
+      "payload.model_visible_context[0].content.truncated",
+      "payload.model_visible_context[3].output.truncated",
+      "payload.model_visible_context[3].output_projection.data.tables[0].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[0].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[0].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.tables.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.exposed_tables.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.hidden_table_policy.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].locator.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].locator.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].locator.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].locator.depth_limited"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-8d622a2a54654fa29121ed60f3b1ca05",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 17,
+    "occurred_at": "2026-10-02T10:18:51.231+00:00",
+    "observed_at": "2026-10-02T10:18:51.231+00:00",
+    "stage": "tool",
+    "operation": "tool.call.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {
+        "max_rows": null,
+        "sql": "SELECT message_type, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY cnt DESC"
+      },
+      "tool_name": "execute_sql"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-df7ff04047d14519971b03eb70c83b89",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 18,
+    "occurred_at": "2026-10-02T10:18:51.233+00:00",
+    "observed_at": "2026-10-02T10:18:51.233+00:00",
+    "stage": "retrieval",
+    "operation": "sql.execute.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2:sql.execute",
+    "parent_operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {
+        "max_rows": null,
+        "sql": "SELECT message_type, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY cnt DESC"
+      },
+      "tool_name": "execute_sql"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-d3f7dba6ed16473e93248d8ddd502f88",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 19,
+    "occurred_at": "2026-10-02T10:18:53.463+00:00",
+    "observed_at": "2026-10-02T10:18:53.463+00:00",
+    "stage": "retrieval",
+    "operation": "sql.execute.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2:sql.execute",
+    "parent_operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+    "outcome": "ok",
+    "duration_ms": 2228.3128340059193,
+    "payload": {
+      "columns": [
+        "message_type",
+        "cnt"
+      ],
+      "coverage": {
+        "basis": "canonical_store_execution_scope",
+        "status": "complete"
+      },
+      "partial": false,
+      "result_bound": 100,
+      "returned_rows": 6,
+      "scope_enforcement": "sqlite_authorizer_full_canonical_scope",
+      "sql_rewritten": false,
+      "tool_name": "execute_sql",
+      "truncated": false
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-2eecb23eb8a14f979938fdb2ce93c64e",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 20,
+    "occurred_at": "2026-10-02T10:18:53.464+00:00",
+    "observed_at": "2026-10-02T10:18:53.464+00:00",
+    "stage": "tool",
+    "operation": "tool.call.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": 2232.7991669953917,
+    "payload": {
+      "error_code": null,
+      "status": "ok",
+      "tool_name": "execute_sql"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-26cd86b2ee484b0f9dfaeb95ff9f655b",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 21,
+    "occurred_at": "2026-10-02T10:18:53.465+00:00",
+    "observed_at": "2026-10-02T10:18:53.465+00:00",
+    "stage": "model",
+    "operation": "model.output",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:2",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "observable_output": [
+        {
+          "arguments": "{\"sql\": \"SELECT message_type, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY cnt DESC\"}",
+          "call_id": "call_00_ybOZRD7u3zs05XB70I5t5300",
+          "name": "execute_sql",
+          "type": "function_call"
+        }
+      ],
+      "provider": "deepseek",
+      "provider_observation": {
+        "output_shape": {
+          "assistant_content_part_count": 0,
+          "assistant_empty_text_parts": 0,
+          "assistant_message_count": 0,
+          "assistant_nonempty_text_parts": 0,
+          "assistant_text_chars": 0,
+          "metadata_only_item_count": 0,
+          "output_is_sequence": true,
+          "output_item_count": 2,
+          "output_item_types": [
+            "reasoning",
+            "function_call"
+          ],
+          "output_item_types_truncated": false,
+          "reasoning_item_count": 1,
+          "tool_call_count": 1,
+          "tool_result_count": 0
+        },
+        "request_id": null,
+        "response_id": "__fake_id__",
+        "transport_attempts": [
+          {
+            "chunk_count": 426,
+            "finish_reason": "tool_calls",
+            "request_id": null,
+            "response_id": "fb1e9bd1-419d-42b1-bea7-b1da2f650adb",
+            "status_code": 200,
+            "stream_completed": true,
+            "transport": "chat_completions_stream",
+            "usage": {
+              "cached_input_tokens": 7680,
+              "input_tokens": 9620,
+              "output_tokens": 453,
+              "reasoning_tokens": 379,
+              "total_tokens": 10073
+            }
+          }
+        ],
+        "usage": {
+          "cached_input_tokens": 7680,
+          "input_tokens": 9620,
+          "output_tokens": 453,
+          "requests": 1,
+          "total_tokens": 10073
+        }
+      },
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "model_output",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-598f78d8b9d8426e870c93464591a22b",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 22,
+    "occurred_at": "2026-10-02T10:18:53.466+00:00",
+    "observed_at": "2026-10-02T10:18:53.466+00:00",
+    "stage": "model",
+    "operation": "model.usage",
+    "phase": "observed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:2",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "usage_update",
+      "usage": {
+        "cached_input_tokens": 7680,
+        "input_tokens": 9620,
+        "output_tokens": 453,
+        "requests": 1,
+        "total_tokens": 10073
+      }
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-264e7afcde0e4f2a9497f4e8caa9e11f",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 23,
+    "occurred_at": "2026-10-02T10:18:53.466+00:00",
+    "observed_at": "2026-10-02T10:18:53.466+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.started",
+    "phase": "started",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:runtime-tool:eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "tool_started",
+      "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+      "tool_name": "execute_sql",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-486599043f634312b5d0aa54517eea6d",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 24,
+    "occurred_at": "2026-10-02T10:18:53.467+00:00",
+    "observed_at": "2026-10-02T10:18:53.467+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.completed",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:runtime-tool:eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "omitted_context_messages": 0,
+      "omitted_hit_messages": 0,
+      "omitted_messages": 0,
+      "projected_messages": 0,
+      "projection_truncated": false,
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "tool_completed",
+      "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193/tool-call/2",
+      "tool_name": "execute_sql",
+      "tool_result_budget": {
+        "budget_mode": "dynamic",
+        "context_window_source": "verified_model_registry",
+        "context_window_tokens": 1000000,
+        "effective_per_call_tool_result_budget": 128000,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "per_call_tool_result_cap": 128000,
+        "per_call_tool_result_ceiling": 128000,
+        "per_call_tool_result_percent": 50,
+        "projected_tool_result_tokens": 615,
+        "remaining_run_tool_evidence_budget_after_call": 247546,
+        "remaining_run_tool_evidence_budget_before_call": 248161,
+        "run_tool_evidence_budget": 250000,
+        "run_tool_evidence_cap": 256000,
+        "run_tool_evidence_percent": 25,
+        "truncated": false
+      },
+      "tool_round": 2,
+      "tool_status": "ok"
+    },
+    "limitations": [
+      "payload.tool_result_budget.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-8026325ca0a34853a436b234c7cb9a15",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 25,
+    "occurred_at": "2026-10-02T10:18:53.467+00:00",
+    "observed_at": "2026-10-02T10:18:53.467+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:2",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "turn_completed",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-e62280c29fc942108a1435317f3d0d23",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 26,
+    "occurred_at": "2026-10-02T10:18:53.638+00:00",
+    "observed_at": "2026-10-02T10:18:53.639+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "started",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:3",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "model_visible_context": [
+        {
+          "content": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthe",
+          "role": "system"
+        },
+        {
+          "content": "按 UTC 时间算，2026-08-15 的 text 消息和 reply 消息各有多少条？",
+          "role": "user"
+        },
+        {
+          "arguments": "{}",
+          "call_id": "call_00_C7NZ5vkUugAZJ3CTOgI71973",
+          "name": "get_schema",
+          "type": "function_call"
+        },
+        {
+          "call_id": "call_00_C7NZ5vkUugAZJ3CTOgI71973",
+          "output": "{'status': 'ok', 'data': {'strategy': 'schema', 'tables': [{'name': 'chat_sessions', 'columns': [{'name': 'session_id', 'data_type': 'TEXT', 'nullable': True, 'primary_key': True, 'default_value': None}, {'name': 'platform', 'data_type': 'TEXT', 'nullable': False, 'primary_key': False, 'default_value': None}, {'name': 'external_chat_id', 'data_type': 'TEXT', 'nullable': False, 'primary_key': False, 'default_value': None}, {'name': 'name', 'data_type': 'TEXT', 'nullable': False, 'primary_key': False, 'defaul",
+          "output_projection": {
+            "data": {
+              "coverage": {
+                "basis": "canonical_physical_schema_public_projection",
+                "status": "complete"
+              },
+              "metadata": {
+                "details": {
+                  "exposed_tables": "[DEPTH_LIMITED]",
+                  "hidden_table_policy": "[DEPTH_LIMITED]"
+                },
+                "filters": {
+                  "tables": "[DEPTH_LIMITED]"
+                },
+                "latency_ms": 1.637250003113877,
+                "ordering": "public table declaration order, physical column order"
+              },
+              "partial": false,
+              "returned_tables": 4,
+              "strategy": "schema",
+              "tables": [
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "columns": "[DEPTH_LIMITED]",
+                  "foreign_keys": "[DEPTH_LIMITED]",
+                  "name": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                }
+              ],
+              "truncated": false
+            },
+            "error": null,
+            "meta": {
+              "omitted_messages": 0,
+              "projected_count": 0,
+              "projected_messages": 0,
+              "returned_tables": 4,
+              "truncated": false
+            },
+            "model_projection": {
+              "estimated_tokens": 1839,
+              "omitted_context_messages": 0,
+              "omitted_hit_messages": 0,
+              "omitted_messages": 0,
+              "projected_count": 0,
+              "projected_messages": 0,
+              "token_budget": 128000,
+              "truncated": false
+            },
+            "provenance": {
+              "message_sources": [],
+              "structured_sources": [
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "tool_result_scope": "1"
+            },
+            "status": "ok"
+          },
+          "type": "function_call_output"
+        },
+        {
+          "arguments": "{\"sql\": \"SELECT message_type, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY cnt DESC\"}",
+          "call_id": "call_00_ybOZRD7u3zs05XB70I5t5300",
+          "name": "execute_sql",
+          "type": "function_call"
+        },
+        {
+          "call_id": "call_00_ybOZRD7u3zs05XB70I5t5300",
+          "output": "{'status': 'ok', 'data': {'strategy': 'sql', 'query': {'sql': 'SELECT message_type, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY cnt DESC', 'max_rows': 100}, 'columns': ['message_type', 'cnt'], 'rows': [{'message_type': 'text', 'cnt': 814, 'source_id': 's2-1'}, {'message_type': 'image', 'cnt': 47, 'source_id': 's2-2'}, {'message_type': 'reply', 'cnt': 17, 'source_id': 's2-3'}, {'message_type': 'system', 'cnt': 3, 'source_id': 's2",
+          "output_projection": {
+            "data": {
+              "columns": [
+                "message_type",
+                "cnt"
+              ],
+              "coverage": {
+                "basis": "canonical_store_execution_scope",
+                "status": "complete"
+              },
+              "metadata": {
+                "details": {
+                  "result_bound": "[DEPTH_LIMITED]",
+                  "rows_observed": "[DEPTH_LIMITED]",
+                  "scope_enforcement": "[DEPTH_LIMITED]",
+                  "sql_rewritten": "[DEPTH_LIMITED]"
+                },
+                "filters": {
+                  "scope": "[DEPTH_LIMITED]"
+                },
+                "latency_ms": 2228.128333998029,
+                "ordering": "SQLite statement ordering"
+              },
+              "partial": false,
+              "query": {
+                "max_rows": 100,
+                "sql": "SELECT message_type, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY cnt DESC"
+              },
+              "returned_rows": 6,
+              "rows": [
+                {
+                  "cnt": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "cnt": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "cnt": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "cnt": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "cnt": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                },
+                {
+                  "cnt": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]"
+                }
+              ],
+              "strategy": "sql",
+              "truncated": false
+            },
+            "error": null,
+            "meta": {
+              "columns": [
+                "message_type",
+                "cnt"
+              ],
+              "omitted_messages": 0,
+              "projected_count": 0,
+              "projected_messages": 0,
+              "returned_rows": 6,
+              "truncated": false
+            },
+            "model_projection": {
+              "estimated_tokens": 615,
+              "omitted_context_messages": 0,
+              "omitted_hit_messages": 0,
+              "omitted_messages": 0,
+              "projected_count": 0,
+              "projected_messages": 0,
+              "token_budget": 128000,
+              "truncated": false
+            },
+            "provenance": {
+              "message_sources": [],
+              "structured_sources": [
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "locator": "[DEPTH_LIMITED]",
+                  "locator_kind": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "tool_result_scope": "2"
+            },
+            "status": "ok"
+          },
+          "type": "function_call_output"
+        }
+      ],
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "turn_started",
+      "tool_round": 3
+    },
+    "limitations": [
+      "payload.model_visible_context[0].content.truncated",
+      "payload.model_visible_context[3].output.truncated",
+      "payload.model_visible_context[3].output_projection.data.tables[0].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[0].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[0].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].name.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].columns.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].foreign_keys.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.tables[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.tables.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.exposed_tables.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.hidden_table_policy.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[0].locator.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[1].locator.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[2].locator.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].locator_kind.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.structured_sources[3].locator.depth_limited",
+      "payload.model_visible_context[5].output.truncated",
+      "payload.model_visible_context[5].output_projection.data.rows[0].message_type.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[0].cnt.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[0].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[1].message_type.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[1].cnt.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[1].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[2].message_type.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[2].cnt.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[2].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[3].message_type.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[3].cnt.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[3].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[4].message_type.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[4].cnt.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[4].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[5].message_type.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[5].cnt.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.rows[5].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.metadata.filters.scope.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.metadata.details.result_bound.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.metadata.details.rows_observed.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.metadata.details.scope_enforcement.depth_limited",
+      "payload.model_visible_context[5].output_projection.data.metadata.details.sql_rewritten.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[0].type.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[0].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[0].locator_kind.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[0].locator.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[1].type.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[1].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[1].locator_kind.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[1].locator.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[2].type.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[2].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[2].locator_kind.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[2].locator.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[3].type.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[3].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[3].locator_kind.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[3].locator.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[4].type.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[4].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[4].locator_kind.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[4].locator.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[5].type.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[5].source_id.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[5].locator_kind.depth_limited",
+      "payload.model_visible_context[5].output_projection.provenance.structured_sources[5].locator.depth_limited"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-88659c26fff5425a8fbb25f8e6b6a4a5",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 27,
+    "occurred_at": "2026-10-02T10:18:55.323+00:00",
+    "observed_at": "2026-10-02T10:18:55.323+00:00",
+    "stage": "model",
+    "operation": "model.output",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:3",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "observable_output": [
+        {
+          "content": [
+            {
+              "text": "{\"claims\": [{\"text\": \"按 UTC 日期 2026-08-15（即 2026-08-15T00:00:00Z 至 2026-08-16T00:00:00Z 的半开区间）统计，text 类型消息有 814 条，reply 类型消息有 17 条。\", \"finding\": \"2026-08-15 UTC 当天 text 消息 814 条、reply 消息 17 条\", \"criterion\": \"对 messages 表按 message_type 分组，并用 UTC 日界对应的时间戳区间过滤，计数直接来自 SQL 聚合行\", \"sufficiency\": \"sufficient\", \"sources\": [\"s2-1\", \"s2-3\"], \"limitations\": [\"统计范围为整个存档可见范围，未按会话或发送者进一步过滤\"]}, {\"text\": \"同一天（UTC 2026-08-15）其他消息类型还有：image 47 条、system 3 条、video 1 条、rich 1 条，可作为该日消息构成的补充参考。\", \"finding\": \"同日其他消息类型分布\", \"criteri",
+              "type": "output_text"
+            }
+          ],
+          "role": "assistant"
+        }
+      ],
+      "provider": "deepseek",
+      "provider_observation": {
+        "output_shape": {
+          "assistant_content_part_count": 1,
+          "assistant_empty_text_parts": 0,
+          "assistant_message_count": 1,
+          "assistant_nonempty_text_parts": 1,
+          "assistant_text_chars": 689,
+          "metadata_only_item_count": 0,
+          "output_is_sequence": true,
+          "output_item_count": 2,
+          "output_item_types": [
+            "reasoning",
+            "message"
+          ],
+          "output_item_types_truncated": false,
+          "reasoning_item_count": 1,
+          "tool_call_count": 0,
+          "tool_result_count": 0
+        },
+        "request_id": null,
+        "response_id": "__fake_id__",
+        "transport_attempts": [
+          {
+            "chunk_count": 351,
+            "finish_reason": "stop",
+            "request_id": null,
+            "response_id": "aa65dd72-c160-4c78-bea9-9d9ffd2b5d57",
+            "status_code": 200,
+            "stream_completed": true,
+            "transport": "chat_completions_stream",
+            "usage": {
+              "cached_input_tokens": 9984,
+              "input_tokens": 10858,
+              "output_tokens": 348,
+              "reasoning_tokens": 10,
+              "total_tokens": 11206
+            }
+          }
+        ],
+        "usage": {
+          "cached_input_tokens": 9984,
+          "input_tokens": 10858,
+          "output_tokens": 348,
+          "requests": 1,
+          "total_tokens": 11206
+        }
+      },
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "model_output",
+      "tool_round": 3
+    },
+    "limitations": [
+      "payload.observable_output[0].content[0].text.truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-2befd112518347d5a3f82a5c076ae73c",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 28,
+    "occurred_at": "2026-10-02T10:18:55.324+00:00",
+    "observed_at": "2026-10-02T10:18:55.324+00:00",
+    "stage": "model",
+    "operation": "model.usage",
+    "phase": "observed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:3",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "usage_update",
+      "usage": {
+        "cached_input_tokens": 9984,
+        "input_tokens": 10858,
+        "output_tokens": 348,
+        "requests": 1,
+        "total_tokens": 11206
+      }
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-143ca734e4be4648bd9a4524ab617e39",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 29,
+    "occurred_at": "2026-10-02T10:18:55.325+00:00",
+    "observed_at": "2026-10-02T10:18:55.325+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035:turn:3",
+    "parent_operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "turn_completed",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-76c7eeeea4ff45e5983409fb5954ce59",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 30,
+    "occurred_at": "2026-10-02T10:18:55.325+00:00",
+    "observed_at": "2026-10-02T10:18:55.325+00:00",
+    "stage": "runtime",
+    "operation": "runtime.run",
+    "phase": "completed",
+    "operation_id": "runtime:run-d3c658925897456dac0ddd9da282f035",
+    "parent_operation_id": null,
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "budget_mode": "dynamic",
+      "context_window_source": "verified_model_registry",
+      "context_window_tokens": 1000000,
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-d3c658925897456dac0ddd9da282f035",
+      "runtime_event_type": "completed",
+      "termination": "completed",
+      "tool_count": 2,
+      "tool_result_estimated_tokens": 2454,
+      "tool_result_projection_omitted_context_messages": 0,
+      "tool_result_projection_omitted_hit_messages": 0,
+      "tool_result_projection_omitted_messages": 0,
+      "tool_result_projection_projected_messages": 0,
+      "tool_result_projection_truncated_count": 0,
+      "tool_rounds": 2
+    },
+    "limitations": [
+      "payload.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-5608e2f6c0a44a98acfc4eb200e596c4",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 31,
+    "occurred_at": "2026-10-02T10:18:55.326+00:00",
+    "observed_at": "2026-10-02T10:18:55.326+00:00",
+    "stage": "evidence",
+    "operation": "evidence.prepare.started",
+    "phase": "started",
+    "operation_id": "evidence.prepare",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "tool_call_count": 2,
+      "tool_result_count": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-c27278797c82409c8b817da7969fb8b2",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 32,
+    "occurred_at": "2026-10-02T10:18:55.326+00:00",
+    "observed_at": "2026-10-02T10:18:55.326+00:00",
+    "stage": "citation",
+    "operation": "citation.validation.started",
+    "phase": "started",
+    "operation_id": "citation.validation",
+    "parent_operation_id": "evidence.prepare",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "run_id": "run-d3c658925897456dac0ddd9da282f035"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-7338cfbf81ac43b08803b130ffe19a14",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 33,
+    "occurred_at": "2026-10-02T10:18:55.327+00:00",
+    "observed_at": "2026-10-02T10:18:55.327+00:00",
+    "stage": "answer",
+    "operation": "answer.finalization.started",
+    "phase": "started",
+    "operation_id": "answer.finalization",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "run_id": "run-d3c658925897456dac0ddd9da282f035"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-09fb894ab6e244a980cff7c32c6197dd",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 34,
+    "occurred_at": "2026-10-02T10:18:55.329+00:00",
+    "observed_at": "2026-10-02T10:18:55.329+00:00",
+    "stage": "evidence",
+    "operation": "evidence.prepare.completed",
+    "phase": "completed",
+    "operation_id": "evidence.prepare",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "dropped_citation_count": 0,
+      "dropped_field_count": 0,
+      "evidence_count": 2,
+      "finalization_status": "valid",
+      "limitations": [
+        "计数基于存档中已收录的消息，未收录或超出范围的消息不计入。"
+      ],
+      "normalization_count": 0,
+      "resolved_time_range": null,
+      "retrieval_coverage": null,
+      "selected_source_count": 6,
+      "selected_source_ids": [
+        "rows[0]",
+        "rows[2]",
+        "rows[1]",
+        "rows[3]",
+        "rows[4]",
+        "rows[5]"
+      ],
+      "user_answer_preserved": true
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-688889c510a7456abde0087b570b4936",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 35,
+    "occurred_at": "2026-10-02T10:18:55.329+00:00",
+    "observed_at": "2026-10-02T10:18:55.329+00:00",
+    "stage": "citation",
+    "operation": "citation.validation.completed",
+    "phase": "completed",
+    "operation_id": "citation.validation",
+    "parent_operation_id": "evidence.prepare",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "binding_count": 2,
+      "finalization_status": "valid",
+      "unresolved_count": 0,
+      "validated_citation_count": 6
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-bc87f9aeec9449eb94323935b987aa75",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 36,
+    "occurred_at": "2026-10-02T10:18:55.330+00:00",
+    "observed_at": "2026-10-02T10:18:55.330+00:00",
+    "stage": "answer",
+    "operation": "answer.finalization.completed",
+    "phase": "completed",
+    "operation_id": "answer.finalization",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "answer_length": 195,
+      "answer_shape": {
+        "candidate_claim_count": 2,
+        "candidate_claim_text_lengths": [
+          109,
+          84
+        ],
+        "content_block_count": 2,
+        "content_block_text_lengths": [
+          109,
+          84
+        ]
+      },
+      "answer_text": "按 UTC 日期 2026-08-15（即 2026-08-15T00:00:00Z 至 2026-08-16T00:00:00Z 的半开区间）统计，text 类型消息有 814 条，reply 类型消息有 17 条。\n\n同一天（UTC 2026-08-15）其他消息类型还有：image 47 条、system 3 条、video 1 条、rich 1 条，可作为该日消息构成的补充参考。",
+      "degradation_codes": [],
+      "dropped_citation_count": 0,
+      "dropped_field_count": 0,
+      "dropped_field_paths": [],
+      "error_code": null,
+      "error_path": null,
+      "finalization_status": "valid",
+      "limitation_count": 1,
+      "normalization_count": 0,
+      "resolved_time_range": null,
+      "retrieval_coverage": null,
+      "user_answer_preserved": true,
+      "validated_citation_count": 6
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-ef1c679711fe42ceb5df687b1cb5b52a",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 37,
+    "occurred_at": "2026-10-02T10:18:55.330+00:00",
+    "observed_at": "2026-10-02T10:18:55.330+00:00",
+    "stage": "conversation",
+    "operation": "answer.commit.started",
+    "phase": "started",
+    "operation_id": "conversation.commit",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "a589bb58fac64df0b8d7ba6532484bf6"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-0f3d3da9461941cb9538dec41dd0a086",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 38,
+    "occurred_at": "2026-10-02T10:18:55.331+00:00",
+    "observed_at": "2026-10-02T10:18:55.331+00:00",
+    "stage": "conversation",
+    "operation": "answer.commit.completed",
+    "phase": "completed",
+    "operation_id": "conversation.commit",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "a589bb58fac64df0b8d7ba6532484bf6"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-17ac2ad751e24a95ad5619e59a5690fa",
+    "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+    "request_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+    "sequence": 39,
+    "occurred_at": "2026-10-02T10:18:55.332+00:00",
+    "observed_at": "2026-10-02T10:18:55.332+00:00",
+    "stage": "query",
+    "operation": "query.completed",
+    "phase": "completed",
+    "operation_id": "query",
+    "parent_operation_id": null,
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "a589bb58fac64df0b8d7ba6532484bf6",
+      "execution_status": "completed",
+      "finalization_diagnostics": {
+        "degradation_codes": [],
+        "dropped_citation_count": 0,
+        "dropped_field_count": 0,
+        "dropped_field_paths": [],
+        "error_code": null,
+        "error_path": null,
+        "normalization_count": 0,
+        "status": "valid",
+        "user_answer_preserved": true,
+        "validated_citation_count": 6
+      },
+      "finalization_status": "valid"
+    },
+    "limitations": [],
+    "failure": null
+  }
+]

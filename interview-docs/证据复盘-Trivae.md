@@ -2,7 +2,7 @@
 
 > 交付阶段：个人项目 / 工程验证，已完成 Development Evaluation；未证明生产上线、Holdout 泛化或真实用户收益。
 >
-> 事实截止：2026-09-05。本复盘只使用仓库源码、SQLite、Evaluation artifact、测试与 Git 历史，不引用群聊正文。
+> 基础复盘事实截止：2026-09-05；末尾新增2026-10-03 Planner工程收口证据。旧数字保留各自实验身份。本复盘只使用仓库源码、SQLite、Evaluation artifact、测试与Git历史，不引用群聊正文。
 
 ## 1. 问题背景
 
@@ -121,3 +121,13 @@ Git 历史显示，2026-08-18 至 2026-09-05 的 256 个提交均由同一仓库
 ## 候选简历表述
 
 推荐直接使用 `简历-Trivae-Agent岗.md` 的五条投递版；空间紧张时使用四条压缩版。所有数字都必须保留 Development、exhaustive/corpus 或数据规模等限定词。
+
+## 2026-10-03 增补：Planner Evaluation 工程收口
+
+新增证据体现的是工程决策和失败归因，不能用于宣称Planner提高答案准确率。当前P1 canonical Planner/官方DeepSeek Flash/none，Router与共享Runtime独立low；none解决已确认的2048 completion预算截断与延迟问题，不证明最终质量优于low。
+
+Frozen Plan重放暴露模型可见source_id与canonical message_id契约歧义，以及正确来源日期上的错误关系。修复真实SDK schema/prompt、保留canonical调用/显式错误与raw/normalized参数分层；保存日期fixture并复用既有Judge时间投影，未增加silent alias、语义引擎或执行架构。
+
+当前八条已暴露Development Case完成16次Standard/Planned检查、54实际HTTP；Planned Plan8/8有效，11次context参数正确。mean E2E8.169→10.266秒，tokens285065→296703；两路仍漏required-context，Planned还存在事实覆盖/跨度问题。局部调查组织/续页收益不足以支持扩大路由，最终限制使用、保留架构、生产路由继续保守。
+
+两条Evaluation线closed，不安排新付费Planner实验。复核为主代理非盲canonical来源审计，不是人工adjudication、独立盲审、fresh泛化或真实用户收益。证据：[report.md](../.trellis/tasks/10-02-planner-engineering-closure/report.md)、[source-audit.json](../.trellis/tasks/10-02-planner-engineering-closure/experiment/source-audit.json)。

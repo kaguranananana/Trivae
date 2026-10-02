@@ -22,5 +22,9 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "4 runs / 16 downstream HTTP; original none failures not reproduced; downstream variance observed. Raw failures preserved, original Gate A unchanged. Completed artifacts retained in place.",
-  "meta": {}
+  "meta": {
+    "research_status": "closed",
+    "engineering_closure_task": "10-02-planner-engineering-closure",
+    "further_paid_experiments_scheduled": false
+  }
 }

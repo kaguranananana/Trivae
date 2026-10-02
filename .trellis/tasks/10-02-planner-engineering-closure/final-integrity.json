@@ -1,0 +1,15 @@
+{
+  "offline_reanalysis_byte_identical": true,
+  "frozen_files_checked": 132,
+  "current_snapshot_unchanged": true,
+  "historical_experiments_and_gt_unchanged": true,
+  "evaluation_trace_run_ids_match": true,
+  "formal_runs": 16,
+  "provider_requests": 54,
+  "provider_http_statuses": [
+    200
+  ],
+  "conversations": 16,
+  "conversation_messages": 32,
+  "extra_paid_requests": 0
+}

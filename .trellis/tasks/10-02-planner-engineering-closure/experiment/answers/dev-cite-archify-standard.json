@@ -1,0 +1,272 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "archify 是一个群内多次被提到的开源项目（https://github.com/tt-a1i/archify）。从检索到的消息看，它的发展轨迹大致是：较早时作者发帖邀请群友体验，并称“已经7k了”（star 约 7k）且“加了个画廊”；随后 star 增长到 9.5k，作者还提到“项目收到了赞助”；再往后作者宣布“Archify 现在可以直接装进 DeepSeek Harness 了”，并给出了安装命令 dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0。"
+    },
+    {
+      "block_id": "claim-2",
+      "text": "star 数确实被明确提到过两次：一是作者称“已经7k了”，二是后来称“archify 9.5k了”。"
+    },
+    {
+      "block_id": "claim-3",
+      "text": "此外还有群友提示“v2ex和x都有帖子，搜Archify”，说明该项目在 V2EX 和 X 上也有讨论帖。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    },
+    {
+      "content_block_id": "claim-2",
+      "evidence_ids": [
+        "e2"
+      ]
+    },
+    {
+      "content_block_id": "claim-3",
+      "evidence_ids": [
+        "e3"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "archify 项目从约 7k star 发展到 9.5k star 并收到赞助，且新增了 DeepSeek Harness 插件支持",
+      "criterion": "同一会话中按时间顺序出现的多条 archify 相关消息，覆盖早期发布、star 增长与后续功能/集成更新",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7665652181386089161",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7665652181386089161",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1784798732000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/tt-a1i/archify\n感兴趣的群友可以体验下",
+              "excerpt_truncated": false,
+              "source_message_id": "7665652181386089161",
+              "urls": [
+                "https://github.com/tt-a1i/archify"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7665652145777619588",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7665652145777619588",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1784798723000,
+              "timezone": "UTC",
+              "excerpt": "已经7k了",
+              "excerpt_truncated": false,
+              "source_message_id": "7665652145777619588",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7665652145777619593",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7665652145777619593",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1784798724000,
+              "timezone": "UTC",
+              "excerpt": "加了个画廊",
+              "excerpt_truncated": false,
+              "source_message_id": "7665652145777619593",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7670742957499269309",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7670742957499269309",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1785984020000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/tt-a1i/archify，archify 9.5k了，项目收到了赞助",
+              "excerpt_truncated": false,
+              "source_message_id": "7670742957499269309",
+              "urls": [
+                "https://github.com/tt-a1i/archify"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7673819627934009377",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7673819627934009377",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1786700363000,
+              "timezone": "UTC",
+              "excerpt": "Archify 现在可以直接装进 DeepSeek Harness 了",
+              "excerpt_truncated": false,
+              "source_message_id": "7673819627934009377",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7673819648921352381",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7673819648921352381",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1786700368000,
+              "timezone": "UTC",
+              "excerpt": "dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0",
+              "excerpt_truncated": false,
+              "source_message_id": "7673819648921352381",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "所有信息均来自群聊中的发言，未做外部独立核实"
+      ]
+    },
+    {
+      "evidence_id": "e2",
+      "finding": "群聊中两次提及 archify 的 star 数（7k、9.5k）",
+      "criterion": "两条消息分别直接给出具体 star 数字",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7665652145777619588",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7665652145777619588",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1784798723000,
+              "timezone": "UTC",
+              "excerpt": "已经7k了",
+              "excerpt_truncated": false,
+              "source_message_id": "7665652145777619588",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7670742957499269309",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7670742957499269309",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "!",
+              "timestamp_ms": 1785984020000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/tt-a1i/archify，archify 9.5k了，项目收到了赞助",
+              "excerpt_truncated": false,
+              "source_message_id": "7670742957499269309",
+              "urls": [
+                "https://github.com/tt-a1i/archify"
+              ]
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "未说明统计的具体时间点"
+      ]
+    },
+    {
+      "evidence_id": "e3",
+      "finding": "archify 在 V2EX 与 X 上有相关帖子",
+      "criterion": "一条消息直接指出 v2ex 和 x 上都有帖子",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-b4d52f8d9bd64c828f2071021c032ee9",
+            "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7670822456975076193",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7670822456975076193",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "NoMaD",
+              "timestamp_ms": 1786002530000,
+              "timezone": "UTC",
+              "excerpt": "v2ex和x都有帖子，搜Archify",
+              "excerpt_truncated": false,
+              "source_message_id": "7670822456975076193",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "未提供具体帖子链接"
+      ]
+    }
+  ],
+  "limitations": [
+    "仅基于群聊检索到的 5 条 archify 直接命中消息，可能有未覆盖的讨论",
+    "star 数与赞助信息为群聊转述，未经外部验证"
+  ],
+  "resolved_time_range": null,
+  "retrieval_coverage": null
+}

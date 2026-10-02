@@ -1,5 +1,7 @@
 # Planner-specific Utility Development Suite v1
 
+> 当前工程状态（2026-10-03）：沿用其中八条已暴露Case完成16次当前版本Standard/Planned检查，结论为限制使用、保留架构、路由继续保守。low/none研究与本轮engineering validation closed，无进一步付费Planner实验计划。下方Suite/人工裁决是历史身份，未改旧标签或GT；主代理的新来源复核不覆盖这些人工裁决。见[最终report](../../.trellis/tasks/10-02-planner-engineering-closure/report.md)。
+
 `planner-utility-development@v1` 有 15 条 Case：11 条复用既有 Development CaseBundle，4 条新增但已暴露的 CaseBundle。所有 Case 绑定既有 `resume-benchmark-v1` Snapshot；这是 Development 子集，不是 fresh、blind 或 Holdout。`manifest-v1.json` 逐条标明来源与 workload slice。候选类型只说明要检验的任务结构，不是 expected route，也不是 treatment utility label。
 
 新增的 count、ranking、aggregation Case 使用当前 canonical SQLite 的 UTC 半开区间 `[1786752000000, 1786838400000)` 确定性事实，分别为总数 883、最多消息的会话 `qq:677019167` 共 224 条、`text=814` 与 `reply=17`。这些数值被写入 CaseBundle，四个新增 Case 的 GT 适用性已由人工 Accept；当前 v2 的答案质量另作 treatment 裁决。新增 dependent Case 复用已知 canonical 分享/回复消息对，问题明确要求先定位分享再追踪后续评价；其 target 集合仍未证明 corpus-exhaustive。

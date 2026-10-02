@@ -55,6 +55,12 @@ ChatLab 是 Trivae 的主要 reference implementation（参考实现）。本原
 
 ## High-Level Architecture
 
+### 当前 Planner 生产身份与工程收口（2026-10-03）
+
+Router独立`low`、P1 canonical Thin Planner专属`none`、共享Agent Runtime `low`，均使用官方DeepSeek `deepseek-flash`；当前Jev保持shadow。Planner只生成一次soft guidance，Tool execution/arguments、检索与Evidence选择仍归Runtime。
+
+修复source handle/canonical模型可见契约并保存真实日期关系失败后，八个已暴露Development Case完成16次Standard/Planned工程检查。结论为**限制使用、保留架构、production routing继续保守**；none是completion reliability/latency选择，不证明最终质量优于low。两条Evaluation线closed，无新增付费Planner实验计划。完整收益、质量限制及开销见[工程收口ADR](./technical-decisions/planner-engineering-closure.md)。
+
 Trivae 由两个一级平面组成：
 
 ```text

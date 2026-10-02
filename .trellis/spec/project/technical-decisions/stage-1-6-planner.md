@@ -1086,3 +1086,9 @@ Plan 只能帮助 Runtime 组织调查，不能把 Runtime 变成强制 Workflow
 - 真实 Evaluation 证明 ChatLab 继承的 Planner architecture 不适用于 Trivae 当前 workload。
 
 单纯因为“标准 Agent 架构通常更复杂”“未来可能有 UI”或“以后可能有用”不能重新打开 Confirmed 决策。
+
+### 2026-10-03 最终工程收口
+
+当前Planner为P1 canonical/官方DeepSeek Flash/none，Router与共享Runtime保持独立low。none只作为completion reliability/latency工程选择。修复source/canonical模型可见契约、保存真实日期关系regression后，八条已暴露Development Case完成16次Standard/Planned检查、54实际HTTP。
+
+结论为**限制使用、保留架构、production routing继续保守**；Jev shadow不变。局部调查组织/续页收益不足以抵消context遗漏、事实覆盖/关系错误与额外开销。low/none研究与当前validation closed，不安排后续付费Planner实验；保留原失败和GT。详见[工程收口ADR](./planner-engineering-closure.md)，其决定不新增执行架构，也不证明none最终质量更高。

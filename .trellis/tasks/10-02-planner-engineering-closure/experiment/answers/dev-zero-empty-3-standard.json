@@ -1,0 +1,32 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "answer",
+      "text": "按 UTC 时间，在解析出的窗口 [2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z) 内没有任何消息记录，因此无从判断当天大家在聊什么。"
+    }
+  ],
+  "citation_bindings": [],
+  "evidence_items": [],
+  "limitations": [
+    "该结论仅覆盖 [2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z) 这一 UTC 窗口；不排除其他日期有发言。",
+    "检索覆盖状态为 complete，未发现截断或分页残留。"
+  ],
+  "resolved_time_range": {
+    "kind": "absolute",
+    "anchor": "request",
+    "resolved_start_timestamp": 1756166400000,
+    "resolved_end_timestamp": 1756252800000,
+    "resolved_start_utc": "2025-08-26T00:00:00.000Z",
+    "resolved_end_utc": "2025-08-27T00:00:00.000Z",
+    "resolved_interval_utc": "[2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z)"
+  },
+  "retrieval_coverage": {
+    "status": "complete",
+    "basis": "canonical_store",
+    "covered_units": 0,
+    "eligible_units": 0,
+    "unit": "message",
+    "retrieved_count": 0,
+    "has_more": false
+  }
+}

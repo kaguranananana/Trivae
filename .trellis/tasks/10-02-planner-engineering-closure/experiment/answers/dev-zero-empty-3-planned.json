@@ -1,0 +1,32 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "answer",
+      "text": "按 UTC 计算，2025-08-26 这一天（有效窗口 [2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z)）在可信范围内没有任何消息记录，共 0 条发言，因此无法归纳当天的话题。"
+    }
+  ],
+  "citation_bindings": [],
+  "evidence_items": [],
+  "limitations": [
+    "该结论仅针对上述解析出的 UTC 日窗口，窗口内检索覆盖状态为 complete、结果未截断。",
+    "若需要查看相邻日期或更大时间范围的讨论，需要另行指定时间范围。"
+  ],
+  "resolved_time_range": {
+    "kind": "absolute",
+    "anchor": "request",
+    "resolved_start_timestamp": 1756166400000,
+    "resolved_end_timestamp": 1756252800000,
+    "resolved_start_utc": "2025-08-26T00:00:00.000Z",
+    "resolved_end_utc": "2025-08-27T00:00:00.000Z",
+    "resolved_interval_utc": "[2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z)"
+  },
+  "retrieval_coverage": {
+    "status": "complete",
+    "basis": "canonical_store",
+    "covered_units": 0,
+    "eligible_units": 0,
+    "unit": "message",
+    "retrieved_count": 0,
+    "has_more": false
+  }
+}

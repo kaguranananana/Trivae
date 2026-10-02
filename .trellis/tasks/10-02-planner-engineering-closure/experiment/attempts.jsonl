@@ -1,0 +1,16 @@
+{"order": 1, "case_id": "pu-dependent-mattpocock", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:17:57.004+00:00"}
+{"order": 2, "case_id": "pu-dependent-mattpocock", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:18:12.997+00:00"}
+{"order": 3, "case_id": "dev-context-archify", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:18:28.406+00:00"}
+{"order": 4, "case_id": "dev-context-archify", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:18:39.768+00:00"}
+{"order": 5, "case_id": "pu-aggregate-utc-types", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:18:47.725+00:00"}
+{"order": 6, "case_id": "pu-aggregate-utc-types", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:18:55.719+00:00"}
+{"order": 7, "case_id": "dev-zero-empty-3", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:19:09.487+00:00"}
+{"order": 8, "case_id": "dev-zero-empty-3", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:19:15.855+00:00"}
+{"order": 9, "case_id": "dev-temporal-30d", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:19:20.533+00:00"}
+{"order": 10, "case_id": "dev-temporal-30d", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:19:34.982+00:00"}
+{"order": 11, "case_id": "dev-lexical-forge", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:19:50.746+00:00"}
+{"order": 12, "case_id": "dev-lexical-forge", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:19:58.965+00:00"}
+{"order": 13, "case_id": "dev-cite-archify", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:20:05.177+00:00"}
+{"order": 14, "case_id": "dev-cite-archify", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:20:12.026+00:00"}
+{"order": 15, "case_id": "pu-rank-utc-session", "treatment": "planned", "attempt": 1, "started_at": "2026-10-02T10:20:23.010+00:00"}
+{"order": 16, "case_id": "pu-rank-utc-session", "treatment": "standard", "attempt": 1, "started_at": "2026-10-02T10:20:28.992+00:00"}

@@ -1,5 +1,7 @@
 # Planner-only quality calibration
 
+> 历史实验记录。2026-10-03 Planner Evaluation已工程收口，当前生产为P1 canonical /官方DeepSeek Flash /none，Router与共享Runtime low；none只证明已观察的completion可靠性/延迟优势，不证明最终答案更好。下方“当前”、treatment与运行命令指原实验时点，不再安排付费扩样。见[最终report](../../.trellis/tasks/10-02-planner-engineering-closure/report.md)。
+
 本实验只调用单次 `SoftPlanner.plan`，不运行 Router、Agent Runtime、Tool Loop、Retrieval、Evidence 或最终答案评测。P0 是任务起点提交 `12f2f75` 的原始 prompt；P1 是当前 Planner prompt 与从 Capability metadata 派生的摘要。两路使用同一 Provider completion boundary、JSON parser、allowlist、2048 completion token 配置和 Case 输入。P0 模板已与起点源码在八条 Case 上逐字比对。
 
 `run_planner_only.py` 从既有 `evaluation/planner-utility/manifest-v1.json` 中取 8 条已暴露 Development Case：dependent、archify、aggregation、verified-zero、30 天话题、forge 精确检索、archify 简单 lookup、会话排名。来源和版本写入每条运行记录；不会读取 Holdout 或 sealed Case。Snapshot 只投影 message count、首末时间与 lexical index 存在性，两路一致。没有聊天 corpus、Tool Result 或真实 direct hit 进入 Planner。

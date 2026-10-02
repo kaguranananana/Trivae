@@ -1,0 +1,230 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "按 UTC 2026-08-15（即 2026-08-15T00:00:00Z 至 2026-08-16T00:00:00Z 的半开区间）统计，发言最多的会话是 qq:677019167，当日消息数为 224 条。第二位是 qq:383550736（217 条），其后依次为 qq:750807478（174 条）、qq:1039179741（116 条）、qq:1040412855（116 条）、qq:831907794（36 条）。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "UTC 2026-08-15 消息数最多的会话为 qq:677019167，共 224 条",
+      "criterion": "对 messages 表按 timestamp 落在 UTC 2026-08-15 完整当日窗口内的记录按 session_id 分组计数并降序排列",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-03df5e41bdfa4eb4bfc8602866642290",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[0]",
+            "value_snapshot": {
+              "session_id": "qq:677019167",
+              "cnt": 224
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY session_id ORDER BY cnt DESC LIMIT 10",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[0]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-03df5e41bdfa4eb4bfc8602866642290",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[1]",
+            "value_snapshot": {
+              "session_id": "qq:383550736",
+              "cnt": 217
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY session_id ORDER BY cnt DESC LIMIT 10",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[1]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-03df5e41bdfa4eb4bfc8602866642290",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[2]",
+            "value_snapshot": {
+              "session_id": "qq:750807478",
+              "cnt": 174
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY session_id ORDER BY cnt DESC LIMIT 10",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[2]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-03df5e41bdfa4eb4bfc8602866642290",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[3]",
+            "value_snapshot": {
+              "session_id": "qq:1039179741",
+              "cnt": 116
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY session_id ORDER BY cnt DESC LIMIT 10",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[3]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-03df5e41bdfa4eb4bfc8602866642290",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[4]",
+            "value_snapshot": {
+              "session_id": "qq:1040412855",
+              "cnt": 116
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY session_id ORDER BY cnt DESC LIMIT 10",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[4]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-03df5e41bdfa4eb4bfc8602866642290",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[5]",
+            "value_snapshot": {
+              "session_id": "qq:831907794",
+              "cnt": 36
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS cnt FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY session_id ORDER BY cnt DESC LIMIT 10",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[5]"
+          }
+        }
+      ],
+      "limitations": []
+    }
+  ],
+  "limitations": [
+    "统计仅基于该 UTC 日窗口内可取到的消息记录，未包含窗口外的消息。"
+  ],
+  "resolved_time_range": null,
+  "retrieval_coverage": null
+}

@@ -1,0 +1,1580 @@
+[
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 16,
+      "row": 26
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-subagent-context.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\n# IMPORTANT: Suppress all warnings FIRST\nimport warnings\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 27
+          },
+          "location": {
+            "column": 1,
+            "row": 23
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 23
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 23,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 12,
+      "row": 29
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-subagent-context.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 29
+    },
+    "message": "Module level import not at top of file",
+    "name": "module-import-not-at-top-of-file",
+    "noqa_row": 29,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 10,
+      "row": 30
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-subagent-context.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 30
+    },
+    "message": "Module level import not at top of file",
+    "name": "module-import-not-at-top-of-file",
+    "noqa_row": 30,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 11,
+      "row": 31
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-subagent-context.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 31
+    },
+    "message": "Module level import not at top of file",
+    "name": "module-import-not-at-top-of-file",
+    "noqa_row": 31,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 25,
+      "row": 32
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-subagent-context.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 32
+    },
+    "message": "Module level import not at top of file",
+    "name": "module-import-not-at-top-of-file",
+    "noqa_row": 32,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 23,
+      "row": 33
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-subagent-context.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 33
+    },
+    "message": "Module level import not at top of file",
+    "name": "module-import-not-at-top-of-file",
+    "noqa_row": 33,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 25,
+      "row": 42
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-workflow-state.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport json\nimport os\nimport queue\nimport re\nimport sys\nimport threading\nfrom pathlib import Path\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 44
+          },
+          "location": {
+            "column": 1,
+            "row": 34
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 34
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 34,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 28,
+      "row": 65
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/inject-workflow-state.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from typing import Optional\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 68
+          },
+          "location": {
+            "column": 1,
+            "row": 65
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 65
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 65,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 51,
+      "row": 372
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.codex/hooks/session-start.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "        from common.paths import (  # type: ignore[import-not-found]\n            count_lines,\n            get_active_journal_file,\n            get_developer,\n            get_tasks_dir,\n        )\n        from common.tasks import iter_active_tasks  # type: ignore[import-not-found]\n",
+          "end_location": {
+            "column": 1,
+            "row": 373
+          },
+          "location": {
+            "column": 1,
+            "row": 371
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 9,
+      "row": 371
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 371,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 60
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/add_session.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport argparse\nimport re\nimport sys\nfrom datetime import datetime\nfrom pathlib import Path\n\nfrom common.config import (\n    get_max_journal_lines,\n    get_packages,\n    get_session_auto_commit,\n    get_session_commit_message,\n    is_monorepo,\n    resolve_package,\n    validate_package,\n)\nfrom common.developer import ensure_developer\nfrom common.git import run_git\nfrom common.log import Colors, colored\nfrom common.paths import (\n    DIR_TASKS,\n    DIR_WORKFLOW,\n    FILE_JOURNAL_PREFIX,\n    get_current_task,\n    get_developer,\n    get_repo_root,\n    get_workspace_dir,\n)\nfrom common.safe_commit import (\n    print_gitignore_warning,\n    safe_git_add,\n    safe_trellis_paths_to_add,\n)\nfrom common.tasks import load_task\nfrom common.types import TaskInfo\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 63
+          },
+          "location": {
+            "column": 1,
+            "row": 25
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 25
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 25,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 2,
+      "row": 84
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 58
+    },
+    "message": "Module level import not at top of file",
+    "name": "module-import-not-at-top-of-file",
+    "noqa_row": 58,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 92
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from .active_task import (\n    ActiveTask,\n    clear_active_task,\n    resolve_active_task,\n    resolve_context_key,\n    set_active_task,\n)\nfrom .paths import (\n    DIR_ARCHIVE,\n    DIR_SCRIPTS,\n    DIR_SPEC,\n    DIR_TASKS,\n    DIR_WORKFLOW,\n    DIR_WORKSPACE,\n    FILE_CURRENT_TASK,\n    FILE_DEVELOPER,\n    FILE_JOURNAL_PREFIX,\n    FILE_TASK_JSON,\n    check_developer,\n    clear_current_task,\n    count_lines,\n    generate_task_date_prefix,\n    get_active_journal_file,\n    get_current_task,\n    get_current_task_abs,\n    get_developer,\n    get_repo_root,\n    get_tasks_dir,\n    get_workspace_dir,\n    has_current_task,\n    normalize_task_ref,\n    resolve_task_ref,\n    set_current_task,\n)\n",
+          "end_location": {
+            "column": 1,
+            "row": 93
+          },
+          "location": {
+            "column": 1,
+            "row": 58
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 58
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 58,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 17,
+      "row": 59
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 59
+    },
+    "message": "`.paths.DIR_WORKFLOW` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 59,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 18,
+      "row": 60
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 60
+    },
+    "message": "`.paths.DIR_WORKSPACE` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 60,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 14,
+      "row": 61
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 61
+    },
+    "message": "`.paths.DIR_TASKS` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 61,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 16,
+      "row": 62
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 62
+    },
+    "message": "`.paths.DIR_ARCHIVE` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 62,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 13,
+      "row": 63
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 63
+    },
+    "message": "`.paths.DIR_SPEC` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 63,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 16,
+      "row": 64
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 64
+    },
+    "message": "`.paths.DIR_SCRIPTS` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 64,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 19,
+      "row": 65
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 65
+    },
+    "message": "`.paths.FILE_DEVELOPER` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 65,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 22,
+      "row": 66
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 66
+    },
+    "message": "`.paths.FILE_CURRENT_TASK` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 66,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 19,
+      "row": 67
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 67
+    },
+    "message": "`.paths.FILE_TASK_JSON` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 67,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 24,
+      "row": 68
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 68
+    },
+    "message": "`.paths.FILE_JOURNAL_PREFIX` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 68,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 18,
+      "row": 69
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 69
+    },
+    "message": "`.paths.get_repo_root` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 69,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 18,
+      "row": 70
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 70
+    },
+    "message": "`.paths.get_developer` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 70,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 20,
+      "row": 71
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 71
+    },
+    "message": "`.paths.check_developer` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 71,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 18,
+      "row": 72
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 72
+    },
+    "message": "`.paths.get_tasks_dir` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 72,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 22,
+      "row": 73
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 73
+    },
+    "message": "`.paths.get_workspace_dir` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 73,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 28,
+      "row": 74
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 74
+    },
+    "message": "`.paths.get_active_journal_file` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 74,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 16,
+      "row": 75
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 75
+    },
+    "message": "`.paths.count_lines` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 75,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 21,
+      "row": 76
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 76
+    },
+    "message": "`.paths.get_current_task` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 76,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 25,
+      "row": 77
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 77
+    },
+    "message": "`.paths.get_current_task_abs` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 77,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 23,
+      "row": 78
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 78
+    },
+    "message": "`.paths.normalize_task_ref` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 78,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 21,
+      "row": 79
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 79
+    },
+    "message": "`.paths.resolve_task_ref` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 79,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 21,
+      "row": 80
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 80
+    },
+    "message": "`.paths.set_current_task` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 80,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 23,
+      "row": 81
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 81
+    },
+    "message": "`.paths.clear_current_task` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 81,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 21,
+      "row": 82
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 82
+    },
+    "message": "`.paths.has_current_task` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 82,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 30,
+      "row": 83
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 83
+    },
+    "message": "`.paths.generate_task_date_prefix` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 83,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 2,
+      "row": 92
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 86
+    },
+    "message": "Module level import not at top of file",
+    "name": "module-import-not-at-top-of-file",
+    "noqa_row": 86,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 15,
+      "row": 87
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 87
+    },
+    "message": "`.active_task.ActiveTask` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 87,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 22,
+      "row": 88
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 88
+    },
+    "message": "`.active_task.clear_active_task` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 88,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 24,
+      "row": 89
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 89
+    },
+    "message": "`.active_task.resolve_active_task` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 89,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 24,
+      "row": 90
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 90
+    },
+    "message": "`.active_task.resolve_context_key` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 90,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 20,
+      "row": 91
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/__init__.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 91
+    },
+    "message": "`.active_task.set_active_task` imported but unused; consider removing, adding to `__all__`, or using a redundant alias",
+    "name": "unused-import",
+    "noqa_row": 91,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 47,
+      "row": 13
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/config.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport sys\nfrom pathlib import Path\n\nfrom .paths import DIR_WORKFLOW, get_repo_root\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 16
+          },
+          "location": {
+            "column": 1,
+            "row": 8
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 8,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 26
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/developer.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport sys\nfrom datetime import datetime\nfrom pathlib import Path\n\nfrom .paths import (\n    DIR_TASKS,\n    DIR_WORKFLOW,\n    DIR_WORKSPACE,\n    FILE_DEVELOPER,\n    FILE_JOURNAL_PREFIX,\n    check_developer,\n    get_developer,\n    get_repo_root,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 29
+          },
+          "location": {
+            "column": 1,
+            "row": 11
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 11
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 11,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 36
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/git_context.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport json\n\nfrom .git import run_git\nfrom .packages_context import (\n    get_context_packages_json,\n    get_context_packages_text,\n)\nfrom .session_context import (\n    get_context_json,\n    get_context_record_json,\n    get_context_text,\n    get_context_text_record,\n    output_json,\n    output_text,\n)\nfrom .trellis_config import read_trellis_config\nfrom .workflow_phase import (\n    filter_platform,\n    get_phase_index,\n    get_step,\n    resolve_effective_platform,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 38
+          },
+          "location": {
+            "column": 1,
+            "row": 13
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 13
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 13,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 21,
+      "row": 19
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/git_context.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from .session_context import (\n    get_context_record_json,\n    get_context_text_record,\n    output_json,\n    output_text,\n)",
+          "end_location": {
+            "column": 2,
+            "row": 25
+          },
+          "location": {
+            "column": 1,
+            "row": 18
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 5,
+      "row": 19
+    },
+    "message": "`.session_context.get_context_json` imported but unused",
+    "name": "unused-import",
+    "noqa_row": 19,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 21,
+      "row": 20
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/git_context.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from .session_context import (\n    get_context_record_json,\n    get_context_text_record,\n    output_json,\n    output_text,\n)",
+          "end_location": {
+            "column": 2,
+            "row": 25
+          },
+          "location": {
+            "column": 1,
+            "row": 18
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 5,
+      "row": 20
+    },
+    "message": "`.session_context.get_context_text` imported but unused",
+    "name": "unused-import",
+    "noqa_row": 20,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 23
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/packages_context.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nfrom pathlib import Path\n\nfrom .config import _is_true_config_value, get_default_package, get_packages, get_spec_scope\nfrom .paths import (\n    DIR_SPEC,\n    DIR_WORKFLOW,\n    get_current_task,\n    get_repo_root,\n)\nfrom .tasks import load_task\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 26
+          },
+          "location": {
+            "column": 1,
+            "row": 12
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 12
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 12,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 25,
+      "row": 17
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/paths.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport re\nfrom datetime import datetime\nfrom pathlib import Path\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 20
+          },
+          "location": {
+            "column": 1,
+            "row": 13
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 13
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 13,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 46
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/safe_commit.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport sys\nfrom pathlib import Path\n\nfrom .git import run_git\nfrom .paths import (\n    DIR_ARCHIVE,\n    DIR_TASKS,\n    DIR_WORKFLOW,\n    DIR_WORKSPACE,\n    FILE_JOURNAL_PREFIX,\n    get_developer,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 49
+          },
+          "location": {
+            "column": 1,
+            "row": 33
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 33
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 33,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 42
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/session_context.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport json\nimport os\nimport re\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nfrom .active_task import resolve_context_key\nfrom .config import get_git_packages\nfrom .git import run_git\nfrom .packages_context import get_packages_section\nfrom .paths import (\n    DIR_SCRIPTS,\n    DIR_SPEC,\n    DIR_TASKS,\n    DIR_WORKFLOW,\n    DIR_WORKSPACE,\n    count_lines,\n    get_active_journal_file,\n    get_current_task,\n    get_current_task_source,\n    get_developer,\n    get_repo_root,\n    get_tasks_dir,\n)\nfrom .tasks import children_progress, get_all_statuses, iter_active_tasks, load_task\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 45
+          },
+          "location": {
+            "column": 1,
+            "row": 15
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 15
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 15,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 22
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/task_queue.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nfrom pathlib import Path\n\nfrom .paths import (\n    get_developer,\n    get_repo_root,\n    get_tasks_dir,\n)\nfrom .tasks import iter_active_tasks\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 25
+          },
+          "location": {
+            "column": 1,
+            "row": 13
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 13
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 13,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 58
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/task_store.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport argparse\nimport json\nimport re\nimport sys\nfrom datetime import datetime\nfrom pathlib import Path\n\nfrom .config import (\n    get_codex_dispatch_mode,\n    get_packages,\n    get_session_auto_commit,\n    is_monorepo,\n    resolve_package,\n    validate_package,\n)\nfrom .git import branch_exists_locally, resolve_default_branch, run_git\nfrom .io import read_json, write_json\nfrom .log import Colors, colored\nfrom .paths import (\n    DIR_ARCHIVE,\n    DIR_TASKS,\n    DIR_WORKFLOW,\n    FILE_TASK_JSON,\n    generate_task_date_prefix,\n    get_developer,\n    get_repo_root,\n    get_tasks_dir,\n)\nfrom .safe_commit import (\n    print_gitignore_warning,\n    safe_archive_paths_to_add,\n    safe_git_add,\n)\nfrom .task_utils import (\n    archive_task_complete,\n    find_task_by_name,\n    is_within_tasks_dir,\n    resolve_task_dir,\n    run_task_hooks,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 61
+          },
+          "location": {
+            "column": 1,
+            "row": 17
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 17
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 17,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "F541",
+    "end_location": {
+      "column": 79,
+      "row": 245
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/task_store.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "\"Warning: --package ignored in single-repo project\"",
+          "end_location": {
+            "column": 79,
+            "row": 245
+          },
+          "location": {
+            "column": 27,
+            "row": 245
+          }
+        }
+      ],
+      "message": "Remove extraneous `f` prefix"
+    },
+    "location": {
+      "column": 27,
+      "row": 245
+    },
+    "message": "f-string without any placeholders",
+    "name": "f-string-missing-placeholders",
+    "noqa_row": 245,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/f-string-missing-placeholders"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 48,
+      "row": 20
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/task_utils.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport shutil\nimport sys\nfrom datetime import datetime\nfrom pathlib import Path\n\nfrom .paths import get_repo_root, get_tasks_dir\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 23
+          },
+          "location": {
+            "column": 1,
+            "row": 13
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 13
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 13,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 28,
+      "row": 13
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/trellis_config.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nfrom pathlib import Path\nfrom typing import Optional\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 16
+          },
+          "location": {
+            "column": 1,
+            "row": 10
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 10
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 10,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 14
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/common/types.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nfrom dataclasses import dataclass\nfrom pathlib import Path\nfrom typing import TypedDict\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 17
+          },
+          "location": {
+            "column": 1,
+            "row": 10
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 10
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 10,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 36,
+      "row": 12
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/get_context.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nfrom common.git_context import main\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 15
+          },
+          "location": {
+            "column": 1,
+            "row": 10
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 10
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 10,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 44,
+      "row": 22
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/init_developer.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport sys\n\nfrom common.developer import init_developer\nfrom common.paths import (\n    DIR_WORKFLOW,\n    FILE_DEVELOPER,\n    get_developer,\n)\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 25
+          },
+          "location": {
+            "column": 1,
+            "row": 13
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 13
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 13,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 2,
+      "row": 66
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/scripts/task.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport argparse\nimport json\nimport sys\n\nfrom common.active_task import (\n    clear_active_task,\n    resolve_active_task,\n    resolve_context_key,\n    set_active_task,\n)\nfrom common.io import read_json, write_json\nfrom common.log import Colors, colored\nfrom common.paths import (\n    DIR_TASKS,\n    DIR_WORKFLOW,\n    FILE_TASK_JSON,\n    get_current_task,\n    get_developer,\n    get_repo_root,\n    get_tasks_dir,\n)\nfrom common.task_context import (\n    cmd_add_context,\n    cmd_list_context,\n    cmd_validate,\n)\n\n# Import command handlers from split modules (also re-exports for plan.py compatibility)\nfrom common.task_store import (\n    cmd_add_subtask,\n    cmd_archive,\n    cmd_create,\n    cmd_remove_subtask,\n    cmd_set_base_branch,\n    cmd_set_branch,\n    cmd_set_meta,\n    cmd_set_scope,\n)\nfrom common.task_utils import resolve_task_dir, run_task_hooks\nfrom common.tasks import children_progress, iter_active_tasks\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 69
+          },
+          "location": {
+            "column": 1,
+            "row": 25
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 25
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 25,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 53,
+      "row": 14
+    },
+    "filename": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.trellis/tasks/archive/2026-08/08-26-1m-context-budget-finalization/archive_benchmark.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport json\nimport time\nfrom pathlib import Path\n\nfrom benchmark import _configurations, _measure_projection\n\nfrom trivae.capabilities.contracts import ExecutionScope, ToolEnvelope\nfrom trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository\nfrom trivae.query.evidence import build_tool_result_record\nfrom trivae.retrieval.lexical import LexicalRetrieval\nfrom trivae.retrieval.structured import LexicalQuery\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 17
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  }
+]

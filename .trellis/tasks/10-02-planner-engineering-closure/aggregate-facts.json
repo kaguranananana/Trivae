@@ -1,0 +1,226 @@
+{
+  "standard": {
+    "runs": 8,
+    "successful_e2e": 8,
+    "e2e_mean_ms": 8169.453385125053,
+    "e2e_median_ms": 6817.637020500115,
+    "planner_mean_ms": null,
+    "provider_requests": 22,
+    "planner_requests": 0,
+    "runtime_requests": 22,
+    "planner_valid": 0,
+    "tool_calls": 16,
+    "tool_errors": {},
+    "partial_calls": 2,
+    "usage": {
+      "planner": {
+        "input_tokens": {
+          "total": 0,
+          "observed_sum": 0,
+          "observed_requests": 0,
+          "requests": 0
+        },
+        "output_tokens": {
+          "total": 0,
+          "observed_sum": 0,
+          "observed_requests": 0,
+          "requests": 0
+        },
+        "total_tokens": {
+          "total": 0,
+          "observed_sum": 0,
+          "observed_requests": 0,
+          "requests": 0
+        },
+        "reasoning_tokens": {
+          "total": 0,
+          "observed_sum": 0,
+          "observed_requests": 0,
+          "requests": 0
+        },
+        "cached_input_tokens": {
+          "total": 0,
+          "observed_sum": 0,
+          "observed_requests": 0,
+          "requests": 0
+        }
+      },
+      "runtime": {
+        "input_tokens": {
+          "total": 275233,
+          "observed_sum": 275233,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "output_tokens": {
+          "total": 9832,
+          "observed_sum": 9832,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "total_tokens": {
+          "total": 285065,
+          "observed_sum": 285065,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "reasoning_tokens": {
+          "total": 3730,
+          "observed_sum": 3730,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "cached_input_tokens": {
+          "total": 197504,
+          "observed_sum": 197504,
+          "observed_requests": 22,
+          "requests": 22
+        }
+      },
+      "total": {
+        "input_tokens": {
+          "total": 275233,
+          "observed_sum": 275233,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "output_tokens": {
+          "total": 9832,
+          "observed_sum": 9832,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "total_tokens": {
+          "total": 285065,
+          "observed_sum": 285065,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "reasoning_tokens": {
+          "total": 3730,
+          "observed_sum": 3730,
+          "observed_requests": 22,
+          "requests": 22
+        },
+        "cached_input_tokens": {
+          "total": 197504,
+          "observed_sum": 197504,
+          "observed_requests": 22,
+          "requests": 22
+        }
+      }
+    }
+  },
+  "planned": {
+    "runs": 8,
+    "successful_e2e": 8,
+    "e2e_mean_ms": 10265.659411375964,
+    "e2e_median_ms": 10293.343729499611,
+    "planner_mean_ms": 1436.1306717501066,
+    "provider_requests": 32,
+    "planner_requests": 8,
+    "runtime_requests": 24,
+    "planner_valid": 8,
+    "tool_calls": 20,
+    "tool_errors": {},
+    "partial_calls": 2,
+    "usage": {
+      "planner": {
+        "input_tokens": {
+          "total": 10316,
+          "observed_sum": 10316,
+          "observed_requests": 8,
+          "requests": 8
+        },
+        "output_tokens": {
+          "total": 1407,
+          "observed_sum": 1407,
+          "observed_requests": 8,
+          "requests": 8
+        },
+        "total_tokens": {
+          "total": 11723,
+          "observed_sum": 11723,
+          "observed_requests": 8,
+          "requests": 8
+        },
+        "reasoning_tokens": {
+          "total": null,
+          "observed_sum": 0,
+          "observed_requests": 0,
+          "requests": 8
+        },
+        "cached_input_tokens": {
+          "total": 8956,
+          "observed_sum": 8956,
+          "observed_requests": 8,
+          "requests": 8
+        }
+      },
+      "runtime": {
+        "input_tokens": {
+          "total": 273878,
+          "observed_sum": 273878,
+          "observed_requests": 24,
+          "requests": 24
+        },
+        "output_tokens": {
+          "total": 11102,
+          "observed_sum": 11102,
+          "observed_requests": 24,
+          "requests": 24
+        },
+        "total_tokens": {
+          "total": 284980,
+          "observed_sum": 284980,
+          "observed_requests": 24,
+          "requests": 24
+        },
+        "reasoning_tokens": {
+          "total": 4741,
+          "observed_sum": 4741,
+          "observed_requests": 24,
+          "requests": 24
+        },
+        "cached_input_tokens": {
+          "total": 172928,
+          "observed_sum": 172928,
+          "observed_requests": 24,
+          "requests": 24
+        }
+      },
+      "total": {
+        "input_tokens": {
+          "total": 284194,
+          "observed_sum": 284194,
+          "observed_requests": 32,
+          "requests": 32
+        },
+        "output_tokens": {
+          "total": 12509,
+          "observed_sum": 12509,
+          "observed_requests": 32,
+          "requests": 32
+        },
+        "total_tokens": {
+          "total": 296703,
+          "observed_sum": 296703,
+          "observed_requests": 32,
+          "requests": 32
+        },
+        "reasoning_tokens": {
+          "total": null,
+          "observed_sum": 4741,
+          "observed_requests": 24,
+          "requests": 32
+        },
+        "cached_input_tokens": {
+          "total": 181884,
+          "observed_sum": 181884,
+          "observed_requests": 32,
+          "requests": 32
+        }
+      }
+    }
+  }
+}

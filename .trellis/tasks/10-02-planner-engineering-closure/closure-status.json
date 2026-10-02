@@ -1,0 +1,10 @@
+{
+  "planner_low_none_evaluation": "closed",
+  "standard_planned_validation": "final_engineering_closure",
+  "paid_planner_experiments_scheduled": false,
+  "formal_runs": 16,
+  "targeted_repeats": 0,
+  "engineering_decision": "limited_use_conservative_routing",
+  "reopen_condition": "new real serious production Failure Case affecting an explicit engineering decision; no automatic task",
+  "historical_artifacts_modified": false
+}

@@ -1,0 +1,3365 @@
+[
+  {
+    "schema_version": 1,
+    "event_id": "event-6ad1e770cb6b4ada884d4239bbd236fd",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 1,
+    "occurred_at": "2026-10-02T10:20:12.112+00:00",
+    "observed_at": "2026-10-02T10:20:12.112+00:00",
+    "stage": "query",
+    "operation": "query.received",
+    "phase": "started",
+    "operation_id": "query",
+    "parent_operation_id": null,
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": null,
+      "execution_override": {
+        "context_window_limit": null,
+        "forced_route": "planned_execution"
+      },
+      "query": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+      "scope": {
+        "allowed_session_ids": null,
+        "end_timestamp": null,
+        "max_results": 100,
+        "start_timestamp": null
+      },
+      "trace_profile": "normal"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-93b3913cb7be466a873fab4a19878027",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 2,
+    "occurred_at": "2026-10-02T10:20:12.113+00:00",
+    "observed_at": "2026-10-02T10:20:12.113+00:00",
+    "stage": "context",
+    "operation": "context.prepared",
+    "phase": "completed",
+    "operation_id": "context",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "059bd74c3e884fa8bff60b0adfe7e4a5",
+      "prior_context_count": 0
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-3461d93d80174f3bbd9008f3f92f673c",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 3,
+    "occurred_at": "2026-10-02T10:20:12.114+00:00",
+    "observed_at": "2026-10-02T10:20:12.114+00:00",
+    "stage": "router",
+    "operation": "router.bypassed",
+    "phase": "skipped",
+    "operation_id": "router",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "execution_override": {
+        "context_window_limit": null,
+        "forced_route": "planned_execution"
+      },
+      "route": "planned_execution"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-95f0658c143143829f0e53cab856df49",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 4,
+    "occurred_at": "2026-10-02T10:20:12.114+00:00",
+    "observed_at": "2026-10-02T10:20:12.114+00:00",
+    "stage": "router",
+    "operation": "router.decision",
+    "phase": "completed",
+    "operation_id": "router",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "confidence": 1.0,
+      "degradation_code": null,
+      "degraded": false,
+      "execution_override": {
+        "context_window_limit": null,
+        "forced_route": "planned_execution"
+      },
+      "model": null,
+      "primary_latency_ms": null,
+      "probabilities": null,
+      "provider": null,
+      "provider_error_type": null,
+      "reason": "explicit evaluation override: planned_execution",
+      "route": "planned_execution",
+      "shadow_latency_ms": null,
+      "source": "evaluation_override",
+      "usage": null
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-5de896578932460abbf5ed6d8c7c3e08",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 5,
+    "occurred_at": "2026-10-02T10:20:12.114+00:00",
+    "observed_at": "2026-10-02T10:20:12.114+00:00",
+    "stage": "planner",
+    "operation": "planner.started",
+    "phase": "started",
+    "operation_id": "planner",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "route": "planned_execution"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-c3065c0afbfa424da267a2913eee418a",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 6,
+    "occurred_at": "2026-10-02T10:20:13.714+00:00",
+    "observed_at": "2026-10-02T10:20:13.714+00:00",
+    "stage": "planner",
+    "operation": "planner.completed",
+    "phase": "completed",
+    "operation_id": "planner",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": 1598.9823329946375,
+    "payload": {
+      "completion_request": {
+        "json_mode": true,
+        "max_tokens": 2048,
+        "model": "deepseek-flash",
+        "provider": "deepseek",
+        "reasoning_effort": "none",
+        "response_format": {
+          "type": "json_object"
+        },
+        "temperature": 0
+      },
+      "criterion_count": 3,
+      "finish_reason": "stop",
+      "intent": "mixed",
+      "model": "deepseek-flash",
+      "parse_stage": "plan_validation",
+      "planner_latency_ms": 1598.2294999994338,
+      "provider": "deepseek",
+      "provider_latency_ms": 1598.1590000010328,
+      "response_length": 598,
+      "step_count": 3,
+      "steps": [
+        {
+          "evidence_needed": [
+            "包含 archify 的消息及其上下文",
+            "提及 star 数的具体表述"
+          ],
+          "goal": "检索 archify 相关消息，定位项目近期动态与 star 数讨论",
+          "suggested_tools": [
+            "lexical_search",
+            "semantic_search"
+          ]
+        },
+        {
+          "evidence_needed": [
+            "回复与后续讨论",
+            "star 数是否被明确提及"
+          ],
+          "goal": "对关键命中消息取上下文，确认发展讨论与 star 提及的语境",
+          "suggested_tools": [
+            "get_message_context"
+          ]
+        },
+        {
+          "evidence_needed": [
+            "近期时间范围内的 archify 消息"
+          ],
+          "goal": "在时间窗口内浏览 archify 相关近期消息，补充最新进展",
+          "suggested_tools": [
+            "get_recent_messages"
+          ]
+        }
+      ],
+      "success_criteria": [
+        "给出 archify 近期发展的要点",
+        "明确 star 数是否被提及及具体内容",
+        "引用相关消息作为依据"
+      ],
+      "title": "archify 项目近期发展与 star 提及",
+      "usage": {
+        "cached_input_tokens": 1149,
+        "input_tokens": 1283,
+        "output_tokens": 230,
+        "total_tokens": 1513
+      },
+      "version": 1
+    },
+    "limitations": [
+      "payload.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-4654ad26d8364b75a4bcf5b09766330a",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 7,
+    "occurred_at": "2026-10-02T10:20:13.715+00:00",
+    "observed_at": "2026-10-02T10:20:13.715+00:00",
+    "stage": "runtime",
+    "operation": "runtime.run",
+    "phase": "started",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "parent_operation_id": null,
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "run_started"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-ebaef5b244024991a6bfc56f98d8b75b",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 8,
+    "occurred_at": "2026-10-02T10:20:13.854+00:00",
+    "observed_at": "2026-10-02T10:20:13.854+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "started",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:1",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "model_visible_context": [
+        {
+          "content": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthe",
+          "role": "system"
+        },
+        {
+          "content": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+          "role": "user"
+        }
+      ],
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "turn_started",
+      "tool_round": 1
+    },
+    "limitations": [
+      "payload.model_visible_context[0].content.truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-865a0885ac664f6983079de89f0e9b5f",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 9,
+    "occurred_at": "2026-10-02T10:20:14.394+00:00",
+    "observed_at": "2026-10-02T10:20:14.394+00:00",
+    "stage": "tool",
+    "operation": "tool.call.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {
+        "context_after": 1,
+        "context_before": 1,
+        "end_timestamp": null,
+        "keyword": "archify",
+        "limit": 100,
+        "message_types": null,
+        "sender_user_ids": null,
+        "session_ids": null,
+        "start_timestamp": null,
+        "time_range": null
+      },
+      "tool_name": "lexical_search"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-71855bdfd194412b916555fa76441c26",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 10,
+    "occurred_at": "2026-10-02T10:20:14.396+00:00",
+    "observed_at": "2026-10-02T10:20:14.396+00:00",
+    "stage": "retrieval",
+    "operation": "retrieval.search.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1:retrieval",
+    "parent_operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "query": {
+        "context_after": 1,
+        "context_before": 1,
+        "end_timestamp": null,
+        "keyword": "archify",
+        "limit": 100,
+        "message_types": null,
+        "sender_user_ids": null,
+        "session_ids": null,
+        "start_timestamp": null,
+        "time_range": null
+      },
+      "strategy": "lexical"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-8f4d543ab94047ca9b70f0cfb9f50177",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 11,
+    "occurred_at": "2026-10-02T10:20:15.646+00:00",
+    "observed_at": "2026-10-02T10:20:15.646+00:00",
+    "stage": "retrieval",
+    "operation": "retrieval.search.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1:retrieval",
+    "parent_operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+    "outcome": "ok",
+    "duration_ms": 1249.9242910053,
+    "payload": {
+      "candidate_count": 5,
+      "candidate_ids": [
+        "qq:1039179741:7670742957499269309",
+        "qq:1039179741:7670822456975076193",
+        "qq:1039179741:7673819627934009377",
+        "qq:1039179741:7673819648921352381",
+        "qq:1039179741:7665652181386089161"
+      ],
+      "candidate_scores": [
+        -12.528050717393542,
+        -11.652101494353952,
+        -10.152008845140735,
+        -9.734278212349793,
+        -8.358542849271343
+      ],
+      "context_expansion": {
+        "details": {
+          "context_after": 1,
+          "context_before": 1,
+          "context_source_budget": 20,
+          "context_source_hits": 5,
+          "expanded_candidate_messages": 13,
+          "returned_hits": 5
+        },
+        "expanded_count": 13
+      },
+      "coverage": {
+        "basis": "canonical_plus_lexical_index",
+        "status": "complete"
+      },
+      "filters": {
+        "context_after": 1,
+        "context_before": 1,
+        "end_timestamp": null,
+        "keyword": "archify",
+        "limit": 100,
+        "message_types": null,
+        "reply_to_source_message_id": null,
+        "sender_user_ids": null,
+        "session_ids": null,
+        "source_message_id": null,
+        "start_timestamp": null
+      },
+      "latency_ms": 1248.503000002529,
+      "partial": false,
+      "query": {
+        "context_after": 1,
+        "context_before": 1,
+        "end_timestamp": null,
+        "keyword": "archify",
+        "limit": 100,
+        "message_types": null,
+        "reply_to_source_message_id": null,
+        "sender_user_ids": null,
+        "session_ids": null,
+        "source_message_id": null,
+        "start_timestamp": null
+      },
+      "returned_messages": 13,
+      "strategy": "lexical",
+      "total_hits": 5,
+      "truncated": false
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-20db9cd8a74e41c38f7c6526939875c6",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 12,
+    "occurred_at": "2026-10-02T10:20:15.648+00:00",
+    "observed_at": "2026-10-02T10:20:15.648+00:00",
+    "stage": "tool",
+    "operation": "tool.call.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": 1253.9712919970043,
+    "payload": {
+      "error_code": null,
+      "status": "ok",
+      "tool_name": "lexical_search"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-18c4e6d397c541d4ac03990902b31b92",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 13,
+    "occurred_at": "2026-10-02T10:20:15.653+00:00",
+    "observed_at": "2026-10-02T10:20:15.653+00:00",
+    "stage": "model",
+    "operation": "model.output",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:1",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "observable_output": [
+        {
+          "arguments": "{\"keyword\": \"archify\", \"limit\": 100, \"context_before\": 1, \"context_after\": 1}",
+          "call_id": "call_00_HRTbIJO3ZAZ67aGD58WU3668",
+          "name": "lexical_search",
+          "type": "function_call"
+        }
+      ],
+      "provider": "deepseek",
+      "provider_observation": {
+        "output_shape": {
+          "assistant_content_part_count": 0,
+          "assistant_empty_text_parts": 0,
+          "assistant_message_count": 0,
+          "assistant_nonempty_text_parts": 0,
+          "assistant_text_chars": 0,
+          "metadata_only_item_count": 0,
+          "output_is_sequence": true,
+          "output_item_count": 2,
+          "output_item_types": [
+            "reasoning",
+            "function_call"
+          ],
+          "output_item_types_truncated": false,
+          "reasoning_item_count": 1,
+          "tool_call_count": 1,
+          "tool_result_count": 0
+        },
+        "request_id": null,
+        "response_id": "__fake_id__",
+        "transport_attempts": [
+          {
+            "chunk_count": 46,
+            "finish_reason": "tool_calls",
+            "request_id": null,
+            "response_id": "4f57660a-362b-4e74-a429-02c7815c7a60",
+            "status_code": 200,
+            "stream_completed": true,
+            "transport": "chat_completions_stream",
+            "usage": {
+              "cached_input_tokens": 3584,
+              "input_tokens": 7806,
+              "output_tokens": 103,
+              "reasoning_tokens": 11,
+              "total_tokens": 7909
+            }
+          }
+        ],
+        "usage": {
+          "cached_input_tokens": 3584,
+          "input_tokens": 7806,
+          "output_tokens": 103,
+          "requests": 1,
+          "total_tokens": 7909
+        }
+      },
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "model_output",
+      "tool_round": 1
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-0baf305168234d6594d70ec18aa7c1f4",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 14,
+    "occurred_at": "2026-10-02T10:20:15.654+00:00",
+    "observed_at": "2026-10-02T10:20:15.654+00:00",
+    "stage": "model",
+    "operation": "model.usage",
+    "phase": "observed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:1",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "usage_update",
+      "usage": {
+        "cached_input_tokens": 3584,
+        "input_tokens": 7806,
+        "output_tokens": 103,
+        "requests": 1,
+        "total_tokens": 7909
+      }
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-675ac15d17214edba49daa06c5a750d9",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 15,
+    "occurred_at": "2026-10-02T10:20:15.656+00:00",
+    "observed_at": "2026-10-02T10:20:15.656+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.started",
+    "phase": "started",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:runtime-tool:eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "tool_started",
+      "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+      "tool_name": "lexical_search",
+      "tool_round": 1
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-5f124e6065a34f0694d0e46366430346",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 16,
+    "occurred_at": "2026-10-02T10:20:15.657+00:00",
+    "observed_at": "2026-10-02T10:20:15.657+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.completed",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:runtime-tool:eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "omitted_context_messages": 0,
+      "omitted_hit_messages": 0,
+      "omitted_messages": 0,
+      "projected_messages": 13,
+      "projection_truncated": false,
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "tool_completed",
+      "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/1",
+      "tool_name": "lexical_search",
+      "tool_result_budget": {
+        "budget_mode": "dynamic",
+        "context_window_source": "verified_model_registry",
+        "context_window_tokens": 1000000,
+        "effective_per_call_tool_result_budget": 128000,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "per_call_tool_result_cap": 128000,
+        "per_call_tool_result_ceiling": 128000,
+        "per_call_tool_result_percent": 50,
+        "projected_tool_result_tokens": 1730,
+        "remaining_run_tool_evidence_budget_after_call": 248270,
+        "remaining_run_tool_evidence_budget_before_call": 250000,
+        "run_tool_evidence_budget": 250000,
+        "run_tool_evidence_cap": 256000,
+        "run_tool_evidence_percent": 25,
+        "truncated": false
+      },
+      "tool_round": 1,
+      "tool_status": "ok"
+    },
+    "limitations": [
+      "payload.tool_result_budget.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-12fc1cbaadbd4640b77da156a97cc97b",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 17,
+    "occurred_at": "2026-10-02T10:20:15.658+00:00",
+    "observed_at": "2026-10-02T10:20:15.658+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:1",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "turn_completed",
+      "tool_round": 1
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-fe2d84c23b7c455399a9bc3b9ade0843",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 18,
+    "occurred_at": "2026-10-02T10:20:15.977+00:00",
+    "observed_at": "2026-10-02T10:20:15.977+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "started",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:2",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "model_visible_context": [
+        {
+          "content": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthe",
+          "role": "system"
+        },
+        {
+          "content": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+          "role": "user"
+        },
+        {
+          "arguments": "{\"keyword\": \"archify\", \"limit\": 100, \"context_before\": 1, \"context_after\": 1}",
+          "call_id": "call_00_HRTbIJO3ZAZ67aGD58WU3668",
+          "name": "lexical_search",
+          "type": "function_call"
+        },
+        {
+          "call_id": "call_00_HRTbIJO3ZAZ67aGD58WU3668",
+          "output": "{'status': 'ok', 'data': {'strategy': 'lexical', 'query': {'session_ids': None, 'start_timestamp': None, 'end_timestamp': None, 'sender_user_ids': None, 'message_types': None, 'source_message_id': None, 'reply_to_source_message_id': None, 'keyword': 'archify', 'limit': 100, 'context_before': 1, 'context_after': 1}, 'filters': {'session_ids': None, 'start_timestamp': None, 'end_timestamp': None, 'sender_user_ids': None, 'message_types': None, 'source_message_id': None, 'reply_to_source_message_id': None, 'ke",
+          "output_projection": {
+            "data": {
+              "coverage": {
+                "basis": "canonical_plus_lexical_index",
+                "status": "complete"
+              },
+              "expanded_messages": [
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                }
+              ],
+              "filters": {
+                "context_after": 1,
+                "context_before": 1,
+                "end_timestamp": null,
+                "keyword": "archify",
+                "limit": 100,
+                "message_types": null,
+                "reply_to_source_message_id": null,
+                "sender_user_ids": null,
+                "session_ids": null,
+                "source_message_id": null,
+                "start_timestamp": null
+              },
+              "hits": [
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "metadata": {
+                "details": {
+                  "context_after": "[DEPTH_LIMITED]",
+                  "context_before": "[DEPTH_LIMITED]",
+                  "context_source_budget": "[DEPTH_LIMITED]",
+                  "context_source_hits": "[DEPTH_LIMITED]",
+                  "expanded_candidate_messages": "[DEPTH_LIMITED]",
+                  "returned_hits": "[DEPTH_LIMITED]"
+                },
+                "filters": {
+                  "context_after": "[DEPTH_LIMITED]",
+                  "context_before": "[DEPTH_LIMITED]",
+                  "end_timestamp": "[DEPTH_LIMITED]",
+                  "keyword": "[DEPTH_LIMITED]",
+                  "limit": "[DEPTH_LIMITED]",
+                  "message_types": "[DEPTH_LIMITED]",
+                  "reply_to_source_message_id": "[DEPTH_LIMITED]",
+                  "sender_user_ids": "[DEPTH_LIMITED]",
+                  "session_ids": "[DEPTH_LIMITED]",
+                  "source_message_id": "[DEPTH_LIMITED]",
+                  "start_timestamp": "[DEPTH_LIMITED]"
+                },
+                "latency_ms": 1248.503000002529,
+                "ordering": "FTS5 score ASC, timestamp ASC, present seq ASC, missing seq after present seq, internal_message_id ASC"
+              },
+              "partial": false,
+              "query": {
+                "context_after": 1,
+                "context_before": 1,
+                "end_timestamp": null,
+                "keyword": "archify",
+                "limit": 100,
+                "message_types": null,
+                "reply_to_source_message_id": null,
+                "sender_user_ids": null,
+                "session_ids": null,
+                "source_message_id": null,
+                "start_timestamp": null
+              },
+              "returned_messages": 13,
+              "strategy": "lexical",
+              "total_hits": 5,
+              "truncated": false
+            },
+            "error": null,
+            "meta": {
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "returned_messages": 13,
+              "total_hits": 5,
+              "truncated": false
+            },
+            "model_projection": {
+              "estimated_tokens": 1730,
+              "omitted_context_messages": 0,
+              "omitted_hit_messages": 0,
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "token_budget": 128000,
+              "truncated": false
+            },
+            "provenance": {
+              "message_sources": [
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "structured_sources": [],
+              "tool_result_scope": "1"
+            },
+            "status": "ok"
+          },
+          "type": "function_call_output"
+        }
+      ],
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "turn_started",
+      "tool_round": 2
+    },
+    "limitations": [
+      "payload.model_visible_context[0].content.truncated",
+      "payload.model_visible_context[3].output.truncated",
+      "payload.model_visible_context[3].output_projection.data.hits[0].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[0].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[0].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[0].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.session_ids.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.start_timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.end_timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.sender_user_ids.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.message_types.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.source_message_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.reply_to_source_message_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.keyword.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.limit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.context_before.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.context_after.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.returned_hits.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.expanded_candidate_messages.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_before.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_after.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_source_hits.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_source_budget.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[0].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[1].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[2].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[3].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[4].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[4].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[5].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[5].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[6].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[6].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[7].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[7].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[8].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[8].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[9].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[9].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[10].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[10].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[11].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[11].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[12].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[12].source_id.depth_limited"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-9f35d0840bc2465da0e9f196c1933f68",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 19,
+    "occurred_at": "2026-10-02T10:20:17.217+00:00",
+    "observed_at": "2026-10-02T10:20:17.217+00:00",
+    "stage": "tool",
+    "operation": "tool.call.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {
+        "context_after": 6,
+        "context_before": 6,
+        "message_id": "qq:1039179741:7670742957499269309"
+      },
+      "tool_name": "get_message_context"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-09b1d97a78ad430ca50e31c2f7f4bfae",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 20,
+    "occurred_at": "2026-10-02T10:20:17.218+00:00",
+    "observed_at": "2026-10-02T10:20:17.218+00:00",
+    "stage": "context",
+    "operation": "context.expansion.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2:context.expansion",
+    "parent_operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {
+        "context_after": 6,
+        "context_before": 6,
+        "message_id": "qq:1039179741:7670742957499269309"
+      },
+      "tool_name": "get_message_context"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-171cd332cccc4383bcef4ff83480c827",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 21,
+    "occurred_at": "2026-10-02T10:20:17.322+00:00",
+    "observed_at": "2026-10-02T10:20:17.322+00:00",
+    "stage": "context",
+    "operation": "context.expansion.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2:context.expansion",
+    "parent_operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+    "outcome": "ok",
+    "duration_ms": 102.41237500304123,
+    "payload": {
+      "automatic_search_context": false,
+      "candidate_count": 13,
+      "explicit_deepening": true,
+      "message_id": "qq:1039179741:7670742957499269309",
+      "partial": false,
+      "returned_messages": 13,
+      "session_id": "qq:1039179741",
+      "tool_name": "get_message_context",
+      "truncated": false
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-b5e38036a71346d0b05113b93cd32cf9",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 22,
+    "occurred_at": "2026-10-02T10:20:17.323+00:00",
+    "observed_at": "2026-10-02T10:20:17.323+00:00",
+    "stage": "tool",
+    "operation": "tool.call.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": 106.11533300107112,
+    "payload": {
+      "error_code": null,
+      "status": "ok",
+      "tool_name": "get_message_context"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-b8f5e82700ed4cca902bdfa08273eb74",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 23,
+    "occurred_at": "2026-10-02T10:20:17.325+00:00",
+    "observed_at": "2026-10-02T10:20:17.325+00:00",
+    "stage": "tool",
+    "operation": "tool.call.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {
+        "context_after": 6,
+        "context_before": 6,
+        "message_id": "qq:1039179741:7673819627934009377"
+      },
+      "tool_name": "get_message_context"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-2ec800a53053478da1a97435e75c0d23",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 24,
+    "occurred_at": "2026-10-02T10:20:17.326+00:00",
+    "observed_at": "2026-10-02T10:20:17.326+00:00",
+    "stage": "context",
+    "operation": "context.expansion.started",
+    "phase": "started",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3:context.expansion",
+    "parent_operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "request": {
+        "context_after": 6,
+        "context_before": 6,
+        "message_id": "qq:1039179741:7673819627934009377"
+      },
+      "tool_name": "get_message_context"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-16cc1d94048245249cef4e5046398c60",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 25,
+    "occurred_at": "2026-10-02T10:20:17.430+00:00",
+    "observed_at": "2026-10-02T10:20:17.430+00:00",
+    "stage": "context",
+    "operation": "context.expansion.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3:context.expansion",
+    "parent_operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+    "outcome": "ok",
+    "duration_ms": 103.02862500248011,
+    "payload": {
+      "automatic_search_context": false,
+      "candidate_count": 13,
+      "explicit_deepening": true,
+      "message_id": "qq:1039179741:7673819627934009377",
+      "partial": false,
+      "returned_messages": 13,
+      "session_id": "qq:1039179741",
+      "tool_name": "get_message_context",
+      "truncated": false
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-b6a70d5841ff46829459c78b1e0d69d4",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 26,
+    "occurred_at": "2026-10-02T10:20:17.431+00:00",
+    "observed_at": "2026-10-02T10:20:17.431+00:00",
+    "stage": "tool",
+    "operation": "tool.call.completed",
+    "phase": "completed",
+    "operation_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": 105.44370899879141,
+    "payload": {
+      "error_code": null,
+      "status": "ok",
+      "tool_name": "get_message_context"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-2f49975984024bc0b81e8d257d66a1bb",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 27,
+    "occurred_at": "2026-10-02T10:20:17.432+00:00",
+    "observed_at": "2026-10-02T10:20:17.432+00:00",
+    "stage": "model",
+    "operation": "model.output",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:2",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "observable_output": [
+        {
+          "arguments": "{\"source_id\": \"m1-1\", \"context_before\": 6, \"context_after\": 6}",
+          "call_id": "call_00_l6geDsn5iFsfRjoUFa6j4490",
+          "name": "get_message_context",
+          "type": "function_call"
+        },
+        {
+          "arguments": "{\"source_id\": \"m1-3\", \"context_before\": 6, \"context_after\": 6}",
+          "call_id": "call_01_XXELP7vyY3kF1KPyGhrx9979",
+          "name": "get_message_context",
+          "type": "function_call"
+        }
+      ],
+      "provider": "deepseek",
+      "provider_observation": {
+        "output_shape": {
+          "assistant_content_part_count": 0,
+          "assistant_empty_text_parts": 0,
+          "assistant_message_count": 0,
+          "assistant_nonempty_text_parts": 0,
+          "assistant_text_chars": 0,
+          "metadata_only_item_count": 0,
+          "output_is_sequence": true,
+          "output_item_count": 3,
+          "output_item_types": [
+            "reasoning",
+            "function_call"
+          ],
+          "output_item_types_truncated": true,
+          "reasoning_item_count": 1,
+          "tool_call_count": 2,
+          "tool_result_count": 0
+        },
+        "request_id": null,
+        "response_id": "__fake_id__",
+        "transport_attempts": [
+          {
+            "chunk_count": 112,
+            "finish_reason": "tool_calls",
+            "request_id": null,
+            "response_id": "e9a16815-25e7-4b3d-a0a8-03f04e860ee6",
+            "status_code": 200,
+            "stream_completed": true,
+            "transport": "chat_completions_stream",
+            "usage": {
+              "cached_input_tokens": 7808,
+              "input_tokens": 9949,
+              "output_tokens": 198,
+              "reasoning_tokens": 50,
+              "total_tokens": 10147
+            }
+          }
+        ],
+        "usage": {
+          "cached_input_tokens": 7808,
+          "input_tokens": 9949,
+          "output_tokens": 198,
+          "requests": 1,
+          "total_tokens": 10147
+        }
+      },
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "model_output",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-a0f6a1d167804238a0347eb2c689fb0d",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 28,
+    "occurred_at": "2026-10-02T10:20:17.433+00:00",
+    "observed_at": "2026-10-02T10:20:17.433+00:00",
+    "stage": "model",
+    "operation": "model.usage",
+    "phase": "observed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:2",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "usage_update",
+      "usage": {
+        "cached_input_tokens": 7808,
+        "input_tokens": 9949,
+        "output_tokens": 198,
+        "requests": 1,
+        "total_tokens": 10147
+      }
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-a7f12c8509e24e73b33cf63dc7dcf594",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 29,
+    "occurred_at": "2026-10-02T10:20:17.434+00:00",
+    "observed_at": "2026-10-02T10:20:17.434+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.started",
+    "phase": "started",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:runtime-tool:eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "tool_started",
+      "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+      "tool_name": "get_message_context",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-2fc11f91ca7d46aab4603533124cb515",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 30,
+    "occurred_at": "2026-10-02T10:20:17.435+00:00",
+    "observed_at": "2026-10-02T10:20:17.435+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.started",
+    "phase": "started",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:runtime-tool:eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "tool_started",
+      "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+      "tool_name": "get_message_context",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-eb8bd36884ac4f2888c6e710acdabb4f",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 31,
+    "occurred_at": "2026-10-02T10:20:17.437+00:00",
+    "observed_at": "2026-10-02T10:20:17.437+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.completed",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:runtime-tool:eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "omitted_context_messages": 0,
+      "omitted_hit_messages": 0,
+      "omitted_messages": 0,
+      "projected_messages": 13,
+      "projection_truncated": false,
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "tool_completed",
+      "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/2",
+      "tool_name": "get_message_context",
+      "tool_result_budget": {
+        "budget_mode": "dynamic",
+        "context_window_source": "verified_model_registry",
+        "context_window_tokens": 1000000,
+        "effective_per_call_tool_result_budget": 128000,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "per_call_tool_result_cap": 128000,
+        "per_call_tool_result_ceiling": 128000,
+        "per_call_tool_result_percent": 50,
+        "projected_tool_result_tokens": 1486,
+        "remaining_run_tool_evidence_budget_after_call": 246784,
+        "remaining_run_tool_evidence_budget_before_call": 248270,
+        "run_tool_evidence_budget": 250000,
+        "run_tool_evidence_cap": 256000,
+        "run_tool_evidence_percent": 25,
+        "truncated": false
+      },
+      "tool_round": 2,
+      "tool_status": "ok"
+    },
+    "limitations": [
+      "payload.tool_result_budget.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-f3ac1076da6a45d6b6d0e67788953e2d",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 32,
+    "occurred_at": "2026-10-02T10:20:17.438+00:00",
+    "observed_at": "2026-10-02T10:20:17.438+00:00",
+    "stage": "runtime",
+    "operation": "runtime.tool.completed",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:runtime-tool:eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "omitted_context_messages": 0,
+      "omitted_hit_messages": 0,
+      "omitted_messages": 0,
+      "projected_messages": 13,
+      "projection_truncated": false,
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "tool_completed",
+      "tool_call_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048/tool-call/3",
+      "tool_name": "get_message_context",
+      "tool_result_budget": {
+        "budget_mode": "dynamic",
+        "context_window_source": "verified_model_registry",
+        "context_window_tokens": 1000000,
+        "effective_per_call_tool_result_budget": 128000,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "per_call_tool_result_cap": 128000,
+        "per_call_tool_result_ceiling": 128000,
+        "per_call_tool_result_percent": 50,
+        "projected_tool_result_tokens": 1429,
+        "remaining_run_tool_evidence_budget_after_call": 245355,
+        "remaining_run_tool_evidence_budget_before_call": 246784,
+        "run_tool_evidence_budget": 250000,
+        "run_tool_evidence_cap": 256000,
+        "run_tool_evidence_percent": 25,
+        "truncated": false
+      },
+      "tool_round": 2,
+      "tool_status": "ok"
+    },
+    "limitations": [
+      "payload.tool_result_budget.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-8fd7adbcbde34ee28a82904fe07302be",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 33,
+    "occurred_at": "2026-10-02T10:20:17.439+00:00",
+    "observed_at": "2026-10-02T10:20:17.439+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:2",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "turn_completed",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-b044ff58921b42bea3575bc09a65051b",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 34,
+    "occurred_at": "2026-10-02T10:20:17.672+00:00",
+    "observed_at": "2026-10-02T10:20:17.672+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "started",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:3",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "model_visible_context": [
+        {
+          "content": "You answer the user's question using available Trivae messages.\nChoose among the visible tools based on the evidence needed:\nUse get_recent_messages when the candidate set is determined mainly by time and the user asks for an\noverview, summary, or topic discovery over a period: questions like \"最近两天聊了什么\", \"昨天群里发生了什么\",\n\"最近大家主要在讨论哪些主题\", or any \"what happened / what was discussed recently\" request. This\ntime-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:\nthe",
+          "role": "system"
+        },
+        {
+          "content": "archify 项目最近发展怎么样？star 数有被提到过吗？",
+          "role": "user"
+        },
+        {
+          "arguments": "{\"keyword\": \"archify\", \"limit\": 100, \"context_before\": 1, \"context_after\": 1}",
+          "call_id": "call_00_HRTbIJO3ZAZ67aGD58WU3668",
+          "name": "lexical_search",
+          "type": "function_call"
+        },
+        {
+          "call_id": "call_00_HRTbIJO3ZAZ67aGD58WU3668",
+          "output": "{'status': 'ok', 'data': {'strategy': 'lexical', 'query': {'session_ids': None, 'start_timestamp': None, 'end_timestamp': None, 'sender_user_ids': None, 'message_types': None, 'source_message_id': None, 'reply_to_source_message_id': None, 'keyword': 'archify', 'limit': 100, 'context_before': 1, 'context_after': 1}, 'filters': {'session_ids': None, 'start_timestamp': None, 'end_timestamp': None, 'sender_user_ids': None, 'message_types': None, 'source_message_id': None, 'reply_to_source_message_id': None, 'ke",
+          "output_projection": {
+            "data": {
+              "coverage": {
+                "basis": "canonical_plus_lexical_index",
+                "status": "complete"
+              },
+              "expanded_messages": [
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                }
+              ],
+              "filters": {
+                "context_after": 1,
+                "context_before": 1,
+                "end_timestamp": null,
+                "keyword": "archify",
+                "limit": 100,
+                "message_types": null,
+                "reply_to_source_message_id": null,
+                "sender_user_ids": null,
+                "session_ids": null,
+                "source_message_id": null,
+                "start_timestamp": null
+              },
+              "hits": [
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "matched_terms": "[DEPTH_LIMITED]",
+                  "message": "[DEPTH_LIMITED]",
+                  "score": "[DEPTH_LIMITED]",
+                  "score_type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "metadata": {
+                "details": {
+                  "context_after": "[DEPTH_LIMITED]",
+                  "context_before": "[DEPTH_LIMITED]",
+                  "context_source_budget": "[DEPTH_LIMITED]",
+                  "context_source_hits": "[DEPTH_LIMITED]",
+                  "expanded_candidate_messages": "[DEPTH_LIMITED]",
+                  "returned_hits": "[DEPTH_LIMITED]"
+                },
+                "filters": {
+                  "context_after": "[DEPTH_LIMITED]",
+                  "context_before": "[DEPTH_LIMITED]",
+                  "end_timestamp": "[DEPTH_LIMITED]",
+                  "keyword": "[DEPTH_LIMITED]",
+                  "limit": "[DEPTH_LIMITED]",
+                  "message_types": "[DEPTH_LIMITED]",
+                  "reply_to_source_message_id": "[DEPTH_LIMITED]",
+                  "sender_user_ids": "[DEPTH_LIMITED]",
+                  "session_ids": "[DEPTH_LIMITED]",
+                  "source_message_id": "[DEPTH_LIMITED]",
+                  "start_timestamp": "[DEPTH_LIMITED]"
+                },
+                "latency_ms": 1248.503000002529,
+                "ordering": "FTS5 score ASC, timestamp ASC, present seq ASC, missing seq after present seq, internal_message_id ASC"
+              },
+              "partial": false,
+              "query": {
+                "context_after": 1,
+                "context_before": 1,
+                "end_timestamp": null,
+                "keyword": "archify",
+                "limit": 100,
+                "message_types": null,
+                "reply_to_source_message_id": null,
+                "sender_user_ids": null,
+                "session_ids": null,
+                "source_message_id": null,
+                "start_timestamp": null
+              },
+              "returned_messages": 13,
+              "strategy": "lexical",
+              "total_hits": 5,
+              "truncated": false
+            },
+            "error": null,
+            "meta": {
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "returned_messages": 13,
+              "total_hits": 5,
+              "truncated": false
+            },
+            "model_projection": {
+              "estimated_tokens": 1730,
+              "omitted_context_messages": 0,
+              "omitted_hit_messages": 0,
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "token_budget": 128000,
+              "truncated": false
+            },
+            "provenance": {
+              "message_sources": [
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "structured_sources": [],
+              "tool_result_scope": "1"
+            },
+            "status": "ok"
+          },
+          "type": "function_call_output"
+        },
+        {
+          "arguments": "{\"source_id\": \"m1-1\", \"context_before\": 6, \"context_after\": 6}",
+          "call_id": "call_00_l6geDsn5iFsfRjoUFa6j4490",
+          "name": "get_message_context",
+          "type": "function_call"
+        },
+        {
+          "arguments": "{\"source_id\": \"m1-3\", \"context_before\": 6, \"context_after\": 6}",
+          "call_id": "call_01_XXELP7vyY3kF1KPyGhrx9979",
+          "name": "get_message_context",
+          "type": "function_call"
+        },
+        {
+          "call_id": "call_00_l6geDsn5iFsfRjoUFa6j4490",
+          "output": "{'status': 'ok', 'data': {'strategy': 'context', 'message_id': 'qq:1039179741:7670742957499269309', 'session_id': 'qq:1039179741', 'messages': [{'source_id': 'm2-1', 'timestamp': 1785981701000, 'author': '纯真之蝠', 'content': '换大盏', 'session': 'cs61abc', 'message_type': 'text', 'urls': (), 'content_truncated': False, 'hit': True}, {'source_id': 'm2-2', 'timestamp': 1785981709000, 'author': '纯真之蝠', 'content': '每逢喝酒，某从未落后', 'session': 'cs61abc', 'message_type': 'text', 'urls': (), 'content_truncated': False, 'hi",
+          "output_projection": {
+            "data": {
+              "coverage": {
+                "basis": "canonical_store",
+                "status": "complete"
+              },
+              "message_id": "qq:1039179741:7670742957499269309",
+              "messages": [
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                }
+              ],
+              "metadata": {
+                "details": {
+                  "anchor_message_id": "[DEPTH_LIMITED]",
+                  "automatic_search_context": "[DEPTH_LIMITED]",
+                  "candidate_count": "[DEPTH_LIMITED]",
+                  "conversation_boundary": "[DEPTH_LIMITED]",
+                  "explicit_deepening": "[DEPTH_LIMITED]",
+                  "result_limit": "[DEPTH_LIMITED]"
+                },
+                "filters": {
+                  "context_after": "[DEPTH_LIMITED]",
+                  "context_before": "[DEPTH_LIMITED]",
+                  "message_id": "[DEPTH_LIMITED]",
+                  "scope": "[DEPTH_LIMITED]"
+                },
+                "latency_ms": 102.3851249992731,
+                "ordering": "timestamp ASC, present seq ASC, missing seq after present seq, internal_message_id ASC"
+              },
+              "partial": false,
+              "requested_after": 6,
+              "requested_before": 6,
+              "returned_messages": 13,
+              "session_id": "qq:1039179741",
+              "strategy": "context",
+              "truncated": false
+            },
+            "error": null,
+            "meta": {
+              "message_id": "qq:1039179741:7670742957499269309",
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "returned_messages": 13,
+              "truncated": false
+            },
+            "model_projection": {
+              "estimated_tokens": 1486,
+              "omitted_context_messages": 0,
+              "omitted_hit_messages": 0,
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "token_budget": 128000,
+              "truncated": false
+            },
+            "provenance": {
+              "message_sources": [
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "structured_sources": [],
+              "tool_result_scope": "2"
+            },
+            "status": "ok"
+          },
+          "type": "function_call_output"
+        },
+        {
+          "call_id": "call_01_XXELP7vyY3kF1KPyGhrx9979",
+          "output": "{'status': 'ok', 'data': {'strategy': 'context', 'message_id': 'qq:1039179741:7673819627934009377', 'session_id': 'qq:1039179741', 'messages': [{'source_id': 'm3-1', 'timestamp': 1786698454000, 'author': '天南星', 'content': '我在看cs自学社区', 'session': 'cs61abc', 'message_type': 'text', 'urls': (), 'content_truncated': False, 'hit': True}, {'source_id': 'm3-2', 'timestamp': 1786699369000, 'author': '賭書消得潑茶香', 'content': '我们深度学习老师开始用AI做课件了', 'session': 'cs61abc', 'message_type': 'text', 'urls': (), 'content_truncat",
+          "output_projection": {
+            "data": {
+              "coverage": {
+                "basis": "canonical_store",
+                "status": "complete"
+              },
+              "message_id": "qq:1039179741:7673819627934009377",
+              "messages": [
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                },
+                {
+                  "author": "[DEPTH_LIMITED]",
+                  "content": "[DEPTH_LIMITED]",
+                  "content_truncated": "[DEPTH_LIMITED]",
+                  "hit": "[DEPTH_LIMITED]",
+                  "message_type": "[DEPTH_LIMITED]",
+                  "session": "[DEPTH_LIMITED]",
+                  "source_id": "[DEPTH_LIMITED]",
+                  "timestamp": "[DEPTH_LIMITED]",
+                  "urls": "[DEPTH_LIMITED]"
+                }
+              ],
+              "metadata": {
+                "details": {
+                  "anchor_message_id": "[DEPTH_LIMITED]",
+                  "automatic_search_context": "[DEPTH_LIMITED]",
+                  "candidate_count": "[DEPTH_LIMITED]",
+                  "conversation_boundary": "[DEPTH_LIMITED]",
+                  "explicit_deepening": "[DEPTH_LIMITED]",
+                  "result_limit": "[DEPTH_LIMITED]"
+                },
+                "filters": {
+                  "context_after": "[DEPTH_LIMITED]",
+                  "context_before": "[DEPTH_LIMITED]",
+                  "message_id": "[DEPTH_LIMITED]",
+                  "scope": "[DEPTH_LIMITED]"
+                },
+                "latency_ms": 103.01295899989782,
+                "ordering": "timestamp ASC, present seq ASC, missing seq after present seq, internal_message_id ASC"
+              },
+              "partial": false,
+              "requested_after": 6,
+              "requested_before": 6,
+              "returned_messages": 13,
+              "session_id": "qq:1039179741",
+              "strategy": "context",
+              "truncated": false
+            },
+            "error": null,
+            "meta": {
+              "message_id": "qq:1039179741:7673819627934009377",
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "returned_messages": 13,
+              "truncated": false
+            },
+            "model_projection": {
+              "estimated_tokens": 1429,
+              "omitted_context_messages": 0,
+              "omitted_hit_messages": 0,
+              "omitted_messages": 0,
+              "projected_count": 13,
+              "projected_messages": 13,
+              "token_budget": 128000,
+              "truncated": false
+            },
+            "provenance": {
+              "message_sources": [
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                },
+                {
+                  "source_id": "[DEPTH_LIMITED]",
+                  "type": "[DEPTH_LIMITED]"
+                }
+              ],
+              "structured_sources": [],
+              "tool_result_scope": "3"
+            },
+            "status": "ok"
+          },
+          "type": "function_call_output"
+        }
+      ],
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "turn_started",
+      "tool_round": 3
+    },
+    "limitations": [
+      "payload.model_visible_context[0].content.truncated",
+      "payload.model_visible_context[3].output.truncated",
+      "payload.model_visible_context[3].output_projection.data.hits[0].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[0].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[0].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[0].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[1].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[2].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[3].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].message.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].matched_terms.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].score.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.hits[4].score_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[0].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[1].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[2].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[3].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[4].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[5].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[6].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].author.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].content.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].session.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].message_type.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].urls.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].content_truncated.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.expanded_messages[7].hit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.session_ids.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.start_timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.end_timestamp.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.sender_user_ids.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.message_types.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.source_message_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.reply_to_source_message_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.keyword.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.limit.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.context_before.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.filters.context_after.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.returned_hits.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.expanded_candidate_messages.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_before.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_after.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_source_hits.depth_limited",
+      "payload.model_visible_context[3].output_projection.data.metadata.details.context_source_budget.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[0].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[0].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[1].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[1].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[2].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[2].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[3].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[3].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[4].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[4].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[5].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[5].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[6].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[6].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[7].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[7].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[8].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[8].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[9].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[9].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[10].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[10].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[11].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[11].source_id.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[12].type.depth_limited",
+      "payload.model_visible_context[3].output_projection.provenance.message_sources[12].source_id.depth_limited",
+      "payload.model_visible_context[6].output.truncated",
+      "payload.model_visible_context[6].output_projection.data.messages[0].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[0].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[1].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[2].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[3].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[4].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[5].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[6].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[7].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[8].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[9].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[10].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[11].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].timestamp.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].author.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].content.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].session.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].message_type.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].urls.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].content_truncated.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.messages[12].hit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.filters.message_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.filters.context_before.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.filters.context_after.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.filters.scope.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.details.explicit_deepening.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.details.automatic_search_context.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.details.anchor_message_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.details.candidate_count.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.details.result_limit.depth_limited",
+      "payload.model_visible_context[6].output_projection.data.metadata.details.conversation_boundary.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[0].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[0].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[1].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[1].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[2].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[2].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[3].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[3].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[4].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[4].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[5].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[5].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[6].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[6].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[7].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[7].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[8].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[8].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[9].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[9].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[10].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[10].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[11].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[11].source_id.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[12].type.depth_limited",
+      "payload.model_visible_context[6].output_projection.provenance.message_sources[12].source_id.depth_limited",
+      "payload.model_visible_context[7].output.truncated",
+      "payload.model_visible_context[7].output_projection.data.messages[0].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[0].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[1].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[2].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[3].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[4].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[5].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[6].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[7].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[8].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[9].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[10].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[11].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].timestamp.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].author.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].content.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].session.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].message_type.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].urls.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].content_truncated.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.messages[12].hit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.filters.message_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.filters.context_before.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.filters.context_after.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.filters.scope.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.details.explicit_deepening.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.details.automatic_search_context.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.details.anchor_message_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.details.candidate_count.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.details.result_limit.depth_limited",
+      "payload.model_visible_context[7].output_projection.data.metadata.details.conversation_boundary.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[0].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[0].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[1].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[1].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[2].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[2].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[3].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[3].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[4].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[4].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[5].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[5].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[6].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[6].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[7].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[7].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[8].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[8].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[9].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[9].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[10].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[10].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[11].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[11].source_id.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[12].type.depth_limited",
+      "payload.model_visible_context[7].output_projection.provenance.message_sources[12].source_id.depth_limited"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-e42f51f475074e5fab64b58ffe109c43",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 35,
+    "occurred_at": "2026-10-02T10:20:22.136+00:00",
+    "observed_at": "2026-10-02T10:20:22.136+00:00",
+    "stage": "model",
+    "operation": "model.output",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:3",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "observable_output": [
+        {
+          "content": [
+            {
+              "text": "{\n  \"claims\": [\n    {\n      \"text\": \"Star 数被明确提到过：作者「!」分享 https://github.com/tt-a1i/archify 时说「archify 9.5k了，项目收到了赞助」，即该项目已达 9.5k star 并获得了赞助支持。\",\n      \"finding\": \"star 数被明确提及，为 9.5k，且项目已收到赞助\",\n      \"criterion\": \"直接命中包含 star 数与赞助表述的原文消息\",\n      \"sufficiency\": \"sufficient\",\n      \"sources\": [\"m1-1\", \"m2-7\"],\n      \"limitations\": []\n    },\n    {\n      \"text\": \"近期发展方面，archify 公布了新集成能力：作者「!」称「Archify 现在可以直接装进 DeepSeek Harness 了」，并给出安装命令 `dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0`，说明项目新增了可嵌入 DeepS",
+              "type": "output_text"
+            }
+          ],
+          "role": "assistant"
+        }
+      ],
+      "provider": "deepseek",
+      "provider_observation": {
+        "output_shape": {
+          "assistant_content_part_count": 1,
+          "assistant_empty_text_parts": 0,
+          "assistant_message_count": 1,
+          "assistant_nonempty_text_parts": 1,
+          "assistant_text_chars": 1417,
+          "metadata_only_item_count": 0,
+          "output_is_sequence": true,
+          "output_item_count": 2,
+          "output_item_types": [
+            "reasoning",
+            "message"
+          ],
+          "output_item_types_truncated": false,
+          "reasoning_item_count": 1,
+          "tool_call_count": 0,
+          "tool_result_count": 0
+        },
+        "request_id": null,
+        "response_id": "__fake_id__",
+        "transport_attempts": [
+          {
+            "chunk_count": 873,
+            "finish_reason": "stop",
+            "request_id": null,
+            "response_id": "6e5942b3-3e61-4ec6-b55d-abc53b628b55",
+            "status_code": 200,
+            "stream_completed": true,
+            "transport": "chat_completions_stream",
+            "usage": {
+              "cached_input_tokens": 10112,
+              "input_tokens": 13568,
+              "output_tokens": 871,
+              "reasoning_tokens": 252,
+              "total_tokens": 14439
+            }
+          }
+        ],
+        "usage": {
+          "cached_input_tokens": 10112,
+          "input_tokens": 13568,
+          "output_tokens": 871,
+          "requests": 1,
+          "total_tokens": 14439
+        }
+      },
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "model_output",
+      "tool_round": 3
+    },
+    "limitations": [
+      "payload.observable_output[0].content[0].text.truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-c8fe749e991b49cf8ef9869ff6af44fb",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 36,
+    "occurred_at": "2026-10-02T10:20:22.138+00:00",
+    "observed_at": "2026-10-02T10:20:22.138+00:00",
+    "stage": "model",
+    "operation": "model.usage",
+    "phase": "observed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:3",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "usage_update",
+      "usage": {
+        "cached_input_tokens": 10112,
+        "input_tokens": 13568,
+        "output_tokens": 871,
+        "requests": 1,
+        "total_tokens": 14439
+      }
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-0f194361c2e84a13a5ed322c6d7a397f",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 37,
+    "occurred_at": "2026-10-02T10:20:22.140+00:00",
+    "observed_at": "2026-10-02T10:20:22.140+00:00",
+    "stage": "model",
+    "operation": "model.turn",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e:turn:3",
+    "parent_operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "turn_completed",
+      "tool_round": 2
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-f384313f419048a9a6b8d7add5a4c901",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 38,
+    "occurred_at": "2026-10-02T10:20:22.141+00:00",
+    "observed_at": "2026-10-02T10:20:22.141+00:00",
+    "stage": "runtime",
+    "operation": "runtime.run",
+    "phase": "completed",
+    "operation_id": "runtime:run-10078db2f6644e98ae2c301f61d4ff5e",
+    "parent_operation_id": null,
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "budget_mode": "dynamic",
+      "context_window_source": "verified_model_registry",
+      "context_window_tokens": 1000000,
+      "model": "deepseek-flash",
+      "provider": "deepseek",
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e",
+      "runtime_event_type": "completed",
+      "termination": "completed",
+      "tool_count": 3,
+      "tool_result_estimated_tokens": 4645,
+      "tool_result_projection_omitted_context_messages": 0,
+      "tool_result_projection_omitted_hit_messages": 0,
+      "tool_result_projection_omitted_messages": 0,
+      "tool_result_projection_projected_messages": 39,
+      "tool_result_projection_truncated_count": 0,
+      "tool_rounds": 2
+    },
+    "limitations": [
+      "payload.items_truncated"
+    ],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-ac40f4418f654ff2bb5b8324ffc0c406",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 39,
+    "occurred_at": "2026-10-02T10:20:22.142+00:00",
+    "observed_at": "2026-10-02T10:20:22.142+00:00",
+    "stage": "evidence",
+    "operation": "evidence.prepare.started",
+    "phase": "started",
+    "operation_id": "evidence.prepare",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "tool_call_count": 3,
+      "tool_result_count": 3
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-bbe783607fbe455c9e7124caf7576fd5",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 40,
+    "occurred_at": "2026-10-02T10:20:22.142+00:00",
+    "observed_at": "2026-10-02T10:20:22.142+00:00",
+    "stage": "citation",
+    "operation": "citation.validation.started",
+    "phase": "started",
+    "operation_id": "citation.validation",
+    "parent_operation_id": "evidence.prepare",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-9084fb97345c4c208d527e8b7a086190",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 41,
+    "occurred_at": "2026-10-02T10:20:22.143+00:00",
+    "observed_at": "2026-10-02T10:20:22.143+00:00",
+    "stage": "answer",
+    "operation": "answer.finalization.started",
+    "phase": "started",
+    "operation_id": "answer.finalization",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "run_id": "run-10078db2f6644e98ae2c301f61d4ff5e"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-ee359392053749bbb4fb9a70ccc3752b",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 42,
+    "occurred_at": "2026-10-02T10:20:22.144+00:00",
+    "observed_at": "2026-10-02T10:20:22.144+00:00",
+    "stage": "evidence",
+    "operation": "evidence.prepare.completed",
+    "phase": "completed",
+    "operation_id": "evidence.prepare",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "dropped_citation_count": 0,
+      "dropped_field_count": 0,
+      "evidence_count": 4,
+      "finalization_status": "valid",
+      "limitations": [
+        "检索仅覆盖到含「archify」字样的 5 条命中消息及其有限上下文，可能未涵盖该项目在此会话外的全部动态。",
+        "除 9.5k 这一数字外，未检索到其他 star 数或更精确的增长数据。"
+      ],
+      "normalization_count": 0,
+      "resolved_time_range": null,
+      "retrieval_coverage": null,
+      "selected_source_count": 9,
+      "selected_source_ids": [
+        "qq:1039179741:7670742957499269309",
+        "qq:1039179741:7670742957499269309",
+        "qq:1039179741:7673819627934009377",
+        "qq:1039179741:7673819648921352381",
+        "qq:1039179741:7673819627934009377",
+        "qq:1039179741:7673819648921352381",
+        "qq:1039179741:7665652145777619593",
+        "qq:1039179741:7670822456975076193",
+        "qq:1039179741:7665652181386089161"
+      ],
+      "user_answer_preserved": true
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-ea06322a0ad74107ac38f5373038cbab",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 43,
+    "occurred_at": "2026-10-02T10:20:22.145+00:00",
+    "observed_at": "2026-10-02T10:20:22.145+00:00",
+    "stage": "citation",
+    "operation": "citation.validation.completed",
+    "phase": "completed",
+    "operation_id": "citation.validation",
+    "parent_operation_id": "evidence.prepare",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "binding_count": 4,
+      "finalization_status": "valid",
+      "unresolved_count": 0,
+      "validated_citation_count": 9
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-1578853a92b14aeba460266fab371f9e",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 44,
+    "occurred_at": "2026-10-02T10:20:22.145+00:00",
+    "observed_at": "2026-10-02T10:20:22.145+00:00",
+    "stage": "answer",
+    "operation": "answer.finalization.completed",
+    "phase": "completed",
+    "operation_id": "answer.finalization",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "answer_length": 419,
+      "answer_shape": {
+        "candidate_claim_count": 4,
+        "candidate_claim_text_lengths": [
+          107,
+          166,
+          52,
+          88
+        ],
+        "content_block_count": 4,
+        "content_block_text_lengths": [
+          107,
+          166,
+          52,
+          88
+        ]
+      },
+      "answer_text": "Star 数被明确提到过：作者「!」分享 https://github.com/tt-a1i/archify 时说「archify 9.5k了，项目收到了赞助」，即该项目已达 9.5k star 并获得了赞助支持。\n\n近期发展方面，archify 公布了新集成能力：作者「!」称「Archify 现在可以直接装进 DeepSeek Harness 了」，并给出安装命令 `dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0`，说明项目新增了可嵌入 DeepSeek Harness 的插件包。\n\n项目功能上也有迭代：作者「!」在分享仓库链接时提到「加了个画廊」，说明新增了画廊（gallery）功能。\n\n推广/曝光方面，群友 NoMaD 指出「v2ex和x都有帖子，搜Archify」，说明该项目在 V2EX 和 X 上均有相关帖子。作者也曾发链接邀请「感兴趣的群友可以体验下」。",
+      "degradation_codes": [],
+      "dropped_citation_count": 0,
+      "dropped_field_count": 0,
+      "dropped_field_paths": [],
+      "error_code": null,
+      "error_path": null,
+      "finalization_status": "valid",
+      "limitation_count": 2,
+      "normalization_count": 0,
+      "resolved_time_range": null,
+      "retrieval_coverage": null,
+      "user_answer_preserved": true,
+      "validated_citation_count": 9
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-0b0c3a6e491248a0afa69fda19e79ca0",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 45,
+    "occurred_at": "2026-10-02T10:20:22.146+00:00",
+    "observed_at": "2026-10-02T10:20:22.146+00:00",
+    "stage": "conversation",
+    "operation": "answer.commit.started",
+    "phase": "started",
+    "operation_id": "conversation.commit",
+    "parent_operation_id": "query",
+    "outcome": null,
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "059bd74c3e884fa8bff60b0adfe7e4a5"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-92be82ab95bd44758d4f6622dc11e691",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 46,
+    "occurred_at": "2026-10-02T10:20:22.148+00:00",
+    "observed_at": "2026-10-02T10:20:22.148+00:00",
+    "stage": "conversation",
+    "operation": "answer.commit.completed",
+    "phase": "completed",
+    "operation_id": "conversation.commit",
+    "parent_operation_id": "query",
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "059bd74c3e884fa8bff60b0adfe7e4a5"
+    },
+    "limitations": [],
+    "failure": null
+  },
+  {
+    "schema_version": 1,
+    "event_id": "event-951e1268036b4ee28d16af4de7e26bf6",
+    "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+    "request_id": "eval-request:eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+    "sequence": 47,
+    "occurred_at": "2026-10-02T10:20:22.149+00:00",
+    "observed_at": "2026-10-02T10:20:22.149+00:00",
+    "stage": "query",
+    "operation": "query.completed",
+    "phase": "completed",
+    "operation_id": "query",
+    "parent_operation_id": null,
+    "outcome": "ok",
+    "duration_ms": null,
+    "payload": {
+      "conversation_id": "059bd74c3e884fa8bff60b0adfe7e4a5",
+      "execution_status": "completed",
+      "finalization_diagnostics": {
+        "degradation_codes": [],
+        "dropped_citation_count": 0,
+        "dropped_field_count": 0,
+        "dropped_field_paths": [],
+        "error_code": null,
+        "error_path": null,
+        "normalization_count": 0,
+        "status": "valid",
+        "user_answer_preserved": true,
+        "validated_citation_count": 9
+      },
+      "finalization_status": "valid"
+    },
+    "limitations": [],
+    "failure": null
+  }
+]

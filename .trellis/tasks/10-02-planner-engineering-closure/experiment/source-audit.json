@@ -1,0 +1,506 @@
+{
+  "reviewer": "root coding agent",
+  "method": "unblinded canonical source audit; no paid Judge",
+  "status": "engineering_review_completed",
+  "human_adjudication": false,
+  "independent_blind_review": false,
+  "composite_quality_score": null,
+  "cases": {
+    "pu-dependent-mattpocock": {
+      "judgment": "调查组织与覆盖有局部收益，但GT漏失未改善，语义质量混合，不能称明确净收益",
+      "standard_issues": [
+        "claim-2把7/18正面表态称为7/19或7/21推荐的后续，日期不支持该关系",
+        "claim-3/4负面意见与用途澄清的实际顺序支持，但不能把同主题的所有好评并成同一推荐reaction"
+      ],
+      "planned_issues": [
+        "claim-1把君莫笑的试试/还没体验过描述为同一条，实际是不同canonical消息",
+        "claim-3我已经离不开了是第一人称自用表态；没有具体实测记录不等于没有亲自使用证据",
+        "claim-5好用与grill-me问询的关系只靠邻接不足以独立证明具体reply"
+      ],
+      "benefit": "避免泛搜github.com；targeted context补到更多正面自述，区分使用场景与观点",
+      "risk": "双方漏掉明确reply GT @降星驰 这个好用；当前窗口不等于跨天reply恢复",
+      "runs": {
+        "standard": {
+          "run_id": "eval-run:pu-dependent-mattpocock:v1:closure-standard:992984e280e24a07a6bdb726f2c6f2c9",
+          "trace_id": "trace-e1e98443acca4300bbb0845e6efc92be",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3",
+            "claim-4",
+            "claim-5"
+          ],
+          "missing_gt_retrieval": [
+            "qq:677019167:7664449865363143925"
+          ],
+          "missing_gt_evidence": [
+            "qq:677019167:7664449865363143925"
+          ]
+        },
+        "planned": {
+          "run_id": "eval-run:pu-dependent-mattpocock:v1:closure-planned:9e29832750c448a28f5b0d2630d01570",
+          "trace_id": "trace-3f6059ffc41e47a98f2f4cb5311e9d24",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3",
+            "claim-4",
+            "claim-5"
+          ],
+          "missing_gt_retrieval": [
+            "qq:677019167:7664449865363143925"
+          ],
+          "missing_gt_evidence": [
+            "qq:677019167:7664449865363143925"
+          ]
+        }
+      },
+      "canonical_gt_targets": [
+        {
+          "internal_message_id": "qq:677019167:7664449865363143940",
+          "session_id": "qq:677019167",
+          "source_message_id": "7664449865363143940",
+          "sender_user_id": "qq:uid:u_TEK4cI3Tl3J_aiMxAL4K_A",
+          "sender_platform_id": "u_TEK4cI3Tl3J_aiMxAL4K_A",
+          "sender_uin": "735845305",
+          "sender_name": "降星驰",
+          "timestamp": 1784435494000,
+          "seq": 45945,
+          "message_type": "reply",
+          "normalized_content": "[回复消息]这样，你下载一下https://github.com/mattpocock/skills/tree/main 这个仓库的skill\r然后使用/teach",
+          "reply_to_source_message_id": "7664091706600908201",
+          "recalled": false,
+          "system": false,
+          "session_display": "星河社（星河大学）"
+        },
+        {
+          "internal_message_id": "qq:677019167:7664449865363143925",
+          "session_id": "qq:677019167",
+          "source_message_id": "7664449865363143925",
+          "sender_user_id": "qq:uid:u_SN0MoM6rA6i5nEBNAYzD6g",
+          "sender_platform_id": "u_SN0MoM6rA6i5nEBNAYzD6g",
+          "sender_uin": "89363842",
+          "sender_name": "咕咕咕",
+          "timestamp": 1784518795000,
+          "seq": 46082,
+          "message_type": "reply",
+          "normalized_content": "[回复消息]@降星驰 这个好用",
+          "reply_to_source_message_id": "7664449865363143940",
+          "recalled": false,
+          "system": false,
+          "session_display": "星河社（星河大学）"
+        }
+      ]
+    },
+    "dev-context-archify": {
+      "judgment": "两路都没有恢复 required feedback，Planned无实际context收益",
+      "standard_issues": [
+        "claim-1/e1没有firsthand反馈的finding过宽，当前retrieval漏掉已确认的@!好用回复",
+        "claim-2含7k/gallery，而所绑定e2来源不完整覆盖这两个邻居事实"
+      ],
+      "planned_issues": [
+        "claim-1/e1缺乏第三方反馈判断同样超出漏取后的证据",
+        "claim-3提及7k，绑定来源不能完整支持该数值；criterion检索全部命中并不证明corpus-exhaustive"
+      ],
+      "benefit": "没有补到GT；多一次context只增加作者动态/疑问",
+      "risk": "已知跨消息context遗漏和false absence仍存在；原GT及历史失败保留",
+      "runs": {
+        "planned": {
+          "run_id": "eval-run:dev-context-archify:v1:closure-planned:0bf8c7ed5c2744088a99edc9670a37fd",
+          "trace_id": "trace-8833f0b25ec64a7482edfed1b94c38fd",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3"
+          ],
+          "missing_gt_retrieval": [
+            "qq:1039179741:7665654465962176057"
+          ],
+          "missing_gt_evidence": [
+            "qq:1039179741:7665654465962176057"
+          ]
+        },
+        "standard": {
+          "run_id": "eval-run:dev-context-archify:v1:closure-standard:1515038229d1439890464f4659e48179",
+          "trace_id": "trace-ca6f4b871dd84d8895a42b61d7fab9f9",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3",
+            "claim-4"
+          ],
+          "missing_gt_retrieval": [
+            "qq:1039179741:7665654465962176057"
+          ],
+          "missing_gt_evidence": [
+            "qq:1039179741:7665654465962176057"
+          ]
+        }
+      },
+      "canonical_gt_targets": [
+        {
+          "internal_message_id": "qq:1039179741:7665652181386089161",
+          "session_id": "qq:1039179741",
+          "source_message_id": "7665652181386089161",
+          "sender_user_id": "qq:uid:u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_platform_id": "u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_uin": "2801884530",
+          "sender_name": "!",
+          "timestamp": 1784798732000,
+          "seq": 57504,
+          "message_type": "text",
+          "normalized_content": "https://github.com/tt-a1i/archify\n感兴趣的群友可以体验下",
+          "reply_to_source_message_id": null,
+          "recalled": false,
+          "system": false,
+          "session_display": "cs61abc"
+        },
+        {
+          "internal_message_id": "qq:1039179741:7665654465962176057",
+          "session_id": "qq:1039179741",
+          "source_message_id": "7665654465962176057",
+          "sender_user_id": "qq:uid:u_ZLWO4xOTEjcGEA1Vhhd-3Q",
+          "sender_platform_id": "u_ZLWO4xOTEjcGEA1Vhhd-3Q",
+          "sender_uin": "2252171869",
+          "sender_name": "ethereal",
+          "timestamp": 1784799160000,
+          "seq": 57514,
+          "message_type": "reply",
+          "normalized_content": "[回复消息]@! 好用",
+          "reply_to_source_message_id": "7665652181386089161",
+          "recalled": false,
+          "system": false,
+          "session_display": "cs61abc"
+        }
+      ]
+    },
+    "dev-cite-archify": {
+      "judgment": "Standard星数历史更完整；Planned未出现同日错误但遗漏已取回的7k",
+      "standard_issues": [],
+      "planned_issues": [
+        "7k存在于ToolResult，却未进入选用Evidence/Answer；没有声称只有9.5k，所以属于事实覆盖退步"
+      ],
+      "benefit": "未见超过Standard的业务收益",
+      "risk": "GT exact archify messages 3/3不包含7k邻居，自动通过不能替代完整性/关系复核",
+      "runs": {
+        "standard": {
+          "run_id": "eval-run:dev-cite-archify:v1:closure-standard:fd9b8a4cc4854d81a8cc77f912dd7c42",
+          "trace_id": "trace-1bd43d68538842ada50fd422cf45caa9",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        },
+        "planned": {
+          "run_id": "eval-run:dev-cite-archify:v1:closure-planned:f03c75503c0e4397a74b31d6da54d048",
+          "trace_id": "trace-b6233e9cd7a0418d812604d723c724ab",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3",
+            "claim-4"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        }
+      },
+      "canonical_gt_targets": [
+        {
+          "internal_message_id": "qq:1039179741:7665652181386089161",
+          "session_id": "qq:1039179741",
+          "source_message_id": "7665652181386089161",
+          "sender_user_id": "qq:uid:u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_platform_id": "u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_uin": "2801884530",
+          "sender_name": "!",
+          "timestamp": 1784798732000,
+          "seq": 57504,
+          "message_type": "text",
+          "normalized_content": "https://github.com/tt-a1i/archify\n感兴趣的群友可以体验下",
+          "reply_to_source_message_id": null,
+          "recalled": false,
+          "system": false,
+          "session_display": "cs61abc"
+        },
+        {
+          "internal_message_id": "qq:1039179741:7670742957499269309",
+          "session_id": "qq:1039179741",
+          "source_message_id": "7670742957499269309",
+          "sender_user_id": "qq:uid:u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_platform_id": "u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_uin": "2801884530",
+          "sender_name": "!",
+          "timestamp": 1785984020000,
+          "seq": 63734,
+          "message_type": "text",
+          "normalized_content": "https://github.com/tt-a1i/archify，archify 9.5k了，项目收到了赞助",
+          "reply_to_source_message_id": null,
+          "recalled": false,
+          "system": false,
+          "session_display": "cs61abc"
+        },
+        {
+          "internal_message_id": "qq:1039179741:7673819648921352381",
+          "session_id": "qq:1039179741",
+          "source_message_id": "7673819648921352381",
+          "sender_user_id": "qq:uid:u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_platform_id": "u_7ySQGu7h22ETX_yJ437PTw",
+          "sender_uin": "2801884530",
+          "sender_name": "!",
+          "timestamp": 1786700368000,
+          "seq": 67991,
+          "message_type": "text",
+          "normalized_content": "dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0",
+          "reply_to_source_message_id": null,
+          "recalled": false,
+          "system": false,
+          "session_display": "cs61abc"
+        }
+      ]
+    },
+    "dev-temporal-30d": {
+      "judgment": "Planned多100条真实内容，同时引入错误样本跨度及无计数频率判断，收益混合",
+      "standard_issues": [
+        "部分链接评价/趴等扩展描述的邻居未完整进入对应binding；全窗群计数支持活动量，不支持主题全月排序",
+        "sender_name寻找一些实习被明确称为昵称，未当作正文"
+      ],
+      "planned_issues": [
+        "claim-1约窗口末尾一天多错误；200条canonical时间跨度37572秒=10h26m12s",
+        "e2频率最高与e5数量最庞大均无主题计数并彼此不一致",
+        "部分网站印度设计师评价在retrieval邻居存在，却未完整选入对应来源binding"
+      ],
+      "benefit": "精确cursor续页取200条，带来新增秋招/硬件/git讨论；partial界限保留",
+      "risk": "不能代表整30天；新局部duration事实错误保留，不能称质量全通过",
+      "runs": {
+        "standard": {
+          "run_id": "eval-run:dev-temporal-30d:v2:closure-standard:8ca907d0c3734369a6d2f5b0c7041b06",
+          "trace_id": "trace-e68eca07849d46c4bbdbc2221dafecc5",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3",
+            "claim-4",
+            "claim-5"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        },
+        "planned": {
+          "run_id": "eval-run:dev-temporal-30d:v2:closure-planned:fd2bdd83c2a34562b3e5ee9f8f28d62d",
+          "trace_id": "trace-a3d7d86ad9d64a9cb062713397ec9648",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3",
+            "claim-4",
+            "claim-5",
+            "claim-6"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        }
+      },
+      "canonical_gt_targets": []
+    },
+    "dev-zero-empty-3": {
+      "judgment": "两路均完整UTC空窗正证明，verified-zero成功",
+      "standard_issues": [],
+      "planned_issues": [],
+      "benefit": "无额外业务收益",
+      "risk": "一次成功不证明历史SQL-first/Finalizer错误永不再现",
+      "runs": {
+        "planned": {
+          "run_id": "eval-run:dev-zero-empty-3:v2:closure-planned:b75e24ff2edc4a909eaaa71ab2035fa2",
+          "trace_id": "trace-fd9ce13b8dd94f95ba246e58d5b21dc7",
+          "reviewed_claim_ids": [
+            "answer"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        },
+        "standard": {
+          "run_id": "eval-run:dev-zero-empty-3:v2:closure-standard:e7942b7608cb4a4881840f11eb276f96",
+          "trace_id": "trace-4512200cb13f49628087644c776c9d42",
+          "reviewed_claim_ids": [
+            "answer"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        }
+      },
+      "canonical_gt_targets": []
+    },
+    "dev-lexical-forge": {
+      "judgment": "核心回答两路正确；Planned对作者自用归属更清楚",
+      "standard_issues": [
+        "e3群成员正面使用反馈来源实际是创作者晨汐自述，不证明独立第三方反馈"
+      ],
+      "planned_issues": [],
+      "benefit": "作者自用与同名Minecraft歧义分开",
+      "risk": "小幅归属改善，不证明需要额外Planner即可稳定完成",
+      "runs": {
+        "planned": {
+          "run_id": "eval-run:dev-lexical-forge:v1:closure-planned:824587b3ba7d44e09456893f21190168",
+          "trace_id": "trace-eb286c8f2fb94c1f940e9536228b2880",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        },
+        "standard": {
+          "run_id": "eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9",
+          "trace_id": "trace-794748f18a9245b4b76552915211c274",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2",
+            "claim-3"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        }
+      },
+      "canonical_gt_targets": [
+        {
+          "internal_message_id": "qq:831907794:7662993011264974100",
+          "session_id": "qq:831907794",
+          "source_message_id": "7662993011264974100",
+          "sender_user_id": "qq:uid:u_9eDCmDLR9IascfsMIXc6SA",
+          "sender_platform_id": "u_9eDCmDLR9IascfsMIXc6SA",
+          "sender_uin": "1186007946",
+          "sender_name": "晨汐",
+          "timestamp": 1784179576000,
+          "seq": 158038,
+          "message_type": "text",
+          "normalized_content": "做了一个给需求，AI追问得具体描述，构架设计文档，拆分任务并制作的agent，https://github.com/AnHuoZhe/forge",
+          "reply_to_source_message_id": null,
+          "recalled": false,
+          "system": false,
+          "session_display": "一群开心快乐的小奶龙"
+        },
+        {
+          "internal_message_id": "qq:831907794:7663409236248407977",
+          "session_id": "qq:831907794",
+          "source_message_id": "7663409236248407977",
+          "sender_user_id": "qq:uid:u_9eDCmDLR9IascfsMIXc6SA",
+          "sender_platform_id": "u_9eDCmDLR9IascfsMIXc6SA",
+          "sender_uin": "1186007946",
+          "sender_name": "晨汐",
+          "timestamp": 1784276495000,
+          "seq": 159145,
+          "message_type": "text",
+          "normalized_content": "https://github.com/AnHuoZhe/forge",
+          "reply_to_source_message_id": null,
+          "recalled": false,
+          "system": false,
+          "session_display": "一群开心快乐的小奶龙"
+        },
+        {
+          "internal_message_id": "qq:831907794:7667213431772110119",
+          "session_id": "qq:831907794",
+          "source_message_id": "7667213431772110119",
+          "sender_user_id": "qq:uid:u_9eDCmDLR9IascfsMIXc6SA",
+          "sender_platform_id": "u_9eDCmDLR9IascfsMIXc6SA",
+          "sender_uin": "1186007946",
+          "sender_name": "晨汐",
+          "timestamp": 1785162238000,
+          "seq": 165001,
+          "message_type": "text",
+          "normalized_content": "https://github.com/AnHuoZhe/forge",
+          "reply_to_source_message_id": null,
+          "recalled": false,
+          "system": false,
+          "session_display": "一群开心快乐的小奶龙"
+        }
+      ]
+    },
+    "pu-rank-utc-session": {
+      "judgment": "两路同一唯一最高会话qq:677019167=224，结构化来源支持",
+      "standard_issues": [],
+      "planned_issues": [],
+      "benefit": "无净质量收益",
+      "risk": "当前case没有最高并列，不能宣称所有tie行为已验证",
+      "runs": {
+        "planned": {
+          "run_id": "eval-run:pu-rank-utc-session:v1:closure-planned:c1fc688e60164bddbd1fef13c5f00bba",
+          "trace_id": "trace-2d55a98cddc54d00ab0c244ed103f632",
+          "reviewed_claim_ids": [
+            "claim-1"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        },
+        "standard": {
+          "run_id": "eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae",
+          "trace_id": "trace-6aef739ae3b9414e849bff55f30cbaff",
+          "reviewed_claim_ids": [
+            "claim-1"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        }
+      },
+      "canonical_gt_targets": []
+    },
+    "pu-aggregate-utc-types": {
+      "judgment": "两路正确text814/reply17，structured来源支持",
+      "standard_issues": [],
+      "planned_issues": [
+        "指定UTC日期之前多一次全档案MIN/MAX/COUNT，没有业务必要"
+      ],
+      "benefit": "无净质量收益",
+      "risk": "额外SQL/HTTP及5.773秒差值；单次延迟不作稳态因果保证",
+      "runs": {
+        "standard": {
+          "run_id": "eval-run:pu-aggregate-utc-types:v1:closure-standard:86736b5db17440cbb72ed0d189b07193",
+          "trace_id": "trace-ca6f6a56e0df4010af0ac7d1362e1a3c",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        },
+        "planned": {
+          "run_id": "eval-run:pu-aggregate-utc-types:v1:closure-planned:db8e3beace64428f968998d446e9bf4f",
+          "trace_id": "trace-94c932c2d468461fba5fb75f4ef8cf7b",
+          "reviewed_claim_ids": [
+            "claim-1",
+            "claim-2"
+          ],
+          "missing_gt_retrieval": [],
+          "missing_gt_evidence": []
+        }
+      },
+      "canonical_gt_targets": []
+    }
+  },
+  "temporal_sample_facts": {
+    "standard": {
+      "messages": 100,
+      "first_timestamp_ms": 1786815149000,
+      "last_timestamp_ms": 1786847688000,
+      "elapsed_seconds": 32539
+    },
+    "planned": {
+      "messages": 200,
+      "first_timestamp_ms": 1786810116000,
+      "last_timestamp_ms": 1786847688000,
+      "elapsed_seconds": 37572
+    }
+  },
+  "stop_decision": {
+    "formal_runs": 16,
+    "targeted_repeats": 0,
+    "provider_requests": 54,
+    "decision": "限制使用，保留Thin Planner架构，routing继续保守",
+    "new_error_recorded": "Planned temporal-30d duration wording is factually wrong; cite-archify omits retrieved 7k",
+    "blocking_repeat_required": false,
+    "reason": "已知required-context遗漏继续显露；局部新duration/完整性差距未改变partial/zero/Tool契约或不扩大路由的保守决定。本轮不能证明无稳定严重回退，但不需要扩大付费样本才能决定限制使用。"
+  }
+}

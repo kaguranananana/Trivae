@@ -22,5 +22,9 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "16 production E2E runs / 63 HTTP requests completed; Gate A, no expansion. Independent blind review and reproducible analysis completed. Delivery includes runner, tests, reports and raw artifacts; task retained in place, production unchanged.",
-  "meta": {}
+  "meta": {
+    "research_status": "closed",
+    "engineering_closure_task": "10-02-planner-engineering-closure",
+    "further_paid_experiments_scheduled": false
+  }
 }

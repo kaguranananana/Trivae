@@ -1,0 +1,89 @@
+{
+  "case_id": "pu-rank-utc-session",
+  "run_status": "completed",
+  "metrics": [
+    {
+      "name": "execution_completed",
+      "k": null,
+      "scope": "unconditional",
+      "denominator": 1,
+      "hits": 1.0,
+      "value": 1.0,
+      "availability": "available",
+      "reason": null
+    },
+    {
+      "name": "valid_answer",
+      "k": null,
+      "scope": "unconditional",
+      "denominator": 1,
+      "hits": 1.0,
+      "value": 1.0,
+      "availability": "available",
+      "reason": null
+    },
+    {
+      "name": "evidence_recall",
+      "k": null,
+      "scope": "evidence",
+      "denominator": 0,
+      "hits": null,
+      "value": null,
+      "availability": "unavailable",
+      "reason": "no_gt_targets"
+    },
+    {
+      "name": "context_recovery",
+      "k": null,
+      "scope": "evidence",
+      "denominator": 0,
+      "hits": null,
+      "value": null,
+      "availability": "not_applicable",
+      "reason": "no_required_context_declared"
+    },
+    {
+      "name": "coverage_status_accuracy",
+      "k": null,
+      "scope": "coverage",
+      "denominator": 0,
+      "hits": null,
+      "value": null,
+      "availability": "not_applicable",
+      "reason": "no_expected_declared"
+    },
+    {
+      "name": "truncation_accuracy",
+      "k": null,
+      "scope": "coverage",
+      "denominator": 0,
+      "hits": null,
+      "value": null,
+      "availability": "not_applicable",
+      "reason": "no_expected_declared"
+    },
+    {
+      "name": "expected_fact_answer_coverage",
+      "k": null,
+      "scope": "answer",
+      "denominator": 2,
+      "hits": 2.0,
+      "value": 1.0,
+      "availability": "available",
+      "reason": null
+    },
+    {
+      "name": "false_zero_result",
+      "k": null,
+      "scope": "failure",
+      "denominator": 1,
+      "hits": 1.0,
+      "value": 1.0,
+      "availability": "available",
+      "reason": null
+    }
+  ],
+  "flags": {
+    "answer_form": "claims"
+  }
+}

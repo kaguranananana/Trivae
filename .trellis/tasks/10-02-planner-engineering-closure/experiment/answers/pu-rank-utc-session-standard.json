@@ -1,0 +1,232 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "按 UTC 日期 2026-08-15 统计，发言最多的会话是 qq:677019167，共 224 条消息。其后依次为 qq:383550736（217 条）、qq:750807478（174 条）、qq:1039179741（116 条）、qq:1040412855（116 条）、qq:831907794（36 条）。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "2026-08-15（UTC）消息数最多的会话为 qq:677019167，224 条。",
+      "criterion": "对 messages 表按 date(timestamp/1000,'unixepoch')='2026-08-15' 过滤并按 session_id 分组计数，取最大值。",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-f0fd1aa4439d45a2bf07587d32ba62a2",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[0]",
+            "value_snapshot": {
+              "session_id": "qq:677019167",
+              "msg_count": 224
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS msg_count FROM messages WHERE date(timestamp/1000, 'unixepoch') = '2026-08-15' GROUP BY session_id ORDER BY msg_count DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[0]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-f0fd1aa4439d45a2bf07587d32ba62a2",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[1]",
+            "value_snapshot": {
+              "session_id": "qq:383550736",
+              "msg_count": 217
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS msg_count FROM messages WHERE date(timestamp/1000, 'unixepoch') = '2026-08-15' GROUP BY session_id ORDER BY msg_count DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[1]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-f0fd1aa4439d45a2bf07587d32ba62a2",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[2]",
+            "value_snapshot": {
+              "session_id": "qq:750807478",
+              "msg_count": 174
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS msg_count FROM messages WHERE date(timestamp/1000, 'unixepoch') = '2026-08-15' GROUP BY session_id ORDER BY msg_count DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[2]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-f0fd1aa4439d45a2bf07587d32ba62a2",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[3]",
+            "value_snapshot": {
+              "session_id": "qq:1039179741",
+              "msg_count": 116
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS msg_count FROM messages WHERE date(timestamp/1000, 'unixepoch') = '2026-08-15' GROUP BY session_id ORDER BY msg_count DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[3]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-f0fd1aa4439d45a2bf07587d32ba62a2",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[4]",
+            "value_snapshot": {
+              "session_id": "qq:1040412855",
+              "msg_count": 116
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS msg_count FROM messages WHERE date(timestamp/1000, 'unixepoch') = '2026-08-15' GROUP BY session_id ORDER BY msg_count DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[4]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-f0fd1aa4439d45a2bf07587d32ba62a2",
+            "tool_call_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-rank-utc-session:v1:closure-standard:061ca8a36a20471f85b84ae0920dddae/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[5]",
+            "value_snapshot": {
+              "session_id": "qq:831907794",
+              "msg_count": 36
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT session_id, COUNT(*) AS msg_count FROM messages WHERE date(timestamp/1000, 'unixepoch') = '2026-08-15' GROUP BY session_id ORDER BY msg_count DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[5]"
+          }
+        }
+      ],
+      "limitations": [
+        "统计仅覆盖被授权范围可见的会话与消息；计数包含该会话当天所有消息类型（含系统消息），未做类型过滤。"
+      ]
+    }
+  ],
+  "limitations": [
+    "日期按 SQLite date(...,'unixepoch') 的 UTC 口径划分，非本地时区。"
+  ],
+  "resolved_time_range": null,
+  "retrieval_coverage": null
+}

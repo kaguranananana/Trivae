@@ -1,0 +1,205 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "有，群里有人分享过这个项目。成员「晨汐」发过一个叫 Forge 的 agent 项目，链接是 https://github.com/AnHuoZhe/forge，描述为「给需求，AI 追问得具体描述，构架设计文档，拆分任务并制作的 agent」——正好对应用户所说的「把需求拆成任务并生成文档」。"
+    },
+    {
+      "block_id": "claim-2",
+      "text": "「晨汐」还进一步介绍了 Forge 的定位：用 AI 写代码时瓶颈不在「写」，而在前面的需求/架构和后面的审查、验收；Forge 是把「先讨论清楚架构 → 出设计文档 → 多轮审查 → 再交给 AI 实现 → 最后验收」这条线串起来的方法论，并且他本人正在用它，想请大家反馈是不是真问题。"
+    },
+    {
+      "block_id": "claim-3",
+      "text": "该链接在同一群聊里被重复分享过多次（至少两条独立的、内容仅为链接的消息），也有成员用「我的生产资料，后面做的其他项目是通过这个做出来的」来评价它，并有一条相关讨论「mc 的 forge 吗」是另一名成员在问是否指 Minecraft Forge。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    },
+    {
+      "content_block_id": "claim-2",
+      "evidence_ids": [
+        "e2"
+      ]
+    },
+    {
+      "content_block_id": "claim-3",
+      "evidence_ids": [
+        "e3"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "确认存在一个由群成员分享的 forge 项目，其功能描述与用户描述的「需求拆解成任务并生成文档」一致",
+      "criterion": "同一作者的直接分享消息中同时包含项目名 forge、GitHub 链接和功能描述",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-fdcf206dada54d1997cabcd99af89eb1",
+            "tool_call_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7662993011264974100",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7662993011264974100",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "晨汐",
+              "timestamp_ms": 1784179576000,
+              "timezone": "UTC",
+              "excerpt": "做了一个给需求，AI追问得具体描述，构架设计文档，拆分任务并制作的agent，https://github.com/AnHuoZhe/forge",
+              "excerpt_truncated": false,
+              "source_message_id": "7662993011264974100",
+              "urls": [
+                "https://github.com/AnHuoZhe/forge"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-fdcf206dada54d1997cabcd99af89eb1",
+            "tool_call_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7663409236248407977",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7663409236248407977",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "晨汐",
+              "timestamp_ms": 1784276495000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/AnHuoZhe/forge",
+              "excerpt_truncated": false,
+              "source_message_id": "7663409236248407977",
+              "urls": [
+                "https://github.com/AnHuoZhe/forge"
+              ]
+            }
+          }
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "evidence_id": "e2",
+      "finding": "获得该项目的完整定位说明及作者自述的使用情况",
+      "criterion": "作者本人发布的详细介绍消息",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-fdcf206dada54d1997cabcd99af89eb1",
+            "tool_call_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7667213415158970978",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7667213415158970978",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "晨汐",
+              "timestamp_ms": 1785162234000,
+              "timezone": "UTC",
+              "excerpt": "最近在捣鼓一个东西叫 Forge，想请各位帮忙看看给点反馈。\n\n简单说就是用 AI 写代码的时候，瓶颈其实不在\"写\"那步——AI 写代码已经很快了。瓶颈在前面（需求想没想清楚、架构合不合理）和后面（写完怎么审查、怎么验收）。Forge 就是把这一整条线串起来的方法论：先和人讨论清楚架构、出设计文档、多轮审查找裂缝、审查过了再丢给 AI 实现、最后验收。\n\n我自己在用这套流程和 AI 协作开发，感觉比直接让 AI 写代码稳很多。但现在的问题是——自己闷头搞，不知道这东西对别人有没有用、定位对不对。\n\n想听听你们的直觉反应：这玩意解决的是真问题吗？还是我自嗨了？",
+              "excerpt_truncated": false,
+              "source_message_id": "7667213415158970978",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "evidence_id": "e3",
+      "finding": "该链接被多次分享，且有群成员给予正面使用反馈，但需与 Minecraft Forge 区分",
+      "criterion": "多条含链接消息及围绕该项目的后续讨论",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-fdcf206dada54d1997cabcd99af89eb1",
+            "tool_call_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7667213431772110119",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7667213431772110119",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "晨汐",
+              "timestamp_ms": 1785162238000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/AnHuoZhe/forge",
+              "excerpt_truncated": false,
+              "source_message_id": "7667213431772110119",
+              "urls": [
+                "https://github.com/AnHuoZhe/forge"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-fdcf206dada54d1997cabcd99af89eb1",
+            "tool_call_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7667214346002671480",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7667214346002671480",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "晨汐",
+              "timestamp_ms": 1785162451000,
+              "timezone": "UTC",
+              "excerpt": "我的生产资料，后面做的其他的项目是通过这个做出来的",
+              "excerpt_truncated": false,
+              "source_message_id": "7667214346002671480",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-fdcf206dada54d1997cabcd99af89eb1",
+            "tool_call_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-lexical-forge:v1:closure-standard:5f550b94370a4b35945bee2964379ec9/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7667214016449863662",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7667214016449863662",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "歌鱼",
+              "timestamp_ms": 1785162375000,
+              "timezone": "UTC",
+              "excerpt": "mc的forge吗",
+              "excerpt_truncated": false,
+              "source_message_id": "7667214016449863662",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "链接表示「被分享/被提及」，不等同于对项目质量的独立验证"
+      ]
+    }
+  ],
+  "limitations": [
+    "以上仅基于检索到的消息，未对 GitHub 项目本身做外部核实",
+    "「mc 的 forge」是群内另一成员的另一提问，与本项目无关，仅作消歧说明"
+  ],
+  "resolved_time_range": null,
+  "retrieval_coverage": null
+}

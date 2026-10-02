@@ -1,0 +1,100 @@
+{
+  "standard": {
+    "variant_id": "closure-standard",
+    "role": "candidate",
+    "code_version": "14de11fb50b809384a42b254eb349ae46489b5bc",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "model_parameters": {},
+    "prompt_identity": "production-P1/Runtime",
+    "router_configuration": {},
+    "planner_configuration": {
+      "reasoning_effort": "none"
+    },
+    "runtime_configuration": {
+      "base_url": "https://api.deepseek.com",
+      "completion_max_tokens": 2048,
+      "max_output_tokens": 16384,
+      "max_tool_rounds": 3,
+      "max_turns": 8,
+      "model_context_window_tokens": null,
+      "model_name": "deepseek-flash",
+      "per_call_tool_result_cap": 128000,
+      "per_call_tool_result_percent": 50,
+      "provider": "deepseek",
+      "run_tool_evidence_budget": null,
+      "run_tool_evidence_cap": 256000,
+      "run_tool_evidence_percent": 25,
+      "tool_result_budget_mode": "dynamic"
+    },
+    "available_tools": [
+      "lexical_search",
+      "semantic_search",
+      "get_recent_messages",
+      "get_message_context",
+      "find_members",
+      "get_schema",
+      "execute_sql"
+    ],
+    "retrieval_configuration": {},
+    "index_identity": "{\"message_count\": 473236, \"present\": true}",
+    "context_expansion_configuration": {},
+    "evidence_citation_version": "evidence-citation-unknown",
+    "budget": {},
+    "execution_override": {
+      "forced_route": "standard_execution",
+      "context_window_limit": null
+    },
+    "extra_configuration": {},
+    "variant_fingerprint": "{\"available_tools\":[\"lexical_search\",\"semantic_search\",\"get_recent_messages\",\"get_message_context\",\"find_members\",\"get_schema\",\"execute_sql\"],\"budget\":{},\"code_version\":\"14de11fb50b809384a42b254eb349ae46489b5bc\",\"context_expansion_configuration\":{},\"evidence_citation_version\":\"evidence-citation-unknown\",\"execution_override\":{\"context_window_limit\":null,\"forced_route\":\"standard_execution\"},\"extra_configuration\":{},\"index_identity\":\"{\\\"message_count\\\": 473236, \\\"present\\\": true}\",\"model\":\"deepseek-flash\",\"model_parameters\":{},\"planner_configuration\":{\"reasoning_effort\":\"none\"},\"prompt_identity\":\"production-P1/Runtime\",\"provider\":\"deepseek\",\"retrieval_configuration\":{},\"role\":\"candidate\",\"router_configuration\":{},\"runtime_configuration\":{\"base_url\":\"https://api.deepseek.com\",\"completion_max_tokens\":2048,\"max_output_tokens\":16384,\"max_tool_rounds\":3,\"max_turns\":8,\"model_context_window_tokens\":null,\"model_name\":\"deepseek-flash\",\"per_call_tool_result_cap\":128000,\"per_call_tool_result_percent\":50,\"provider\":\"deepseek\",\"run_tool_evidence_budget\":null,\"run_tool_evidence_cap\":256000,\"run_tool_evidence_percent\":25,\"tool_result_budget_mode\":\"dynamic\"}}"
+  },
+  "planned": {
+    "variant_id": "closure-planned",
+    "role": "candidate",
+    "code_version": "14de11fb50b809384a42b254eb349ae46489b5bc",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "model_parameters": {},
+    "prompt_identity": "production-P1/Runtime",
+    "router_configuration": {},
+    "planner_configuration": {
+      "reasoning_effort": "none"
+    },
+    "runtime_configuration": {
+      "base_url": "https://api.deepseek.com",
+      "completion_max_tokens": 2048,
+      "max_output_tokens": 16384,
+      "max_tool_rounds": 3,
+      "max_turns": 8,
+      "model_context_window_tokens": null,
+      "model_name": "deepseek-flash",
+      "per_call_tool_result_cap": 128000,
+      "per_call_tool_result_percent": 50,
+      "provider": "deepseek",
+      "run_tool_evidence_budget": null,
+      "run_tool_evidence_cap": 256000,
+      "run_tool_evidence_percent": 25,
+      "tool_result_budget_mode": "dynamic"
+    },
+    "available_tools": [
+      "lexical_search",
+      "semantic_search",
+      "get_recent_messages",
+      "get_message_context",
+      "find_members",
+      "get_schema",
+      "execute_sql"
+    ],
+    "retrieval_configuration": {},
+    "index_identity": "{\"message_count\": 473236, \"present\": true}",
+    "context_expansion_configuration": {},
+    "evidence_citation_version": "evidence-citation-unknown",
+    "budget": {},
+    "execution_override": {
+      "forced_route": "planned_execution",
+      "context_window_limit": null
+    },
+    "extra_configuration": {},
+    "variant_fingerprint": "{\"available_tools\":[\"lexical_search\",\"semantic_search\",\"get_recent_messages\",\"get_message_context\",\"find_members\",\"get_schema\",\"execute_sql\"],\"budget\":{},\"code_version\":\"14de11fb50b809384a42b254eb349ae46489b5bc\",\"context_expansion_configuration\":{},\"evidence_citation_version\":\"evidence-citation-unknown\",\"execution_override\":{\"context_window_limit\":null,\"forced_route\":\"planned_execution\"},\"extra_configuration\":{},\"index_identity\":\"{\\\"message_count\\\": 473236, \\\"present\\\": true}\",\"model\":\"deepseek-flash\",\"model_parameters\":{},\"planner_configuration\":{\"reasoning_effort\":\"none\"},\"prompt_identity\":\"production-P1/Runtime\",\"provider\":\"deepseek\",\"retrieval_configuration\":{},\"role\":\"candidate\",\"router_configuration\":{},\"runtime_configuration\":{\"base_url\":\"https://api.deepseek.com\",\"completion_max_tokens\":2048,\"max_output_tokens\":16384,\"max_tool_rounds\":3,\"max_turns\":8,\"model_context_window_tokens\":null,\"model_name\":\"deepseek-flash\",\"per_call_tool_result_cap\":128000,\"per_call_tool_result_percent\":50,\"provider\":\"deepseek\",\"run_tool_evidence_budget\":null,\"run_tool_evidence_cap\":256000,\"run_tool_evidence_percent\":25,\"tool_result_budget_mode\":\"dynamic\"}}"
+  }
+}

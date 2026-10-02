@@ -1,0 +1,18 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 4857.17it/s]
+1/16 pu-dependent-mattpocock-standard: completed; HTTP=3; wall=14.96s
+2/16 pu-dependent-mattpocock-planned: completed; HTTP=5; wall=14.48s
+3/16 dev-context-archify-planned: completed; HTTP=4; wall=10.46s
+4/16 dev-context-archify-standard: completed; HTTP=3; wall=7.54s
+5/16 pu-aggregate-utc-types-standard: completed; HTTP=3; wall=7.61s
+6/16 pu-aggregate-utc-types-planned: completed; HTTP=5; wall=13.38s
+7/16 dev-zero-empty-3-planned: completed; HTTP=3; wall=5.88s
+8/16 dev-zero-empty-3-standard: completed; HTTP=2; wall=4.42s
+9/16 dev-temporal-30d-standard: completed; HTTP=4; wall=13.54s
+10/16 dev-temporal-30d-planned: completed; HTTP=4; wall=14.79s
+11/16 dev-lexical-forge-planned: completed; HTTP=3; wall=7.29s
+12/16 dev-lexical-forge-standard: completed; HTTP=2; wall=6.10s
+13/16 dev-cite-archify-standard: completed; HTTP=2; wall=5.99s
+14/16 dev-cite-archify-planned: completed; HTTP=4; wall=10.13s
+15/16 pu-rank-utc-session-planned: completed; HTTP=4; wall=5.72s
+16/16 pu-rank-utc-session-standard: completed; HTTP=3; wall=5.20s

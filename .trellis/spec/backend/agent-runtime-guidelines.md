@@ -833,9 +833,44 @@ Wrong：看到恢复后的 Trace canonical ID，声称模型已自行选择 cano
 
 ## 16. Context source identity 与 temporal evidence regression（2026-10-02）
 
-- `GetMessageContextSDKToolAdapter` 的真实 SDK/Pydantic schema 优先公开 `source_id`：当前 run-local `mN-K` handle（如 `m1-1`）必须填此字段。`message_id` 只接受 canonical internal message ID；两字段互斥，保留 canonical 直接查询，不按形状做 silent alias fallback。
-- ToolResult projection 的 source_id 与模型 schema/prompt 语义保持一致。source_id 经既有 RuntimeContext resolver 后，Capability normalized Trace 记录 canonical message_id；model_output/HTTP 原始 arguments 保留 Provider 所给字段。不能从归一化 ID 推断模型自行生成了 canonical ID。
-- 真实 low-r2 两条消息日期相隔1185297秒，旧 Claim/finding/criterion 写成同日。保存于 `evaluation/regressions/archify-temporal-relation.json`，不改原 artifact/GT。Runtime prompt 要求时间关系来自 canonical 时间戳，并且不能从邻接猜 reply/reaction。
-- 既有 benchmark Tier2 Judge 的 canonical evidence excerpt 必须保留 UTC 时间，正文放入独立 message_content 标签。引用存在不是 citation entailment 证明；finding 自己不能证明来源关系。
-- Provider-free regression 稳定否定已明确记录的错误日期关系并验证 Judge 输入/parser；没有通用自然语言 temporal checker 或生产语义硬拒绝，不能从 mock verdict 推出真实 Judge 准确率。
-- 验证见 `test_context_source_contract.py`、`test_temporal_relation_regression.py`、`test_benchmark_judge.py`；工程收口见本轮 task 的 report/validation。
+### 1. Scope / Trigger
+
+Frozen replay 4/4 runs 把短handle填入canonical字段；low-r2正确取回日期却写成同日。修复模型可见SDK schema/prompt及既有Judge输入，保持resolver/Finalizer架构。
+
+### 2. Signatures
+
+SDK `get_message_context(context, source_id: str | None = None, message_id: str | None = None, context_before: int = 8, context_after: int = 8)`；归一化为`GetMessageContextInput(message_id=<canonical>, ...)`。Judge `canonical_message_excerpt(*, timestamp_ms: int, content: str) -> str`。
+
+### 3. Contracts
+
+`source_id`只指当前run-local `mN-K`，如`m1-1`；`message_id`只指canonical internal ID，如`qq:1039179741:7670742957499269309`，两者互斥。真实Pydantic/SDK字段description分别说明，不合并成模糊身份。ToolResult projection公开source_id；resolver负责映射，raw HTTP/model_output保存Provider原参数，normalized Tool Trace保存canonical参数。Judge excerpt先写`timestamp_utc`，再写`message_content`；日期不可被正文截断隐藏。sender_name不作消息正文，邻接不证明reply。
+
+### 4. Validation & Error Matrix
+
+| 输入/事实 | 既有行为 |
+| --- | --- |
+| 当前run已公开的source_id | 显式resolve canonical并调用Capability |
+| canonical message_id | 保留直接context查询 |
+| 两字段同时给出/均缺失 | 显式contract error，不猜测身份 |
+| message_id="m1-1" | canonical查询的MESSAGE_NOT_FOUND；不silent alias |
+| 日期相隔多天但Claim/finding称同日 | 保存失败、供既有Judge/source review判断；结构Citation通过不代表语义成立 |
+
+### 5. Good / Base / Bad Cases
+
+Good：raw `source_id=m1-1` 与normalized canonical ID同时保留。Base：canonical直接查询能力不变。Bad：从normalized Trace宣称模型自行生成canonical ID，或以finding自证Claim时间关系。
+
+### 6. Tests Required
+
+`test_context_source_contract.py`验证真实schema/projection/resolver/canonical/错误字段和stream raw/normalized ownership；`test_temporal_relation_regression.py`验证原fixture、2026-07-23→2026-08-06的1185297秒差、日期不同及Judge bounded输入/parser；`test_benchmark_judge.py`验证实际orchestrator日期投影。mock不能证明真实Judge准确率；没有通用自然语言temporal checker。
+
+### 7. Wrong vs Correct
+
+Wrong：`get_message_context(message_id="m1-1")`；两条来源可解析就认定“同日”有支持。Correct：`get_message_context(source_id="m1-1")`；以canonical timestamps判定关系。真实旧错误保留于`evaluation/regressions/archify-temporal-relation.json`，不改原artifact/GT。
+
+## 17. Planner Evaluation final engineering closure（2026-10-03）
+
+当前Router low、P1 Planner none、共享Runtime low。none是completion reliability/latency选择，不证明最终质量优于low。保留架构、限制使用，production routing继续保守、Jev shadow不变。
+
+`run_engineering_closure.py --output <new-directory> [--preflight-only]`固定八Case×两路×一次、AB/BA；create-only、无repeats开关。正式前preflight必须落盘execution commit、Snapshot/Case/GT逐字身份、实际SDKschema/settings、credential configured boolean；失败0attempts/0HTTP，不写key。Standard Planner=0，Planned=1，实际首次Runtime HTTP只差生产guidance。raw/normalized参数与完整证据链分开保留。
+
+正式16次/54HTTP完成后停止，0targeted repeats；11次context参数正确不等于答案全对。两路required-context仍漏取，Planned cite遗漏7k，temporal样本跨度仍写错；mean E2E 8.169→10.266秒、token285065→296703。low/none研究与Standard/Planned validation closed，不安排新付费实验。只有新的真实严重生产Failure Case影响明确工程决策才重新评估。完整判断见[report.md](../../tasks/10-02-planner-engineering-closure/report.md)。

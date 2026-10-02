@@ -26,8 +26,9 @@
 | Web UI | Confirmed / Implemented | Local Web 成为 primary interaction surface · QueryStreamEvent UI-neutral · Conversation shared capability · provider reasoning visibility · Trace Finder · Session≠Conversation | [web-primary-interface.md](./technical-decisions/web-primary-interface.md) |
 | Provider Migration | Confirmed | OpenCode Go → Official DeepSeek · exact capability registry · JSON/tools boundary · evaluation identity | [provider-migration-deepseek-official.md](./technical-decisions/provider-migration-deepseek-official.md) |
 | Router Jev experiment | Experimental / Not promoted | OpenRouter Decisions provider for ambiguous Router choices · default shadow · paired diagnostic Evaluation | [router-jev-provider-experiment.md](./technical-decisions/router-jev-provider-experiment.md) |
+| Planner engineering closure | Confirmed / Evaluation closed | P1/none completion reliability · source/temporal contracts · limited use / conservative routing | [planner-engineering-closure.md](./technical-decisions/planner-engineering-closure.md) |
 
-Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；M4 Query、M5a Evidence/Citation、M5b Conversation、M6 Trace backend 与 Evaluation runner 已实现。Planner Utility 已在 37 条 Development Case 上执行，当前 Planner-specific Suite 与 Router Utility 分析链路已实现并完成两条真实 smoke；人工 treatment 裁决、fresh generalization、最终阈值与生产 Jev 切换仍 Pending。
+Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；M4 Query、M5a Evidence/Citation、M5b Conversation、M6 Trace backend 与 Evaluation runner 已实现。历史Planner Utility已在37条Development Case上执行；2026-10-03当前版本的16次Standard/Planned工程检查已收口，限制使用、路由继续保守，不安排扩样。人工treatment裁决、fresh generalization、数值阈值与生产Jev切换仍未证明，不代表自动排入新Planner实验。
 
 ## 决策问题链
 
@@ -125,7 +126,7 @@ Regression
 - 状态：**Confirmed / Completed（Stage 1.6）**。本阶段完成 Planner 架构决策沉淀；M4 已落地 bounded validation/sanitization、soft guidance 和 graceful skip。
 - 内容：Planner 定义为 Thin pre-execution investigation planner；只在 `planned_execution` 进入 Agent Runtime 前运行一次；`standard_execution` 与 `planned_execution` 使用同一个 Agent Runtime；Plan 是 soft investigation guidance，不是 Workflow；Planner Input 由 Runtime 注入 `user_query`、`query_context`、compact `data_snapshot` 与 `capability_summary`；第一版采用轻量 Plan Schema（version / title / intent / steps.goal / suggested_tools / evidence_needed / success_criteria）；suggested_tools 是 advisory hint，不生成 Tool Arguments；evidence_needed 不是 Stage 1.8 Evidence Object；Plan 经过 deterministic validation / sanitization；hallucinated Tool 被过滤；Plan bounded；Planner failure graceful degradation 且不重写 Router Decision；第一版不 automatic replan、不 Planner-owned state、不 Planner-specific retry / regeneration、不增加 LLM Plan Validator。
 - 记录位置：[technical-decisions/stage-1-6-planner.md](./technical-decisions/stage-1-6-planner.md)（详细 rationale、Trade-off、Failure Case 与 Reopen Conditions），[architecture.md](./architecture.md)（稳定结构与模块边界）。
-- 后续：SoftPlanner 的 Python class、Prompt、bounded Plan、Trace 与生产注入已实现；forced-path Development 已测。zero-result 的聚合行误拒已修，SQL-first 路径的稳定消失尚未证实；人工 utility 裁决、fresh 泛化和长期参数校准仍 Pending。
+- 当前：SoftPlanner实现及forced-path Development已完成。当前P1/none保留为completion reliability/latency选择，Runtime low；2026-10-03工程收口为限制使用、路由继续保守。low/none与本轮validation closed，不自动扩大；人工utility、fresh泛化和长期阈值仍未证明。
 
 ### Stage 1.7：Agent Runtime
 

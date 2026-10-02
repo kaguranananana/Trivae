@@ -2,6 +2,12 @@
 
 这里保存 version-controlled 的 Case、Suite 和 Controlled Variant 定义，不保存聊天正文、完整 Trace 或运行结果。
 
+## Planner Evaluation 最终工程收口（2026-10-03）
+
+当前P1 canonical Planner使用官方DeepSeek `deepseek-flash` / `none`，Router与共享Runtime保持独立`low`。source_id/mN-K与canonical message_id契约已在真实SDK schema/prompt明确；真实日期关系失败保留于`regressions/archify-temporal-relation.json`，复用既有Judge时间投影。
+
+限定八条已暴露Development Case完成16次Standard/Planned E2E、54实际HTTP，无额外repeat。结论为限制使用、保留架构、production routing继续保守，Jev shadow未变；不是答案质量全通过。low/none研究与本轮engineering validation closed，不安排新的付费Planner实验。旧runner/命令属于历史记录，不能据此自动扩样。完整证据见[report.md](../.trellis/tasks/10-02-planner-engineering-closure/report.md)与[ADR](../.trellis/spec/project/technical-decisions/planner-engineering-closure.md)。
+
 ## Provider migration boundary（2026-09-11）
 
 当前新执行身份是官方 DeepSeek：`deepseek / deepseek-flash`，base URL 为

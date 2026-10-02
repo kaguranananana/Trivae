@@ -1,0 +1,10 @@
+{
+  "logical_runs": 16,
+  "actual_provider_requests": 54,
+  "provider_responses": 54,
+  "planner_http": 8,
+  "retry_count": 0,
+  "first_runtime_pair_checks": 8,
+  "code_and_cases_unchanged": true,
+  "snapshot_unchanged": true
+}
