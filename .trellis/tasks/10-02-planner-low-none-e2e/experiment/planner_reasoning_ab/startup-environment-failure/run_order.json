@@ -1,0 +1,102 @@
+{
+  "seed": 20261002,
+  "attempt": 1,
+  "order": [
+    {
+      "order": 1,
+      "case_id": "pu-dependent-mattpocock",
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "order": 2,
+      "case_id": "pu-dependent-mattpocock",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 3,
+      "case_id": "dev-context-archify",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 4,
+      "case_id": "dev-context-archify",
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "order": 5,
+      "case_id": "pu-aggregate-utc-types",
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "order": 6,
+      "case_id": "pu-aggregate-utc-types",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 7,
+      "case_id": "dev-zero-empty-3",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 8,
+      "case_id": "dev-zero-empty-3",
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "order": 9,
+      "case_id": "dev-temporal-30d",
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "order": 10,
+      "case_id": "dev-temporal-30d",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 11,
+      "case_id": "dev-lexical-forge",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 12,
+      "case_id": "dev-lexical-forge",
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "order": 13,
+      "case_id": "dev-cite-archify",
+      "treatment": "low",
+      "attempt": 1
+    },
+    {
+      "order": 14,
+      "case_id": "dev-cite-archify",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 15,
+      "case_id": "pu-rank-utc-session",
+      "treatment": "none",
+      "attempt": 1
+    },
+    {
+      "order": 16,
+      "case_id": "pu-rank-utc-session",
+      "treatment": "low",
+      "attempt": 1
+    }
+  ]
+}

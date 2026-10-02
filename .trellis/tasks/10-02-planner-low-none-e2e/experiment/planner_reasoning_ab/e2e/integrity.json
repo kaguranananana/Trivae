@@ -1,0 +1,8 @@
+{
+  "logical_runs": 16,
+  "actual_provider_requests": 63,
+  "provider_responses": 63,
+  "retry_count": 0,
+  "code_and_cases_unchanged": true,
+  "snapshot_unchanged": true
+}

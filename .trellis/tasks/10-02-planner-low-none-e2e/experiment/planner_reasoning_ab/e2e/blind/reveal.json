@@ -1,0 +1,228 @@
+{
+  "judgments_complete_before_reveal": true,
+  "judgments_mtime_utc": "2026-10-02T07:42:29.978486+00:00",
+  "revealed_at": "2026-10-02T07:43:27.217714+00:00",
+  "reviewer_source": "independent AI assistant; not human adjudication",
+  "model_requested": "gpt-5.6-luna",
+  "reasoning_requested": "max",
+  "actual_reviewer_model_verified": false,
+  "reviewer_model_note": "collaboration API confirmed task creation but did not expose resolved model; requested route only, no claim of verified model routing",
+  "pairs": [
+    {
+      "case_id": "pu-aggregate-utc-types",
+      "judgment": "same",
+      "reason": "两者都正确给出 UTC 2026-08-15 的 text=814、reply=17，并用同一完整分组结果支撑；附加的类型分布和总数 883 也一致。B 将日期写成 00:00:00–23:59:59，属于轻微的日期边界简写，不构成实质差异。",
+      "observations": {
+        "A": {
+          "factual_correctness": "high；主问题数值、类型和 UTC 半开区间均正确。",
+          "evidence_support": "sufficient；e1 支撑两类目标计数，e2 支撑其余类型和合计。",
+          "citation_precision": "high；绑定到对应查询行，text/reply 未交换。",
+          "citation_completeness": "complete for the reported counts and extra distribution。",
+          "task_satisfaction": "fully answers the requested two counts。"
+        },
+        "B": {
+          "factual_correctness": "high；目标计数和完整类型分布正确。",
+          "evidence_support": "sufficient；e1/e2 覆盖目标行及完整分组。",
+          "citation_precision": "high；绑定到对应类型行。",
+          "citation_completeness": "complete for the reported counts and extra distribution。",
+          "task_satisfaction": "fully answers the request；日期末秒写法仅有轻微边界表述不精确。"
+        }
+      },
+      "mapping": {
+        "case_id": "pu-aggregate-utc-types",
+        "A": "none",
+        "B": "low"
+      },
+      "preferred_treatment": null
+    },
+    {
+      "case_id": "dev-cite-archify",
+      "judgment": "A better",
+      "reason": "A 正确报告了 7k 与 9.5k 两次 star 自述，并覆盖画廊、赞助、DeepSeek Harness 集成和外部讨论线索。B 虽然也列出 7k 和 9.5k，却又称 9.5k 是唯一一处带具体数值的 star 提及，和自身前文直接矛盾；B 还把相邻消息的时间关系说得过满。A 关于未见他人质疑 star 的外围判断也受限于局部上下文，但不影响其对核心 star 事实的较准确陈述。",
+      "observations": {
+        "A": {
+          "factual_correctness": "mostly high；7k/9.5k 和项目动态与来源快照一致；claim-4 的‘未见质疑’只能在有限上下文内成立，外部更广范围应为 unknown。",
+          "evidence_support": "mostly sufficient；e1–e3 直接支撑项目动态和两个 star 数，e4 只能部分支撑围绕 9.5k 的讨论概括。",
+          "citation_precision": "high for the core facts；claim-4 的局部上下文证据不足以支持全局否定。",
+          "citation_completeness": "complete for the requested project and star facts；外围讨论结论有明确限制。",
+          "task_satisfaction": "answers the development and star questions with useful provenance limits。"
+        },
+        "B": {
+          "factual_correctness": "mixed；核心动态和 star 数正确，但‘唯一一处带具体数值的 star 提及’与已报告的 7k 相矛盾。",
+          "evidence_support": "mostly sufficient for updates and star snapshots；唯一数值提及的概括不被其自身证据支持。",
+          "citation_precision": "mixed；大部分绑定准确，唯一 star 数值的措辞造成事实范围错误。",
+          "citation_completeness": "complete for most listed events, but the contradictory uniqueness claim is materially misleading。",
+          "task_satisfaction": "generally answers the query, with a central internal inconsistency about star mentions。"
+        }
+      },
+      "mapping": {
+        "case_id": "dev-cite-archify",
+        "A": "low",
+        "B": "none"
+      },
+      "preferred_treatment": "low"
+    },
+    {
+      "case_id": "dev-temporal-30d",
+      "judgment": "A better",
+      "reason": "两者都正确承认检索被截断、只覆盖最近 100 条，并把话题归纳限定为窗口末端样本。A 的主题陈述基本逐项有直接消息支持；B 虽提供会话和日期统计，但加入了证据未明确支持或归属错误的细节，例如‘楚玉衡说在北京’、把作者显示名中的‘天天只会调 api’当作消息内容并归到就业群，以及若干未被相应快照覆盖的样本描述。额外统计有用，但这些事实和引用错配降低了整体可靠性。",
+      "observations": {
+        "A": {
+          "factual_correctness": "mostly high；主题与末端样本快照一致，‘最突出’明确受末端样本和截断限制。",
+          "evidence_support": "sufficient for the listed sampled topics；e1–e5 直接给出相应话题消息，e6 说明覆盖限制。",
+          "citation_precision": "high；主题、群组和引语基本对应来源快照。",
+          "citation_completeness": "complete for the sampled topic summary and its partial-coverage caveat。",
+          "task_satisfaction": "satisfies the request while clearly avoiding a corpus-exhaustive claim。"
+        },
+        "B": {
+          "factual_correctness": "mixed；窗口、总量、会话排名和多数主题正确，但含有未见于证据的‘北京’等细节及消息/会话归属错误。",
+          "evidence_support": "mixed；聚合统计和主要末端主题有支持，部分新增就业、时差和样本内容超出所绑定快照。",
+          "citation_precision": "medium；一些引用支持主题本身，却不支持所加的地点、作者或会话归属。",
+          "citation_completeness": "partial for the expanded narrative；coverage caveat 本身完整。",
+          "task_satisfaction": "answers the topic question and states partial coverage, but unsupported embellishments make it less dependable。"
+        }
+      },
+      "mapping": {
+        "case_id": "dev-temporal-30d",
+        "A": "low",
+        "B": "none"
+      },
+      "preferred_treatment": "low"
+    },
+    {
+      "case_id": "pu-dependent-mattpocock",
+      "judgment": "A better",
+      "reason": "两者都找到仓库分享、下载后使用 /teach 的明确用法，并覆盖了另一会话的场景建议和负面评价。A 更准确地区分了‘我已经离不开了’这一第一人称自述与缺少可核查案例之间的差别，同时标明 joye 是否亲自使用未知、君莫笑明确未体验；还保留了反馈对功能价值和使用弹性的具体说明。B 把明确的第一人称自述进一步收紧为无法确认 firsthand，虽有谨慎限制，但低估了现有证据的直接性。",
+      "observations": {
+        "A": {
+          "factual_correctness": "high；分享、用法、正负反馈和使用依据的区分均与来源一致。",
+          "evidence_support": "sufficient for direct target, usage, and feedback；e7 对 firsthand 强度的限制被如实保留。",
+          "citation_precision": "high；正面反馈、价值解释、负面反馈和未体验声明分别有对应消息。",
+          "citation_completeness": "high；同时回答推荐/用法、后续反馈及 firsthand 限制。",
+          "task_satisfaction": "fully satisfies the dependent retrieval and evidence-strength requirements。"
+        },
+        "B": {
+          "factual_correctness": "mostly high；核心事实正确，但对‘我已经离不开了’的 firsthand 依据表述过度保守。",
+          "evidence_support": "sufficient for the main chain；使用依据部分应区分明确自述与缺少可复核案例，而不是近似归为无明确第一人称依据。",
+          "citation_precision": "high for the cited messages。",
+          "citation_completeness": "adequate but omits some supported value/mechanism details。",
+          "task_satisfaction": "answers the main chain and flags limitations, with a less precise assessment of firsthand strength。"
+        }
+      },
+      "mapping": {
+        "case_id": "pu-dependent-mattpocock",
+        "A": "none",
+        "B": "low"
+      },
+      "preferred_treatment": "none"
+    },
+    {
+      "case_id": "pu-rank-utc-session",
+      "judgment": "same",
+      "reason": "两者都在完整 UTC 日窗口内正确给出第一名 qq:677019167、224 条，并列出全部 6 个会话用于核对排序；两者都正确显示没有第一名并列。差异仅是 A 显式写出毫秒半开区间、B 使用自然日期区间。",
+      "observations": {
+        "A": {
+          "factual_correctness": "high；第一名、计数、其余排名和窗口均正确。",
+          "evidence_support": "sufficient；e1 支撑首行，e2 支撑完整 6 行排序。",
+          "citation_precision": "high。",
+          "citation_completeness": "complete for the requested rank and tie check。",
+          "task_satisfaction": "fully answers session ID and message count。"
+        },
+        "B": {
+          "factual_correctness": "high；第一名、计数、完整排名和无并列判断正确。",
+          "evidence_support": "sufficient；e1/e2 覆盖首位和所有返回行。",
+          "citation_precision": "high。",
+          "citation_completeness": "complete for the requested rank and tie check。",
+          "task_satisfaction": "fully answers the request。"
+        }
+      },
+      "mapping": {
+        "case_id": "pu-rank-utc-session",
+        "A": "none",
+        "B": "low"
+      },
+      "preferred_treatment": null
+    },
+    {
+      "case_id": "dev-lexical-forge",
+      "judgment": "B better",
+      "reason": "两者都准确识别 AnHuoZhe/forge，并引用了需求澄清、架构文档和任务拆分的原始描述。B 还用同一证据链补充了项目作者自述的完整工作流、征求反馈的语境，并明确区分了同词的 Minecraft Forge 命中，从而减少了词面检索的歧义；这些补充均有对应快照支持。两者对分享者性别都作了来源未明确的代词假设，但属于轻微表达问题。",
+      "observations": {
+        "A": {
+          "factual_correctness": "high for the requested project identification and capability match。",
+          "evidence_support": "sufficient；e1 支撑直接分享，e2 支撑工作流描述。",
+          "citation_precision": "high；目标项目链接和功能描述对应准确。",
+          "citation_completeness": "complete for the direct question, but omits the supported homonym distinction。",
+          "task_satisfaction": "answers the question directly。"
+        },
+        "B": {
+          "factual_correctness": "high；项目、工作流、多次分享和 Minecraft Forge 歧义均有来源支持。",
+          "evidence_support": "sufficient；e1/e2/e3 分别覆盖项目、工作流/重复分享和歧义。",
+          "citation_precision": "high。",
+          "citation_completeness": "complete and includes the relevant lexical disambiguation。",
+          "task_satisfaction": "fully answers the request and prevents confusing the agent project with Minecraft Forge。"
+        }
+      },
+      "mapping": {
+        "case_id": "dev-lexical-forge",
+        "A": "low",
+        "B": "none"
+      },
+      "preferred_treatment": "none"
+    },
+    {
+      "case_id": "dev-zero-empty-3",
+      "judgment": "same",
+      "reason": "两者都正确说明完整 UTC 2025-08-26 窗口没有消息，因此当天无人发言且没有可总结的话题；没有把空结果误说成截断或部分覆盖。B 的‘已归档范围’限制没有改变该日期窗口的回答。",
+      "observations": {
+        "A": {
+          "factual_correctness": "high；zero-result 与日期边界正确。",
+          "evidence_support": "sufficient；artifact 明确给出 total_hits=0 和 complete coverage。",
+          "citation_precision": "unknown；没有独立 evidence item，但 artifact 的完整检索状态明确支持结论。",
+          "citation_completeness": "complete for the zero-result claim。",
+          "task_satisfaction": "fully answers both whether anyone spoke and what they discussed。"
+        },
+        "B": {
+          "factual_correctness": "high；zero-result 与 UTC 全天窗口正确。",
+          "evidence_support": "sufficient；artifact 标明 complete coverage。",
+          "citation_precision": "unknown；没有独立 evidence item，但结论与检索状态一致。",
+          "citation_completeness": "complete for the zero-result claim。",
+          "task_satisfaction": "fully answers both parts of the question。"
+        }
+      },
+      "mapping": {
+        "case_id": "dev-zero-empty-3",
+        "A": "low",
+        "B": "none"
+      },
+      "preferred_treatment": null
+    },
+    {
+      "case_id": "dev-context-archify",
+      "judgment": "B better",
+      "reason": "A 错过了证据中的明确正面反馈：ethereal 回复‘好用’，W 也说‘可以/好东西’，因此‘没有 archify 的实际使用反馈（无论正面还是负面）’是实质性错误。B 引用了这些消息，同时指出 W 随后追问用法、缺少详细体验，并保留了作者自推、外部帖子未核实和样本有限等限制；其‘刚上手阶段’是稍强的推断，但不改变它正确识别正面反馈的优势。",
+      "observations": {
+        "A": {
+          "factual_correctness": "low for the central feedback conclusion；作者推广部分正确，但否定所有实际反馈与 e1 的‘好用’快照冲突。",
+          "evidence_support": "insufficient for the no-feedback conclusion；e1–e5 的检索/上下文范围遗漏了已存在的正面反馈证据。",
+          "citation_precision": "low on claim-1/claim-3/claim-5；绑定证据不足以支持全局‘无正面反馈’。",
+          "citation_completeness": "incomplete；遗漏 ethereal 和 W 的正面反馈，使回答未覆盖关键 context。",
+          "task_satisfaction": "does not fully answer how feedback was received because it incorrectly reports no user feedback。"
+        },
+        "B": {
+          "factual_correctness": "mostly high；正确识别‘好用’等正面反馈及作者推广；‘刚上手阶段’为有限证据下的略强推断。",
+          "evidence_support": "sufficient for the existence of positive feedback and promotion; partial for broader sentiment due small sample。",
+          "citation_precision": "high for the quoted feedback and promotion snapshots。",
+          "citation_completeness": "high within the returned context, with explicit sample and external-source limits。",
+          "task_satisfaction": "fully answers whether anyone appears to have used it and what the reported feedback was。"
+        }
+      },
+      "mapping": {
+        "case_id": "dev-context-archify",
+        "A": "low",
+        "B": "none"
+      },
+      "preferred_treatment": "none"
+    }
+  ]
+}

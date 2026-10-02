@@ -1,0 +1,31 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "answer",
+      "text": "按 UTC 时间界定的 [2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z) 窗口内没有任何消息，因此 2025-08-26 这天没有人发言，也没有可回顾的讨论话题。"
+    }
+  ],
+  "citation_bindings": [],
+  "evidence_items": [],
+  "limitations": [
+    "该结论基于对上述完整 UTC 日期窗口的检索，结果为空（total_hits=0，coverage.status=complete），并非因截断或部分覆盖导致。"
+  ],
+  "resolved_time_range": {
+    "kind": "absolute",
+    "anchor": "request",
+    "resolved_start_timestamp": 1756166400000,
+    "resolved_end_timestamp": 1756252800000,
+    "resolved_start_utc": "2025-08-26T00:00:00.000Z",
+    "resolved_end_utc": "2025-08-27T00:00:00.000Z",
+    "resolved_interval_utc": "[2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z)"
+  },
+  "retrieval_coverage": {
+    "status": "complete",
+    "basis": "canonical_store",
+    "covered_units": 0,
+    "eligible_units": 0,
+    "unit": "message",
+    "retrieved_count": 0,
+    "has_more": false
+  }
+}

@@ -755,3 +755,45 @@ Tool 的 safety ceiling，不代表整个 Run 只能累计 `128000`；Run-level 
 Wrong：收到非空 GitHub URL 结果后，为了“更完整”继续调用 `get_recent_messages(limit=5000)`，或用没有验证 schema 的 SQL 重新统计 URL。
 
 Correct：使用有界 URL lexical 结果完成资源回答；只有泛化学习资料缺少非 URL 证据时，补一次有界 semantic，并把 retrieval partial、scope 和 citation binding 交给 Host 保持。
+
+## 14. Planner effort targeted production E2E experiment contract（2026-10-02）
+
+### 1. Scope / Trigger
+
+Planner-only semantic 差异需要验证是否进入生产 Tool/Evidence/Answer 时，使用 experiment-only runner；不得由实验改生产 Prompt、Retrieval、Router 或 Answer contract。
+
+### 2. Signatures
+
+- `run_p1_e2e.py --output PATH --seed INTEGER --attempt {1,2} [--preflight-only]`：固定 8 exposed Development Cases、每 treatment 一次。
+- `create_application(..., planner=...)` + `complete_text_with_observation(..., reasoning_effort_override=...)` 是已有注入边界。
+- `HTTPRecorder` 保存 `provider_requests.jsonl` / `provider_responses.jsonl`；request-start 才是实际 HTTP attempt 计数。
+
+### 3. Contracts
+
+两侧实际 Planner serialized request 必须只有 effort 不同；下游初始 request config/schema 相同，Plan guidance 与后续 Tool history 是中介变量。生产 Planner failure 的显式 skip 必须保留：有效最终 Answer 不等于 Planner 成功。独立 AI blind review 必须注明非 human adjudication，全部判断完成后才能揭盲；揭盲后的 reviewer error 核验另存，不覆盖原判断。
+
+当前锁定 OpenAI SDK 使用 httpx2，观测与 provider-free MockTransport 必须和真实 client 采用同一 HTTP 类型。预检临时 transport 必须同时隔离 proxy mounts，避免 mock 请求绕到真实网络。正式 client `max_retries=0`；模型收到错误结果后主动发出的另一次 Tool call 不计作 transport retry，但必须保存为真实失败调用。
+
+各 usage 字段保存 `total: number|null`、`observed_sum`、`observed_requests`、`requests`：任何请求缺失该字段时 overall total 为 null。`observed_sum=0, observed_requests=0` 不表示测得零 reasoning。隐藏 reasoning 正文不归档；visible output、finish reason 和 reasoning token 数保留。Semantic dependency/preload 必须在首个真实 attempt 前检查；每 run 新 conversation，共用预热后的生产 embedding，不改 caching semantics。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 处理 |
+| --- | --- |
+| code/snapshot/case drift 或额外 treatment 字段 | 停止，保留已有 attempts，禁止混入不同代码结果 |
+| Planner length | 归档 usage/finish/raw output 和既有生产 skip，单列 Planner reliability |
+| tool alias 用作 canonical message_id | 保留 MESSAGE_NOT_FOUND 与后续调用，不伪装成 retry 或静默成功 |
+| incomplete SSE / timeout | 完整 frame 保留，尾部标明 incomplete，不补造 usage |
+| reviewer 称 hallucination，但全文 ToolResult 中有事实 | 区分事实存在与所选 Citation 支持，不修改 blind judgment |
+
+### 5. Good / Base / Bad Cases
+
+Good：正式完整空窗支持 zero-result；partial 被如实说明。Base：相同事实可来自不同 SQL row order。Bad：仅凭更多 Tool calls 判 redundant，或把 SQL 全窗计数当作全文主题覆盖。
+
+### 6. Tests Required
+
+Provider-free 断言 deterministic AB/BA、唯一 serialization diff、unknown usage、HTTP failure ledger、stream bytes 无改动、hidden reasoning 正文移除、blind metadata 隔离与 incomplete SSE。真实执行后核对 logical runs / Evaluation runs / results / terminal Traces，以及 HTTP requests / responses / model turns；逐字核对冻结代码和数据。
+
+### 7. Wrong vs Correct
+
+Wrong：看到 Finalizer validated 就宣布 citation precision=1，或把作者昵称当 normalized message content。Correct：provenance validation 与语义 entailment 分层记录；复核原始 ToolResult 的 content、author、session、时间与 citation binding。

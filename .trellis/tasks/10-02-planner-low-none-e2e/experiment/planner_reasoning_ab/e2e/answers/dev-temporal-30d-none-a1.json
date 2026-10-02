@@ -1,0 +1,1293 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "本次统计的有效时间窗为 2026-07-17T02:34:48.000Z 至 2026-08-16T02:34:48.001Z。按数据库聚合，这 30 天内共有 73,863 条群消息，分布在 7 个会话中；不过我实际取回并逐条阅读的消息样本只有窗口末尾的 100 条（返回结果标记为 partial、truncated），所以下面是基于「全窗口计数 + 末尾样本内容」的概括，而非对全部 7 万条消息的逐条归纳。"
+    },
+    {
+      "block_id": "claim-2",
+      "text": "消息量最大的会话依次是：识海(吉祥物是西娅公主) 15,600 条、一群开心快乐的小奶龙 15,144 条、cs61abc 12,494 条、贺兰の计算机技术交流群 11,422 条，其后是 27届计算机就业抱团沉淀交流群 8,037 条、星河社（星河大学）5,853 条、爪哇就业交流群111 5,313 条。可见群聊生态以「AI/技术闲聊群 + 计算机就业群」两类为主。"
+    },
+    {
+      "block_id": "claim-3",
+      "text": "末端样本中最突出的技术话题是 AI 编程工具与模型订阅价格：有人讨论某家「涨价赶走用户、再把算力省出来做 coding 场景优化」（彩笔）、吐槽「20 刀 Claude 和写代码的任务绝缘了」（Aqua）、担心「50% 额度推迟两次、真取消 20 刀就完蛋」（浅仪式），也有人对比 opencode 与 pi（Blue 称「我现在只用 pi」「opencode 有时候会有内存溢出，一个 hello 一百兆，我 64g 内存都不够他吃的」），并讨论 superpower、websearch 插件、用 podman 限制 AI 访问权限等自建方案。"
+    },
+    {
+      "block_id": "claim-4",
+      "text": "围绕 AI 工具落地还有一条支线：把 Codex / 大模型接入自己的开发环境并远程调用。Aqua 说「我拿 openAI 的那个插件接入 Codex 写代码了」并给出仓库链接 https://github.com/openai/codex-plugin-cc，另一位群友表示「我可以通过手机微信远程 codex 了」。这部分讨论同时构成窗口内少数带具体 GitHub 链接的资源分享。"
+    },
+    {
+      "block_id": "claim-5",
+      "text": "另一条与「计算机就业」直接相关的话题是求职与面试：有人问「现在真实批约面节奏啥样的」，有人提到「我一定要加入腾讯」并讨论去哪座城市（楚玉衡说在北京），也有人自嘲「像极了上网搜作文的我们」、以及在就业抱团群里「天天只会调 api 真的有前途吗」的焦虑。这些与两个就业交流群的高消息量相互印证。"
+    },
+    {
+      "block_id": "claim-6",
+      "text": "样本中还有相当比例的非技术内容：群友间互相调侃与玩梗（如「玩了快半个月了」「hl 早被我凿成泡芙了」引发的吐槽「越来越怪了」「我的眼睛」）、深夜/时差闲聊（「还不睡」「你那边是中午？」）、以及若干次「[[喵]]」「[[趴]]」等互动。此外还分享了一个作品集网站 https://www.wallofportfolios.in/?company=All（附评「这个网站设计师大多都是印度的」）。"
+    },
+    {
+      "block_id": "claim-7",
+      "text": "从每日消息量看，窗口内讨论热度并不均匀：7 月下旬最活跃（07-24 达 5,626 条、07-23 5,044 条、07-22 4,932 条、07-21 4,241 条），8 月上旬维持在每天 1,000–3,200 条左右，到 08-15 降到 883 条、08-16 仅 46 条（窗口末端，尚未过完）。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    },
+    {
+      "content_block_id": "claim-2",
+      "evidence_ids": [
+        "e2"
+      ]
+    },
+    {
+      "content_block_id": "claim-3",
+      "evidence_ids": [
+        "e3"
+      ]
+    },
+    {
+      "content_block_id": "claim-4",
+      "evidence_ids": [
+        "e4"
+      ]
+    },
+    {
+      "content_block_id": "claim-5",
+      "evidence_ids": [
+        "e5"
+      ]
+    },
+    {
+      "content_block_id": "claim-6",
+      "evidence_ids": [
+        "e6"
+      ]
+    },
+    {
+      "content_block_id": "claim-7",
+      "evidence_ids": [
+        "e7"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "确认 30 天窗口的消息总量与样本覆盖边界",
+      "criterion": "SQL 聚合给出窗口内总量与会话分布，get_recent_messages 给出末端样本",
+      "sufficiency": "partial",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[0]",
+            "value_snapshot": {
+              "day": "2026-08-16",
+              "msg_count": 46
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[0]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[1]",
+            "value_snapshot": {
+              "day": "2026-08-15",
+              "msg_count": 883
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[1]"
+          }
+        }
+      ],
+      "limitations": [
+        "消息级证据仅覆盖窗口最后约数小时（2026-08-15 至 08-16），其余日期只有计数没有内容"
+      ]
+    },
+    {
+      "evidence_id": "e2",
+      "finding": "窗口内会话热度排名与群组类型分布",
+      "criterion": "按 session 分组的消息计数可完整枚举各会话的发言量",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[0]",
+            "value_snapshot": {
+              "session_name": "识海(吉祥物是西娅公主)",
+              "msg_count": 15600
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[0]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[1]",
+            "value_snapshot": {
+              "session_name": "一群开心快乐的小奶龙",
+              "msg_count": 15144
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[1]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[2]",
+            "value_snapshot": {
+              "session_name": "cs61abc",
+              "msg_count": 12494
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[2]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[3]",
+            "value_snapshot": {
+              "session_name": "贺兰の计算机技术交流群",
+              "msg_count": 11422
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[3]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[4]",
+            "value_snapshot": {
+              "session_name": "27届计算机就业抱团沉淀交流群",
+              "msg_count": 8037
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[4]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[5]",
+            "value_snapshot": {
+              "session_name": "星河社（星河大学）",
+              "msg_count": 5853
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[5]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[6]",
+            "value_snapshot": {
+              "session_name": "爪哇就业交流群111",
+              "msg_count": 5313
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[6]"
+          }
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "evidence_id": "e3",
+      "finding": "AI 编程工具选型与订阅成本是窗口末端最密集的讨论主题",
+      "criterion": "多条不同发言者的消息围绕同一主题形成连贯讨论，可直接引用",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674327859634192996",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674327859634192996",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "彩笔",
+              "timestamp_ms": 1786818695000,
+              "timezone": "UTC",
+              "excerpt": "他们涨价目的就是为了赶走用户",
+              "excerpt_truncated": false,
+              "source_message_id": "7674327859634192996",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674328006359463962",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674328006359463962",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "彩笔",
+              "timestamp_ms": 1786818728000,
+              "timezone": "UTC",
+              "excerpt": "然后对coding 场景做优化",
+              "excerpt_truncated": false,
+              "source_message_id": "7674328006359463962",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577629",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577629",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "彩笔",
+              "timestamp_ms": 1786818755000,
+              "timezone": "UTC",
+              "excerpt": "其他像算命/聊天这种希望都赶走",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577629",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577635",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577635",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "彩笔",
+              "timestamp_ms": 1786818763000,
+              "timezone": "UTC",
+              "excerpt": "把算力省出来",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577635",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357966",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357966",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "Aqua",
+              "timestamp_ms": 1786821876000,
+              "timezone": "UTC",
+              "excerpt": "还是明确了昨天的认知，20刀Claude和写代码的任务绝缘了。",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357966",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357960",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357960",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "浅仪式",
+              "timestamp_ms": 1786822791000,
+              "timezone": "UTC",
+              "excerpt": "过几天那个50%的额度，不知道会不会取消，已经推迟两次了，如果真取消了，那20刀真完蛋了\nAnthropic也快完蛋吧",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357960",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577653",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577653",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786843600000,
+              "timezone": "UTC",
+              "excerpt": "我现在只用pi",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577653",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577659",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577659",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786843624000,
+              "timezone": "UTC",
+              "excerpt": "opencode有时候会有内存溢出",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577659",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577671",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577671",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786843647000,
+              "timezone": "UTC",
+              "excerpt": "我64g的内存都不够他吃的",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577671",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577708",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577708",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786844306000,
+              "timezone": "UTC",
+              "excerpt": "现在还在考虑用不用superpower",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577708",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7674445704568577720",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7674445704568577720",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "Blue",
+              "timestamp_ms": 1786844336000,
+              "timezone": "UTC",
+              "excerpt": "然后整个ai运行在podman里去控制访问权限",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577720",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "该主题仅由窗口末端样本支撑，不能推断整月均为最高频话题"
+      ]
+    },
+    {
+      "evidence_id": "e4",
+      "finding": "AI 工具接入/远程使用的实践分享及附带链接",
+      "criterion": "消息正文同时包含使用者自述与可核验的 URL",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357839",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357839",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "Aqua",
+              "timestamp_ms": 1786843724000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/openai/codex-plugin-cc 就这个",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357839",
+              "urls": [
+                "https://github.com/openai/codex-plugin-cc"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:750807478:7674445704568577353",
+            "session_id": "qq:750807478",
+            "internal_message_id": "qq:750807478:7674445704568577353",
+            "snapshot": {
+              "session_display": "识海(吉祥物是西娅公主)",
+              "author_display": "2725814906",
+              "timestamp_ms": 1786845347000,
+              "timezone": "UTC",
+              "excerpt": "我可以通过手机微信远程codex了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577353",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357860",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357860",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "Aqua",
+              "timestamp_ms": 1786842905000,
+              "timezone": "UTC",
+              "excerpt": "我拿openAI的那个插件接入Codex写代码了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357860",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "仅为提及与自述，未验证仓库或方案的实际效果"
+      ]
+    },
+    {
+      "evidence_id": "e5",
+      "finding": "求职、面试节奏与就业焦虑是窗口内的一条稳定话题线",
+      "criterion": "多条独立消息涉及面试节奏、目标公司、实习与就业焦虑",
+      "sufficiency": "partial",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577545",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577545",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "楚玉衡",
+              "timestamp_ms": 1786815369000,
+              "timezone": "UTC",
+              "excerpt": "我一定要加入腾讯",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577545",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:750807478:7674445704568577302",
+            "session_id": "qq:750807478",
+            "internal_message_id": "qq:750807478:7674445704568577302",
+            "snapshot": {
+              "session_display": "识海(吉祥物是西娅公主)",
+              "author_display": "𝙍𝙪𝙞𝙔𝙞𝙚𝙧",
+              "timestamp_ms": 1786816361000,
+              "timezone": "UTC",
+              "excerpt": "现在真实批约面节奏啥样的",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577302",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:750807478:7674445704568577337",
+            "session_id": "qq:750807478",
+            "internal_message_id": "qq:750807478:7674445704568577337",
+            "snapshot": {
+              "session_display": "识海(吉祥物是西娅公主)",
+              "author_display": "大三仲农工管（寻找一些实习）",
+              "timestamp_ms": 1786819875000,
+              "timezone": "UTC",
+              "excerpt": "像极了上网搜作文的我们点开没有翅膀的小鸟",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577337",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:750807478:7674452358376375863",
+            "session_id": "qq:750807478",
+            "internal_message_id": "qq:750807478:7674452358376375863",
+            "snapshot": {
+              "session_display": "识海(吉祥物是西娅公主)",
+              "author_display": "老大我们天天只会调api真的有前途吗",
+              "timestamp_ms": 1786847682000,
+              "timezone": "UTC",
+              "excerpt": "[图片:B39DCED3AF4385156650E70F0C567ABF.jpg]",
+              "excerpt_truncated": false,
+              "source_message_id": "7674452358376375863",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[4]",
+            "value_snapshot": {
+              "session_name": "27届计算机就业抱团沉淀交流群",
+              "msg_count": 8037
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[4]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/3/result",
+            "locator_kind": "row",
+            "locator": "rows[6]",
+            "value_snapshot": {
+              "session_name": "爪哇就业交流群111",
+              "msg_count": 5313
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT s.name AS session_name, COUNT(*) AS msg_count FROM messages m JOIN chat_sessions s ON s.session_id = m.session_id WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY s.name ORDER BY msg_count DESC LIMIT 20",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[6]"
+          }
+        }
+      ],
+      "limitations": [
+        "仅来自 100 条末端样本，无法量化该话题在 30 天内的占比"
+      ]
+    },
+    {
+      "evidence_id": "e6",
+      "finding": "社交玩梗、闲聊打卡与零散资源链接构成窗口内的次要话题",
+      "criterion": "消息内容明确为玩梗/闲聊/链接分享，且有多位参与者",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674312631032669204",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674312631032669204",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "Shih-ch'i",
+              "timestamp_ms": 1786815149000,
+              "timezone": "UTC",
+              "excerpt": "玩了快半个月了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674312631032669204",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577568",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577568",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "Shih-ch'i",
+              "timestamp_ms": 1786815473000,
+              "timezone": "UTC",
+              "excerpt": "hl 早被我凿成泡芙了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577568",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577578",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577578",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "安",
+              "timestamp_ms": 1786815482000,
+              "timezone": "UTC",
+              "excerpt": "越来越怪了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577578",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:383550736:7674445704568577595",
+            "session_id": "qq:383550736",
+            "internal_message_id": "qq:383550736:7674445704568577595",
+            "snapshot": {
+              "session_display": "贺兰の计算机技术交流群",
+              "author_display": "聊斋仙",
+              "timestamp_ms": 1786820008000,
+              "timezone": "UTC",
+              "excerpt": "早知道就不在睡前看一眼你群聊天记录了",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577595",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357918",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357918",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "群友全部变成猫娘",
+              "timestamp_ms": 1786826400000,
+              "timezone": "UTC",
+              "excerpt": "@明月  还不睡",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357918",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:677019167:7674445693085357812",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7674445693085357812",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "懒",
+              "timestamp_ms": 1786844025000,
+              "timezone": "UTC",
+              "excerpt": "[[喵]]",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445693085357812",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7674445704568577774",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7674445704568577774",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "find",
+              "timestamp_ms": 1786820882000,
+              "timezone": "UTC",
+              "excerpt": "https://www.wallofportfolios.in/?company=All",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577774",
+              "urls": [
+                "https://www.wallofportfolios.in/?company=All"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7674445704568577780",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7674445704568577780",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "find",
+              "timestamp_ms": 1786820896000,
+              "timezone": "UTC",
+              "excerpt": "这个网站设计师大多都是印度的。。",
+              "excerpt_truncated": false,
+              "source_message_id": "7674445704568577780",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "evidence_id": "e7",
+      "finding": "窗口内按日统计的发言量分布与高峰日期",
+      "criterion": "按日 GROUP BY 计数完整覆盖窗口内每一天",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[23]",
+            "value_snapshot": {
+              "day": "2026-07-24",
+              "msg_count": 5626
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[23]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[24]",
+            "value_snapshot": {
+              "day": "2026-07-23",
+              "msg_count": 5044
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[24]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[25]",
+            "value_snapshot": {
+              "day": "2026-07-22",
+              "msg_count": 4932
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[25]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[26]",
+            "value_snapshot": {
+              "day": "2026-07-21",
+              "msg_count": 4241
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[26]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[1]",
+            "value_snapshot": {
+              "day": "2026-08-15",
+              "msg_count": 883
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[1]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-760cfb7d7794444891b889597ce0c858",
+            "tool_call_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:dev-temporal-30d:v2:p1-e2e:d477bf7914d946c4890f71396c9bba01/tool-call/4/result",
+            "locator_kind": "row",
+            "locator": "rows[0]",
+            "value_snapshot": {
+              "day": "2026-08-16",
+              "msg_count": 46
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT date(m.timestamp/1000,'unixepoch') AS day, COUNT(*) AS msg_count FROM messages m WHERE m.timestamp >= 1784255688000 AND m.timestamp < 1786847688001 GROUP BY day ORDER BY day DESC LIMIT 35",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[0]"
+          }
+        }
+      ],
+      "limitations": [
+        "08-16 为窗口最后一天的不完整日，计数偏低属正常"
+      ]
+    }
+  ],
+  "limitations": [
+    "消息级内容证据仅覆盖窗口末尾约 100 条（2026-08-15 至 08-16 附近），其余日期只有消息计数；因此话题清单可能遗漏 7 月中下旬的主要话题。",
+    "返回结果标记为 partial / truncated，会话为全部 7 个但内容采样不完整，以上话题排序不代表全窗口频率排序。",
+    "除 URL 本身外，未对链接资源或工具的实际可用性、价值做独立验证。",
+    "tool_result_partial",
+    "retrieval_partial",
+    "retrieval_truncated",
+    "coverage:partial"
+  ],
+  "resolved_time_range": {
+    "kind": "relative",
+    "amount": 30,
+    "unit": "day",
+    "anchor": "archive_latest",
+    "anchor_timestamp": 1786847688000,
+    "resolved_start_timestamp": 1784255688000,
+    "resolved_end_timestamp": 1786847688001,
+    "anchor_utc": "2026-08-16T02:34:48.000Z",
+    "resolved_start_utc": "2026-07-17T02:34:48.000Z",
+    "resolved_end_utc": "2026-08-16T02:34:48.001Z",
+    "resolved_interval_utc": "[2026-07-17T02:34:48.000Z, 2026-08-16T02:34:48.001Z)"
+  },
+  "retrieval_coverage": {
+    "status": "partial",
+    "basis": "canonical_store",
+    "covered_units": 100,
+    "eligible_units": 73863,
+    "unit": "message",
+    "retrieved_count": 100,
+    "has_more": true
+  }
+}

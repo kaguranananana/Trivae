@@ -1,0 +1,7 @@
+{
+  "stage": "semantic_preload_before_formal_attempts",
+  "error": "ModuleNotFoundError: sentence_transformers",
+  "logical_attempts": 0,
+  "actual_provider_requests": 0,
+  "remedy": "uv sync --locked --extra semantic --extra dev; no production code change"
+}

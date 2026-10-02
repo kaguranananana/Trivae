@@ -1,0 +1,31 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "answer",
+      "text": "按 UTC 时间 2025-08-26（即 [2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z) 这一整天）检索，覆盖状态为 complete，该时间窗内没有任何消息，因此无法总结当天的发言或讨论话题。"
+    }
+  ],
+  "citation_bindings": [],
+  "evidence_items": [],
+  "limitations": [
+    "该结论仅针对 2025-08-26 UTC 这一天（00:00–24:00）的已归档消息范围；其他日期或未归档内容不在此次检索范围内。"
+  ],
+  "resolved_time_range": {
+    "kind": "absolute",
+    "anchor": "request",
+    "resolved_start_timestamp": 1756166400000,
+    "resolved_end_timestamp": 1756252800000,
+    "resolved_start_utc": "2025-08-26T00:00:00.000Z",
+    "resolved_end_utc": "2025-08-27T00:00:00.000Z",
+    "resolved_interval_utc": "[2025-08-26T00:00:00.000Z, 2025-08-27T00:00:00.000Z)"
+  },
+  "retrieval_coverage": {
+    "status": "complete",
+    "basis": "canonical_store",
+    "covered_units": 0,
+    "eligible_units": 0,
+    "unit": "message",
+    "retrieved_count": 0,
+    "has_more": false
+  }
+}

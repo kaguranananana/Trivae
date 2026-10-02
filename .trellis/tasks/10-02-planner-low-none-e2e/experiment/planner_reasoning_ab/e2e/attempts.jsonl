@@ -1,0 +1,16 @@
+{"order": 1, "case_id": "pu-dependent-mattpocock", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:28:28.485+00:00"}
+{"order": 2, "case_id": "pu-dependent-mattpocock", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:28:52.925+00:00"}
+{"order": 3, "case_id": "dev-context-archify", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:29:10.448+00:00"}
+{"order": 4, "case_id": "dev-context-archify", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:29:23.967+00:00"}
+{"order": 5, "case_id": "pu-aggregate-utc-types", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:29:42.455+00:00"}
+{"order": 6, "case_id": "pu-aggregate-utc-types", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:29:54.145+00:00"}
+{"order": 7, "case_id": "dev-zero-empty-3", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:30:02.656+00:00"}
+{"order": 8, "case_id": "dev-zero-empty-3", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:30:07.578+00:00"}
+{"order": 9, "case_id": "dev-temporal-30d", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:30:19.576+00:00"}
+{"order": 10, "case_id": "dev-temporal-30d", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:30:39.798+00:00"}
+{"order": 11, "case_id": "dev-lexical-forge", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:30:59.496+00:00"}
+{"order": 12, "case_id": "dev-lexical-forge", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:31:06.870+00:00"}
+{"order": 13, "case_id": "dev-cite-archify", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:31:21.915+00:00"}
+{"order": 14, "case_id": "dev-cite-archify", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:31:41.952+00:00"}
+{"order": 15, "case_id": "pu-rank-utc-session", "treatment": "none", "attempt": 1, "started_at": "2026-10-02T07:31:52.237+00:00"}
+{"order": 16, "case_id": "pu-rank-utc-session", "treatment": "low", "attempt": 1, "started_at": "2026-10-02T07:31:58.878+00:00"}

@@ -1,0 +1,249 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "按 UTC 2026-08-15 全天（00:00:00–24:00:00 UTC，即毫秒区间 [1786752000000, 1786838400000)）统计，text 类型消息为 814 条，reply 类型消息为 17 条。"
+    },
+    {
+      "block_id": "claim-2",
+      "text": "同日窗口内其他类型供参照：image 47 条、system 3 条、video 1 条、rich 1 条，全部类型合计 883 条。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    },
+    {
+      "content_block_id": "claim-2",
+      "evidence_ids": [
+        "e2"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "UTC 2026-08-15 的 text 消息 814 条、reply 消息 17 条",
+      "criterion": "对 messages 表按同一 UTC 日窗口分组统计 message_type，两类计数来自同一查询与同一时间窗口",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-2d00f184ee5940a1975ee728ce17c8da",
+            "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[0]",
+            "value_snapshot": {
+              "message_type": "text",
+              "n": 814
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT message_type, COUNT(*) AS n FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY n DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[0]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-2d00f184ee5940a1975ee728ce17c8da",
+            "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[2]",
+            "value_snapshot": {
+              "message_type": "reply",
+              "n": 17
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT message_type, COUNT(*) AS n FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY n DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[2]"
+          }
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "evidence_id": "e2",
+      "finding": "该日消息类型分布全貌",
+      "criterion": "同一 GROUP BY 查询返回的完整类型分组行（共 6 行，未截断）",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-2d00f184ee5940a1975ee728ce17c8da",
+            "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[1]",
+            "value_snapshot": {
+              "message_type": "image",
+              "n": 47
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT message_type, COUNT(*) AS n FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY n DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[1]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-2d00f184ee5940a1975ee728ce17c8da",
+            "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[3]",
+            "value_snapshot": {
+              "message_type": "system",
+              "n": 3
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT message_type, COUNT(*) AS n FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY n DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[3]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-2d00f184ee5940a1975ee728ce17c8da",
+            "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[4]",
+            "value_snapshot": {
+              "message_type": "video",
+              "n": 1
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT message_type, COUNT(*) AS n FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY n DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[4]"
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-2d00f184ee5940a1975ee728ce17c8da",
+            "tool_call_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2",
+            "tool_result_id": "eval-request:eval-run:pu-aggregate-utc-types:v1:p1-e2e:e2abb04cc8f24fc088b90ce317192dcc/tool-call/2/result",
+            "locator_kind": "row",
+            "locator": "rows[5]",
+            "value_snapshot": {
+              "message_type": "rich",
+              "n": 1
+            },
+            "query_scope_snapshot": {
+              "query": {
+                "sql": "SELECT message_type, COUNT(*) AS n FROM messages WHERE timestamp >= 1786752000000 AND timestamp < 1786838400000 GROUP BY message_type ORDER BY n DESC",
+                "max_rows": 100
+              },
+              "scope": {
+                "scope": {
+                  "session_ids": null,
+                  "start_timestamp": null,
+                  "end_timestamp": null,
+                  "sender_user_ids": null,
+                  "message_types": null,
+                  "source_message_id": null,
+                  "reply_to_source_message_id": null
+                }
+              }
+            },
+            "execution_limitations": [],
+            "source_id": "row:rows[5]"
+          }
+        }
+      ],
+      "limitations": []
+    }
+  ],
+  "limitations": [
+    "分类依据为存储中的 message_type 字段取值（text / reply 等），若某条消息既含回复关系又被标记为 text，则按其记录的类型计一次，不重复计数。"
+  ],
+  "resolved_time_range": null,
+  "retrieval_coverage": null
+}

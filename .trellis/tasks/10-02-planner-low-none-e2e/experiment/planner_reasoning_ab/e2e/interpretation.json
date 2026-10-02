@@ -1,0 +1,97 @@
+{
+  "gate": {
+    "state": "A",
+    "stage_2_executed": false,
+    "quality_regression_cases": [
+      "dev-cite-archify",
+      "dev-temporal-30d"
+    ],
+    "causality_limit": "Observed none-arm quality regressions; a single paired sample does not prove a stable causal effect of Planner semantics."
+  },
+  "failure_attribution": {
+    "planner_provider_length": {
+      "low": [
+        "dev-temporal-30d",
+        "dev-lexical-forge"
+      ],
+      "none": [],
+      "cause": "reasoning exhausted 2048 shared completion budget; existing graceful skip preserved",
+      "e2e_failure": false
+    },
+    "tool_execution_failure": {
+      "low": {
+        "dev-context-archify": 2
+      },
+      "none": {
+        "pu-dependent-mattpocock": 2,
+        "dev-cite-archify": 1
+      },
+      "cause": "Agent supplied m1-* local alias as message_id; MESSAGE_NOT_FOUND; later distinct calls used canonical ID",
+      "transport_retry": false,
+      "treatment_specific_cause_proven": false
+    },
+    "citation_and_answer_failure": [
+      {
+        "case_id": "dev-cite-archify",
+        "treatment": "none",
+        "confirmed": "reports both 7k and 9.5k, then falsely calls 9.5k the only numeric star mention",
+        "layer": "answer synthesis factual scope / citation entailment",
+        "same_expected_fact_coverage": true,
+        "provider_transient": false,
+        "planner_causal_effect": "unknown from a single pair"
+      },
+      {
+        "case_id": "dev-temporal-30d",
+        "treatment": "none",
+        "confirmed": "treats sender display name 天天只会调api as quoted message content and assigns it to employment chat, while retrieved source is image content in 识海",
+        "source_id": "qq:750807478:7674452358376375863",
+        "layer": "answer synthesis / evidence support / source attribution",
+        "temporal_window_correct": true,
+        "retrieval_same_100_messages": true,
+        "provider_transient": false,
+        "planner_causal_effect": "unknown; low Planner failed so this pair compares valid none guidance against the existing skip path"
+      }
+    ],
+    "reviewer_claim_audit": {
+      "case_id": "dev-temporal-30d",
+      "claim": "北京 was unsupported/hallucinated",
+      "finding": "北京 exists in the full retrieved Tool Result at qq:383550736:7674313223535742517, but was omitted from selected citation sources. Classify as citation completeness miss, not fabricated city. Blind judgment remains unchanged."
+    },
+    "shared_evidence_miss": {
+      "case_id": "pu-dependent-mattpocock",
+      "target": "qq:677019167:7664449865363143925",
+      "both_evidence_recall": "1/2",
+      "gt_completeness": "partial"
+    },
+    "low_arm_quality_issue": {
+      "case_id": "dev-context-archify",
+      "missed_target": "qq:1039179741:7665654465962176057",
+      "consequence": "incorrect no-use-feedback conclusion; none recovers 好用 reply"
+    },
+    "coverage_incomplete": {
+      "case_id": "dev-temporal-30d",
+      "both": "100 / 73863; partial and truncated truthful",
+      "classification": "expected bounded coverage limitation, not a new temporal-window bug"
+    },
+    "provider_transient_failures": 0,
+    "timeouts": 0,
+    "router_failures": 0,
+    "retrieval_engine_errors": 0,
+    "evidence_contract_rejections": 0,
+    "evaluation_harness_failures": 0,
+    "startup_environment_failure": {
+      "actual_provider_requests": 0,
+      "logical_attempts": 0,
+      "cause": "missing declared semantic extra; restored from unchanged lockfile before first real attempt"
+    }
+  },
+  "usage_accounting": {
+    "historical_input_delta": 200,
+    "current_planner_input_delta": 200,
+    "per_pair_delta": 25,
+    "planner_cached_input_equal": true,
+    "actual_serialized_requests_only_diff": "reasoning_effort",
+    "status": "unresolved provider usage accounting difference",
+    "inference": "Provider mode-dependent accounting or implicit templates are possible explanations, not established facts"
+  }
+}

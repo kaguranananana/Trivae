@@ -1,0 +1,356 @@
+{
+  "content_blocks": [
+    {
+      "block_id": "claim-1",
+      "text": "分享仓库并说明用法：在「星河社（星河大学）」群里，降星驰贴出仓库链接 https://github.com/mattpocock/skills/tree/main，并给出用法：「这样，你下载一下这个仓库的 skill，然后使用 /teach」。同一群里他还先发了同一条链接并问「这个人的skills有人用过吗」，引出讨论。"
+    },
+    {
+      "block_id": "claim-2",
+      "text": "另一处推荐及用法（「一群开心快乐的小奶龙」）：一只玉玉的烤乳鸽按学习场景推荐——「如果是小项目/时间多：https://github.com/mattpocock/skills/tree/main 这个仓库的skill，然后使用/teach」（大型开源项目+时间少则改用 deepwiki）。用法与上面的分享一致。"
+    },
+    {
+      "block_id": "claim-3",
+      "text": "后续正面评价（沿降星驰那条分享的讨论）：浅仪式回复「这个真好用吧」，被追问后说「因为真的好用」「我已经离不开了」；谈到价值时称「还是老一套，我感觉他解决的就是 anthropic 的那几篇公开文章说的 vibecoding 的问题」，并指出「其实常用的就那几个」（即并非每个 skill 都用）。这些以笼统好评和参照文章解释为主，没有给出具体的安装、运行或案例复现描述。"
+    },
+    {
+      "block_id": "claim-4",
+      "text": "同时存在不同评价与未使用声明：在「一群开心快乐的小奶龙」，joye 表示「teach 我觉得真的一般诶」「感觉就直接想学哪块学哪部分」，对 /teach 用法持保留态度；在「cs61abc」，君莫笑称「mattpocock/skills还没体验过」，属于未使用、无 firsthand 依据的提及。"
+    }
+  ],
+  "citation_bindings": [
+    {
+      "content_block_id": "claim-1",
+      "evidence_ids": [
+        "e1"
+      ]
+    },
+    {
+      "content_block_id": "claim-2",
+      "evidence_ids": [
+        "e2"
+      ]
+    },
+    {
+      "content_block_id": "claim-3",
+      "evidence_ids": [
+        "e3"
+      ]
+    },
+    {
+      "content_block_id": "claim-4",
+      "evidence_ids": [
+        "e4"
+      ]
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_id": "e1",
+      "finding": "存在一条同时给出 mattpocock/skills 仓库链接与具体用法（下载仓库 skill 后用 /teach）的分享消息。",
+      "criterion": "检索命中包含完整仓库 URL 与 /teach 用法的原始消息，并有同会话上下文佐证。",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/3",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/3/result",
+            "result_item_id": "message/qq:677019167:7664449865363143940",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7664449865363143940",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "降星驰",
+              "timestamp_ms": 1784435494000,
+              "timezone": "UTC",
+              "excerpt": "[回复消息]这样，你下载一下https://github.com/mattpocock/skills/tree/main 这个仓库的skill\r然后使用/teach",
+              "excerpt_truncated": false,
+              "source_message_id": "7664449865363143940",
+              "urls": [
+                "https://github.com/mattpocock/skills/tree/main"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4/result",
+            "result_item_id": "message/qq:677019167:7666849111367864709",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7666849111367864709",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "降星驰",
+              "timestamp_ms": 1784367852000,
+              "timezone": "UTC",
+              "excerpt": "https://github.com/mattpocock/skills/tree/main",
+              "excerpt_truncated": false,
+              "source_message_id": "7666849111367864709",
+              "urls": [
+                "https://github.com/mattpocock/skills/tree/main"
+              ]
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4/result",
+            "result_item_id": "message/qq:677019167:7666849111367864714",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7666849111367864714",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "降星驰",
+              "timestamp_ms": 1784367860000,
+              "timezone": "UTC",
+              "excerpt": "这个人的skills有人用过吗",
+              "excerpt_truncated": false,
+              "source_message_id": "7666849111367864714",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "evidence_id": "e2",
+      "finding": "同一仓库在另一会话被再次推荐，并说明适用场景与相同的 /teach 用法。",
+      "criterion": "检索命中含仓库 URL 且明确给出适用场景与用法的推荐消息。",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7664833311511369043",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7664833311511369043",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "一只玉玉的烤乳鸽（在🕊️中）咕咕咕cooing",
+              "timestamp_ms": 1784607743000,
+              "timezone": "UTC",
+              "excerpt": "学习架构/实现：如果是稍微大型开源的项目+时间不多：推荐deepwiki\n如果是小项目/时间多：https://github.com/mattpocock/skills/tree/main 这个仓库的skill\n然后使用/teach",
+              "excerpt_truncated": false,
+              "source_message_id": "7664833311511369043",
+              "urls": [
+                "https://github.com/mattpocock/skills/tree/main"
+              ]
+            }
+          }
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "evidence_id": "e3",
+      "finding": "存在沿原分享展开的正面评价，但评价偏笼统、缺少具体第一人称使用细节或案例。",
+      "criterion": "get_message_context 沿分享消息取回同会话的后续回复，可区分好评内容与其依据强度。",
+      "sufficiency": "partial",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4/result",
+            "result_item_id": "message/qq:677019167:7666849111367864725",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7666849111367864725",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "浅仪式",
+              "timestamp_ms": 1784367862000,
+              "timezone": "UTC",
+              "excerpt": "[回复消息]@降星驰 这个真好用吧",
+              "excerpt_truncated": false,
+              "source_message_id": "7666849111367864725",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4/result",
+            "result_item_id": "message/qq:677019167:7666849111367864736",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7666849111367864736",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "浅仪式",
+              "timestamp_ms": 1784367873000,
+              "timezone": "UTC",
+              "excerpt": "因为真的好用",
+              "excerpt_truncated": false,
+              "source_message_id": "7666849111367864736",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4/result",
+            "result_item_id": "message/qq:677019167:7663803046602825124",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7663803046602825124",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "浅仪式",
+              "timestamp_ms": 1784367875000,
+              "timezone": "UTC",
+              "excerpt": "我已经离不开了",
+              "excerpt_truncated": false,
+              "source_message_id": "7663803046602825124",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4/result",
+            "result_item_id": "message/qq:677019167:7663803046602825108",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7663803046602825108",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "浅仪式",
+              "timestamp_ms": 1784367921000,
+              "timezone": "UTC",
+              "excerpt": "还是老一套，我感觉他解决的就是 anthropic的那几篇公开的文章说的 vibecoding 的问题",
+              "excerpt_truncated": false,
+              "source_message_id": "7663803046602825108",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/4/result",
+            "result_item_id": "message/qq:677019167:7663803046602825085",
+            "session_id": "qq:677019167",
+            "internal_message_id": "qq:677019167:7663803046602825085",
+            "snapshot": {
+              "session_display": "星河社（星河大学）",
+              "author_display": "浅仪式",
+              "timestamp_ms": 1784368026000,
+              "timezone": "UTC",
+              "excerpt": "[回复消息]@降星驰 其实常用的就那几个",
+              "excerpt_truncated": false,
+              "source_message_id": "7663803046602825085",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "「我已经离不开了」「常用的就那几个」可解读为亲自使用后的印象，但消息中未出现安装/运行步骤或具体使用案例，无法据此确证 firsthand 使用。",
+        "降星驰追问的「给点case」未获得具体案例回应。"
+      ]
+    },
+    {
+      "evidence_id": "e4",
+      "finding": "对该仓库的评价并不一致，且存在明确声明尚未体验的情形。",
+      "criterion": "检索命中同一实体的负面/保留评价及「未体验」自述，可区分推荐与反馈。",
+      "sufficiency": "sufficient",
+      "sources": [
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7664833311511369037",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7664833311511369037",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "joye",
+              "timestamp_ms": 1784607787000,
+              "timezone": "UTC",
+              "excerpt": "teach我觉得真的一般诶",
+              "excerpt_truncated": false,
+              "source_message_id": "7664833311511369037",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1/result",
+            "result_item_id": "message/qq:831907794:7664833311511369031",
+            "session_id": "qq:831907794",
+            "internal_message_id": "qq:831907794:7664833311511369031",
+            "snapshot": {
+              "session_display": "一群开心快乐的小奶龙",
+              "author_display": "joye",
+              "timestamp_ms": 1784607823000,
+              "timezone": "UTC",
+              "excerpt": "感觉就直接想学哪块学哪部分",
+              "excerpt_truncated": false,
+              "source_message_id": "7664833311511369031",
+              "urls": []
+            }
+          }
+        },
+        {
+          "relation": "supports",
+          "reference": {
+            "run_id": "run-d94e52fe6a694a898cd3c8f628d0c47a",
+            "tool_call_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1",
+            "tool_result_id": "eval-request:eval-run:pu-dependent-mattpocock:v1:p1-e2e:42c5e734e77c41788ae89d7dc91dd2e4/tool-call/1/result",
+            "result_item_id": "message/qq:1039179741:7662235031834690479",
+            "session_id": "qq:1039179741",
+            "internal_message_id": "qq:1039179741:7662235031834690479",
+            "snapshot": {
+              "session_display": "cs61abc",
+              "author_display": "君莫笑",
+              "timestamp_ms": 1784002468000,
+              "timezone": "UTC",
+              "excerpt": "所有人 codex 5.6用户请立即卸载superpower，不需要了，大多数时候团队协作实际项目里plan还是有必要留档的，自己开发的时候，对话加上：先不用写代码，帮我分析**需求，写一个可执行开发文档。mattpocock/skills还没体验过",
+              "excerpt_truncated": false,
+              "source_message_id": "7662235031834690479",
+              "urls": []
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "joye 的负面评价未说明其试用环境或版本，仍属主观印象，无明确 firsthand 过程描述。"
+      ]
+    }
+  ],
+  "limitations": [
+    "证据来自群聊消息检索与有限上下文，未独立核实仓库内容或各发言者的实际安装/运行情况。",
+    "除「我已经离不开了」这类间接表述外，未检索到明确的第一人称安装、运行或案例复现依据。",
+    "tool_result_partial",
+    "retrieval_partial",
+    "retrieval_truncated"
+  ],
+  "resolved_time_range": null,
+  "retrieval_coverage": null
+}

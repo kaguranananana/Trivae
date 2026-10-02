@@ -1,0 +1,256 @@
+{
+  "case_id": "pu-aggregate-utc-types",
+  "critical_requirements": [
+    "结构化统计必须绑定指定 UTC 半开区间，并由本轮 SQL Tool Result 支持。"
+  ],
+  "data_access_scope": {
+    "allowed_session_ids": null,
+    "end_timestamp": null,
+    "max_results": 100,
+    "start_timestamp": null
+  },
+  "dataset_snapshot": {
+    "canonical_database_identity": "sqlite-canonical-v1:sources=[{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1028505110\",\"file_name\":\"27届计算机就业抱团沉淀交流群(1028505110).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"cs61abc全量(1039179741).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:cs61abc全量(1039179741).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc_1039179741_20260816_103251726.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc增量_1039179741_20260728_011844132.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260726_224650625.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260816_102935377.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群111_1040412855_20260816_102330790.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群_1040412855_20260726_225644381.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"识海(吉祥物是西娅公主)(750807478).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"贺兰の计算机技术交流群(383550736).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:贺兰の计算机技术交流群(383550736).json\"}]",
+    "created_at": "2026-08-30T10:13:24.315+00:00",
+    "deterministic_fingerprint": "{\"first_timestamp\":1753011800000,\"last_timestamp\":1786847688000,\"lexical_index\":{\"message_count\":473236,\"present\":true},\"message_count\":473236,\"schema_version\":\"canonical-m1-v1\",\"sources\":[{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1028505110\",\"file_name\":\"27届计算机就业抱团沉淀交流群(1028505110).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"cs61abc全量(1039179741).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:cs61abc全量(1039179741).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc_1039179741_20260816_103251726.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc增量_1039179741_20260728_011844132.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260726_224650625.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260816_102935377.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群111_1040412855_20260816_102330790.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群_1040412855_20260726_225644381.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"识海(吉祥物是西娅公主)(750807478).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"贺兰の计算机技术交流群(383550736).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:贺兰の计算机技术交流群(383550736).json\"}]}",
+    "manifest": {
+      "first_timestamp": 1753011800000,
+      "last_timestamp": 1786847688000,
+      "lexical_index": {
+        "message_count": 473236,
+        "present": true
+      },
+      "message_count": 473236,
+      "schema_version": "canonical-m1-v1",
+      "sources": [
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "1028505110",
+          "file_name": "27届计算机就业抱团沉淀交流群(1028505110).json",
+          "format_version": "5.5.64",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "1039179741",
+          "file_name": "cs61abc全量(1039179741).json",
+          "format_version": "5.5.64",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:cs61abc全量(1039179741).json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "1039179741",
+          "file_name": "group_cs61abc_1039179741_20260816_103251726.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "1039179741",
+          "file_name": "group_cs61abc增量_1039179741_20260728_011844132.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "831907794",
+          "file_name": "group_一群开心快乐的小奶龙_831907794_20260726_224359371.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "831907794",
+          "file_name": "group_一群开心快乐的小奶龙_831907794_20260816_103546938.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "677019167",
+          "file_name": "group_星河社（星河大学）_677019167_20260726_224650625.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "677019167",
+          "file_name": "group_星河社（星河大学）_677019167_20260816_102935377.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "1040412855",
+          "file_name": "group_爪哇就业交流群111_1040412855_20260816_102330790.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "1040412855",
+          "file_name": "group_爪哇就业交流群_1040412855_20260726_225644381.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "750807478",
+          "file_name": "group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "383550736",
+          "file_name": "group_贺兰の计算机技术交流群_383550736_20260816_104025089.json",
+          "format_version": "0.1.0",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "750807478",
+          "file_name": "识海(吉祥物是西娅公主)(750807478).json",
+          "format_version": "5.5.64",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json"
+        },
+        {
+          "adapter": "qq_chat_exporter",
+          "external_chat_id": "383550736",
+          "file_name": "贺兰の计算机技术交流群(383550736).json",
+          "format_version": "5.5.64",
+          "platform": "qq",
+          "source_id": "qq_chat_exporter:贺兰の计算机技术交流群(383550736).json"
+        }
+      ]
+    },
+    "message_count": 473236,
+    "relevant_time_range": [
+      1753011800000,
+      1786847688000
+    ],
+    "schema_version": "canonical-m1-v1",
+    "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+    "source_identity": "[{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1028505110\",\"file_name\":\"27届计算机就业抱团沉淀交流群(1028505110).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:27届计算机就业抱团沉淀交流群(1028505110).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"cs61abc全量(1039179741).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:cs61abc全量(1039179741).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc_1039179741_20260816_103251726.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc_1039179741_20260816_103251726.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1039179741\",\"file_name\":\"group_cs61abc增量_1039179741_20260728_011844132.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_cs61abc增量_1039179741_20260728_011844132.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260726_224359371.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"831907794\",\"file_name\":\"group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_一群开心快乐的小奶龙_831907794_20260816_103546938.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260726_224650625.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260726_224650625.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"677019167\",\"file_name\":\"group_星河社（星河大学）_677019167_20260816_102935377.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_星河社（星河大学）_677019167_20260816_102935377.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群111_1040412855_20260816_102330790.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群111_1040412855_20260816_102330790.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"1040412855\",\"file_name\":\"group_爪哇就业交流群_1040412855_20260726_225644381.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_爪哇就业交流群_1040412855_20260726_225644381.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_识海(吉祥物是西娅公主)_750807478_20260816_104516177.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\",\"format_version\":\"0.1.0\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:group_贺兰の计算机技术交流群_383550736_20260816_104025089.json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"750807478\",\"file_name\":\"识海(吉祥物是西娅公主)(750807478).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:识海(吉祥物是西娅公主)(750807478).json\"},{\"adapter\":\"qq_chat_exporter\",\"external_chat_id\":\"383550736\",\"file_name\":\"贺兰の计算机技术交流群(383550736).json\",\"format_version\":\"5.5.64\",\"platform\":\"qq\",\"source_id\":\"qq_chat_exporter:贺兰の计算机技术交流群(383550736).json\"}]",
+    "status": "available"
+  },
+  "locale": "zh-CN",
+  "negative_constraints": [
+    "不得把其他日期或无关会话的统计当作当日结果。"
+  ],
+  "provenance": {
+    "source": "planner-utility-construction:pu-aggregate-utc-types",
+    "method": "SELECT messages FROM canonical Snapshot in UTC half-open interval [1786752000000,1786838400000); GROUP BY message_type: text=814, reply=17",
+    "created_at": "2026-09-26T00:00:00+00:00",
+    "notes": "human GT applicability adjudication 2026-09-27: Accept (GT unchanged); treatment utility reviewed separately"
+  },
+  "query": "按 UTC 时间算，2026-08-15 的 text 消息和 reply 消息各有多少条？",
+  "review_policy": {
+    "blind_pairwise": true,
+    "human_adjudication_on_disagreement": true,
+    "reviewer_types": [
+      "human"
+    ],
+    "rubric_version": "m7-v1"
+  },
+  "schema_version": 1,
+  "suite_tags": [
+    "category:aggregation",
+    "benchmark:development",
+    "planner_utility:control"
+  ],
+  "time_context": null,
+  "uncertainty_constraints": [
+    "数值 GT 来自固定 Snapshot 的确定性 SQL，GT applicability 已人工 Accept；答案质量另见 treatment 裁决。"
+  ],
+  "version": 1,
+  "reference_findings": [
+    {
+      "finding_id": "zero",
+      "criterion": "gt.expected_zero_result",
+      "expected_semantics": "false",
+      "reference_evidence": [],
+      "annotation_completeness": "exhaustive",
+      "provenance": {
+        "source": "canonical-sql:pu-aggregate-utc-types",
+        "created_at": "2026-09-26T00:00:00+00:00",
+        "method": "SELECT messages FROM canonical Snapshot in UTC half-open interval [1786752000000,1786838400000); GROUP BY message_type: text=814, reply=17",
+        "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+        "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+        "adjudicated": true,
+        "limitations": []
+      },
+      "known_limitations": [],
+      "critical": false
+    },
+    {
+      "finding_id": "fact-1",
+      "criterion": "gt.expected_fact",
+      "expected_semantics": "[\"814\"]",
+      "reference_evidence": [],
+      "annotation_completeness": "exhaustive",
+      "provenance": {
+        "source": "canonical-sql:pu-aggregate-utc-types",
+        "created_at": "2026-09-26T00:00:00+00:00",
+        "method": "SELECT messages FROM canonical Snapshot in UTC half-open interval [1786752000000,1786838400000); GROUP BY message_type: text=814, reply=17",
+        "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+        "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+        "adjudicated": true,
+        "limitations": []
+      },
+      "known_limitations": [],
+      "critical": false
+    },
+    {
+      "finding_id": "fact-2",
+      "criterion": "gt.expected_fact",
+      "expected_semantics": "[\"17\"]",
+      "reference_evidence": [],
+      "annotation_completeness": "exhaustive",
+      "provenance": {
+        "source": "canonical-sql:pu-aggregate-utc-types",
+        "created_at": "2026-09-26T00:00:00+00:00",
+        "method": "SELECT messages FROM canonical Snapshot in UTC half-open interval [1786752000000,1786838400000); GROUP BY message_type: text=814, reply=17",
+        "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+        "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+        "adjudicated": true,
+        "limitations": []
+      },
+      "known_limitations": [],
+      "critical": false
+    },
+    {
+      "finding_id": "structured-review",
+      "criterion": "utility.structured_answer",
+      "expected_semantics": "text=814；reply=17；需人工检查数字与类型没有交换。",
+      "reference_evidence": [],
+      "annotation_completeness": "exhaustive",
+      "provenance": {
+        "source": "canonical-sql:pu-aggregate-utc-types",
+        "created_at": "2026-09-26T00:00:00+00:00",
+        "method": "SELECT messages FROM canonical Snapshot in UTC half-open interval [1786752000000,1786838400000); GROUP BY message_type: text=814, reply=17",
+        "snapshot_id": "snapshot-v1:messages=473236:first=1753011800000:last=1786847688000:sources=14:lexical={'present': True, 'message_count': 473236}",
+        "scope_identity": "{\"allowed_session_ids\":null,\"end_timestamp\":null,\"max_results\":100,\"start_timestamp\":null}",
+        "adjudicated": false,
+        "limitations": [
+          "utility.structured_answer 不属于 gt.* applicability Accept；当前 v2 treatment utility 另行裁决。"
+        ]
+      },
+      "known_limitations": [],
+      "critical": false
+    }
+  ]
+}
