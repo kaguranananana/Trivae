@@ -1402,3 +1402,36 @@ Attributed DeepSeek Planner length to reasoning-token exhaustion; preserved qual
 ### Status
 
 [OK] **Completed**
+
+
+## Session 56: Planner Evaluation 最终工程收口
+
+**Date**: 2026-10-03
+**Task**: Planner Evaluation 最终工程收口
+**Branch**: `codex/planner-p1-stability`
+
+### Summary
+
+完成source handle/canonical模型可见契约修复与真实日期关系fixture；当前八Case完成16次Standard/Planned E2E、54 HTTP。结论为限制使用、保留架构、路由继续保守，Jev shadow不变；low/none与本轮validation closed，无新付费实验安排。历史工件及GT保留，任务completed留原目录以保持冻结来源稳定。
+
+### Main Changes
+
+- 真实SDK字段description/prompt明确source_id=mN-K与canonical message_id；raw/normalized Trace分层，canonical调用保留，无silent alias。
+- 日期fixture保留旧Claim/Evidence/Citation与canonical时间；复用既有Judge日期投影，不宣称通用语义checker。
+- 正式16次后停止，0 repeats；两路required context仍遗漏，Planned cite遗漏7k、temporal样本跨度错误均保留；mean E2E8.169→10.266秒、tokens285065→296703，不造综合质量分。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `14de11f` | (see git log) |
+| `aa2888f` | (see git log) |
+
+### Testing
+
+- [OK] 最终全量pytest659 passed；Ruff src/tests/evaluation/scripts及新增analyzer通过，mypy115 files通过，diff check通过。根扫描62既有lint问题原样记录。
+- [OK] 离线analysis/packet逐字复现；132 frozen文件和当前Snapshot不变；16 raw/Trace/Answer/Evaluation及SQLite IDs一致，历史artifact/GT无修改。
+
+### Status
+
+[OK] **Completed**
