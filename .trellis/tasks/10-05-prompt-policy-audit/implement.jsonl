@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "根因优先、关键模块七问、Evidence-driven 验证与自主边界"}
+{"file": ".trellis/spec/backend/agent-runtime-guidelines.md", "reason": "既有 Runtime、实体/context、资源清单、Provider 和 Finalizer contract"}
+{"file": ".trellis/spec/backend/temporal-overview-guidelines.md", "reason": "Host 时间事实、recent capacity/cursor/coverage"}
+{"file": ".trellis/tasks/10-05-prompt-policy-audit/research/prompt-policy-audit.md", "reason": "P01–P92 分类、实际承接程度、删除前提与 Evaluation 限制"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "保持语义/行为测试，不以文本检查冒充模型质量"}
