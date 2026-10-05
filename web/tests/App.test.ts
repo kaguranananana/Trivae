@@ -35,6 +35,7 @@ function detail(summaryDto: ConversationSummaryDTO) {
   return JSON.stringify({ ...summaryDto, messages: [] })
 }
 
+// 输入框现在提供聚焦接口，集成测试使用真实组件验证导航后的启用与聚焦。
 describe('App source scope navigation', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -66,7 +67,7 @@ describe('App source scope navigation', () => {
     const wrapper = mount(App, {
       global: {
         plugins: [pinia],
-        stubs: { AssistantTurn: true, ChatComposer: true, ConversationSidebar: true },
+        stubs: { AssistantTurn: true, ConversationSidebar: true },
       },
     })
     await flushPromises()
@@ -87,7 +88,7 @@ describe('App source scope navigation', () => {
     const wrapper = mount(App, {
       global: {
         plugins: [pinia],
-        stubs: { AssistantTurn: true, ChatComposer: true, ConversationSidebar: true },
+        stubs: { AssistantTurn: true, ConversationSidebar: true },
       },
     })
     await flushPromises()
@@ -109,7 +110,7 @@ describe('App source scope navigation', () => {
     const wrapper = mount(App, {
       global: {
         plugins: [pinia],
-        stubs: { AssistantTurn: true, ChatComposer: true, ConversationSidebar: true },
+        stubs: { AssistantTurn: true, ConversationSidebar: true },
       },
     })
     await flushPromises()
@@ -130,7 +131,7 @@ describe('App source scope navigation', () => {
     const wrapper = mount(App, {
       global: {
         plugins: [pinia],
-        stubs: { AssistantTurn: true, ChatComposer: true, ConversationSidebar: true },
+        stubs: { AssistantTurn: true, ConversationSidebar: true },
       },
     })
     await flushPromises()
@@ -159,7 +160,7 @@ describe('App source scope navigation', () => {
     const wrapper = mount(App, {
       global: {
         plugins: [pinia],
-        stubs: { AssistantTurn: true, ChatComposer: true, ConversationSidebar: true },
+        stubs: { AssistantTurn: true, ConversationSidebar: true },
       },
     })
     await flushPromises()
@@ -192,7 +193,7 @@ describe('App source scope navigation', () => {
     const wrapper = mount(App, {
       global: {
         plugins: [pinia],
-        stubs: { AssistantTurn: true, ChatComposer: true, ConversationSidebar: true },
+        stubs: { AssistantTurn: true, ConversationSidebar: true },
       },
     })
     await flushPromises()
@@ -206,4 +207,23 @@ describe('App source scope navigation', () => {
     wrapper.unmount()
     window.history.replaceState(null, '', '/')
   })
+
+  it('starts from the welcome action and fills suggestions without sending', async () => {
+    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [createPinia()], stubs: { AssistantTurn: true } } })
+    await flushPromises()
+    await wrapper.get('[data-testid="welcome-start"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="draft-state"]').exists()).toBe(true)
+    expect(document.activeElement).toBe(wrapper.get('textarea').element)
+    await wrapper.findAll('.suggestion')[0]!.trigger('click')
+    expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toContain('最近一周')
+    expect(wrapper.get('textarea').attributes('disabled')).toBeUndefined()
+    const urls = (fetch as ReturnType<typeof vi.fn>).mock.calls.map((call) => String(call[0]))
+    expect(urls.some((url) => url.startsWith('/api/query'))).toBe(false)
+    await wrapper.get('[aria-label="搜索聊天范围"]').setValue('研发')
+    expect(wrapper.find('[data-testid="scope-session-s1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="scope-session-s2"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
 })

@@ -5,7 +5,7 @@
  * Trivae 的 QueryStreamAdapter 只把最终 answer 投影为正文，过程块永远没有 text 块，
  * 因此 Answer 始终渲染在 Process Group 外。
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { AssistantItem, ProcessBlock } from '@/stores/chat'
 import {
   buildProcessSegments,
@@ -84,6 +84,22 @@ const trustedUrls = computed(() => {
 
 const answerHtml = computed(() => renderMarkdown(props.item.answer, trustedUrls.value))
 const showAnswer = computed(() => props.item.answer.length > 0)
+const copied = ref(false)
+const copyError = ref('')
+// 回答流式更新后取消旧复制提示，避免声称新内容已被复制。
+watch(() => props.item.answer, () => { copied.value = false })
+async function copyAnswer(): Promise<void> {
+  copyError.value = ''
+  copied.value = false
+  try {
+    // 复制原始 Markdown，保留结构和引用标记供用户粘贴整理。
+    await navigator.clipboard.writeText(props.item.answer)
+    copied.value = true
+  } catch (error) {
+    // 浏览器拒绝剪贴板时显式提示，不伪造复制成功。
+    copyError.value = `复制失败：${error instanceof Error ? error.message : String(error)}`
+  }
+}
 
 const statusLabel = computed(() => {
   switch (props.item.status) {
@@ -100,8 +116,9 @@ const statusLabel = computed(() => {
 </script>
 
 <template>
-  <div class="my-6">
-    <!-- Process segments -->
+  <article class="assistant-turn" aria-label="Trivae 的回答">
+    <div class="assistant-identity"><span class="assistant-avatar" aria-hidden="true">T</span><span>Trivae</span><span v-if="isStreaming" class="assistant-working" role="status">正在整理…</span></div>
+    <!-- 执行过程：继续沿用实时展开、完成折叠和错误可见的契约。 -->
     <template v-for="(segment, index) in segments" :key="`seg-${index}`">
       <div v-if="segment.type === 'process'">
         <div
@@ -110,6 +127,7 @@ const statusLabel = computed(() => {
         >
           <button
             class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"
+            :aria-expanded="isOpen(index)"
             @click="toggleSegment(index)"
           >
             <span class="font-mono">{{ isOpen(index) ? '▼' : '▶' }}</span>
@@ -119,7 +137,7 @@ const statusLabel = computed(() => {
               :duration-ms="segmentDuration(index)"
             />
             <span v-if="!isActiveProcessSegment(segments, index, isStreaming)" class="text-dimmed">
-              {{ stepCount(index) }} steps
+              {{ stepCount(index) }} 步
             </span>
           </button>
 
@@ -144,7 +162,7 @@ const statusLabel = computed(() => {
       </div>
     </template>
 
-    <!-- Answer：永远在 Process Group 外 -->
+    <!-- 最终回答始终位于过程分组之外，方便阅读和复制。 -->
     <div v-if="showAnswer" class="md-body mt-3" v-html="answerHtml" />
 
     <div v-if="statusLabel" class="mt-2 text-xs text-error">
@@ -156,6 +174,12 @@ const statusLabel = computed(() => {
     </div>
 
     <SourcesBlock v-if="item.sources.length > 0" :sources="item.sources" />
+    <div v-if="showAnswer && !isStreaming" class="answer-actions">
+      <button class="copy-answer" :aria-label="copied ? '已复制回答' : '复制回答'" @click="copyAnswer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M15 8V4H4v11h4" /></svg>{{ copied ? '已复制' : '复制回答' }}
+      </button>
+      <span v-if="copyError" class="text-xs text-error" role="alert">{{ copyError }}</span>
+    </div>
     <TraceFooter v-if="item.traceId" :trace-id="item.traceId" :duration-ms="item.durationMs" />
-  </div>
+  </article>
 </template>

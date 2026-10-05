@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 
 /**
  * 浏览器真实 scroll state 的 follow-tail：
@@ -25,7 +25,10 @@ export function useFollowTail(container: Ref<HTMLElement | null>) {
     if (!following.value) return
     const element = container.value
     if (!element) return
-    element.scrollTop = element.scrollHeight
+    // 等流式文本渲染进 DOM 后再读取高度，避免最后一段被输入区遮住。
+    void nextTick(() => {
+      if (following.value) element.scrollTop = element.scrollHeight
+    })
   }
 
   function onWheel(event: WheelEvent): void {

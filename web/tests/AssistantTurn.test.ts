@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AssistantTurn from '@/components/chat/AssistantTurn.vue'
 import type { AssistantItem } from '@/stores/chat'
@@ -26,6 +26,7 @@ function assistantItem(sources: AssistantItem['sources']): AssistantItem {
 }
 
 describe('AssistantTurn trusted URL wiring', () => {
+  afterEach(() => vi.restoreAllMocks())
   it('derives trusted URLs from source snapshots instead of answer text', () => {
     const wrapper = mount(AssistantTurn, {
       props: {
@@ -66,4 +67,19 @@ describe('AssistantTurn trusted URL wiring', () => {
     expect(wrapper.find('.md-body').text()).toContain(trustedUrl)
     expect(wrapper.findComponent({ name: 'SourcesBlock' }).exists()).toBe(false)
   })
+
+  it('copies the original answer and shows clipboard errors', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(writeText)
+    const item = assistantItem([])
+    const wrapper = mount(AssistantTurn, { props: { item, conversationId: null } })
+    await wrapper.get('[aria-label="复制回答"]').trigger('click')
+    expect(writeText).toHaveBeenCalledWith(item.answer)
+    expect(wrapper.get('[aria-label="已复制回答"]').text()).toContain('已复制')
+    writeText.mockRejectedValueOnce(new Error('浏览器拒绝剪贴板权限'))
+    await wrapper.get('[aria-label="已复制回答"]').trigger('click')
+    expect(wrapper.get('[role="alert"]').text()).toContain('浏览器拒绝剪贴板权限')
+    wrapper.unmount()
+  })
+
 })

@@ -86,7 +86,8 @@ describe('ConversationSidebar scope lifecycle', () => {
     expect(chat.currentKey).toBe('conv-s1')
 
     await wrapper.findAll('button').find((button) => button.text() === '重命名')?.trigger('click')
-    const renameInput = wrapper.get('input')
+    // 新增搜索框后，用可访问名称定位重命名输入，继续验证真实 PATCH 请求。
+    const renameInput = wrapper.get('input[aria-label="对话名称"]')
     await renameInput.setValue('新版产品讨论')
     await renameInput.trigger('blur')
     await flushPromises()
@@ -133,4 +134,20 @@ describe('ConversationSidebar scope lifecycle', () => {
     expect(wrapper.get('[data-testid="empty-list"]').text()).toContain('该范围下还没有 AI 对话记录')
     wrapper.unmount()
   })
+
+  it('searches loaded conversations inside the selected scope', async () => {
+    const pinia = createPinia()
+    useScopeStore(pinia).select({ kind: 'all' })
+    const store = useConversationsStore(pinia)
+    store.conversations = [scopedSummary, earlierSummary]
+    store.loaded = true
+    const wrapper = mount(ConversationSidebar, { global: { plugins: [pinia] } })
+    await wrapper.get('[aria-label="搜索当前范围内的对话"]').setValue('历史内容')
+    expect(wrapper.find('[data-testid="conversation-conv-s1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="conversation-conv-old"]').exists()).toBe(true)
+    // 搜索不扩大请求范围，也不发起任何新的网络查询。
+    expect(fetch).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
 })
