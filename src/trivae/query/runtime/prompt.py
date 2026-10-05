@@ -16,6 +16,13 @@ then identify, cluster, and summarize noteworthy topics from the returned messag
 This also applies when one question asks both whether anyone spoke in a bounded day and what they discussed.
 An SQL COUNT alone cannot establish the complete empty retrieval proof required for `kind=no_result`;
 if you already counted by SQL for such a question, call get_recent_messages for that window before finalizing.
+Separate discussion investigation from a resource inventory. When the user asks what someone asked,
+whether a question was answered, what advice or recommendation followed, or which learning material
+appeared in a discussion, keep the question or named entity as the primary anchor and inspect its later
+discussion context when needed. This remains a discussion investigation even when a message contains a
+github.com URL; do not make the URL keyword the first retrieval merely because a link is present. The
+github.com-first rule below applies only when the user asks for a repository, GitHub project, Skill, link,
+or resource inventory.
 For resource inventories, when the user asks which repositories, GitHub projects, Skills, links, or
 technical resources are worth noticing, the candidate set is defined by URL-bearing or resource-name
 messages. Even if the question says "最近", make lexical_search with the exact keyword "github.com" the FIRST retrieval call,
@@ -49,19 +56,22 @@ ambiguous, or materially insufficient. The two tools are independent retrieval p
 result is weak, you may inspect the other visible retrieval tool in the same run, but do not invent
 evidence or claim that a tool was used when it was not. The legacy search_messages name may appear
 only for compatibility callers.
-For repository, GitHub-link, Skill, or resource recommendation questions, a concrete link is part
+For an explicit repository, GitHub-link, Skill, or resource inventory request, a concrete link is part
 of the requested evidence: use lexical_search with the exact keyword "github.com" as the first
-retrieval call to collect
-URL-bearing messages. For a broad lexical inventory search, you MUST set `limit` to the lexical maximum shown
+retrieval call to collect URL-bearing messages. A question about a recommendation made in one discussion
+is handled by the discussion-anchor rule above, even when its answer contains a link. For a broad lexical
+inventory search, you MUST set `limit` to the lexical maximum shown
 by the tool schema; never choose a smaller convenience limit such as 20 or 30, because that creates an
 avoidable partial result when the total is within the trusted bound. Set `context_before` and
 `context_after` to 0 unless surrounding messages are needed to interpret a specific hit; this preserves
 all matching hits without spending the result bound on nearby context.
-Treat any question asking which/what repositories, Skills, resources, projects, courses, or recommendations
-as a broad inventory when the retrieval call is collecting list recall. Lexical calls that contribute to
-that list MUST pass the lexical maximum shown by their schema. Semantic calls keep their own small
-semantic maximum; do not inflate semantic `limit` to match lexical recall. A value such as 20 or 30 is
-invalid planning for a broad lexical inventory when the schema exposes a larger lexical maximum.
+Treat an explicit request to list which/what repositories, Skills, resources, projects, courses, or
+links as a broad inventory when the retrieval call is collecting list recall. A discussion question such
+as what material was recommended in a particular thread is not a broad inventory unless the user asks
+for a list. Lexical calls that contribute to an inventory MUST pass the lexical maximum shown by their
+schema. Semantic calls keep their own small semantic maximum; do not inflate semantic `limit` to match
+lexical recall. A value such as 20 or 30 is invalid planning for a broad lexical inventory when the schema
+exposes a larger lexical maximum.
 Search the relevant Skill/resource term separately when needed. Do not
 answer a link-seeking question from semantic hits alone when the URL-bearing lexical path has not
 been checked. If the user uses a relative time range, pass a `time_range` object such as
@@ -84,6 +94,16 @@ that exact `user_id`; otherwise call find_members again before filtering. For SQ
 The legacy `message_id` parameter accepts only a canonical internal message ID, never an mN-K handle;
 do not call it for every hit or use it to cross a
 conversation boundary. Both tools return bounded, scope-enforced results.
+When a relevant hit is a question or request and the user asks about replies, later reactions, advice,
+or recommended material, use that hit's exact `source_id` for an explicit context read when the local
+window is insufficient. Prioritize this reply-gap check before repeating broad retrieval or a near-duplicate
+search. Multiple independent anchors may be read in the same tool turn when the calls are known and
+independent. `context_before` and `context_after` count messages, not minutes or seconds; choose the
+later window from the discussion clues and message density. Values such as 20 or 40 are examples for
+that choice, not a fixed trigger or new default. A small local window cannot prove that nobody replied;
+inspect enough later messages within the trusted scope to cover the discussion clues, and state the
+examined boundary when the evidence remains partial. Adjacent messages provide context but do not by
+themselves prove a direct reply or speaker attribution.
 Plan tool suggestions and step wording are guidance; for a follow-up investigation about a
 specifically named person, repository, product, project, or
 other entity, retain its most discriminative name or a specific alias present in returned messages
@@ -112,6 +132,9 @@ For temporal relations in claim text, finding, or criterion, compare the returne
 Do not call messages on different dates "same day", reverse earlier/later order, or infer a reply/reaction
 from adjacency alone. A citation to the correct messages does not support an invented temporal relation.
 Keep sender_name separate from message content; a display name is not something that person said.
+Use each returned message's author as the speaker for that message; do not attribute a question or reply
+to a nearby participant merely from adjacency. Preserve the distinction between who asked, who replied,
+what was recommended, and what is only a model synthesis.
 Mention or sharing does not mean recommendation or value; mention does not mean recommendation.
 An intent to test does not prove actual use; intent to test does not prove actual use.
 Reviewing someone else's output does not prove personal installation or use; reviewing output does not prove personal installation or use.
@@ -202,4 +225,7 @@ evidence items unless the claims are materially different. Evidence and citation
 For a recent overview, if the Tool Result exposes resolved_time_range, that Host-generated range is the
 only valid time fact: copy its UTC text exactly when mentioning dates, and never calculate dates from
 millisecond timestamps or use dates from historical context. Keep finding, criterion, and limitation text concise.
+For individual returned messages, copy the Host-derived `timestamp_utc` exactly when stating a date or
+time; never convert the canonical millisecond `timestamp` yourself. Keep dates outside the returned
+evidence as unknown instead of filling them from nearby or historical context.
 """

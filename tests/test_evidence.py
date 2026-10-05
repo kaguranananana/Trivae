@@ -12,7 +12,7 @@ from agents.testing import ModelStep, ScriptedModel, assistant_message, function
 from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
 from trivae.capabilities import ExecutionScope
-from trivae.capabilities.contracts import ToolEnvelope
+from trivae.capabilities.contracts import ToolEnvelope, format_timestamp_utc
 from trivae.query.contracts import QueryRequest
 from trivae.query.evidence import (
     MAX_FIELD_CHARS,
@@ -362,7 +362,10 @@ class EvidenceContractTests(unittest.TestCase):
     def test_expanded_messages_receive_current_run_provenance(self) -> None:
         """命中消息和 bounded context 都必须成为可验证的 source entry。"""
 
-        hit = _message(internal_message_id="qq:100:hit", content="alpha hit")
+        hit = _message(
+            internal_message_id="qq:100:hit",
+            content="alpha " + ("long evidence " * 70),
+        )
         expanded = _message(internal_message_id="qq:100:context", content="nearby context")
         retrieval = RetrievalResult(
             query=LexicalQuery(keyword="alpha", limit=2),
@@ -394,9 +397,25 @@ class EvidenceContractTests(unittest.TestCase):
         hit_message = projected["data"]["hits"][0]["message"]
         context_message = projected["data"]["expanded_messages"][0]
         self.assertEqual(hit_message["source_id"], "m1-1")
+        self.assertEqual(hit_message["timestamp"], hit.timestamp)
+        self.assertEqual(hit_message["timestamp_utc"], format_timestamp_utc(hit.timestamp))
+        self.assertEqual(hit_message["author"], hit.sender_name)
         self.assertEqual(context_message["source_id"], "m1-2")
+        self.assertEqual(context_message["timestamp_utc"], format_timestamp_utc(expanded.timestamp))
         self.assertNotIn("internal_message_id", serialized)
         self.assertNotIn("run-expanded/tool-call/1", serialized)
+
+        trimmed = project_tool_result_for_model(
+            ToolEnvelope("ok", retrieval, {}, None),
+            record,
+            token_budget=500,
+        )
+        trimmed_hit = trimmed["data"]["hits"][0]["message"]
+        self.assertTrue(trimmed_hit["content_truncated"])
+        self.assertEqual(trimmed_hit["source_id"], "m1-1")
+        self.assertEqual(trimmed_hit["timestamp"], hit.timestamp)
+        self.assertEqual(trimmed_hit["timestamp_utc"], format_timestamp_utc(hit.timestamp))
+        self.assertEqual(trimmed_hit["author"], hit.sender_name)
 
     def test_semantic_projection_preserves_core_and_omits_context(self) -> None:
         """semantic range 核心是命中，邻近消息只能作为可省略 context。"""
@@ -463,6 +482,10 @@ class EvidenceContractTests(unittest.TestCase):
 
         self.assertEqual(len(projected_messages), 2)
         self.assertEqual([item["hit"] for item in projected_messages], [True, True])
+        # context 被裁剪后，命中消息的 source、作者和两种时间事实仍可供模型核对。
+        self.assertEqual(projected_messages[0]["timestamp"], messages[0].timestamp)
+        self.assertEqual(projected_messages[0]["timestamp_utc"], format_timestamp_utc(messages[0].timestamp))
+        self.assertEqual(projected_messages[0]["author"], messages[0].sender_name)
         self.assertEqual(projected["model_projection"]["omitted_context_messages"], 38)
         self.assertTrue(projected["model_projection"]["truncated"])
         self.assertEqual(len(projected["provenance"]["message_sources"]), 2)

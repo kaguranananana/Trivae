@@ -720,7 +720,7 @@ Tool 的 safety ceiling，不代表整个 Run 只能累计 `128000`；Run-level 
 
 - URL / repository / Skill / link inventory 必须优先使用有界 `lexical_search`；URL 证据的标准形态是 `keyword="github.com"`、trusted 最大 `limit`、`context_before=0`、`context_after=0`，并保留必要的时间范围。
 - 非空的 URL lexical 结果已经足以支持 URL-bearing resource recall；不得再用 `get_recent_messages` 或 `execute_sql` 发现、枚举或重算同一批资源。需要解释上下文时，只能基于已有命中按问题需要补充。
-- 泛化的学习资料问题（博客、文档、论文、课程、视频等）可以在 URL lexical 结果之外使用一次有界 `semantic_search` 补充非 URL 证据；不能因为问题宽泛就自动读取整段 recent archive。
+- 独立的学习资料清单（博客、文档、论文、课程、视频等）可以在 URL lexical 结果之外使用一次有界 `semantic_search` 补充非 URL 证据；若问题主要询问谁问了什么、对应回复与建议，应优先按讨论锚点调查，不因出现“材料”或链接就套用 GitHub 清单规则。不能因为问题宽泛就自动读取整段 recent archive。
 - `get_recent_messages` 只用于时间窗口本身是问题语义的 overview；它不是资源清单的默认扩展器。`execute_sql` 只用于结构化事实，不能用于重算检索结果；SQL 失败后不得重复相同或近似语句。
 - SQLite 对公开但不存在的 table/column/function 的解析错误必须映射为 `SQL_SCHEMA_VIOLATION`，不能因为 authorizer 尚未建立状态而误报为 `SQL_MALFORMED`；真正语法错误仍保持原有错误分类。
 - 这些边界通过 prompt/tool guidance 与 deterministic regression 固化，不通过 query-string 特判、retry、fallback、静默降级或放宽结果上限实现。
@@ -874,3 +874,43 @@ Wrong：`get_message_context(message_id="m1-1")`；两条来源可解析就认�
 `run_engineering_closure.py --output <new-directory> [--preflight-only]`固定八Case×两路×一次、AB/BA；create-only、无repeats开关。正式前preflight必须落盘execution commit、Snapshot/Case/GT逐字身份、实际SDKschema/settings、credential configured boolean；失败0attempts/0HTTP，不写key。Standard Planner=0，Planned=1，实际首次Runtime HTTP只差生产guidance。raw/normalized参数与完整证据链分开保留。
 
 正式16次/54HTTP完成后停止，0targeted repeats；11次context参数正确不等于答案全对。两路required-context仍漏取，Planned cite遗漏7k，temporal样本跨度仍写错；mean E2E 8.169→10.266秒、token285065→296703。low/none研究与Standard/Planned validation closed，不安排新付费实验。只有新的真实严重生产Failure Case影响明确工程决策才重新评估。完整判断见[report.md](../../tasks/10-02-planner-engineering-closure/report.md)。
+
+## 18. 讨论调查与模型可见事实（2026-10-05）
+
+### 1. Scope / Trigger
+
+真实使用中已命中教程提问但未追踪后续推荐，答案误称未回答，并出现发言者与日期错误。修改边界为 Runtime 指导、SDK 工具说明与统一消息投影；检索、Planner、默认三轮与最终校验继续使用既有主链路。
+
+### 2. Signatures
+
+`_model_message_projection(record, item, source_id)` 同时公开 canonical `timestamp` 与 `timestamp_utc = format_timestamp_utc(timestamp)`。`get_message_context` 的 before/after 仍默认 8/8。动态 `instructions` 从 `_RunState.tool_rounds` 和 `max_tool_rounds` 编译已耗/剩余轮数。
+
+### 3. Contracts
+
+讨论中的提问、回复、后续评价与材料用关键 source_id 调查，回复缺口优先于近似宽搜；已知独立锚点可在同一轮查询。上下文参数是消息条数，不是分钟；20/40 是可选示例，不能作为全局默认或每个 hit 的固定规则。邻接不能证明直接回复关系。工具完整返回请求窗口不代表话题完整，不据此声称无人回答。
+
+消息投影裁剪仅缩短正文时必须保留 source_id、author、timestamp 和 timestamp_utc；日期使用 Host UTC 字段，原话归给对应消息作者，群友表述与模型归纳分清。储存、canonical provenance 与引用解析不增加日期字段。
+
+每个产生 Tool Result 的模型回合只计一轮；多工具并行不按调用数量减轮数。预算提示只读取已有 state，不另建计数器。达到原上限仍移除工具并进行无工具综合，不增加隐藏轮次。
+
+### 4. Validation & Error Matrix
+
+| 事实 | 要求 |
+| --- | --- |
+| 命中提问，回复未覆盖 | 优先显式 context，局部未见不能推导无人回复 |
+| 完整返回 8 条上下文 | 仅证明该窗口已返回，不证明讨论穷尽 |
+| 正文触发预算裁剪 | 留下的消息保留来源、作者与 UTC 字段 |
+| 并行多个工具完成 | 下一次模型提示只减少一轮 |
+| Provider 失败 | 显式保留错误和 Trace；不追加 retry/fallback |
+
+### 5. Good / Base / Bad Cases
+
+Good：找到提问后读后续推荐并按具体作者引用。Base：纯 GitHub 清单保持 URL lexical-first；简单事实无需深挖。Bad：为了“更全”统一读取 40 条、以引用合法证明回答正确、把投影成功当自然语言遵从。
+
+### 6. Tests Required
+
+SDK 真实 schema 验证 before/after 单位与默认值；ScriptedModel 验证初始、并行、耗尽预算和最终综合提示；统一 projection 与预算裁剪验证日期、作者、来源绑定。正式工具重放与重复真实配对分别证明证据送达和模型使用，质量判断须逐项回查 canonical 消息。
+
+### 7. Wrong vs Correct
+
+Wrong：窗口没看到回复就写“未解决”，连续对话都归于一个人，把毫秒自行换算成月份。Correct：写明已查范围的未确认项，按消息作者归属并读取 timestamp_utc；完整性与具体语义质量仍待真实回归，不承诺每次全面。

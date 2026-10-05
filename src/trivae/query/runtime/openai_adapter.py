@@ -1506,8 +1506,20 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             )
 
         def instructions(_wrapper: Any, _agent: Any) -> str:
-            # 计划只作为模型提示；finalizing 时明确要求停止调用工具并综合已有结果。
+            # 计划只作为模型提示；预算事实直接读取当前 run state，避免模型误判并行调用的消耗。
             parts = [SYSTEM_PROMPT]
+            # 当前 state 只在真实 Tool Result 完成后递增，因此多个并行调用仍只记一轮。
+            consumed_tool_rounds = state.tool_rounds
+            # finalizing 不再开放工具，剩余轮数应明确显示为零而不是产生额外调用暗示。
+            remaining_tool_rounds = max(0, self.max_tool_rounds - consumed_tool_rounds)
+            # 将本轮预算事实附加到每次动态 instructions，确保下一轮读取最新 state。
+            parts.append(
+                "\nTool-round budget: "
+                f"{consumed_tool_rounds} consumed, {remaining_tool_rounds} remaining, "
+                f"of {self.max_tool_rounds} total. Multiple tool calls from one model turn "
+                "consume one round. The finalizing synthesis turn uses no tools and consumes "
+                "no additional round."
+            )
             if request.plan_guidance:
                 parts.append("\n" + request.plan_guidance)
             if state.finalizing:

@@ -116,7 +116,8 @@ class AgentToolSurfaceTests(unittest.TestCase):
         agent = runtime._build_agent(
             request,
             runtime._build_context(request),
-            SimpleNamespace(finalizing=False),
+            # 用与生产 state 相同的预算字段，验证动态 instructions 的初始事实。
+            SimpleNamespace(finalizing=False, tool_rounds=0),
         )
         instructions = agent.instructions
         self.assertTrue(callable(instructions))
@@ -129,6 +130,29 @@ class AgentToolSurfaceTests(unittest.TestCase):
         self.assertIn("that best anchors that discussion", runtime_prompt)
         self.assertIn("distinct requested evidence need remains uncovered", runtime_prompt)
         self.assertIn("Soft plan guidance only; inspect the named resource", runtime_prompt)
+        self.assertIn("0 consumed, 3 remaining", runtime_prompt)
+        self.assertIn("Multiple tool calls from one model turn consume one round", runtime_prompt)
+
+    def test_context_tool_schema_explains_message_count_units(self) -> None:
+        """get_message_context 的 before/after 必须明确是消息条数而不是时间。"""
+
+        registry = CapabilityRegistry()
+        registry.register(_RecordingTool("get_message_context"))
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=ScriptedModel([]))
+        request = AgentRunRequest(
+            "检查问题后续回复",
+            ExecutionScope(max_results=5),
+            available_capabilities=("get_message_context",),
+        )
+
+        agent = runtime._build_agent(request, runtime._build_context(request), object())
+        schema = agent.tools[0].params_json_schema
+        properties = schema["properties"]
+        self.assertIn("message count", properties["context_before"]["description"])
+        self.assertIn("message count", properties["context_after"]["description"])
+        self.assertIn("minutes or seconds", properties["context_after"]["description"])
+        self.assertEqual(properties["context_before"]["default"], 8)
+        self.assertEqual(properties["context_after"]["default"], 8)
 
     def test_resource_inventory_guidance_separates_url_and_non_url_evidence(self) -> None:
         """资源清单的 URL 与非 URL 证据走不同检索路径，不回退到宽泛 recent/SQL。"""

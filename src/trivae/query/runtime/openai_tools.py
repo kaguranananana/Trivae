@@ -133,9 +133,10 @@ class SearchMessagesSDKToolAdapter:
                 "keyword must be exactly one non-empty string. "
                 "Omit optional filters, or use null; do not send empty arrays. "
                 "limit must be a positive integer within the current trusted result limit. "
-                "For a broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. "
-                "For a resource inventory, a non-empty github.com result is sufficient for URL-bearing recall: do not call get_recent_messages or execute_sql to enumerate or recount the same resources. "
-                "A generic learning-material inventory may add one semantic_search for non-URL materials, but must not prefetch a broad recent window. "
+                "For an explicit broad inventory or resource-list question, set limit to the current trusted maximum, not a smaller convenience value. "
+                "For an explicit resource inventory, a non-empty github.com result is sufficient for URL-bearing recall: do not call get_recent_messages or execute_sql to enumerate or recount the same resources. "
+                "A generic learning-material inventory may add one semantic_search for non-URL materials, but must not prefetch a broad recent window; a discussion question about one recommendation should keep its named anchor and use context instead of this inventory rule. "
+                "Do not apply the github.com-first inventory rule merely because a discussion message contains a link. "
                 "context_before and context_after must be non-negative integers. "
                 "Use the short source_id handle from the current Tool Result for each citation; do not copy full provenance."
             )
@@ -560,8 +561,11 @@ class GetMessageContextSDKToolAdapter:
             "Prefer source_id for a run-local mN-K handle (for example m1-1) from a ToolResult. "
             "Use message_id only for a canonical internal message ID, never for a source handle. "
             "Provide exactly one identity parameter. Call only when the search result's local "
-            "context is insufficient; do not call this mechanically for every hit. It never crosses "
-            "the trusted session/time scope and may return truncated=true."
+            "context is insufficient, especially when a hit is a question and the user asks about a "
+            "reply, later reaction, recommendation, or material that followed. The context_before and "
+            "context_after parameters are message counts, not minutes or seconds; a small window cannot "
+            "prove that nobody replied. It never crosses the trusted session/time scope and may return "
+            "truncated=true."
         )
 
         @function_tool(
@@ -584,8 +588,15 @@ class GetMessageContextSDKToolAdapter:
                 "Do not put a run-local mN-K source handle such as m1-1 here; use source_id for that. "
                 "Provide message_id or source_id, never both."
             ))] = None,
-            context_before: int = 8,
-            context_after: int = 8,
+            context_before: Annotated[int, Field(description=(
+                "Number of messages before the anchor to include; this is a message count, not a "
+                "duration in minutes or seconds. Use 0 when earlier context is unnecessary."
+            ))] = 8,
+            context_after: Annotated[int, Field(description=(
+                "Number of messages after the anchor to include; this is a message count, not a "
+                "duration in minutes or seconds. Increase it when checking later replies or advice; "
+                "a small value cannot establish that no reply exists."
+            ))] = 8,
         ) -> dict[str, object]:
             """恢复由 Search 结果公开的 source handle，兼容旧的 canonical message_id。"""
 
@@ -1003,10 +1014,12 @@ class GetRecentMessagesSDKToolAdapter:
             "first call when the candidate set is determined mainly by time and the user asks for an "
             "overview, summary, topic discovery, or what people talked about recently (for example "
             "'最近两天聊了什么', '昨天发生了什么'). For a repository, GitHub-link, Skill, or URL-bearing "
-            "resource inventory, even when it says '最近', use lexical_search with keyword 'github.com' as the "
+            "resource inventory explicitly requested as a list, even when it says '最近', use lexical_search with keyword 'github.com' as the "
             "first retrieval call instead of prefetching this broad recent window. For a generic learning-material "
             "inventory, use lexical_search for links and semantic_search for non-URL materials; do not use this "
-            "tool merely to broaden an inventory after retrieval. Do NOT guess topics and search "
+            "tool merely to broaden an inventory after retrieval. For a discussion question about a reply, "
+            "recommendation, or material, follow its returned source_id with get_message_context instead of "
+            "prefetching a broad recent window. Do NOT guess topics and search "
             "them with lexical_search or semantic_search for this kind of question; read the real "
             "recent window first, then analyze and cite. Calling it without any time argument defaults "
             "to the most recent 2 days anchored at archive_latest (never machine current time). The "

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Mapping, TypeAlias
 from urllib.parse import urlsplit
 
-from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
+from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope, format_timestamp_utc
 from trivae.config.limits import (
     DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
     MAX_STRUCTURED_RESULT_ITEMS,
@@ -1721,6 +1721,8 @@ def _model_message_projection(
     entry: dict[str, object] = {
         "source_id": source_id,
         "timestamp": message.timestamp,
+        # 模型可直接读取 Host 派生的 UTC 日期；canonical 毫秒时间仍保留供契约校验。
+        "timestamp_utc": format_timestamp_utc(message.timestamp),
         "author": message.sender_name or message.sender_user_id,
         "content": content,
         "session": message.session_display or message.session_id,
@@ -2021,7 +2023,7 @@ def project_tool_result_for_model(
         truncated = omitted_context_messages > 0
 
     if not fits():
-        # 第二阶段只缩短正文；source handle、timestamp、author、URL 和 hit identity 不被删除。
+        # 第二阶段只缩短正文；source、canonical/UTC timestamp、author、URL 和 hit identity 不被删除。
         for maximum in (512, 384, 256, 192, 128, 96, 64, 32):
             for _container, entry, _remove_entry, _is_hit, full_content, canonical_truncated in slots:
                 content, content_truncated = _model_content(full_content, maximum)

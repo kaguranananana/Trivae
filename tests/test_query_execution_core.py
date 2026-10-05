@@ -588,6 +588,14 @@ class RuntimeExecutionTests(unittest.TestCase):
             [event.type for event in events].index("tool_completed"),
             [event.type for event in events].index("finalizing"),
         )
+        turn_started = [event for event in events if event.type == "turn_started"]
+        assert turn_started[0].model_visible_context is not None
+        assert turn_started[1].model_visible_context is not None
+        first_system = turn_started[0].model_visible_context[0]["content"]
+        finalizing_system = turn_started[1].model_visible_context[0]["content"]
+        self.assertIn("0 consumed, 1 remaining", first_system)
+        self.assertIn("1 consumed, 0 remaining", finalizing_system)
+        self.assertIn("finalizing synthesis turn uses no tools and consumes no additional round", finalizing_system)
 
     def test_sdk_absolute_backstop_is_not_normal_budget_completion(self) -> None:
         model = ScriptedModel(
