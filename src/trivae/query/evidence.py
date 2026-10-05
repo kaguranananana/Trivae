@@ -724,6 +724,38 @@ class CitationBinding:
 
 
 @dataclass(frozen=True)
+class RecentRetrievalWindow:
+    """Host 派生的一个独立 recent 窗口及其覆盖事实。"""
+
+    resolved_time_range: Mapping[str, object]
+    retrieval_coverage: Mapping[str, object] | None
+
+    def __post_init__(self) -> None:
+        # 复用既有时间校验，保留每窗原始半开边界而不扩大或拼接窗口。
+        time_range = _normalize_time_range_snapshot("window.resolved_time_range", self.resolved_time_range)
+        if time_range is None:
+            raise AnswerContractError("recent window requires a resolved time range")
+        object.__setattr__(self, "resolved_time_range", time_range)
+        # 覆盖状态只属于当前窗口，不能把不同窗口的计数相加。
+        object.__setattr__(
+            self,
+            "retrieval_coverage",
+            _normalize_retrieval_coverage(
+                "window.retrieval_coverage",
+                self.retrieval_coverage,
+            ),
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Trace 与持久化共用同一窗口事实投影。"""
+
+        return {
+            "resolved_time_range": dict(self.resolved_time_range),
+            "retrieval_coverage": None if self.retrieval_coverage is None else dict(self.retrieval_coverage),
+        }
+
+
+@dataclass(frozen=True)
 class AnswerArtifact:
     """最终对外暴露的结构化回答事实载体。"""
 
@@ -735,6 +767,8 @@ class AnswerArtifact:
     resolved_time_range: Mapping[str, object] | None = None
     # retrieval coverage 同样由 Host 派生，避免持久化 Artifact 丢失 partial/complete 事实。
     retrieval_coverage: Mapping[str, object] | None = None
+    # 多窗查询逐窗保存事实；原有单值字段仅描述唯一窗口。
+    retrieval_windows: tuple[RecentRetrievalWindow, ...] = ()
 
     def __post_init__(self) -> None:
         # 先验证内容块 identity，后续 citation 才能确定性地指向一个内容单元。
@@ -786,6 +820,14 @@ class AnswerArtifact:
             "retrieval_coverage",
             _normalize_retrieval_coverage("retrieval_coverage", self.retrieval_coverage),
         )
+        if not isinstance(self.retrieval_windows, tuple) or any(
+            not isinstance(window, RecentRetrievalWindow) for window in self.retrieval_windows
+        ):
+            raise AnswerContractError("retrieval_windows must contain RecentRetrievalWindow values")
+        if len(self.retrieval_windows) > 1 and (
+            self.resolved_time_range is not None or self.retrieval_coverage is not None
+        ):
+            raise AnswerContractError("multiple retrieval windows cannot have single-window facts")
         if len(self.answer_text) > MAX_ANSWER_CHARS:
             raise AnswerContractError(f"answer content exceeds {MAX_ANSWER_CHARS} characters")
 
@@ -1313,7 +1355,15 @@ def _record_time_range(record: ToolResultRecord) -> dict[str, object] | None:
         return None
     if not isinstance(raw_range, Mapping):
         raise _model_error("TIME_RANGE_MISMATCH", "recent tool result has an invalid resolved time range")
-    return _normalize_time_range_snapshot("tool result resolved_time_range", raw_range)
+    time_range = _normalize_time_range_snapshot("tool result resolved_time_range", raw_range)
+    assert time_range is not None
+    # 独立窗口可以不同，但单条记录的解析边界必须与其实际查询边界一致。
+    for boundary in ("start_timestamp", "end_timestamp"):
+        if boundary in record.query_scope_snapshot and (
+            record.query_scope_snapshot[boundary] != time_range[f"resolved_{boundary}"]
+        ):
+            raise _model_error("TIME_RANGE_MISMATCH", "recent resolved window disagrees with its query boundary")
+    return time_range
 
 
 def _recent_time_range_key(time_range: Mapping[str, object]) -> tuple[object, object]:
@@ -1325,12 +1375,12 @@ def _recent_time_range_key(time_range: Mapping[str, object]) -> tuple[object, ob
     )
 
 
-def _current_recent_time_range(
+def _group_recent_records(
     tool_results: tuple[ToolResultRecord, ...],
-) -> dict[str, object] | None:
-    """从当前 Run 的所有 recent page 派生唯一 Host 时间窗口。"""
+) -> tuple[tuple[dict[str, object], tuple[ToolResultRecord, ...]], ...]:
+    """按真实半开边界分组，区分同窗分页与独立时间窗口。"""
 
-    observed: list[dict[str, object]] = []
+    observed: dict[tuple[object, object], tuple[dict[str, object], list[ToolResultRecord]]] = {}
     unknown_with_facts = False
     for record in tool_results:
         if record.tool_name != "get_recent_messages":
@@ -1340,22 +1390,18 @@ def _current_recent_time_range(
             if record.message_items:
                 unknown_with_facts = True
             continue
-        observed.append(time_range)
+        # 同窗的相对/绝对表示可以不同，只按实际边界决定是否属于同一组。
+        key = _recent_time_range_key(time_range)
+        if key not in observed:
+            observed[key] = (time_range, [])
+        # 保留全部页和独立 root，交给已有覆盖汇总逻辑校验。
+        observed[key][1].append(record)
     if observed and unknown_with_facts:
         raise _model_error(
             "TIME_RANGE_MISMATCH",
             "recent results mix a resolved window with an unresolved message window",
         )
-    if not observed:
-        return None
-    first = observed[0]
-    first_key = _recent_time_range_key(first)
-    if any(_recent_time_range_key(item) != first_key for item in observed[1:]):
-        raise _model_error(
-            "TIME_RANGE_MISMATCH",
-            "recent tool results contain conflicting resolved time windows",
-        )
-    return first
+    return tuple((time_range, tuple(records)) for time_range, records in observed.values())
 
 
 def _recent_record_coverage(record: ToolResultRecord) -> dict[str, object] | None:
@@ -1405,10 +1451,10 @@ def _recent_record_coverage(record: ToolResultRecord) -> dict[str, object] | Non
         raise _model_error("COVERAGE_MISMATCH", str(exc)) from exc
 
 
-def _current_recent_coverage(
+def _recent_window_coverage(
     tool_results: tuple[ToolResultRecord, ...],
 ) -> dict[str, object] | None:
-    """从当前 Run 的 recent records 汇总唯一消息数与最强 coverage 事实。"""
+    """仅在同一时间窗内汇总唯一消息数与最强 coverage 事实。"""
 
     observed: list[dict[str, object]] = []
     message_ids: set[str] = set()
@@ -1453,13 +1499,24 @@ def _attach_execution_facts(
 ) -> AnswerArtifact:
     """把当前 Run 的窗口与 retrieval limitation 编译进最终 Artifact。"""
 
-    resolved_time_range = _current_recent_time_range(tool_results)
-    retrieval_coverage = _current_recent_coverage(tool_results)
+    # 每组独立校验 coverage；多窗不再错误套用同窗 eligible_units 不变式。
+    windows = tuple(
+        RecentRetrievalWindow(time_range, _recent_window_coverage(records))
+        for time_range, records in _group_recent_records(tool_results)
+    )
+    # 唯一窗口继续使用原单值字段，多窗口通过独立事实列表表达。
+    resolved_time_range = windows[0].resolved_time_range if len(windows) == 1 else None
+    retrieval_coverage = windows[0].retrieval_coverage if len(windows) == 1 else None
+    if artifact.retrieval_windows and artifact.retrieval_windows != windows:
+        raise _model_error("TIME_RANGE_MISMATCH", "answer retrieval windows do not match Host tool windows")
+    if len(windows) > 1 and artifact.resolved_time_range is not None:
+        raise _model_error("TIME_RANGE_MISMATCH", "multi-window answer cannot claim a single resolved window")
+    if len(windows) > 1 and artifact.retrieval_coverage is not None:
+        raise _model_error("COVERAGE_MISMATCH", "multi-window answer cannot claim aggregate coverage")
     if (
         artifact.resolved_time_range is not None
         and resolved_time_range is not None
-        and _recent_time_range_key(artifact.resolved_time_range)
-        != _recent_time_range_key(resolved_time_range)
+        and _recent_time_range_key(artifact.resolved_time_range) != _recent_time_range_key(resolved_time_range)
     ):
         raise _model_error(
             "TIME_RANGE_MISMATCH",
@@ -1488,9 +1545,8 @@ def _attach_execution_facts(
             resolved_time_range=resolved_time_range
             if resolved_time_range is not None
             else artifact.resolved_time_range,
-            retrieval_coverage=retrieval_coverage
-            if retrieval_coverage is not None
-            else artifact.retrieval_coverage,
+            retrieval_coverage=retrieval_coverage if retrieval_coverage is not None else artifact.retrieval_coverage,
+            retrieval_windows=windows,
         )
     except AnswerContractError as exc:
         raise _model_error("INVALID_ANSWER_ARTIFACT", str(exc)) from exc

@@ -589,6 +589,7 @@ class QueryOrchestrator:
                     "limitations": answer_artifact.limitations,
                     "resolved_time_range": answer_artifact.resolved_time_range,
                     "retrieval_coverage": answer_artifact.retrieval_coverage,
+                    "retrieval_windows": [window.to_dict() for window in answer_artifact.retrieval_windows],
                     "finalization_status": finalization_diagnostics.status,
                     "user_answer_preserved": finalization_diagnostics.user_answer_preserved,
                     "dropped_field_count": finalization_diagnostics.dropped_field_count,

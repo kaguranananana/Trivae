@@ -66,6 +66,12 @@ class RecentMessagesCapability:
   唯一 message ID union 计算，且 basis、unit、eligible units、时间窗与单记录内部事实继续校验。
 - `resolved_time_range` 保留 integer millisecond boundary、UTC 文本和 half-open interval；
   citation message timestamp 必须落在同一窗口内。
+- 独立 recent 查询允许使用不同窗口；Host 按 resolved absolute boundary 分组，分别校验和汇总同窗 coverage。
+  `AnswerArtifact.retrieval_windows` 保存每窗的 `resolved_time_range/retrieval_coverage`，并经 codec 持久化。
+  多窗时既有两个单值字段为 null，不取首窗、最大窗或拼接总体覆盖率；单窗仍保留既有字段。
+  每条引用按其所属 Tool Result 的窗口检查，而非按其他工具的窗口检查。
+  单条 record 的 resolved boundary 与该 record query boundary 不一致仍是 `TIME_RANGE_MISMATCH`。
+  逐窗事实在 `evidence.prepare.completed` 中进入 normal Trace，避免追加到字段已满的 finalization 事件尾部。
 
 ### 4. Validation & Error Matrix
 
@@ -79,6 +85,7 @@ class RecentMessagesCapability:
 | `total_hits > returned_count` 且无 next cursor | Retrieval/coverage error；不得标记 complete |
 | recent record 缺 coverage、同窗 eligible units 冲突、唯一消息 union 超过最大已证明 coverage 或单记录内部 count/status 冲突 | `COVERAGE_MISMATCH`；不得进入 graceful recovery |
 | citation 越过 Host half-open window | `TIME_RANGE_MISMATCH`；不得删除 citation 后继续提交 |
+| 合法独立 recent 窗口不同 | 分组保存逐窗事实，正常完成；不视为同窗分页冲突 |
 | Tool Result token budget 不足 | projection 显式记录 omitted/truncated；canonical retrieval facts 保留 |
 | complete zero-result | 仅在成功、无 facts、无 incomplete limitation 时允许 `kind=no_result` |
 
@@ -107,6 +114,8 @@ class RecentMessagesCapability:
   payload 不复制完整消息正文。
 - Time/Evidence：archive_latest、UTC/毫秒一致性、citation half-open boundary、
   `TIME_RANGE_MISMATCH`/`COVERAGE_MISMATCH` 不被 recovery 吞掉。
+- Multi-window：嵌套、不相交窗口、同窗完整页加小 root、多窗引用越界、codec 与 SDK Query 提交/Trace 回放。
+  真实失败证据：`trace-4f2e4c48080a439f809ad3d79e3ee1d0` 同 Run 查询 2/15/10/6/3/1 天导致旧唯一窗口聚合报错。
 - Regression：lexical、semantic、structured、SQL、context、runtime、Trace、CLI/TUI/Web、
   Conversation codec 与 no-result 全量回归。
 

@@ -19,6 +19,7 @@ from trivae.query.evidence import (
     EvidenceSource,
     MessageDisplaySnapshot,
     MessageSource,
+    RecentRetrievalWindow,
     SourceReference,
     StructuredSource,
 )
@@ -167,6 +168,8 @@ def _artifact_to_dict(artifact: AnswerArtifact) -> dict[str, object]:
             if artifact.retrieval_coverage is None
             else dict(artifact.retrieval_coverage)
         ),
+        # 逐窗编码，历史回放不能重新推导或丢失当时的覆盖状态。
+        "retrieval_windows": [window.to_dict() for window in artifact.retrieval_windows],
     }
 
 
@@ -335,6 +338,19 @@ def _parse_artifact(value: object) -> AnswerArtifact:
     if raw_retrieval_coverage is not None and not isinstance(raw_retrieval_coverage, Mapping):
         raise ConversationCodecError("retrieval_coverage must be an object or null")
     try:
+        # 旧持久化记录没有此字段；缺省为空表示沿用其原有单窗事实。
+        windows = tuple(
+            RecentRetrievalWindow(
+                resolved_time_range=_mapping("window.resolved_time_range", _required(window, "resolved_time_range")),
+                retrieval_coverage=(
+                    None
+                    if window.get("retrieval_coverage") is None
+                    else _mapping("window.retrieval_coverage", window["retrieval_coverage"])
+                ),
+            )
+            for value in _sequence("retrieval_windows", raw.get("retrieval_windows", []))
+            for window in (_mapping("retrieval_windows item", value),)
+        )
         return AnswerArtifact(
             content_blocks=content_blocks,
             citation_bindings=bindings,
@@ -342,6 +358,7 @@ def _parse_artifact(value: object) -> AnswerArtifact:
             limitations=limitations,
             resolved_time_range=raw_time_range,
             retrieval_coverage=raw_retrieval_coverage,
+            retrieval_windows=windows,
         )
     except (TypeError, ValueError) as exc:
         raise ConversationCodecError("decoded answer artifact violates its domain contract") from exc

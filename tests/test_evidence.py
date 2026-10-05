@@ -1063,6 +1063,110 @@ def replace_source(source: MessageSource, **changes: str) -> MessageSource:
 class RuntimeEvidenceIntegrationTests(unittest.TestCase):
     """验证 SQLite search_messages 到 Validated Answer Artifact 的完整 M5 主链。"""
 
+    def test_multi_window_query_commits_answer_and_trace_facts(self) -> None:
+        """经过真实 SDK 工具回合的多窗答案必须完成提交，并在 Trace 保存逐窗事实。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "raw"
+            raw.mkdir()
+            write_export(
+                raw,
+                "runtime(100).json",
+                [
+                    make_message("m1", 1, 1_000, "早期学习讨论"),
+                    make_message("m2", 2, 3_000, "后续学习讨论"),
+                ],
+                chat_name="Runtime Session",
+                peer_uid=None,
+                version="5.5.64",
+            )
+            application = create_application(root / "runtime.sqlite3")
+            try:
+                application.import_directory(raw)
+                # 第一窗口完整，第二窗口只有一条；使用同回合多工具调用复现生产路径。
+                model = ScriptedModel(
+                    [
+                        ModelStep(
+                            output=[
+                                function_call(
+                                    "get_recent_messages",
+                                    {
+                                        "start_timestamp": 0,
+                                        "end_timestamp": 4_000,
+                                        "limit": 10,
+                                    },
+                                    call_id="window-1",
+                                ),
+                                function_call(
+                                    "get_recent_messages",
+                                    {
+                                        "start_timestamp": 2_000,
+                                        "end_timestamp": 4_000,
+                                        "limit": 10,
+                                    },
+                                    call_id="window-2",
+                                ),
+                            ]
+                        ),
+                        ModelStep(
+                            output=[
+                                assistant_message(
+                                    json.dumps(
+                                        {
+                                            "claims": [
+                                                {
+                                                    "text": "两个窗口都存在学习讨论。",
+                                                    "finding": "不同时间窗有消息",
+                                                    "criterion": "来源属于各自检索窗口",
+                                                    "sufficiency": "sufficient",
+                                                    "sources": ["m1-1", "m2-1"],
+                                                    "limitations": [],
+                                                }
+                                            ],
+                                            "limitations": [],
+                                        }
+                                    )
+                                )
+                            ]
+                        ),
+                    ]
+                )
+                application._agent_runtime = OpenAIAgentsRuntimeAdapter(
+                    application.capability_registry,
+                    model=model,
+                    max_turns=4,
+                )
+                result = asyncio.run(
+                    application.query(
+                        QueryRequest(
+                            "查看两个时期的学习讨论",
+                            ExecutionScope(allowed_session_ids=("qq:100",)),
+                            available_capabilities=("get_recent_messages",),
+                        )
+                    )
+                )
+                self.assertTrue(result.is_successful)
+                artifact = result.answer_artifact
+                assert artifact is not None
+                self.assertEqual(len(artifact.retrieval_windows), 2)
+                conversation = application.read_conversation(result.conversation_id or "")
+                self.assertEqual(
+                    conversation.messages[-1].answer_artifact.retrieval_windows, artifact.retrieval_windows
+                )
+                # 最终 Trace 与持久化使用同一投影，不能只保存空的单窗字段。
+                event = next(
+                    event
+                    for event in application.read_trace(result.trace_id).timeline
+                    if event.operation == "evidence.prepare.completed"
+                )
+                self.assertEqual(
+                    event.payload["retrieval_windows"], [window.to_dict() for window in artifact.retrieval_windows]
+                )
+            finally:
+                application.close()
+
+
     def test_search_result_provenance_reaches_validated_query_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

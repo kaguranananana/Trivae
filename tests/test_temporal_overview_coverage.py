@@ -548,6 +548,86 @@ class TemporalOverviewContractTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "TIME_RANGE_MISMATCH")
 
+    def test_independent_time_windows_finalize_with_separate_coverage(self) -> None:
+        """复现同一运行查询多窗；各窗独立覆盖事实必须能够提交并持久化。"""
+
+        for first_end, second_start, second_end, first_count in (
+            (WINDOW_END, BASE_TIMESTAMP + 5_000, WINDOW_END, 12),
+            (WINDOW_END, BASE_TIMESTAMP + 5_000, BASE_TIMESTAMP + 8_000, 12),
+            (BASE_TIMESTAMP + 4_000, BASE_TIMESTAMP + 5_000, BASE_TIMESTAMP + 8_000, 6),
+        ):
+            with self.subTest(second_start=second_start, second_end=second_end):
+                # 第一窗分别取完整页和较小 root，验证多窗支持不破坏同窗最强覆盖。
+                requests = (
+                    replace(self._first_request(limit=1_000), end_timestamp=first_end),
+                    replace(self._first_request(limit=3), end_timestamp=first_end),
+                    GetRecentMessagesInput(start_timestamp=second_start, end_timestamp=second_end, limit=1),
+                )
+                records = tuple(
+                    build_tool_result_record(
+                        run_id="run-multi-window",
+                        tool_call_id=f"run-multi-window/tool/{index}",
+                        tool_result_id=f"run-multi-window/tool/{index}/result",
+                        tool_name="get_recent_messages",
+                        envelope=self.tool.invoke(request, self.scope),
+                        scope=self.scope,
+                    )
+                    for index, request in enumerate(requests, start=1)
+                )
+                # 引用来自两个不同窗口，走实际 Finalizer 的 source hydration 与时间校验。
+                output = json.dumps(
+                    {
+                        "claims": [
+                            {
+                                "text": "两个窗口均有讨论，第二窗仅抽样。",
+                                "finding": "不同窗口存在消息",
+                                "criterion": "每条来源均属于对应工具的时间窗口",
+                                "sufficiency": "partial",
+                                "sources": [
+                                    records[index].message_source_handle(records[index].message_items[0])
+                                    for index in (0, 2)
+                                ],
+                                "limitations": [],
+                            }
+                        ],
+                        "limitations": [],
+                    },
+                    ensure_ascii=False,
+                )
+                artifact = finalize_answer(
+                    output,
+                    run_id="run-multi-window",
+                    tool_results=records,
+                    scope=self.scope,
+                )
+                self.assertIsNone(artifact.resolved_time_range)
+                self.assertIsNone(artifact.retrieval_coverage)
+                self.assertEqual(len(artifact.retrieval_windows), 2)
+                first, second = artifact.retrieval_windows
+                self.assertEqual(first.retrieval_coverage["status"], "complete")
+                self.assertEqual(first.retrieval_coverage["retrieved_count"], first_count)
+                self.assertEqual(second.resolved_time_range["resolved_start_timestamp"], second_start)
+                self.assertEqual(second.retrieval_coverage["status"], "partial")
+                self.assertEqual(second.retrieval_coverage["retrieved_count"], 1)
+                replay = deserialize_answer_artifact(serialize_answer_artifact(artifact))
+                self.assertEqual(replay.retrieval_windows, artifact.retrieval_windows)
+
+                # 即使时间戳落入另一个合法窗口，引用也必须属于自己的工具窗口。
+                invalid_item = replace(
+                    records[2].message_items[0],
+                    message=replace(records[2].message_items[0].message, timestamp=second_end),
+                )
+                invalid_record = replace(records[2], message_items=(invalid_item,))
+                with self.assertRaises(AnswerFinalizationError) as raised:
+                    finalize_answer(
+                        output,
+                        run_id="run-multi-window",
+                        tool_results=(*records[:2], invalid_record),
+                        scope=self.scope,
+                    )
+                self.assertEqual(raised.exception.code, "TIME_RANGE_MISMATCH")
+
+
     def test_recent_messages_cursor_rejects_modified_host_time_fact(self) -> None:
         cursor = self._page(None, limit=3).metadata.details["next_cursor"]
         assert isinstance(cursor, dict)
