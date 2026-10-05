@@ -1,0 +1,87 @@
+{
+  "trace_id": "trace-c61ed0f5f2c64fd88229d8c398be5947",
+  "searches": [
+    {
+      "keyword": "教程",
+      "returned_messages": 4,
+      "observed_messages": [
+        "有人懂 Agent 后训练吗，有没有好点的教程推荐"
+      ]
+    },
+    {
+      "keyword": "agent",
+      "returned_messages": 65,
+      "observed_messages": [
+        "后训练是提升agent workflow最有效的办法",
+        "有人懂 Agent 后训练吗，有没有好点的教程推荐",
+        "有没有家人看过《深入理解ai agent》这本书，怎么样呢"
+      ]
+    }
+  ],
+  "context_windows": [
+    {
+      "context_after": 2,
+      "returned_messages": 5,
+      "book_recommendation_visible": false,
+      "book_detail_visible": false,
+      "model_projection": {
+        "token_budget": 16000,
+        "estimated_tokens": 839,
+        "truncated": false,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "projected_messages": 5,
+        "projected_count": 5,
+        "omitted_messages": 0
+      }
+    },
+    {
+      "context_after": 8,
+      "returned_messages": 11,
+      "book_recommendation_visible": false,
+      "book_detail_visible": false,
+      "model_projection": {
+        "token_budget": 16000,
+        "estimated_tokens": 1405,
+        "truncated": false,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "projected_messages": 11,
+        "projected_count": 11,
+        "omitted_messages": 0
+      }
+    },
+    {
+      "context_after": 20,
+      "returned_messages": 23,
+      "book_recommendation_visible": true,
+      "book_detail_visible": false,
+      "model_projection": {
+        "token_budget": 16000,
+        "estimated_tokens": 2456,
+        "truncated": false,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "projected_messages": 23,
+        "projected_count": 23,
+        "omitted_messages": 0
+      }
+    },
+    {
+      "context_after": 40,
+      "returned_messages": 43,
+      "book_recommendation_visible": true,
+      "book_detail_visible": true,
+      "model_projection": {
+        "token_budget": 16000,
+        "estimated_tokens": 4163,
+        "truncated": false,
+        "omitted_context_messages": 0,
+        "omitted_hit_messages": 0,
+        "projected_messages": 43,
+        "projected_count": 43,
+        "omitted_messages": 0
+      }
+    }
+  ]
+}
