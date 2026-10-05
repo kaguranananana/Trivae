@@ -1,6 +1,6 @@
 ---
 name: trellis-finish-work
-description: "Wrap up the current session: verify quality gate passed, remind user to commit, archive completed tasks, and record session progress to the developer journal. Use when done coding and ready to end the session."
+description: "Wrap up the current session: verify task changes are committed, archive completed tasks, record the developer journal, and push under the project's standing authorization. Use when done coding and ready to end the session."
 ---
 
 # Finish Work
@@ -42,7 +42,7 @@ Then route:
 - **Any remaining path looks like current-task work** — bail out with:
   > "Working tree has uncommitted code changes from this task: `<list>`. Return to workflow Phase 3.4 to commit them before running ``finish-work` (Trellis command)`."
 
-  Do NOT run `git commit` here. Do NOT prompt the user to commit. The user goes back to Phase 3.4 and the AI drives the batched commit there.
+  Return to Phase 3.4 and automatically commit this task's verified changes under the project's standing authorization, then resume this skill. Do not request commit / push confirmation again.
 - **All remaining paths look unrelated** (other parallel-window work) — report them once and continue to Step 3:
   > "FYI, dirty files outside this task's scope — leaving them for the other window: `<list>`."
 - **Genuinely unsure** — ask the user once: "Are `<list>` this task's work I forgot to commit, or another window's? (commit / ignore)" — then route per their answer.
@@ -69,3 +69,9 @@ python3 ./.trellis/scripts/add_session.py \
 Use the work-commit hashes produced in Phase 3.4 (visible in Step 1's `Recent commits` list, or via `git log --oneline`) for `--commit`. Do not include the archive commit hashes from Step 3. This produces a `chore: record journal` commit.
 
 Final git log order: `<work commits from 3.4>` → `chore(task): archive ...` (one or more) → `chore: record journal`.
+
+## Step 5: Push all completed-task commits
+
+按照 `AGENTS.md` 与 `.trellis/spec/project/workflow.md` 第 6 节的长期授权，完成工作、归档与 journal 提交后自动推送，无需再次确认。已有 upstream 时执行 `git push`；未配置时，使用已确认的远端为当前分支设置 upstream。不得 amend 或 force push。用户对本任务明确要求暂不推送时遵从该要求。
+
+推送失败时保留已创建的提交，显式报告错误与“已提交、未推送”的状态并定位根因；只有推送成功后才能报告远端已同步。

@@ -8,7 +8,7 @@
 
 - **新任务**：先经 `task.py create` 进入 planning，产出 `prd.md`（复杂任务还需 `design.md` + `implement.md`），评审后 `task.py start` 进入实施。
 - **实施**：`trellis-implement`（或 inline 模式直接实现）→ `trellis-check` 质量检查 → lint / type-check / tests 全绿。
-- **收尾**：`trellis-update-spec` 沉淀新知 → 批量 commit → `/trellis:finish-work` 归档并记录会话。
+- **收尾**：`trellis-update-spec` 沉淀新知 → 自动批量 commit → `/trellis:finish-work` 归档并记录会话 → 自动 push。
 
 ## Agent 执行闭环
 
@@ -66,11 +66,16 @@
 - 普通小 Bug：不制造文档。
 - 新约定 / 教训：`trellis-update-spec` 写入对应 spec。
 
-### 6. 提交规范
+### 6. 自动提交与推送规范
 
+- 每次任务完成且相关验证通过后，自动提交并推送本任务的改动，无需再次请求 commit / push 确认；未创建 Trellis task 的小任务同样适用。用户针对某次任务明确要求暂不提交或暂不推送时，以该次要求为准。
 - 按 Trellis Phase 3.4：工作 commit 在前，归档 + journal 等 bookkeeping commit 在后。
-- 不 amend、不 push（除非用户明确要求）。
+- 只暂存本任务负责的改动，不混入其他任务或用户已有的未提交改动，不使用 `git add .`；没有新改动时不创建空提交。
 - commit message 与仓库既有风格保持一致。
+- 完成归档、journal 等收尾提交后统一 push；无需 Trellis 收尾的小任务在工作提交后直接 push。
+- 已配置 upstream 时执行 `git push`；未配置时，使用已确认的远端为当前分支设置 upstream。不 amend、不 force push。
+- 验证、commit 或 push 失败时，显式报告错误与当前状态并优先定位根因；push 成功前不得声称远端已同步。
+- 本约定是用户的长期授权，覆盖 Trellis 模板中的提交确认与禁止推送默认规则。
 
 ## 当前阶段约束（Stage 1.10 Evaluation 与 Stage 1.11 Application Boundary 架构 completed；Implementation / Calibration pending）
 

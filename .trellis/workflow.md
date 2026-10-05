@@ -148,7 +148,7 @@ python3 ./.trellis/scripts/get_context.py --mode phase --step <X.Y>  # detailed 
 ```
 Phase 1: Plan    → classify, get task-creation consent, then write planning artifacts
 Phase 2: Execute → implement only after task status is in_progress
-Phase 3: Finish  → verify, update spec, commit, and wrap up
+Phase 3: Finish  → verify, update spec, auto-commit, wrap up, and push
 ```
 
 ### Request Triage
@@ -227,6 +227,7 @@ Sub-agent dispatch protocol applies to all platforms and all sub-agents, includi
 [workflow-state:in_progress]
 Tools: `trellis-implement` / `trellis-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `trellis-update-spec` is a skill. `trellis-check` exists as both; prefer the Agent form when verifying after code changes.
 Flow: `trellis-implement` -> `trellis-check` -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+Project authorization: commit this task's verified changes automatically, then push after all wrap-up commits. Do not ask for commit/push confirmation again; preserve unrelated dirty work. See `spec/project/workflow.md` section 6.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
 [/workflow-state:in_progress]
@@ -238,6 +239,7 @@ Dispatch prompt starts with `Active task: <task path from task.py current>`. Rea
 
 [workflow-state:in_progress-inline]
 Flow: `trellis-before-dev` -> edit -> `trellis-check` -> validation -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+Project authorization: commit this task's verified changes automatically, then push after all wrap-up commits. Do not ask for commit/push confirmation again; preserve unrelated dirty work. See `spec/project/workflow.md` section 6.
 Do not dispatch implement/check sub-agents in inline mode.
 Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, plus relevant spec/research loaded by skills.
 [/workflow-state:in_progress-inline]
@@ -246,7 +248,7 @@ Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, p
 - 3.2 Debug retrospective `[on demand]`
 - 3.3 Spec update `[required · once]`
 - 3.4 Commit changes `[required · once]`
-- 3.5 Wrap-up reminder
+- 3.5 Wrap up and push `[required · once]`
 
 > Note: step 3.1 was folded into 2.2 (last-iteration full-scope check) and 3.4 (commit preamble). Numbering kept stable to avoid breaking external references.
 
@@ -259,7 +261,7 @@ Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, p
      channel as the live blocks. -->
 
 [workflow-state:completed]
-Code committed. Run `/trellis:finish-work`; if dirty, return to Phase 3.4 first.
+Code committed. Run `/trellis:finish-work`, then push all task and wrap-up commits using the project's standing authorization. If this task still has uncommitted changes, return to Phase 3.4 first; leave unrelated dirty work alone.
 [/workflow-state:completed]
 
 ### Rules
@@ -614,35 +616,21 @@ The AI drives a batched commit of this task's code changes so `/finish-work` can
 
 4. **Draft a commit plan**. Group AI-edited files into logical commits (1 commit per coherent change unit, not 1 commit per file). Each entry: `<commit message>` + file list. List unrecognized files separately at the bottom.
 
-5. **Present the plan once, ask for one-shot confirmation**. Format:
-   ```
-   Proposed commits (in order):
-     1. <message>
-        - <file>
-        - <file>
-     2. <message>
-        - <file>
+5. **Execute under standing authorization**: the user has authorized automatic commits and pushes after every completed task (including small tasks without Trellis task artifacts). Briefly state the intended scope, then run `git add <files>` + `git commit -m "<msg>"` for each batch in order without requesting another confirmation. Leave unrecognized dirty files untouched. If there are no new changes, do not create an empty commit.
 
-   Unrecognized dirty files (NOT in any commit — confirm include/exclude):
-     - <file>
-     - <file>
+6. **Continue to wrap-up**: run Phase 3.5, then push after all archive and journal commits are created. If this task needs no Trellis bookkeeping, push directly after its work commits.
 
-   Reply 'ok' / '行' to execute. Reply with edits, or '我自己来' / 'manual' to abort.
-   ```
-
-6. **On confirmation**: run `git add <files>` + `git commit -m "<msg>"` for each batch in order. Do not amend. Do not push.
-
-7. **On rejection** (user replies "不行" / "我自己来" / "manual" / any pushback on the plan): stop. Do not attempt a second plan. The user will commit by hand; you skip ahead to 3.5 once they confirm.
+7. **Honor task-specific instructions**: if the user explicitly requests no commit, no push, or manual handling for this task, follow that request instead of the standing default.
 
 **Rules**:
 - No `git commit --amend` anywhere — three-stage three-commit flow (work commits → archive commit → journal commit).
-- Never push to remote in this step.
-- If the user wants different message wording but accepts the file grouping, edit the message and re-confirm once — but if they reject the grouping, exit to manual mode.
-- The batched plan is one prompt; do not prompt per commit.
+- Push after all task and bookkeeping commits are ready, as required by Phase 3.5.
+- Follow the repository's commit-message style; do not prompt for routine message wording or per-commit approval.
+- Verification, commit, or push failures must remain visible. Report the error and completed steps; diagnose the root cause before claiming completion.
 
-#### 3.5 Wrap-up reminder
+#### 3.5 Wrap up and push `[required · once]`
 
-After the above, remind the user they can run `/finish-work` to wrap up (archive the task, record the session).
+Run `/trellis:finish-work` to archive the completed task and record the session when applicable. Then automatically push all resulting commits. With an existing upstream, use `git push`; without one, set the current branch's upstream on the confirmed remote. Do not amend or force-push. Report successful synchronization only after push succeeds. The project rules in `spec/project/workflow.md` section 6 apply to every task, including tasks without Trellis artifacts.
 
 ---
 
