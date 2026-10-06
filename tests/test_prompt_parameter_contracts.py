@@ -706,3 +706,42 @@ def test_p15_sql_write_and_ddl_rejected_through_real_sdk(sql):
         assert "Writes, DDL" in tool.description
     finally:
         fixture.tearDown()
+
+
+def test_p16_sql_scope_is_enforced_outside_model_sql_through_real_sdk():
+    """SQL未写WHERE也只返回trusted scope，显式main读取不能扩展权限。"""
+    from tests import test_stage_c_tools as fixtures
+
+    fixture = fixtures.StageCToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        context = RuntimeContext(
+            scope=ExecutionScope(allowed_session_ids=("qq:100",), start_timestamp=2_000,
+                                 end_timestamp=5_000, max_results=10),
+            capability_registry=app.capability_registry,
+            available_capabilities=("execute_sql",),
+            run_id="sql-scope",
+        )
+        tool = ExecuteSQLSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=10)
+        assert "trusted session/time scope is enforced by the tool" in tool.description
+
+        async def check():
+            for call_id, sql, expected in (
+                ("scoped", "SELECT COUNT(*) AS total FROM messages", "ok"),
+                ("escape", "SELECT COUNT(*) AS total FROM main.messages", "error"),
+            ):
+                context.allocate_tool_call_id(call_id)
+                wrapper = ToolContext(context=context, tool_name="execute_sql", tool_call_id=call_id,
+                                      tool_arguments=json.dumps({"sql": sql}))
+                # 直接走正式SDK，所有scope只能来自不可由模型参数覆盖的local context。
+                response = await tool.on_invoke_tool(wrapper, wrapper.tool_arguments)
+                assert response["status"] == expected
+                if expected == "ok":
+                    assert response["data"]["rows"] == [{"total": 3, "source_id": "s1-1"}]
+                else:
+                    assert response["error"]["code"] == "SQL_SCOPE_VIOLATION"
+
+        asyncio.run(check())
+    finally:
+        fixture.tearDown()

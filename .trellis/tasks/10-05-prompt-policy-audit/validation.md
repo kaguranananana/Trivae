@@ -256,3 +256,5 @@ H05：V01实证首工具终止丢失usage→ScriptedModel复现→保存SDK Tool
 F02：生产query复现claims强负面虽Finalizer valid仍错误；实际模型input未见M12，fixture GT包含用户A推荐。static241 passed in2.48s，Ruff/mypy116通过；0新API。接受诊断fixture，不接受脚本负面答案。
 
 F03：after20/40通过正式query送达下一轮SDK input；推荐M12均可见、PyTorch补充仅40可见，source resolver回到用户A。两case通过；static243 passed in2.35s，Ruff/mypy116通过；0新API，不证明模型会自行选窗。
+
+P16：真实SDK count3及SQL_SCOPE_VIOLATION边界通过；static244 passed in2.45s，Ruff/mypy116通过；无Runtime改动，0新API，仅L0候选，不能借用P15的V01筛选结论。

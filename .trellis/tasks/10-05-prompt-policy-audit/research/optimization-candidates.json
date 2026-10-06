@@ -88,5 +88,11 @@
     "rule": "P39:write_ddl",
     "file": "prompt-p15.txt",
     "removed": ", writes, or DDL"
+  },
+  {
+    "iteration": "P16",
+    "rule": "P39:scope_fact",
+    "file": "prompt-p16.txt",
+    "removed": " and scope-enforced outside the SQL text"
   }
 ]

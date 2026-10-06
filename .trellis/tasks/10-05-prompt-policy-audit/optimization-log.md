@@ -312,3 +312,12 @@
 - 两个ScriptedModel case走完整Application.query：after20/40的最终SDK model.input都含M12书籍推荐；只有after40含M33 PyTorch补充。真实citation解析到qq:100:M12/用户A与推荐excerpt，不以邻近作者或数据库命中替代。
 - Static243 passed in2.35s；Ruff/mypy116通过；真实Provider=0、new tokens=0、cost=0。
 - Accepted=送达fixture；模型选20/40与答案质量仍须真实筛选，这两个预设调用不是Prompt语义等价证据。与F02共同保留局部窗/穷尽负面的边界。
+
+## P16：SQL trusted scope的既有Host事实
+
+- Commit：本节所属`refactor(prompt): move SQL scope enforcement fact to the tool contract`。
+- Scope=P39:scope_fact；Risk=低；Owner=原Capability/scoped SQLite/Tool description；Expected/Maximum calls=0/0。
+- Removed=40字符；Moved=Base候选→既有Tool/Host；Reworded=无；Added=1真实SDK test；Runtime变化=无。
+- SDK正向count只返回scope内3条；main escape实际拒绝SQL_SCOPE_VIOLATION。物理row预期修为真实带s1-1的SDK row，原count/拒绝断言不改。
+- Static244 passed in2.45s；Ruff/mypy116通过；Real=0；新Provider/tokens/cost=0；本会话既有V01仍2请求，不误报累计0。
+- Accepted=L0候选；production不动，累计19,736字符；保留原read-only事实和整个禁止扩大访问/停止指导。
