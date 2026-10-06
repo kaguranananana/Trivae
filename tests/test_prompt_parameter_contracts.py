@@ -1000,3 +1000,40 @@ def test_c23_recent_filter_schema_and_legal_forms_preserve_time_defaults(form):
         array = next(branch for branch in schema["anyOf"] if branch["type"] == "array")
         assert array["minItems"] == 1
         assert {"type": "null"} in schema["anyOf"] and schema["default"] is None
+
+
+@pytest.mark.parametrize(
+    "adapter,name", [(LexicalSearchSDKToolAdapter, "lexical_search"), (SearchMessagesSDKToolAdapter, "search_messages")]
+)
+def test_lexical_keyword_schema_exposes_existing_whitespace_and_semantics(adapter, name):
+    """共享参数说明公开原有AND语义，不把多个词误解为必须相邻的整句。"""
+    tool, _, _ = sdk_boundary(adapter, name, {"keyword": "alpha beta"})
+    description = tool.params_json_schema["properties"]["keyword"]["description"]
+    assert "Whitespace-separated terms use AND matching" in description
+    assert "need not be adjacent" in description
+
+
+def test_lexical_whitespace_terms_match_nonadjacent_and_reversed_terms(tmp_path):
+    """四条人工可读消息证明AND已由真实SQLite执行，单词和整句不同。"""
+    from tests.test_ingestion import make_message, write_export
+    from trivae.bootstrap.application import create_application
+    from trivae.retrieval.structured import LexicalQuery
+
+    # 两个单词分别出现不足以匹配；后两条在同一消息中包含全部词。
+    texts = ["alpha", "beta", "alpha middle beta", "beta alpha"]
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    # 固定消息ID和顺序，便于人工核对命中集合，不调用真实Provider。
+    messages = [make_message(f"m{index}", index, 1_768_435_200_000 + index, text)
+                for index, text in enumerate(texts, 1)]
+    write_export(raw, "terms(100).json", messages, chat_name="Terms", peer_uid=None, version="5.5.64")
+    with create_application(tmp_path / "terms.sqlite3") as application:
+        application.import_directory(raw)
+        # Import不自动生成derived index，按正式生命周期显式构建这个小fixture。
+        application.rebuild_lexical_index()
+        # 零局部窗口隔离关键词匹配本身，避免旁观消息被当成直接命中。
+        result = application.lexical_retrieval.search(
+            LexicalQuery(keyword="alpha beta", limit=10, context_before=0, context_after=0)
+        )
+    assert result.total_hits == 2
+    assert {message.normalized_content for message in result.expanded_messages} == set(texts[2:])

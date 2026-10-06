@@ -196,7 +196,7 @@ class SearchMessagesSDKToolAdapter:
             """只接受 typed 字段；scope、registry 和 call identity 都来自 local context。
 
             Args:
-                keyword: Exactly one non-empty search string, not an array.
+                keyword: Exactly one non-empty search string, not an array. Whitespace-separated terms use AND matching and need not be adjacent.
                 session_ids: Optional non-empty session ID array; use null when unused.
                 start_timestamp: Optional integer inclusive lower bound in milliseconds.
                 end_timestamp: Optional integer exclusive upper bound in milliseconds.

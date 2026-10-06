@@ -962,3 +962,5 @@ Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、�
 - 首工具实验choice与usage在ScreeningRuntime新run构造入口共同重置，CLI不重复管理；顺序复用同一Runtime的Application.query不能跨run积累choice。实验仍按case顺序执行，此修复不建立并行run支持。
 
 - 连续Prompt实验可在原ProviderCallBudget hook指定shared ledger与总上限。顺序跨脚本在发送前读取/占用并持久记录，禁止清零/扩大已有上限；local上限同时生效。用户本批授权80新增HTTP，历史观测不重算；此机制仅实验，不改变生产Query预算或Provider重试。
+
+- lexical keyword仍为一个字符串；空白分隔term由LexicalQuery.terms和FTS literal AND执行，不要求不同term相邻或同顺序。共享SDK字段说明公开该已有语义，四消息fixture验证非相邻/逆序命中与单词排除。不要用语义结果的partial/basis标签推断index缺失，核对metadata.index_status和实际index state。
