@@ -942,3 +942,7 @@ Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、�
 - get_schema strict空Schema与SDK入口共同落实无参数；SDK空串/空对象合法形式不变。额外字段在SDK忽略之前显式拒绝，JSON失败保留异常链。Schema单独禁止additionalProperties不能证明函数执行已拒绝。
 - 每条迁移除全文精确删除测试，还须验证删除片段属于对应matrix规则的当前原文。旧审计行号不能直接承接；相邻规则共用一行时用精确片段和最小行范围。组合候选按已声明片段顺序重建，不靠总行覆盖推断语义归属。
 - 完整相同句子才属于literal dedup；大小写/主语/范围不同的近似重复保持敏感策略标签。新SDK合同与历史frozen不同必须显式拒绝或进入单独审计，不自动修改历史artifact条件、不默认为同条件配对。L0候选不能直接替换production。
+
+- recent.limit、显式get_message_context窗口、SQL max_rows现在也以strict整数/minimum执行，nullable SQL cap仍允许省略/null。显式context保持8/8默认，Host限制before+anchor+after共享总量，不额外限制单侧或替模型选择20/40。
+- get_message_context身份互斥实际由SDK函数体Host guard执行，Schema仍无oneOf；不能把optional字段误称为互斥Schema。SQLite execute/authorizer执行单语句及写入/DDL拒绝，Tool错误透明；Base删除仅在开发候选，production原文保留至语义发布gate。
+- 冻结结果仍须精确匹配全部非Prompt条件；当前SDK修改与旧frozen tool_contract不相等。失败信息列出漂移顶层字段，不允许为了复用旧记录重绑或忽略新Schema。H04只改善诊断，不放宽门禁。

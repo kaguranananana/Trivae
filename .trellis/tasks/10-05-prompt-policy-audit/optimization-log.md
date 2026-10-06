@@ -267,3 +267,11 @@
 - Scope=A02 P39更新脚本丢失行尾分隔符；Risk=文档低；Provider预计/最多=0/0。
 - 新10列断言复现1 failed，修复唯一行尾；不放宽引用/owner/预算断言。原测试只核对非空字段，未发现Provider预算列被解析器丢弃。
 - Prompt/Runtime变化=无；修复后责任定位与全列通过。Accepted=文档/检查修复；Provider/tokens/cost=0。
+
+## H04：冻结条件漂移诊断
+
+- Commit：本节所属`fix(evaluation): identify drifted frozen baseline conditions`。
+- Scope=verify_frozen_baseline失败信息；Risk=低离线；Prompt变化=无；Owner=screening条件比较；Expected/Maximum calls=0/0。
+- 复现1 failed：既有拒绝只能报drifted，无法定位本批实际tool_contract漂移。现在列出变化的顶层字段，如tool_budget/tool_contract；条件精确相等要求不变，不打印完整条件值、不重绑历史合同。
+- Static240 passed in2.46s；Ruff/mypy116通过；新增实证诊断断言，原完全相等合法路径保持。
+- Accepted=诊断改进；Real=0；Provider=0、tokens=0、cost=0。旧frozen仍不可冒充当前SDK baseline。

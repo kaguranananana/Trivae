@@ -114,8 +114,19 @@ def verify_frozen_baseline(
         raise EvaluationContractError("frozen prompt does not match the production baseline")
     if not artifact.get("commit") or not artifact.get("run") or not artifact.get("trace"):
         raise EvaluationContractError("frozen baseline requires commit, evaluation run and trace")
-    if artifact.get("conditions") != dict(conditions):
-        raise EvaluationContractError("frozen execution conditions drifted; refusing provider call")
+    frozen_conditions = artifact.get("conditions")
+    # 冻结记录必须保留实际条件对象，缺失时显式指出契约错误。
+    if not isinstance(frozen_conditions, Mapping):
+        raise EvaluationContractError("frozen execution conditions must be an object")
+    if frozen_conditions != dict(conditions):
+        # 相等门禁保持不变；只列变化字段，不把整份请求或配置值塞进异常。
+        changed = sorted(
+            key for key in set(frozen_conditions) | set(conditions)
+            if key not in frozen_conditions or key not in conditions or frozen_conditions[key] != conditions[key]
+        )
+        raise EvaluationContractError(
+            f"frozen execution conditions drifted ({', '.join(changed)}); refusing provider call"
+        )
 
 
 def read_artifact(path: Path) -> dict[str, Any]:

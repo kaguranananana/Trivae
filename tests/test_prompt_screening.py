@@ -261,3 +261,17 @@ def test_cli_does_not_repeat_baseline_or_probe_and_rejects_regression_before_pro
                                    "--review", "regression", *common])
     asyncio.run(cli.execute(args))
     assert json.loads(capsys.readouterr().out) == {"decision": "rejected", "provider_calls": 0}
+
+
+def test_frozen_baseline_drift_names_changed_conditions_without_dumping_values():
+    """新SDK与旧冻结记录的真实差异可定位，仍拒绝复用，不输出完整请求或值。"""
+    original = {**conditions(), "tool_contract": [{"name": "execute_sql", "schema": {"minimum": 1}}]}
+    frozen = {"kind": "frozen_baseline", "prompt": SYSTEM_PROMPT, "commit": "baseline",
+              "conditions": original, "run": {"run_id": "frozen"}, "trace": {"trace_id": "trace"}}
+    changed = {**original, "tool_contract": [{"name": "execute_sql", "schema": {"minimum": 0}}], "tool_budget": 4}
+    with pytest.raises(EvaluationContractError) as error:
+        verify_frozen_baseline(frozen, changed, SYSTEM_PROMPT)
+    assert str(error.value) == "frozen execution conditions drifted (tool_budget, tool_contract); refusing provider call"
+    assert "minimum" not in str(error.value)
+    # 完全相同的原条件仍能复用，诊断改进不能偷偷放宽或收紧相等条件。
+    verify_frozen_baseline(frozen, original, SYSTEM_PROMPT)
