@@ -470,3 +470,72 @@ def test_p11_context_total_at_transport_bound_remains_legal():
     )
     response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
     assert response["status"] == "ok" and len(handler.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "arguments", [{}, {"source_id": None, "message_id": None}, {"source_id": "m1-1", "message_id": "qq:100:a2"}]
+)
+def test_p12_identity_cardinality_host_already_rejects(arguments):
+    """正式SDK函数体已在resolver/registry之前确定性拒绝零身份及双身份。"""
+    tool, wrapper, handler = sdk_boundary(GetMessageContextSDKToolAdapter, "get_message_context", arguments)
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+    assert handler.calls == []
+
+
+def test_p12_cardinality_remains_visible_in_tool_and_field_descriptions():
+    """互斥公开指导已有；不误称仅两个optional字段就形式化了oneOf。"""
+    tool, _, _ = sdk_boundary(GetMessageContextSDKToolAdapter, "get_message_context", {})
+    assert "Provide exactly one identity parameter" in tool.description
+    for field in ("source_id", "message_id"):
+        assert "never both" in tool.params_json_schema["properties"][field]["description"]
+
+
+def test_p12_real_projection_supports_both_single_identity_forms_and_null():
+    """实际search→source resolver→canonical context，覆盖省略/null的四种合法身份参数。"""
+    from tests import test_stage_b_tools as fixtures
+
+    fixture = fixtures.StageBToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        app.rebuild_lexical_index()
+        context = RuntimeContext(
+            scope=ExecutionScope(max_results=10),
+            capability_registry=app.capability_registry,
+            available_capabilities=("lexical_search", "get_message_context"),
+            run_id="identity-count",
+        )
+        wrapper = ToolContext(context=context, tool_name="lexical_search", tool_call_id="anchor", tool_arguments="{}")
+        search = LexicalSearchSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=10)
+        tool = GetMessageContextSDKToolAdapter(app.capability_registry).as_sdk_tool()
+
+        async def check():
+            context.allocate_tool_call_id("anchor")
+            projection = await search.on_invoke_tool(
+                wrapper, json.dumps({"keyword": "anchor context", "limit": 10, "context_before": 0, "context_after": 0})
+            )
+            source_id = projection["provenance"]["message_sources"][0]["source_id"]
+            canonical = context.resolve_message_source_handle(source_id)
+            assert canonical == "qq:100:a2"
+            arguments = [
+                {"source_id": source_id},
+                {"source_id": source_id, "message_id": None},
+                {"message_id": canonical},
+                {"message_id": canonical, "source_id": None},
+            ]
+            for index, identity in enumerate(arguments):
+                call_id = f"identity-{index}"
+                context.allocate_tool_call_id(call_id)
+                # 与生产Runner一致，每次调用的ToolContext元信息必须使用当前tool/call。
+                wrapper.tool_name = "get_message_context"
+                wrapper.tool_call_id = call_id
+                wrapper.tool_arguments = json.dumps(identity)
+                response = await tool.on_invoke_tool(wrapper, wrapper.tool_arguments)
+                assert response["status"] == "ok"
+                # 原Host resolver使用当前run的真实投影，不把handle当作canonical ID。
+                assert context.resolve_message_source_handle(source_id) == canonical
+
+        asyncio.run(check())
+    finally:
+        fixture.tearDown()

@@ -235,3 +235,5 @@ Context收口：新增长matrix会被注入截断、code context条目不合约�
 P10：5失败/9通过复现→static190 passed in1.84s，Ruff/mypy116通过；真实Host超上界零retrieval；时间默认/互斥/cursor不改。0Provider/0tokens/0cost。
 
 P11：11失败/3通过复现→static204 passed in1.90s，Ruff/mypy116通过；shared总量边界/默认8/8/0-20/0-40保持，真实fixture8项通过；0Provider。
+
+P12：原Host零/双身份实际拒绝，四种合法单身份/null真实projection通过；测试旧call ID问题按Runner修正。static209 passed in2.37s，Ruff/mypy116通过；无Runtime/Schema结构变更，0API。

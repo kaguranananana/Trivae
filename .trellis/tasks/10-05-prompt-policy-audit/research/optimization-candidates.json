@@ -64,5 +64,11 @@
     "rule": "P61",
     "file": "prompt-p11.txt",
     "removed": "Keep\ncontext_before/context_after non-negative and bounded. "
+  },
+  {
+    "iteration": "P12",
+    "rule": "P60:cardinality",
+    "file": "prompt-p12.txt",
+    "removed": "provide exactly one identity parameter. "
   }
 ]

@@ -215,3 +215,13 @@
 - Static=204 passed in1.90s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
 - Accepted=contract/L0；生产原文保留，候选19,903字符。选窗description和所有discussion/negative/time/stop/routing字节不改。
 - 下一轮自动P12：只验证身份恰一参数的既有Host执行和可见字段description；不改变canonical ID/锚点选择。
+
+## P12：验证已承接的身份恰一参数
+
+- Commit：本节所属`refactor(prompt): remove host-enforced context identity cardinality guidance`。
+- Scope=P60:cardinality；Risk=低；Owner=现有SDK函数体Host guard；Expected/Maximum calls=0/0。
+- Removed=40字符；Moved=Base候选→既有Host guard/Tool字段description；Reworded=无；Added=5 tests；Runtime/Schema结构未改。
+- Formal Schema无oneOf的事实保留；不以两个optional字段推定互斥。实际Host明确拒绝零/双身份且registry零调用，工具及字段description仍提供同一可见要求。
+- 首次真实projection测试call ID未更新导致source handle重复；修测试调用元信息，保持原resolver断言，没有产品兼容补丁。四种合法单身份/null形式成功。
+- Static=209 passed in2.37s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- Accepted=已有Host承接验证/L0候选；生产原文不动，累计19,863字符。下一轮自动P13，只审计SQL参数形状与max_rows类型，不碰SQL routing/error stopping。
