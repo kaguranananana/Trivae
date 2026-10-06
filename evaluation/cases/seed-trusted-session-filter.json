@@ -2,7 +2,7 @@
   "schema_version": 1,
   "case_id": "seed-trusted-session-filter",
   "version": 1,
-  "suite_tags": ["design_seed", "trusted_session_filter"],
+  "suite_tags": ["design_seed", "trusted_session_filter", "identity"],
   "dataset_snapshot": {"snapshot_id": "snapshot:bind-at-run", "canonical_database_identity": "sqlite-canonical:bind-at-run", "schema_version": "canonical-m1-v1", "source_identity": "source:bind-at-run", "message_count": 0, "relevant_time_range": [null, null], "deterministic_fingerprint": "manifest:bind-at-run", "created_at": "2026-08-23T00:00:00+00:00", "status": "unavailable", "manifest": {"binding": "explicit snapshot materialization required"}},
   "data_access_scope": {"allowed_session_ids": ["session:trusted"], "start_timestamp": null, "end_timestamp": null, "max_results": 5},
   "query": "只在指定 session 中查找 DeepSeek 的讨论。",

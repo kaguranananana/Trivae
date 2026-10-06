@@ -2,7 +2,7 @@
   "schema_version": 1,
   "case_id": "seed-semantic-paraphrase-retrieval",
   "version": 1,
-  "suite_tags": ["design_seed", "semantic_retrieval", "lexical_semantic_comparison"],
+  "suite_tags": ["design_seed", "semantic_retrieval", "lexical_semantic_comparison", "retrieval"],
   "dataset_snapshot": {
     "snapshot_id": "snapshot:bind-at-run",
     "canonical_database_identity": "sqlite-canonical:bind-at-run",

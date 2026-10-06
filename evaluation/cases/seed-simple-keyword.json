@@ -2,7 +2,7 @@
   "schema_version": 1,
   "case_id": "seed-simple-keyword-retrieval",
   "version": 1,
-  "suite_tags": ["design_seed", "simple_keyword_retrieval"],
+  "suite_tags": ["design_seed", "simple_keyword_retrieval", "retrieval"],
   "dataset_snapshot": {
     "snapshot_id": "snapshot:bind-at-run",
     "canonical_database_identity": "sqlite-canonical:bind-at-run",

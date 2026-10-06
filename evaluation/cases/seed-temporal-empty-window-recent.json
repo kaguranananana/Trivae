@@ -2,12 +2,7 @@
   "schema_version": 1,
   "case_id": "seed-temporal-empty-window-recent",
   "version": 1,
-  "suite_tags": [
-    "design_seed",
-    "temporal_overview",
-    "empty_window",
-    "no_result_contract"
-  ],
+  "suite_tags": ["design_seed", "temporal_overview", "empty_window", "no_result_contract", "temporal", "recent", "no_result", "negative"],
   "dataset_snapshot": {
     "snapshot_id": "snapshot:bind-at-run",
     "canonical_database_identity": "sqlite-canonical:bind-at-run",
