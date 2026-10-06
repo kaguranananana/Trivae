@@ -261,3 +261,9 @@
 - 同步P10–P15实际SDK/Host owner与L0状态，保留Current wording、Rule ID、行范围、其余高风险政策，不把局部承接写成整条可删。
 - 正式Schema无oneOf、默认8/8与20/40、unknown schema/时间/停止依然模型负责；旧frozen工具合同不可沿用事实保留。
 - Accepted=审计状态更新；0Provider/0tokens/0cost。
+
+## A03：矩阵列完整性根因修复
+
+- Scope=A02 P39更新脚本丢失行尾分隔符；Risk=文档低；Provider预计/最多=0/0。
+- 新10列断言复现1 failed，修复唯一行尾；不放宽引用/owner/预算断言。原测试只核对非空字段，未发现Provider预算列被解析器丢弃。
+- Prompt/Runtime变化=无；修复后责任定位与全列通过。Accepted=文档/检查修复；Provider/tokens/cost=0。

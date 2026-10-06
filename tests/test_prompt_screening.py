@@ -207,6 +207,8 @@ def test_static_prompt_responsibility_mapping_covers_exact_production_wording():
     assert len(rows) == 92
     covered = set()
     for index, fields in enumerate(rows, 1):
+        # 十列均须保留；缺结尾分隔符会丢失Provider预算列，不能让定位测试漏检。
+        assert len(fields) == 10
         assert fields[0].strip() == f"P{index:02d}"
         span = fields[2].strip().removeprefix("prompt.py L").split("–")
         start, end = int(span[0]), int(span[-1])
