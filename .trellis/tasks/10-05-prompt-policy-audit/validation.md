@@ -155,3 +155,45 @@ Structured Outputs、必要 Schema bounds/互斥、日期解析、no_result 的�
 ## 阶段性提交授权（2026-10-06）
 
 用户明确要求先提交并推送当前部分。此次提交保存审计/实施文档、完整候选与测试 patch、配对脚本及失败报告；运行源码和测试仍为原版，任务仍为 in_progress，不归档。私人消息、实际完整请求与数据库快照继续只留在 ignored experiment 目录中。推送是否成功以实际 Git 命令结果为准。
+
+# 低成本持续优化阶段（2026-10-06，接续9256550）
+
+## 本轮结论
+
+完成A00责任矩阵、H01低成本筛选入口、F01 synthetic fixture、P01单一limit契约迁移候选、H02历史生产Baseline零API导入、H03重复边界收口。每项独立commit，历史失败candidate/patch/配对结果完全保留。
+
+**Production SYSTEM_PROMPT仍原版20,450字符，逐字未改。** P01开发候选仅删104字符机械limit片段，20,346字符；L0通过，未做真实semantic gate，不发布。产品SDK唯一改动是lexical/legacy limit严格正整数校验，合法默认与范围边界不变；原SDK把true/2.0转换成整数的真实失败由字段约束修复。不能说所有工具参数已迁移：context/dense/query/互斥/游标/get_schema仍有矩阵所列缺口。
+
+责任分布：92条完整Base位置映射，A79、C10、D8、E16、F4、G60（重叠），B另列5项动态事实。保持Discussion/Negative/Temporal/Stop/Retrieval routing原文顺序；清单选择最大limit仍是模型语义策略，maximum不能代替它。ChatLab实际builder和semantic-search-guidance已检查，职责分层可借鉴，但归档时间/handle/claims等Trivae契约不复制改写。
+
+## 实际验证与费用
+
+- 初始相关baseline：31 passed（agent surface/context/evaluation/SQL）。
+- H01：26 passed（含7项新增screening）；F01：8 passed；P01 static CLI：77 passed；H02新增拒绝旧candidate；H03新增mapping/重复边界。
+- 最终全量：`uv run --all-extras pytest -q` → **697 passed in18.11s**。
+- `uv run --all-extras ruff check src tests scripts/run_prompt_screening.py scripts/freeze_recorded_prompt_baseline.py` → passed。
+- `uv run --all-extras mypy src` → **116 source files passed**。
+- `git diff --check`与`task.py validate` → passed。既有runtime spec超过32KiB自动注入上限的提示保留；主会话从原文件读取所需章节，不扩大注入预算。
+- Production Prompt相对9256550：无diff。候选全文=原文.replace(唯一目标片段,"",1)；92条原文mapping覆盖224/224行测试通过。
+- 真实DeepSeek调用：**0**；新input/output/total tokens：**0/0/0**；新增API费用：**0**。未执行real candidate、full gate、fresh baseline、semantic embedding preload、Judge API或Provider probe。
+- 六个历史baseline本地冻结及6/6生产SDK/schema/model_settings/settings/scope/snapshot原文reuse预检通过；历史token不算本轮费用。完整私有Trace/请求/答案在ignored data/evaluation/prompt-frozen-20261006，不提交。
+
+## Evidence / Semantic边界
+
+ScriptedModel首轮双工具选择全部记录，零Host工具调用，只有一个model turn；实验FirstToolProbeStop终态不作完整答案成功。freeze→candidate-only的正式Runner/Application集成只新增一次candidate run，比较状态pending_review。所有真实Provider实验都必须显式budget，HTTP hook逐attempt在发送前拒绝超额；明确工程失败停止后续case。
+
+Synthetic经过importer/Canonical/SDK projection/Finalizer：after8不见M12推荐，after20见M12/M13，after40见M33补充；作者、精确书名、资源URL、跨日关系、空查询有明确GT。有消息却提交no_result时被拒绝；合法claims里的强负面仍依赖模型语义判断/真实review。fixture不保证模型会选更大窗，不替代第二层真实snapshot。
+
+## Failure / Root cause记录
+
+P01修改前四个true/2.0拒绝断言实际失败，因为SDK先coerce而typed input已经看不到原类型；补Field(strict=True, ge=1)后非法类型/正值17个契约断言全部通过。越限由既有Capability拒绝，真实error code为INVALID_ARGUMENT，首测试误写码已修正，拒绝/零retrieval断言保持。
+
+开发脚本首个artifact serializer符号不存在，改用dataclass原结构与既有ReviewPacket；probe测试的事件名错误按collector的model.turn/started修正；candidate生成误用系统Python无法导入src布局，改uv后产物存在、原整串断言通过。这些属于明确工程错误与命令环境错误，没有fallback/retry/测试放宽或伪造通过。
+
+## Accepted / 下一步
+
+接受工程能力和P01确定性迁移的L0开发候选；**不接受为生产semantic-equivalent replacement**。下轮最小范围是context_before/context_after非负的真实SDK+Host承接，不改20/40展开选择策略；仍默认0 real API。只有廉价漏斗通过、准备发布一批候选时才fresh paired gate。
+
+本轮工作已完成并提交；持续优化parent task保持in_progress，历史大改失败不转成完成，不归档其他任务。实际commit/push状态以本轮git输出为准。
+
+最终文档收口后再次执行static CLI：**80 passed in2.05s**，Ruff/mypy通过，provider ledger为0/0/0；较P01的77多H02/H03三项测试。以上是有新增边界后的定向回归，不是重复付费或追加real cases。

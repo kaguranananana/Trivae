@@ -69,3 +69,16 @@
 - Observed behavior difference：防止误将追加candidate repeat应用到fresh baseline；不改变正式Agent执行。低成本CLI仍默认repeat=1/预算0。
 - Synthetic/Real：全量测试均provider-free；没有追加真实case。Provider calls=0/tokens=0/cost=0。Accepted=是（工程边界）；无semantic release结论。
 - Unchanged high-risk policy：全部原生产文本保留。
+
+## 最终记录索引
+
+| Iteration | Commit | 状态 |
+| --- | --- | --- |
+| A00 | 68311b5 | 当前责任审计接受 |
+| H01 | 4f82408 | 低成本入口工程接受 |
+| F01 | 1fbb87e | 小fixture接受 |
+| P01 | e625b50 | strict limit contract接受；Prompt只接受L0候选 |
+| H02 | 2521295 | 6个历史baseline开发复用接受 |
+| H03 | 949c690 | 单候选追加repeat边界接受 |
+
+最后一次static CLI为80 passed in2.05s，0Provider/0tokens/0cost（H03增加3项测试后分母由77更新）；全量工程回归仍为697 passed。Production Prompt未变化。真实语义接受/发布仍未执行，不沿用历史completed/finalizer统计。

@@ -131,3 +131,7 @@ Can move now 指是否允许进入独立候选的最低层筛选，不表示可�
 实查 ChatLab `7b791785` 的 [prompt-builder.ts](https://github.com/ChatLab/ChatLab/blob/7b791785b7f72f3cee04728b0ddd2ab69c0b47d7/packages/node-runtime/src/ai/agent/prompt-builder.ts)：buildSystemPrompt 组合 role、skillDef/skillMenu 与 locked section；locked section 注入 currentDate、owner、mentionedMembers、dataSnapshot 与 evidence/output 指导。能力相关 [semantic-search-guidance.ts](https://github.com/ChatLab/ChatLab/blob/7b791785b7f72f3cee04728b0ddd2ab69c0b47d7/packages/node-runtime/src/ai/agent/semantic-search-guidance.ts) 提供 high-level evidence、semantic、exact/raw 的不同用途指导（文本依据 locale 选择；模块注释说明只在语义工具可用并暴露时由 runner 注入）。
 Trivae 已有动态 budget/Plan 与能力白名单，不需要新 Prompt builder。暂不复制 ChatLab 的机器日期、默认年份、ID 格式或 evidence prose；导入归档的 archive_latest、当前 source handle、claims/no_result contract 与真实 wide discussion failure 要求保留现有语义。P3 只在前序稳定后考虑同类条件注入。
 Baseline 身份使用生产 commit + 完整 Prompt 原文相等比较，避免新增摘要算法；已有 snapshot identity 保持原契约。冻结开发结果不能成为 release gate。
+
+## 审计之后的实施状态（不改写上方baseline原文）
+
+P01已补lexical/legacy limit真实SDK strict+ge，Host上限继续执行；17项参数测试与候选全文diff通过。P56机械片段可进入L0开发候选，生产原文暂留。C/D其他行没有被顺带删除；P64额外参数/get_schema、P57context等缺口仍待独立iteration。新筛选入口及六个本地Frozen Baseline已就绪，均未调用真实Provider。

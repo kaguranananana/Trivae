@@ -925,3 +925,11 @@ Wrong：窗口没看到回复就写“未解决”，连续对话都归于一个
 Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、来源与结果断言不能放宽。真实配对固定快照、query/scope、模型、预算和路由，保存完整实际请求，核对首次 HTTP body 除 system 外一致。重构后再次出现已知漏召回或错误关系时如实记录，不因 Prompt 更短或 Finalizer valid 就宣布质量等价。版本修订的重复实验与原样重复须分别标明，不能合并为同一候选的成功率。
 
 候选已出现原版取到推荐而候选遗漏的配对时，不按结构完成率放行；保留候选与所有失败，恢复原版，再评审更小的去重范围或措辞保留方案。
+
+## 20. Prompt持续优化的低成本开发契约（2026-10-06）
+
+- 每轮只改一个policy scope，先记录作用位置、确定性owner、必要tier与Provider预计/最大HTTP请求数。production是唯一baseline，旧失败大候选不能替代它；Discussion/Negative/Temporal/Stop/Routing不得附带改写。
+- 参数职责迁移须验证真实SDK解析与Host执行，不能只看Schema。lexical/legacy limit现用`Annotated[int, Field(strict=True, ge=1)]`拒绝SDK隐式转换，trusted upper bound仍由Capability执行；其它字段不能因此推断已strict/有minimum。清单选最大limit是语义指导，保留。
+- `run_prompt_screening.py --mode static`不读密钥或构造Provider；targeted用现有suite_tags，candidate-only在付费前验证冻结Prompt原文、scope/snapshot/model/budget/实物tool contract等条件。默认repeat=1/预算0，真实HTTP attempts由hook硬约束；明确regression停止，只有单case人工borderline可追加candidate，不重跑baseline/probe/full suite。
+- first-tool实验复用Application.query和生产builder，在SDK已记录模型输出/usage后拦截工具callable；没有Host工具执行，FirstToolProbeStop不能算完整答案成功。full-gate显式fresh pairs/AB或BA与人工review，不自动发布production或把Finalizer状态当质量分。
+- 历史real_pair的production记录可由显式导入器零API冻结，保留未知GT/checks和原失败；私有原文/请求/Trace/答案只在ignored data/evaluation。精确原文+commit使用既有文本身份，不新增摘要算法。synthetic只证明证据送达/确定性边界，真实语义仍走成本漏斗与release gate。
