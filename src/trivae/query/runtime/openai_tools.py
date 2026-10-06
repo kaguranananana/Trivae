@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from agents import RunContextWrapper, function_tool
+from agents.exceptions import ModelBehaviorError
+from agents.tool_context import ToolContext
 from pydantic import Field
 
 from trivae.capabilities.contracts import (
@@ -817,14 +820,15 @@ class GetSchemaSDKToolAdapter:
             "Inspect the exposed physical canonical SQLite schema before writing SQL. "
             "Returns public tables, columns, and relationships only; it does not return message rows, "
             "does not change the trusted scope, and does not expose internal ingestion or derived tables. "
-            "Call this when the available table or column names are not already known."
+            "Call this when the available table or column names are not already known. Accepts no arguments."
         )
 
         @function_tool(
             name_override="get_schema",
             description_override=description,
             failure_error_function=None,
-            strict_mode=False,
+            # 空参数Schema明确禁止额外属性，真实执行检查仍在下面入口完成。
+            strict_mode=True,
         )
         async def get_schema(context: RunContextWrapper[RuntimeContext]) -> dict[str, object]:
             """读取 schema；模型不能通过参数选择未公开的表或列。"""
@@ -884,6 +888,25 @@ class GetSchemaSDKToolAdapter:
                 budget_call,
             )
 
+        # SDK默认忽略额外字段；仅改Schema不足以落实无参数契约。
+        invoke_schema = get_schema.on_invoke_tool
+
+        async def invoke_without_arguments(
+            context: ToolContext[RuntimeContext], arguments: str,
+        ) -> Any:
+            # 保留SDK原有空串/空对象形式；不存在降级或新的业务参数。
+            try:
+                parsed = json.loads(arguments) if arguments else {}
+            except json.JSONDecodeError as exc:
+                # 解析错误显式暴露为SDK模型输入错误，保留原异常链便于Trace定位。
+                raise ModelBehaviorError("get_schema accepts no arguments: invalid JSON") from exc
+            # 必须在SDK忽略字段前拒绝，确保任何额外参数都不会到达registry。
+            if parsed != {}:
+                raise ModelBehaviorError("get_schema accepts no arguments")
+            # 合法调用仍走原typed input、scope、registry、Evidence与Trace链路。
+            return await invoke_schema(context, arguments)
+
+        get_schema.on_invoke_tool = invoke_without_arguments
         return get_schema
 
 

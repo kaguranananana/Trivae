@@ -15,6 +15,7 @@ from trivae.capabilities.contracts import CapabilityContractError, SemanticSearc
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import (
     FindMembersSDKToolAdapter,
+    GetSchemaSDKToolAdapter,
     LexicalSearchSDKToolAdapter,
     SearchMessagesSDKToolAdapter,
     SemanticSearchSDKToolAdapter,
@@ -51,7 +52,12 @@ def sdk_boundary(adapter, name, arguments):
     wrapper = ToolContext(
         context=context, tool_name=name, tool_call_id="parameter", tool_arguments=json.dumps(arguments)
     )
-    tool = adapter(registry).as_sdk_tool(trusted_max_results=10)
+    # 无参数schema工具没有结果数设置；其余工具继续使用同一trusted scope。
+    tool = (
+        adapter(registry).as_sdk_tool()
+        if name == "get_schema"
+        else adapter(registry).as_sdk_tool(trusted_max_results=10)
+    )
     return tool, wrapper, handler
 
 
@@ -180,3 +186,32 @@ def test_p05_semantic_schema_and_valid_query_keep_normalization():
     assert "non-empty" in schema["description"]
     response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
     assert response["status"] == "ok" and handler.calls[0].query == "Agent后训练"
+
+
+def test_p06_schema_extra_arguments_are_rejected_before_registry():
+    """复现实际额外table参数，禁止SDK静默忽略后继续读schema。"""
+    tool, wrapper, handler = sdk_boundary(GetSchemaSDKToolAdapter, "get_schema", {"table": "messages"})
+    with pytest.raises(ModelBehaviorError, match="get_schema accepts no arguments"):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("raw_arguments", ["{}", ""])
+def test_p06_no_arguments_keep_sdk_wire_forms(raw_arguments):
+    """SDK原有空对象/空串无参数形式都保持成功，不新增业务参数。"""
+    tool, wrapper, handler = sdk_boundary(GetSchemaSDKToolAdapter, "get_schema", {})
+    schema = tool.params_json_schema
+    assert schema["properties"] == {} and schema["additionalProperties"] is False
+    assert "accepts no arguments" in tool.description.lower()
+    response = asyncio.run(tool.on_invoke_tool(wrapper, raw_arguments))
+    assert response["status"] == "ok" and len(handler.calls) == 1
+
+
+
+def test_p06_invalid_json_keeps_explicit_error_cause():
+    """入口解析失败保持原始异常链，不能静默当作无参数调用。"""
+    tool, wrapper, handler = sdk_boundary(GetSchemaSDKToolAdapter, "get_schema", {})
+    with pytest.raises(ModelBehaviorError, match="invalid JSON") as caught:
+        asyncio.run(tool.on_invoke_tool(wrapper, "{"))
+    assert isinstance(caught.value.__cause__, json.JSONDecodeError)
+    assert handler.calls == []

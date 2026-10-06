@@ -126,3 +126,14 @@
 - Static=123 passed in2.05s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
 - Observed difference：空串提前显式SDK失败；合法query规范化不变。Accepted=contract/L0；生产Prompt保持原文，候选20,150字符。
 - 下一轮自动进入P06：只处理get_schema额外参数被SDK忽略的实证缺口，不改SQL策略。
+
+## P06：get_schema无参数真实执行
+
+- Commit：本节所属`refactor(prompt): enforce the schema inspection no-argument contract`。
+- Scope=P64；Risk=低；Owner=SDK Schema/入口；Expected/Maximum calls=0/0。
+- Removed=35字符；Moved=Base候选→description/Schema/入口；Reworded=无；Added=空对象执行拒绝及4项测试。
+- Reproduction=3 failed；额外table字段本来被忽略并执行，Schema缺additionalProperties。修改前{}和空串实测均ok。本轮只落实原无参数契约，不改SQL。
+- Static初次mypy发现callback类型不符，修正为真实ToolContext后static127 passed in2.05s；Ruff/mypy116通过；Synthetic8项通过。
+- Real=0；Provider=0；new input/output/total tokens=0；cost=0。未知参数现在显式失败，合法SDK wire forms保留。
+- Accepted=contract/L0候选；生产原文不动；候选20,115字符。全部高风险策略字节及顺序不改。
+- 下一轮自动进入P07：审计并迁移已经实际承接的lexical keyword单字符串约束，优先不改运行时代码。

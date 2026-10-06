@@ -28,5 +28,11 @@
     "rule": "P58:query",
     "file": "prompt-p05.txt",
     "removed": "For\nsemantic_search, query must be one non-empty string.\n"
+  },
+  {
+    "iteration": "P06",
+    "rule": "P64",
+    "file": "prompt-p06.txt",
+    "removed": "For\nget_schema, send no arguments. "
   }
 ]
