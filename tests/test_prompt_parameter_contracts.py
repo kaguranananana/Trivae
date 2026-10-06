@@ -964,3 +964,39 @@ def test_c22_semantic_optional_filter_forms_and_schema_remain_consistent(form):
         array = next(branch for branch in schema["anyOf"] if branch["type"] == "array")
         assert array["minItems"] == 1
         assert {"type": "null"} in schema["anyOf"] and schema["default"] is None
+
+
+@pytest.mark.parametrize("field", ["session_ids", "sender_user_ids"])
+def test_c23_recent_empty_filters_rejected_before_registry(field):
+    """非空数组是已有Host/description契约，SDK应直接拒绝空数组。"""
+    tool, wrapper, handler = sdk_boundary(GetRecentMessagesSDKToolAdapter, "get_recent_messages", {field: []})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("field", ["session_ids", "sender_user_ids"])
+def test_c23_recent_typed_owner_already_rejects_empty_filters(field):
+    """先验证真实typed input owner，不凭Schema推断非法参数已被承接。"""
+    with pytest.raises(CapabilityContractError):
+        GetRecentMessagesInput(**{field: ()})
+
+
+@pytest.mark.parametrize("form", ["omitted", "null", "non_empty"])
+def test_c23_recent_filter_schema_and_legal_forms_preserve_time_defaults(form):
+    """公开minItems不改变可选参数、scope继承、两天archive_latest或cursor。"""
+    values = {"session_ids": ["qq:100"], "sender_user_ids": ["user:alice"]}
+    arguments = {} if form == "omitted" else {field: None if form == "null" else value
+                                             for field, value in values.items()}
+    tool, wrapper, handler = sdk_boundary(GetRecentMessagesSDKToolAdapter, "get_recent_messages", arguments)
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    request = handler.calls[0]
+    assert response["status"] == "ok" and request.limit == 10
+    assert request.cursor is None and request.start_timestamp is None and request.end_timestamp is None
+    assert (request.time_range.amount, request.time_range.unit, request.time_range.anchor) == (2, "day", "archive_latest")
+    for field, value in values.items():
+        assert getattr(request, field) == (tuple(value) if form == "non_empty" else None)
+        schema = tool.params_json_schema["properties"][field]
+        array = next(branch for branch in schema["anyOf"] if branch["type"] == "array")
+        assert array["minItems"] == 1
+        assert {"type": "null"} in schema["anyOf"] and schema["default"] is None

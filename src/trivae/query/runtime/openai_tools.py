@@ -1111,8 +1111,9 @@ class GetRecentMessagesSDKToolAdapter:
             time_range: dict[str, object] | None = None,
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
-            session_ids: list[str] | None = None,
-            sender_user_ids: list[str] | None = None,
+            # 只公开并执行已有非空数组约束；scope、时间和cursor逻辑原样保留。
+            session_ids: Annotated[list[str] | None, Field(min_length=1)] = None,
+            sender_user_ids: Annotated[list[str] | None, Field(min_length=1)] = None,
             cursor: dict[str, object] | None = None,
             # SDK在类型转换前拒绝非法limit；trusted上界继续由Capability执行。
             # default_limit仍按原scope推导，时间窗与cursor不参与本轮修改。

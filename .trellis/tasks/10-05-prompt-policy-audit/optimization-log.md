@@ -402,3 +402,11 @@
 - Reproduction=6 failed/3 passed，原Host拒绝已证明；合法值原保持，失败原因明确分SDK阶段和Schema缺口。
 - Static298 passed in2.55s；Ruff/mypy116通过。Accepted=L0 contract，新增API/tokens/cost=0；累计真实请求仍2、总费用未知。
 - 下一轮只核验recent同类数组契约；不修改time/default/cursor/filter选择。
+
+## C23：recent可选数组非空契约
+
+- Commit：本节所属`fix(tools): expose recent nonempty filter constraints`。
+- Scope=recent双数组形状；Risk=低；Prompt lines=0；Owner=SDK/typed input；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=minItems执行和7 tests；unused filter判断保留，不虚报Prompt迁移。
+- Reproduction=5 failed/2 passed；Static305 passed in3.18s，Ruff/mypy116通过；typed默认两天/archive_latest、limit10、cursorNone和合法参数保持。
+- Accepted=L0 contract；0新API/tokens/cost，累计真实仍2且总费用未知。继续核对剩余责任/契约，并做本批工程checkpoint；production不替换。

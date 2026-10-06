@@ -276,3 +276,5 @@ C21：原类型转换/Schema缺minimum复现12 red→static288 passed in2.86s，
 H07：合法先返回/坏参数后返回复现1 red/2 green→static289 passed in2.91s；Ruff/mypy116通过。保留实际异常、raw-only坏参数，阻止后case，0新增API。
 
 C22：6 red/3 green→static298 passed in2.55s；Ruff/mypy116通过，omit/null/合法数组保留，Host原有拒绝不虚报新增，0新API。
+
+C23：5 red/2 green→static305 passed in3.18s，Ruff/mypy116通过。两数组公开/执行minItems，原时间/cursor保持，0新API。
