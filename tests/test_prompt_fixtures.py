@@ -159,3 +159,39 @@ def test_valid_finalizer_cannot_establish_negative_claim_from_small_window(discu
         assert recommendation.sender_name == "用户A"
 
     asyncio.run(check())
+
+
+@pytest.mark.parametrize("after,has_supplement", [(20, False), (40, True)])
+def test_discussion_replies_reach_next_production_model_input(discussion_app, after, has_supplement):
+    """验证最终模型真正收到展开结果、可回溯作者与推荐；不只验证Tool返回值。"""
+    app = discussion_app
+    model = ScriptedModel([
+        ModelStep(output=[function_call("lexical_search", {"keyword": "Agent 后训练", "limit": 100,
+                          "context_before": 0, "context_after": 0}, call_id="anchor")]),
+        ModelStep(output=[function_call("get_message_context", {"source_id": "m1-1",
+                          "context_before": 0, "context_after": after}, call_id="context")]),
+        ModelStep(output=[assistant_message(json.dumps({"claims": [{
+            "text": "用户A推荐《Build a LLM from Scratch》。", "finding": "后续推荐",
+            "criterion": "提问之后用户A的推荐消息", "sufficiency": "partial",
+            "sources": ["m2-12"], "limitations": ["仅核对当前局部讨论窗口"]
+        }], "limitations": []}, ensure_ascii=False))]),
+    ])
+    app._agent_runtime = OpenAIAgentsRuntimeAdapter(app.capability_registry, model=model)
+
+    async def check():
+        result = await app.query(QueryRequest("Agent后训练有教程推荐吗？", ExecutionScope(max_results=100),
+            available_capabilities=("lexical_search", "get_message_context"), trace_profile="debug",
+            execution_override=ExecutionOverride(forced_route="standard_execution")))
+        assert result.is_successful and result.finalization_status == "valid"
+        assert len(model.calls) == 3 and result.runtime_result.tool_rounds == 2
+        # 这是SDK下一轮实际input，经过Runtime预算/projection/序列化后才能到达模型。
+        visible = json.dumps(model.last_call.input, ensure_ascii=False)
+        assert "Build a LLM from Scratch" in visible
+        assert ("PyTorch" in visible) == has_supplement
+        # citation通过正式source resolver回到M12，防止把相邻回复作者当成推荐作者。
+        source = result.answer_artifact.evidence_items[0].sources[0].reference
+        assert source.internal_message_id == "qq:100:M12"
+        assert source.snapshot.author_display == "用户A"
+        assert "Build a LLM from Scratch" in source.snapshot.excerpt
+
+    asyncio.run(check())

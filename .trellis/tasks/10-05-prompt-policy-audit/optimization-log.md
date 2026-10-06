@@ -304,3 +304,11 @@
 - 测试先因混用物理SQL字段content_text/author_display失败，按真正MessageProjection normalized_content/sender_name修正，GT/作者断言保留。
 - Static241 passed in2.48s；Ruff/mypy116通过；Provider=0、new tokens=0、cost=0。
 - Accepted=诊断fixture；强负面答案Rejected，未新增模型文本启发式、关键词规则、第二Agent或修改Finalizer能力边界。自动继续真实model input的20/40送达检查。
+
+## F03：20/40展开的生产下一轮输入送达
+
+- Commit：本节所属`test(prompt): verify discussion evidence reaches the next model input`。
+- Scope=discussion evidence delivery fixture；Risk=零产品行为；Prompt变化=无；Owner=production SDK/预算/projection/source resolver；Expected/Maximum calls=0/0。
+- 两个ScriptedModel case走完整Application.query：after20/40的最终SDK model.input都含M12书籍推荐；只有after40含M33 PyTorch补充。真实citation解析到qq:100:M12/用户A与推荐excerpt，不以邻近作者或数据库命中替代。
+- Static243 passed in2.35s；Ruff/mypy116通过；真实Provider=0、new tokens=0、cost=0。
+- Accepted=送达fixture；模型选20/40与答案质量仍须真实筛选，这两个预设调用不是Prompt语义等价证据。与F02共同保留局部窗/穷尽负面的边界。
