@@ -717,7 +717,10 @@ class FindMembersSDKToolAdapter:
         )
         async def find_members(
             context: RunContextWrapper[RuntimeContext],
-            query: str,
+            # 字段公开单个非空字符串，SDK负责空串/类型；空白串仍由typed input拒绝。
+            query: Annotated[str, Field(
+                strict=True, min_length=1, description="One non-empty identity query string."
+            )],
             session_ids: list[str] | None = None,
             limit: int = default_limit,
         ) -> dict[str, object]:

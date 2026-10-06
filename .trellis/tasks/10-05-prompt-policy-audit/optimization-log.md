@@ -105,3 +105,14 @@
 - Provider=0；new input/output/total tokens=0；cost=0。非法类型/非正值提前拒绝；默认40及合法1不变。
 - Accepted=contract与L0候选；production原文不变；高风险全部逐字保持。候选20,243字符。
 - 下一轮自动进入P04：仅find_members.query非空字符串，不碰消歧、person routing或canonical identity策略。
+
+## P04：find_members.query非空字符串
+
+- Commit：本节所属`refactor(prompt): move member query validation into the tool contract`。
+- Scope=P61:query；Risk=低；Owner=SDK/FindMembersInput；Expected/Maximum calls=0/0。
+- Removed=36字符；Moved=Base候选→query Schema/Host；Reworded=无；Added=单字段minLength/description与6测试。
+- Reproduction=2 failed/4 passed；原非法非字符串已拒绝，空白串原Host已拒绝。只补缺失的Schema/SDK空串检查，不新增正则。
+- Static=117 passed in1.95s；Ruff/mypy116通过；Synthetic既有8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- Observed difference：空串更早在SDK失败；合法用户名称规范化不变。消歧与canonical ID仍为原策略。
+- Accepted=contract/L0候选；production正文不改；累计20,207字符。
+- 下一轮自动进入P05：只迁移semantic_search.query非空字符串；不改semantic routing。

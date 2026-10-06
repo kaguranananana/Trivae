@@ -205,3 +205,5 @@ P01修改前四个true/2.0拒绝断言实际失败，因为SDK先coerce而typed 
 P02最终static：99 passed in1.90s；Ruff通过；mypy116文件通过；git diff --check通过。
 
 P03：实际SDK复现7失败/5通过→修复后static111 passed in1.88s；Ruff/mypy116通过；0Provider/0tokens/0cost。dense默认40不变，候选只删43字符。
+
+P04：2失败/4通过复现→static117 passed in1.95s；Ruff/mypy116通过；0Provider/0tokens/0cost。空白串仍由Host拒绝，候选只删36字符。

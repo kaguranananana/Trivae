@@ -14,6 +14,7 @@ from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import CapabilityContractError, SemanticSearchInput, ToolEnvelope
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import (
+    FindMembersSDKToolAdapter,
     LexicalSearchSDKToolAdapter,
     SearchMessagesSDKToolAdapter,
     SemanticSearchSDKToolAdapter,
@@ -125,3 +126,30 @@ def test_p03_schema_default_and_legal_dense_count(dense_args, expected):
     response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
     assert response["status"] == "ok"
     assert handler.calls[0].dense_top_k == expected
+
+
+@pytest.mark.parametrize("value", ["", True, 2, ["用户A"]])
+def test_p04_member_query_rejects_empty_and_non_string_at_sdk(value):
+    """参数类型与空串在真实SDK解析拒绝，不发起身份查找。"""
+    tool, wrapper, handler = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": value})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+def test_p04_member_query_whitespace_remains_host_error():
+    """minLength不证明非空白；原typed input继续负责去空白与错误envelope。"""
+    tool, wrapper, handler = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": "  "})
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+    assert handler.calls == []
+
+
+def test_p04_member_schema_and_valid_query_keep_normalization():
+    """Schema公开非空约束，合法名称沿用Host规范化，不改变消歧算法。"""
+    tool, wrapper, handler = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": " 用户A "})
+    schema = tool.params_json_schema["properties"]["query"]
+    assert schema["type"] == "string" and schema["minLength"] == 1
+    assert "non-empty" in schema["description"]
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and handler.calls[0].query == "用户A"

@@ -16,5 +16,11 @@
     "rule": "P58:dense_top_k",
     "file": "prompt-p03.txt",
     "removed": " and dense_top_k must be a positive integer"
+  },
+  {
+    "iteration": "P04",
+    "rule": "P61:query",
+    "file": "prompt-p04.txt",
+    "removed": "query must be one\nnon-empty string; "
   }
 ]
