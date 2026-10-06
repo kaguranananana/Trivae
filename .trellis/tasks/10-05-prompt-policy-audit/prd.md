@@ -42,3 +42,15 @@
 - 可按同义策略更新纯文案断言，真实参数/来源/结果测试不放宽。
 - 相关与全量 pytest、Ruff/mypy 通过；相同初始请求契约下进行实际 Development 配对，保留全部失败与质量限制。
 - 不使用子代理。
+
+## 2026-10-06：低成本小步优化（本轮用户直接授权）
+
+旧大改计划与默认付费配对不再用于本轮。主会话直接实施，沿用 in_progress task，保留历史失败与完整候选。
+
+最小缺口：现有 EvaluationRunner 默认 repetitions=1、支持生产 query 与冻结 snapshot，但没有 policy 筛选、冻结结果复用、probe 提前终止和硬 Provider 计数。复用 suite_tags、EvaluationRun/Trace/Review，不建第二套 Agent。实验 runtime 子类只在既有 builder 注入候选及首调用拦截，正式 runtime 不增加 mode 分支。
+
+预期文件：新增 prompt screening module/CLI、fixture/tests、责任矩阵和迭代日志；P01 仅 lexical limit 契约与独立候选。逐字保护讨论/negative/time/stop/routing，默认窗口、预算、Provider、Finalizer 不改。
+
+关键模块七问：输入是当前 case/query/scope/snapshot 与生产 Prompt；输出是可复核 screening artifacts；依赖正式 Application.query 与既有 SDK/Trace；成功是明确拒绝非法 limit、预算内执行与可复用冻结结果，不宣称语义等价；失败保留原异常/Trace、不得覆盖 artifacts；验证由真实 SDK/SQLite、ScriptedModel 与 fixture 完成；演进只在受影响 policy 的最低 tier，release 才 fresh paired gate。
+
+分离提交：A00 只读审计；H01 评估能力；F01 fixture；P01 一个参数职责迁移。每轮真实 API 预计/最多均 0。Prompt 候选在 L0 接受后仍需 release gate，不替换 production。禁止使用之前失败候选作 baseline。
