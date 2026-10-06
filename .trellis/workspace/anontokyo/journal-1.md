@@ -1491,3 +1491,39 @@ Attributed DeepSeek Planner length to reasoning-token exhaustion; preserved qual
 ### Status
 
 [OK] **Completed**
+
+
+## Session 59: Prompt P10–P16与低成本契约迭代
+
+**Date**: 2026-10-06
+**Task**: Prompt P10–P16与低成本契约迭代
+**Branch**: `main`
+
+### Summary
+
+P10–P16独立候选、C17–C20实际SDK契约修复；生产Base不变。V01实际2请求且inconclusive，未继续付费。
+
+### Main Changes
+
+- 修复小scope Schema与SDK默认值不一致；保留讨论、negative、time、stop、routing原文。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `953a29e` | (see git log) |
+| `a7d4ad0` | (see git log) |
+| `6235ba2` | (see git log) |
+| `519cc4c` | (see git log) |
+
+### Testing
+
+- [OK] 全量884 passed；static274 passed；Ruff与mypy116通过。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 任务继续in_progress，检查first-tool异常分类及剩余SDK契约。
