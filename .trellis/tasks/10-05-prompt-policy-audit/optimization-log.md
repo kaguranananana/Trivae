@@ -25,3 +25,13 @@
 - Observed behavior：probe 有意产生 FirstToolProbeStop 的实验终态，结构状态不计完整答案成功；同轮多个选择都拦截。首个测试误用 model_input/turn_started 事件名，经 collector 实物确认改为 model.turn + started；未弱化1轮/0工具断言。CLI import 首次引用了不存在的 serializer，改用 dataclass 原结构和既有 review packet。
 - Accepted：工程筛选能力；真实 Provider 端尚未运行，不宣称 semantic equivalence。full-gate 只生成 fresh pairs 与人工 review packet，不自动放行，也不自动修改 production。
 - Unchanged high-risk policy：生产 SYSTEM_PROMPT 全字节未改。
+
+## F01：小型 discussion / negative fixture
+
+- Commit：本节所属 `test(prompt): add small discussion and negative evidence fixtures`。
+- Changed rules / Responsibility moved：无；Added：41条人工可读消息 + 7种GT场景，8个真实SDK/Canonical/Finalizer测试。
+- Static / Synthetic：8 passed；after=8不见推荐，after=20见M12/M13，after=40见M33；source_id到实际projection路径经过正式SDK；作者A/B区分。精确事实、URL清单、跨日顺序、空查询均由同一小snapshot验证。
+- Real cases：0；Provider calls=0，tokens=0，cost=0。
+- Observed behavior：有提问消息时，即使小窗没见推荐，no_result被Finalizer拒绝；合法claims中的强负面语义仍不能由Finalizer证明。fixture不会声称模型必然选20/40，更不更改默认8/8。
+- Removed / Moved / Reworded：无；Unchanged high-risk policy：生产Prompt全字节不变。
+- Accepted：廉价证据回归层；不替代真实frozen snapshot或release paired gate。

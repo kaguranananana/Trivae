@@ -1,0 +1,332 @@
+{
+  "description": "人工构造的讨论；M12推荐、M13评价、M33补充；小窗口不证明无人推荐。",
+  "messages": [
+    {
+      "id": "M1",
+      "author": "提问者",
+      "timestamp": 1785542460000,
+      "text": "Agent 后训练有什么教程？"
+    },
+    {
+      "id": "M2",
+      "author": "旁观者",
+      "timestamp": 1785542520000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M3",
+      "author": "旁观者",
+      "timestamp": 1785542580000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M4",
+      "author": "旁观者",
+      "timestamp": 1785542640000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M5",
+      "author": "旁观者",
+      "timestamp": 1785542700000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M6",
+      "author": "旁观者",
+      "timestamp": 1785542760000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M7",
+      "author": "旁观者",
+      "timestamp": 1785542820000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M8",
+      "author": "旁观者",
+      "timestamp": 1785542880000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M9",
+      "author": "旁观者",
+      "timestamp": 1785542940000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M10",
+      "author": "旁观者",
+      "timestamp": 1785543000000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M11",
+      "author": "旁观者",
+      "timestamp": 1785543060000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M12",
+      "author": "用户A",
+      "timestamp": 1785543120000,
+      "text": "推荐《Build a LLM from Scratch》。"
+    },
+    {
+      "id": "M13",
+      "author": "用户B",
+      "timestamp": 1785543180000,
+      "text": "这本书讲得比较详细。"
+    },
+    {
+      "id": "M14",
+      "author": "旁观者",
+      "timestamp": 1785543240000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M15",
+      "author": "旁观者",
+      "timestamp": 1785543300000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M16",
+      "author": "旁观者",
+      "timestamp": 1785543360000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M17",
+      "author": "旁观者",
+      "timestamp": 1785543420000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M18",
+      "author": "旁观者",
+      "timestamp": 1785543480000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M19",
+      "author": "旁观者",
+      "timestamp": 1785543540000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M20",
+      "author": "旁观者",
+      "timestamp": 1785543600000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M21",
+      "author": "旁观者",
+      "timestamp": 1785543660000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M22",
+      "author": "旁观者",
+      "timestamp": 1785543720000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M23",
+      "author": "旁观者",
+      "timestamp": 1785543780000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M24",
+      "author": "旁观者",
+      "timestamp": 1785543840000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M25",
+      "author": "旁观者",
+      "timestamp": 1785543900000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M26",
+      "author": "旁观者",
+      "timestamp": 1785543960000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M27",
+      "author": "旁观者",
+      "timestamp": 1785544020000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M28",
+      "author": "旁观者",
+      "timestamp": 1785544080000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M29",
+      "author": "旁观者",
+      "timestamp": 1785544140000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M30",
+      "author": "旁观者",
+      "timestamp": 1785544200000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M31",
+      "author": "旁观者",
+      "timestamp": 1785544260000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M32",
+      "author": "旁观者",
+      "timestamp": 1785544320000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M33",
+      "author": "用户C",
+      "timestamp": 1785544380000,
+      "text": "补充：先掌握 PyTorch 再读这本书。"
+    },
+    {
+      "id": "M34",
+      "author": "旁观者",
+      "timestamp": 1785544440000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M35",
+      "author": "用户A",
+      "timestamp": 1785544500000,
+      "text": "我读过《深入理解 AI Agent》。"
+    },
+    {
+      "id": "M36",
+      "author": "用户B",
+      "timestamp": 1785544560000,
+      "text": "项目地址 https://github.com/example/agent-course"
+    },
+    {
+      "id": "M37",
+      "author": "旁观者",
+      "timestamp": 1785544620000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M38",
+      "author": "用户C",
+      "timestamp": 1785631080000,
+      "text": "第二天补充：教程有配套练习。"
+    },
+    {
+      "id": "M39",
+      "author": "用户A",
+      "timestamp": 1785631140000,
+      "text": "另一个项目 https://github.com/example/pytorch-guide"
+    },
+    {
+      "id": "M40",
+      "author": "旁观者",
+      "timestamp": 1785631200000,
+      "text": "今天讨论天气。"
+    },
+    {
+      "id": "M41",
+      "author": "旁观者",
+      "timestamp": 1785631260000,
+      "text": "今天讨论天气。"
+    }
+  ],
+  "cases": [
+    {
+      "id": "discussion-follow-up",
+      "policy_tags": [
+        "discussion"
+      ],
+      "anchor": "M1",
+      "after": 20,
+      "must_deliver": [
+        "M12",
+        "M13"
+      ]
+    },
+    {
+      "id": "false-negative",
+      "policy_tags": [
+        "discussion",
+        "negative"
+      ],
+      "anchor": "M1",
+      "after": 8,
+      "not_delivered": [
+        "M12",
+        "M13"
+      ],
+      "negative_claim_supported": false
+    },
+    {
+      "id": "discussion-supplement",
+      "policy_tags": [
+        "discussion"
+      ],
+      "anchor": "M1",
+      "after": 40,
+      "must_deliver": [
+        "M12",
+        "M13",
+        "M33"
+      ]
+    },
+    {
+      "id": "exact-fact",
+      "policy_tags": [
+        "retrieval"
+      ],
+      "keyword": "深入理解 AI Agent",
+      "direct_hits": [
+        "M35"
+      ],
+      "author": "用户A"
+    },
+    {
+      "id": "resource-inventory",
+      "policy_tags": [
+        "inventory"
+      ],
+      "keyword": "github.com",
+      "direct_hits": [
+        "M36",
+        "M39"
+      ]
+    },
+    {
+      "id": "temporal-relation",
+      "policy_tags": [
+        "temporal"
+      ],
+      "earlier": "M35",
+      "later": "M38",
+      "same_day": false
+    },
+    {
+      "id": "no-result",
+      "policy_tags": [
+        "no_result",
+        "negative"
+      ],
+      "keyword": "synthetic-never-mentioned",
+      "direct_hits": []
+    }
+  ]
+}
