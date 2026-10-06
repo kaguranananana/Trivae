@@ -3,6 +3,5 @@
 {"file": ".trellis/spec/backend/temporal-overview-guidelines.md", "reason": "Host 时间事实、recent capacity/cursor/coverage"}
 {"file": ".trellis/tasks/10-05-prompt-policy-audit/research/prompt-policy-audit.md", "reason": "P01–P92 分类、实际承接程度、删除前提与 Evaluation 限制"}
 {"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "保持语义/行为测试，不以文本检查冒充模型质量"}
-{"file": ".trellis/tasks/10-05-prompt-policy-audit/prompt-responsibility-matrix.md", "reason": "当前规则真实定位与责任owner，避免沿用错位旧行号"}
-{"file": "tests/test_prompt_parameter_contracts.py", "reason": "真实SDK/typed input合法与非法边界、逐轮候选精确diff"}
 {"file": ".trellis/tasks/10-05-prompt-policy-audit/research/optimization-candidates.json", "reason": "每轮唯一删除片段及其规则归属，不允许隐含重写"}
+{"file": ".trellis/tasks/10-05-prompt-policy-audit/research/parameter-contract-migrations.md", "reason": "紧凑契约owner/规则定位/真实SDK检查摘要；避免长矩阵截断与代码context注入"}

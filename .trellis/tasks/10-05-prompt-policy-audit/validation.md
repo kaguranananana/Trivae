@@ -229,3 +229,5 @@ P09：测试导入错误先修复→实际契约2失败/4通过复现→static17
 - 新SDK四工具合同与历史6个frozen baseline不同；逐个调用verify_frozen_baseline均在任何Provider构造/请求之前明确拒绝。历史artifact未改，未自动付费刷新；这项限制不可称为candidate-only实测质量通过。
 - Real cases executed=0；DeepSeek/其他Provider HTTP调用=0；new input/output/total tokens=0；new API cost=0。历史tokens不计入本次新增成本。
 - 接受8轮contract/L0候选；A01修正审计错误接受。真实Prompt语义gate未执行，任务保持in_progress，未归档。
+
+Context收口：新增长matrix会被注入截断、code context条目不合约；改为紧凑parameter-contract-migrations.md摘要并移除这两个新条目。既有69KB runtime spec仍有原注入警告，本会话手工读取相关章节；不重构无关长spec。
