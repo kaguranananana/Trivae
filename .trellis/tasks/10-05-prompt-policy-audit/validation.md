@@ -252,3 +252,5 @@ H05：V01实证首工具终止丢失usage→ScriptedModel复现→保存SDK Tool
 ## V01真实Provider成本与边界
 
 全量850 passed in18.37s后，同fact首轮baseline/candidate各1 HTTP请求；最大2/实际2，0 Host/0 evidence。两侧除Base外HTTP body逐字结构相同，条件相同。选择lexical相同，但两条limit100 vs一条limit5000，L1=inconclusive，不据此发布或宣称效率提升。Baseline usageunknown；Candidate input8349/output115/total8464/cached2048。累计token与费用unknown，不能把P0零成本沿用到本次真实探测。H05保存新观测，旧baseline不回填，不追加付费。
+
+F02：生产query复现claims强负面虽Finalizer valid仍错误；实际模型input未见M12，fixture GT包含用户A推荐。static241 passed in2.48s，Ruff/mypy116通过；0新API。接受诊断fixture，不接受脚本负面答案。

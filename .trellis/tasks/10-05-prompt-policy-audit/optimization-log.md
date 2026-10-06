@@ -295,3 +295,12 @@
 - Baseline usageunknown触发H05；Candidate SDKinput8349/output115/total8464/cached2048；累计tokens/costunknown，未重跑补数。
 - Decision=Inconclusive-L1；不是确定semantic regression，也不是语义等价接受；候选仅维持L0接受，禁止发布生产。上限2已用完，不继续加repeat/full case。
 - 自动回零成本工作：补强合法claims里的强负面synthetic Failure Case，暴露Finalizer有效不代表负面真实这一边界。
+
+## F02：合法claims里的强负面反例
+
+- Commit：本节所属`test(prompt): expose valid-finalizer false-negative boundary`。
+- Scope=已有小discussion fixture/negative GT；Risk=零产品行为；Prompt/Runtime变化=无；Expected/Maximum calls=0/0。
+- 正式Application.query/SDK/Projection/Finalizer：命中M1→after8→合法带source的“没有任何教程推荐”；completed/Finalizer valid但实际模型输入不含M12，fixture更大窗明确用户A推荐Build a LLM from Scratch。该脚本答案是已知语义失败，不能被valid标为质量接受。
+- 测试先因混用物理SQL字段content_text/author_display失败，按真正MessageProjection normalized_content/sender_name修正，GT/作者断言保留。
+- Static241 passed in2.48s；Ruff/mypy116通过；Provider=0、new tokens=0、cost=0。
+- Accepted=诊断fixture；强负面答案Rejected，未新增模型文本启发式、关键词规则、第二Agent或修改Finalizer能力边界。自动继续真实model input的20/40送达检查。

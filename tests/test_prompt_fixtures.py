@@ -122,3 +122,40 @@ def test_small_window_cannot_pass_as_no_result_in_production_finalizer(discussio
         assert result.finalization_status == "failed"
         assert result.finalization_error is not None
     asyncio.run(check())
+
+
+def test_valid_finalizer_cannot_establish_negative_claim_from_small_window(discussion_app):
+    """实证合法claims仍可产生错误负面：fixture质量事实独立于Finalizer契约成功。"""
+    app = discussion_app
+    false_claim = "群里没有任何 Agent 后训练教程推荐。"
+    model = ScriptedModel([
+        ModelStep(output=[function_call("lexical_search", {"keyword": "Agent 后训练", "limit": 100,
+                          "context_before": 0, "context_after": 0}, call_id="anchor")]),
+        ModelStep(output=[function_call("get_message_context", {"source_id": "m1-1",
+                          "context_before": 0, "context_after": 8}, call_id="context")]),
+        ModelStep(output=[assistant_message(json.dumps({"claims": [{
+            "text": false_claim, "finding": "没有教程推荐", "criterion": "提问附近的消息",
+            "sufficiency": "sufficient", "sources": ["m1-1"], "limitations": []
+        }], "limitations": []}, ensure_ascii=False))]),
+    ])
+    app._agent_runtime = OpenAIAgentsRuntimeAdapter(app.capability_registry, model=model)
+
+    async def check():
+        result = await app.query(QueryRequest("Agent后训练有教程推荐吗？", ExecutionScope(max_results=100),
+            available_capabilities=("lexical_search", "get_message_context"), trace_profile="debug",
+            execution_override=ExecutionOverride(forced_route="standard_execution")))
+        # 当前Finalizer验证shape/source/provenance，不判定claim与证据的语义蕴含。
+        assert result.runtime_result.termination == "completed"
+        assert result.finalization_status == "valid" and result.is_successful
+        assert false_claim in result.final_answer
+        # 检查SDK真实收到的下一轮input，不拿数据库命中或Tool envelope代替模型可见证据。
+        final_input = json.dumps(model.last_call.input, ensure_ascii=False)
+        assert "Build a LLM from Scratch" not in final_input
+        # 全量fixture的已知推荐确实在更大窗口中，说明上述负面结论不受partial evidence支持。
+        ground_truth = app.invoke_tool("get_message_context", GetMessageContextInput("qq:100:M1", 0, 20),
+                                      ExecutionScope(max_results=100))
+        recommendation = next(message for message in ground_truth.data.messages if message.source_message_id == "M12")
+        assert "Build a LLM from Scratch" in recommendation.normalized_content
+        assert recommendation.sender_name == "用户A"
+
+    asyncio.run(check())
