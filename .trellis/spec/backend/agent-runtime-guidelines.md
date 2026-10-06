@@ -952,3 +952,5 @@ Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、�
 - first-tool记录选择必须先保存原始参数，再解析JSON；坏调用不能因同轮另一合法call留有probe而视为成功。CLI只接受实际FirstToolProbeStop且Host零调用；其他工程异常保存失败artifact/Trace后停止后续case，不重试。SDK包装后的真实异常类型保持原样。
 
 - semantic context双字段现在与原typed input共用非负整数契约，SDK strict/ge=0阻止bool/string/float转换。默认2/2、合法0/20/40与原evaluation-only clamp不变；新增Schema minimum造成冻结条件漂移须显式处理，不能外推真实模型选窗等价。
+
+- SDK并行首工具可能先返回正常FirstToolProbeStop而另一call解析失败；实验完成须同时核对每个已观测call有解析arguments。缺失解析时保存raw/真实Trace并停止后case，不能按返回异常顺序猜测完整成功。

@@ -284,8 +284,8 @@ def test_frozen_baseline_drift_names_changed_conditions_without_dumping_values()
     verify_frozen_baseline(frozen, original, SYSTEM_PROMPT)
 
 
-@pytest.mark.parametrize("malformed", (True, False))
-def test_first_tool_cli_distinguishes_parse_failure_from_expected_stop(tmp_path, monkeypatch, malformed):
+@pytest.mark.parametrize("malformed,bad_first", [(True, True), (True, False), (False, True)])
+def test_first_tool_cli_distinguishes_parse_failure_from_expected_stop(tmp_path, monkeypatch, malformed, bad_first):
     """首轮一坏一好并行调用不能把解析异常当预期截停，更不能继续付费case。"""
     from scripts import run_prompt_screening as cli
 
@@ -307,12 +307,15 @@ def test_first_tool_cli_distinguishes_parse_failure_from_expected_stop(tmp_path,
     settings = SimpleNamespace(provider="injected", model_name="test", to_safe_dict=lambda: {})
     monkeypatch.setattr(cli, "load_environment_file", lambda _: None)
     monkeypatch.setattr(cli, "load_settings", lambda: settings)
+    calls = [function_call("lexical_search", {"keyword": "Agent"}, call_id="bad").model_copy(
+        update={"arguments": '{"keyword":'}) if malformed else
+        function_call("lexical_search", {"keyword": "Agent"}, call_id="valid_search"),
+        function_call("get_schema", {}, call_id="valid")]
+    # 两种并行顺序都验证；正常截停不能掩盖同轮另一call的真实解析失败。
+    if not bad_first:
+        calls.reverse()
     model = ScriptedModel([
-        # 坏参数先返回；同轮合法调用仍会留下probe，复现旧布尔判断的误判。
-        ModelStep(output=[function_call("lexical_search", {"keyword": "Agent"}, call_id="bad").model_copy(
-            update={"arguments": '{"keyword":'}) if malformed else
-            function_call("lexical_search", {"keyword": "Agent"}, call_id="valid_search"),
-            function_call("get_schema", {}, call_id="valid")]),
+        ModelStep(output=calls),
         ModelStep(output=[function_call("get_schema", {}, call_id="must_not_run")]),
     ])
 
@@ -341,13 +344,14 @@ def test_first_tool_cli_distinguishes_parse_failure_from_expected_stop(tmp_path,
     assert not (output / "later-candidate-0.json").exists()
     artifact = read_artifact(output / "malformed-candidate-0.json")
     # 失败诊断保留原始选择，SDK包装后的UserError不能被伪造为正常probe状态。
-    bad_call = artifact["probe_calls"][0]
+    bad_call = next(call for call in artifact["probe_calls"] if call["name"] == "lexical_search")
     assert bad_call["name"] == "lexical_search"
     assert bad_call["arguments_raw"] == '{"keyword":'
     assert "arguments" not in bad_call
-    assert artifact["run"]["query_result"]["runtime"]["error"]["exception_type"] == "UserError"
+    expected_error = "UserError" if bad_first else "FirstToolProbeStop"
+    assert artifact["run"]["query_result"]["runtime"]["error"]["exception_type"] == expected_error
     assert artifact["run"]["query_result"]["runtime"]["tool_count"] == 0
     failed_event = next(event for event in artifact["trace"]["timeline"]
                         if event["operation"] == "runtime.run" and event["phase"] == "failed")
-    assert failed_event["payload"]["exception_type"] == "UserError"
+    assert failed_event["payload"]["exception_type"] == expected_error
     assert read_artifact(output / "provider-ledger.json")["provider_calls"] == 0

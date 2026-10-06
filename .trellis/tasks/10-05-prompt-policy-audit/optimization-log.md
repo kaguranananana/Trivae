@@ -384,3 +384,12 @@
 - 12 red中6非法类型被原SDK转换、2负值原Host已拒绝但SDK未拒绝、4合法值仅缺Schema minimum；修复后全部通过。
 - Static288 passed in2.86s；Ruff/mypy116通过；默认2/2及0/20/40/limit10/dense40保持。新Schema与V01不同，旧probe不可当本轮同条件验证。
 - Accepted=contract/L0；0新Provider/tokens/cost，累计2且总费用未知。下一轮复核first-tool并行调用错误顺序，保持生产Prompt不动。
+
+## H07：并行异常顺序不能掩盖坏调用
+
+- Commit：本节所属`fix(eval): reject partially parsed decision probes`。
+- Scope=首轮各调用解析完成性；Risk=低；Prompt lines=0；Owner=CLI；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=所有已观测调用解析完成断言/反向fixture。
+- Reproduction=1 failed/2 passed；SDK实际先返回哪个异常保持原样，不伪造canonical Trace。
+- Static289 passed in2.91s；Ruff/mypy116通过；坏两个顺序均停止下一case，正常仍可继续显式probe。
+- Accepted=Harness正确性。新Provider/tokens/cost=0，累计仍2；下一轮只补semantic空数组的Schema/SDK已存契约，不改filter选择。

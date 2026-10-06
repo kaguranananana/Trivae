@@ -217,6 +217,8 @@ async def execute(args: argparse.Namespace) -> None:
                     # 只有明确的实验截停异常才算probe完成；有观测不能证明错误属于预期。
                     error = result.runtime_result.error
                     probe_ok = (runtime.first_tool and bool(runtime.probe_calls)
+                                # 并行首call的预期异常可能先被SDK返回；每个已观测call都须解析完成。
+                                and all("arguments" in call for call in runtime.probe_calls)
                                 and not result.runtime_result.tool_calls and error is not None
                                 and error.exception_type == FirstToolProbeStop.__name__)
                     # 明确工程失败停止所有后续付费；semantic_review 待人工，不冒充质量通过。
