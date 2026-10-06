@@ -321,3 +321,11 @@
 - SDK正向count只返回scope内3条；main escape实际拒绝SQL_SCOPE_VIOLATION。物理row预期修为真实带s1-1的SDK row，原count/拒绝断言不改。
 - Static244 passed in2.45s；Ruff/mypy116通过；Real=0；新Provider/tokens/cost=0；本会话既有V01仍2请求，不误报累计0。
 - Accepted=L0候选；production不动，累计19,736字符；保留原read-only事实和整个禁止扩大访问/停止指导。
+
+## A04：剩余职责实际owner复核
+
+- Scope=17条E及混合P39/P60/P66；Risk=只读/文档低；Prompt变化=无；Provider预计/最多=0/0。
+- E定位到evidence.py实际source resolver/compiler/strict/graceful函数；超界sources在graceful丢字段，不是所有非法输入都整体拒绝；公开JSON生成Schema仍由Base提供，因此不能移除生成指导。
+- P60加A表示known canonical选择；P66加A/G保护时间含义，limit已迁移不能外推整条。多标签计数同步；Current wording/位置不改。
+- read-only工具主语与后续访问指令相连，暂不删除事实或重写句子；member/semantic limit仍非strict须独立实测，Base无对应句不能虚报Prompt迁移。
+- Accepted=责任审计更新；0新Provider/tokens/cost。
