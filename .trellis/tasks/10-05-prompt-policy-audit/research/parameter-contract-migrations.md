@@ -1,6 +1,6 @@
 # 已验证的参数契约迁移
 
-production SYSTEM_PROMPT仍是原20,450字符。P01–P09只生成累计开发候选；最新20,025字符，425字符仅作精确diff事实，不是质量/成本KPI。模型语义与最终release gate均未验证。当前真实Provider预算0，不运行整套真实AB。
+production SYSTEM_PROMPT仍是原20,450字符。P01–P15只生成累计开发候选；最新19,776字符，674字符仅作精确diff事实，不是质量/成本KPI。模型语义与最终release gate均未验证。当前真实Provider预算0，不运行整套真实AB。
 
 ## 字段与真实执行owner
 
@@ -15,6 +15,12 @@ production SYSTEM_PROMPT仍是原20,450字符。P01–P09只生成累计开发�
 | P55 | P07 | lexical/legacy keyword单字符串 | 原SDK string/typed input；本轮无实现改动 | 关键词/实体锚点选择 |
 | P55 | P08 | lexical三种filter不能空数组 | SDK minItems=1；原typed input | unused filter选择、scope与canonical语义 |
 | P62 | P09 | member session_ids不能空数组 | SDK minItems=1；原typed input | session选择/identity消歧 |
+| P66 | P10 | recent.limit严格正整数 | SDK strict/ge=1；Capability可信上界 | archive_latest默认两天、时间互斥、cursor |
+| P61 | P11 | 显式context非负整数/共享总量 | SDK strict/ge=0；typed input总量上界 | 默认8/8、选窗20/40、讨论与停止 |
+| P60 | P12 | 恰一身份参数 | 原SDK函数体Host guard，实测合法/非法 | 已知canonical ID/锚点相关性；Schema无oneOf |
+| P63 | P13 | SQL单字符串/optional正整数cap | SDK/typed input；Capability可信上界 | SQL选择、schema调查、错误停止 |
+| P63 | P14 | 不执行第二条SQL | 原SQLite execute/SQLMalformedError | hidden schema指导 |
+| P39 | P15 | SQL写入/DDL禁止 | 原authorizer/read-only连接，实际SDK拒绝 | scope/WHERE/ATTACH/PRAGMA/LIMIT/错误停止 |
 
 P06保留SDK原有空对象/空字符串合法形式；额外字段在SDK忽略前失败，JSON解析保留异常链。省略/null的filter沿原scope继承。没有fallback、retry、正则ID或额外单侧窗口上界。
 
@@ -23,7 +29,7 @@ P06保留SDK原有空对象/空字符串合法形式；额外字段在SDK忽略�
 - 参数测试在真实FunctionTool解析/typed input之后才允许recording registry；非法输入必须registry零调用，合法输入保留同样参数。真实检索、scope、projection与Finalizer由原有fixture和全量工程测试覆盖。
 - 精确候选manifest按production→前一候选逐步删一个片段，其他字节/空白/顺序相等。mapping定位用实际片段和最小源码行范围；不能按旧审计行号机械取行。A01已经更正P41–P71附近错位，P04 Rule是P62。
 - P48–P51为近似重复，当前不标完整literal duplication，不去重。Discussion/Negative/Temporal/Stop/Routing全部保持原文。
-- 最新793全量测试、176相关static、Ruff/mypy116通过；0真实Provider/0新增tokens/0cost。L0与synthetic不证明真实模型语义等价。
-- 历史6个frozen baseline保存旧SDK合同，新lexical/semantic/member/get_schema合同有差异；当前candidate-only/targeted预检显式拒绝，不能改写历史条件或自动付费刷新。
+- 上一批793全量测试；P15最新239相关static、Ruff/mypy116通过；0真实Provider/0新增tokens/0cost。L0与synthetic不证明真实模型语义等价。
+- 历史6个frozen baseline保存旧SDK合同，新lexical/semantic/member/get_schema/recent/context/SQL合同有差异；当前candidate-only/targeted预检显式拒绝，不能改写历史条件或自动付费刷新。
 
 完整逐条matrix位于同任务目录prompt-responsibility-matrix.md；它超过自动注入上限，需按真实Rule ID手工读取相关部分，并在修改前核对实际prompt.py。实现位于openai_tools.py；检查位于test_prompt_parameter_contracts.py和test_prompt_screening.py。全文上下文不要依赖截断后的尾部。

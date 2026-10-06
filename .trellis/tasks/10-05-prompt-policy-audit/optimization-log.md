@@ -254,3 +254,10 @@
 - DELETE/CREATE实际SDK拒绝；fixture count与实际sqlite_master证明未写入/建表，不以public schema可见性替代物理状态检查。
 - Accepted=已有确定性承接/L0候选；production不动，累计19,776字符；不更改其余安全/Scope/LIMIT/停止指导。
 - 自动继续责任矩阵承接状态更新及低成本Harness审查；不存在literal duplicate可顺便去重，不强行生成语义候选。
+
+## A02：承接状态同步
+
+- Scope=矩阵P39/P60/P61/P63/P66与紧凑契约摘要；Risk=文档低；Prompt变化=无；Provider预计/最多=0/0。
+- 同步P10–P15实际SDK/Host owner与L0状态，保留Current wording、Rule ID、行范围、其余高风险政策，不把局部承接写成整条可删。
+- 正式Schema无oneOf、默认8/8与20/40、unknown schema/时间/停止依然模型负责；旧frozen工具合同不可沿用事实保留。
+- Accepted=审计状态更新；0Provider/0tokens/0cost。
