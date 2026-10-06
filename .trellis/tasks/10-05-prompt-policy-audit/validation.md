@@ -294,3 +294,5 @@ H09：共享budget缺口1 red→static307 passed in12.12s，Ruff/mypy116通过�
 H10：缺入口1 red/1 green→static308 passed in4.29s、Ruff/mypy116通过；同Runtime paired两侧非Prompt conditions相同，0HTTP。六历史及cal-context-ui snapshot均匹配当前DB。
 
 P16真实首次screening：T01 6HTTP/T02 8HTTP/R01 6HTTP，累计20/80；P16拒绝，生产未发布。推荐不漏，但关系误接和无exhaustive证明的唯一断言不能由finalizer valid掩盖。详见optimization-log与独立semantic-review原件。
+
+C24：keyword Schema说明及四消息SQLite AND验证；static311/Ruff/mypy116，full pytest921 passed in17.53s。L1 actual1、UI fresh E2E actual8，两侧恢复GT；新增累计50/80。旧T04共同漏检artifact保留，索引实际completed不是缺失；参数说明的新合同拒绝旧freeze复用。

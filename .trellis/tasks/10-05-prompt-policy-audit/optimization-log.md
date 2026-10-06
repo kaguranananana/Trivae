@@ -478,3 +478,6 @@ H10 accepted：static308通过；P16-T01=wide recommendation fresh pair、Expect
 - P04 T02 actual4通过；T03一周fresh pair actual4通过（明确100/15221、9小时切片）；T04 actual7、累计41/80，两侧GT推荐/第三人评价均未进入模型，release blocked，不把共同失败当通过。
 - root诊断：skill628/100、UI效果5不含GT、ui效果0、ui260/100，ui skill3含GT；现有空白AND逻辑正确，缺的是Schema描述。semantic索引completed，473236全覆盖/54267 chunks，GT在chunks；partial不是索引缺失。之前basis字符串的partial解释以此实际state复核为准。
 - C24只补共享keyword字段说明；Added四消息AND fixture及两个SDK Schema检查，无Base删除/改写，无样例规则。fixture初稿生命周期/字段错误透明修正，断言不变。static311/Ruff/mypy116通过。Expected probe1+pair6/Maximum1+8；接下来fresh合同，不重绑旧freeze。
+
+C24 L1：actual1HTTP，semantic与UI skill lexical组合同时提出；expected截停保留failed terminal，不冒充完整E2E。官方缓存模型预加载0DeepSeek；后续两侧HF_HUB_OFFLINE=1同缓存身份，非检索fallback。
+C24 UI fresh pair：actual8HTTP，累计50/80；两侧GT direct/reply均进入模型和答案，恢复推荐、其他作者评价/报告链接/日期。双方4HTTP/3rounds，存在近似semantic重查；不虚报效率或单组因果。P04重新进入targeted待release。full pytest921 passed in17.53s，static311/Ruff/mypy116通过。
