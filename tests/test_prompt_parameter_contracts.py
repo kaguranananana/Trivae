@@ -153,3 +153,30 @@ def test_p04_member_schema_and_valid_query_keep_normalization():
     assert "non-empty" in schema["description"]
     response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
     assert response["status"] == "ok" and handler.calls[0].query == "用户A"
+
+
+@pytest.mark.parametrize("value", ["", True, 2, ["Agent后训练"]])
+def test_p05_semantic_query_rejects_empty_and_non_string_at_sdk(value):
+    """概念检索的原始参数由真实SDK校验，不发起dense检索。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search", {"query": value})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+def test_p05_semantic_query_whitespace_remains_host_error():
+    """非空白语义继续交给已有typed input，minLength只表达字符串长度。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search", {"query": "  "})
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+    assert handler.calls == []
+
+
+def test_p05_semantic_schema_and_valid_query_keep_normalization():
+    """合法概念文本沿原路径传递；不重新选择路由、不改变召回参数。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search", {"query": " Agent后训练 "})
+    schema = tool.params_json_schema["properties"]["query"]
+    assert schema["type"] == "string" and schema["minLength"] == 1
+    assert "non-empty" in schema["description"]
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and handler.calls[0].query == "Agent后训练"

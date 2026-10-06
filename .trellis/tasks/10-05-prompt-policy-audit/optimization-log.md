@@ -116,3 +116,13 @@
 - Observed difference：空串更早在SDK失败；合法用户名称规范化不变。消歧与canonical ID仍为原策略。
 - Accepted=contract/L0候选；production正文不改；累计20,207字符。
 - 下一轮自动进入P05：只迁移semantic_search.query非空字符串；不改semantic routing。
+
+## P05：semantic query非空字符串
+
+- Commit：本节所属`refactor(prompt): move semantic query validation into the tool contract`。
+- Scope=P58:query；Risk=低；Owner=SDK/typed input；Expected/Maximum calls=0/0。
+- Removed=57字符；Moved=Base候选→字段Schema/description/Host；Reworded=无；Added=单字段与6测试。
+- Reproduction=2 failed/4 passed；缺失minLength，原Host空白检查保留。没有修改query文本、routing或其他参数。
+- Static=123 passed in2.05s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- Observed difference：空串提前显式SDK失败；合法query规范化不变。Accepted=contract/L0；生产Prompt保持原文，候选20,150字符。
+- 下一轮自动进入P06：只处理get_schema额外参数被SDK忽略的实证缺口，不改SQL策略。

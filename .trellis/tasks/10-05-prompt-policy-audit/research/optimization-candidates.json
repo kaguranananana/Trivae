@@ -22,5 +22,11 @@
     "rule": "P61:query",
     "file": "prompt-p04.txt",
     "removed": "query must be one\nnon-empty string; "
+  },
+  {
+    "iteration": "P05",
+    "rule": "P58:query",
+    "file": "prompt-p05.txt",
+    "removed": "For\nsemantic_search, query must be one non-empty string.\n"
   }
 ]

@@ -345,7 +345,10 @@ class SemanticSearchSDKToolAdapter:
         )
         async def semantic_search(
             context: RunContextWrapper[RuntimeContext],
-            query: str,
+            # SDK公开并执行原非空字符串约束；非空白判断仍由SemanticSearchInput负责。
+            query: Annotated[str, Field(
+                strict=True, min_length=1, description="One non-empty semantic query string."
+            )],
             session_ids: list[str] | None = None,
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
