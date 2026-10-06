@@ -481,3 +481,10 @@ H10 accepted：static308通过；P16-T01=wide recommendation fresh pair、Expect
 
 C24 L1：actual1HTTP，semantic与UI skill lexical组合同时提出；expected截停保留failed terminal，不冒充完整E2E。官方缓存模型预加载0DeepSeek；后续两侧HF_HUB_OFFLINE=1同缓存身份，非检索fallback。
 C24 UI fresh pair：actual8HTTP，累计50/80；两侧GT direct/reply均进入模型和答案，恢复推荐、其他作者评价/报告链接/日期。双方4HTTP/3rounds，存在近似semantic重查；不虚报效率或单组因果。P04重新进入targeted待release。full pytest921 passed in17.53s，static311/Ruff/mypy116通过。
+
+## P16-B04-T05：资源覆盖通过但时间矛盾，拒绝子候选
+
+- Expected4/Maximum4，actual4，累计54/80。URL-first/max5000/context0，无SQL recount/recent，10消息/全部重要链接进入模型。
+- Candidate概述声称最新覆盖截至8月14日10:19:23，正文却引用12:59:10消息，时间事实矛盾；Baseline误算去重总数6resources，候选6repo相关地址+1主页虽更准，不能抵销时间退步。P01–P04 rejected；不进入release gate，不发布。
+- 已完成六类实际筛选：exact、zero、temporal、discussion、UI recovery、inventory；P04改善部分case不能算整个候选通过。保持全部成功与失败，不归因哪一句删除。
+- 自动二分P01–P02，Scope=lexical参数两句；Expected2/Maximum4，先current SDK同条件candidate-only inventory，冻结条件预检。所有高风险policy逐字不动。
