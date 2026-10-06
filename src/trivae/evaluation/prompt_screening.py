@@ -29,6 +29,10 @@ class ScreeningRuntime(OpenAIAgentsRuntimeAdapter):
         self.probe_usage: dict[str, int | float] | None = None
 
     def _build_agent(self, request: Any, context: Any, state: Any) -> Any:
+        if self.first_tool:
+            # 新run构造入口统一清空实验观测，不继承上一run的choice或usage。
+            self.probe_calls.clear()
+            self.probe_usage = None
         # 保留生产工具、模型、预算和动态 instructions 的唯一构造入口。
         agent = super()._build_agent(request, context, state)
         original_instructions = agent.instructions
@@ -42,8 +46,6 @@ class ScreeningRuntime(OpenAIAgentsRuntimeAdapter):
 
         agent.instructions = instructions
         if self.first_tool:
-            # 每次正式构造新run时清空观测，不能继承上一case的usage。
-            self.probe_usage = None
             # SDK 已完成模型轮次和 usage hook，替换工具 callable 可在任何 Host 查询之前停止。
             for tool in agent.tools:
                 tool.on_invoke_tool = self._probe_invoker(tool.name)

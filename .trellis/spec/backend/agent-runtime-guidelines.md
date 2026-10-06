@@ -958,3 +958,5 @@ Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、�
 - semantic三种可选filter以minItems=1公开并由SDK执行已有非空数组契约，omit/null仍原样继承scope。只约束数组形状，不推断canonical ID或授权；Base无对应semantic句，不能虚报Prompt迁移。
 
 - recent双可选数组以minItems=1公开并执行原Host/Args非空形状约束；omit/null及archive_latest两天/default/cursor不变，unused filter选择仍由模型决定。
+
+- 首工具实验choice与usage在ScreeningRuntime新run构造入口共同重置，CLI不重复管理；顺序复用同一Runtime的Application.query不能跨run积累choice。实验仍按case顺序执行，此修复不建立并行run支持。

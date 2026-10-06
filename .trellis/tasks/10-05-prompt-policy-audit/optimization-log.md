@@ -410,3 +410,12 @@
 - Removed/Moved/Reworded=无；Added=minItems执行和7 tests；unused filter判断保留，不虚报Prompt迁移。
 - Reproduction=5 failed/2 passed；Static305 passed in3.18s，Ruff/mypy116通过；typed默认两天/archive_latest、limit10、cursorNone和合法参数保持。
 - Accepted=L0 contract；0新API/tokens/cost，累计真实仍2且总费用未知。继续核对剩余责任/契约，并做本批工程checkpoint；production不替换。
+
+## H08：实验观测重置归同一run owner
+
+- Commit：本节所属`fix(eval): reset decision probe observations per run`。
+- Scope=probe choice/usage生命周期；Risk=低；Prompt lines=0；Owner=实验Runtime builder；Expected/Maximum calls=0/0。
+- Removed/Reworded=无Prompt变化；Moved=CLI choice清理→实验Runtime入口；Added=同Application两个query测试。
+- Reproduction=1 failed，第二run包含上一tool；修复后当前choice独立，usage110/220原值、旧快照不变，两run IDs不同，Host0。
+- Static306 passed in2.70s，重置入口整理后screening15及Ruff通过；0新API/tokens/cost。Accepted=实验观测修复，不扩展并行run执行。
+- 自动继续A05剩余责任复核，更新过时的待修复状态；无新增Prompt候选，生产原文保持。

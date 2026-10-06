@@ -179,7 +179,6 @@ async def execute(args: argparse.Namespace) -> None:
                                           prompt_identity=f"prompt:{label}:{commit}")
                 for repeat in range(extra or 1):
                     runtime.screening_prompt = prompt
-                    runtime.probe_calls.clear()
                     first_request = len(budget.requests)
                     run = (await runner.run_case(case, current_variant, repetitions=1))[0]
                     result = captured[-1]

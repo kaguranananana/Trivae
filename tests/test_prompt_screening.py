@@ -355,3 +355,38 @@ def test_first_tool_cli_distinguishes_parse_failure_from_expected_stop(tmp_path,
                         if event["operation"] == "runtime.run" and event["phase"] == "failed")
     assert failed_event["payload"]["exception_type"] == expected_error
     assert read_artifact(output / "provider-ledger.json")["provider_calls"] == 0
+
+
+def test_first_tool_observations_belong_to_current_application_run(tmp_path):
+    """复用实验Runtime执行两次正式query时，choice/usage不能混入上一run。"""
+    model = ScriptedModel([
+        ModelStep(output=[function_call("get_schema", {}, call_id="first")],
+                  usage=Usage(requests=1, input_tokens=100, output_tokens=10, total_tokens=110)),
+        ModelStep(output=[function_call("find_members", {"query": "Alice"}, call_id="second")],
+                  usage=Usage(requests=1, input_tokens=200, output_tokens=20, total_tokens=220)),
+    ])
+    runtime = ScreeningRuntime(model=model, first_tool=True)
+    application = create_application(tmp_path / "runs.sqlite3", agent_runtime=runtime)
+    runtime.capability_registry = application.capability_registry
+
+    async def check():
+        try:
+            request = QueryRequest("test", _case().data_access_scope, trace_profile="debug",
+                available_capabilities=("get_schema", "find_members"),
+                execution_override=ExecutionOverride(forced_route="standard_execution"))
+            first = await application.query(request)
+            assert first.runtime_result.error.exception_type == "FirstToolProbeStop"
+            previous = list(runtime.probe_calls)
+            assert [call["name"] for call in previous] == ["get_schema"]
+            assert runtime.probe_usage["total_tokens"] == 110
+            second = await application.query(request)
+            assert first.runtime_result.run_id != second.runtime_result.run_id
+            assert second.runtime_result.error.exception_type == "FirstToolProbeStop"
+            assert [call["name"] for call in runtime.probe_calls] == ["find_members"]
+            assert [call["name"] for call in previous] == ["get_schema"]
+            assert runtime.probe_usage["total_tokens"] == 220
+            assert first.runtime_result.tool_calls == second.runtime_result.tool_calls == ()
+            assert len(model.calls) == 2
+        finally:
+            await application.aclose()
+    asyncio.run(check())

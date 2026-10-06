@@ -280,3 +280,5 @@ C22：6 red/3 green→static298 passed in2.55s；Ruff/mypy116通过，omit/null/
 C23：5 red/2 green→static305 passed in3.18s，Ruff/mypy116通过。两数组公开/执行minItems，原时间/cursor保持，0新API。
 
 C23工程checkpoint：full pytest915 passed in18.47s；static305，Ruff/mypy116通过，diff检查通过。production prompt.py与9256550逐字相等，P16候选原样，H06/C21/H07/C22/C23五轮新增API总计0。连续任务保持in_progress，未归档。
+
+H08：同Runtime二query观测污染1 red→static306 passed in2.70s；清理归builder入口后screening15及Ruff通过。旧快照保留，当前usage与choice独立，0新增API。
