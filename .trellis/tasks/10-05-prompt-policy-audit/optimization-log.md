@@ -329,3 +329,13 @@
 - P60加A表示known canonical选择；P66加A/G保护时间含义，limit已迁移不能外推整条。多标签计数同步；Current wording/位置不改。
 - read-only工具主语与后续访问指令相连，暂不删除事实或重写句子；member/semantic limit仍非strict须独立实测，Base无对应句不能虚报Prompt迁移。
 - Accepted=责任审计更新；0新Provider/tokens/cost。
+
+## C17：member.limit的已公开整数契约实际执行
+
+- Commit：本节所属`fix(tools): enforce the member limit integer contract`。
+- Scope=find_members.limit；Risk=低；Prompt lines affected=无；Owner=SDK/typed input/Capability；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=单字段strict/ge、9 tests。Base没有该limit句，不为减少长度虚报迁移。
+- Reproduction=5 contract failed/3合法通过；repository方法误用造成另1测试错误，按read_member_candidates修正，原上界断言不改。
+- Static253 passed in2.54s；Ruff/mypy116通过；真实上界零repository；省略值/合法正值/identity语义保持。新Provider/tokens/cost=0，本会话累计Provider仍2。
+- 生产scope下SDK Schema/description/strict flag与V01 baseline实物相等，Model可见合同未改；变化仅非法JSON类型的实际拒绝。
+- Accepted=契约执行修复，Prompt候选仍P16。自动继续semantic.limit同类实证缺口；不顺带修改semantic routing/context。

@@ -734,7 +734,9 @@ class FindMembersSDKToolAdapter:
             session_ids: Annotated[list[str] | None, Field(
                 min_length=1, description="Optional non-empty session ID array; omit when unused."
             )] = None,
-            limit: int = default_limit,
+            # 已公开的integer/minimum必须由SDK真正执行，不能先转换原始类型。
+            # 保留按trusted scope推导的默认值；Capability继续执行授权上界。
+            limit: Annotated[int, Field(strict=True, ge=1)] = default_limit,
         ) -> dict[str, object]:
             """只将模型身份查询字段转换成 FindMembersInput。"""
 

@@ -745,3 +745,51 @@ def test_p16_sql_scope_is_enforced_outside_model_sql_through_real_sdk():
         asyncio.run(check())
     finally:
         fixture.tearDown()
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_c17_member_limit_rejects_invalid_raw_values(value):
+    """Schema integer/minimum必须与实际SDK解析一致，不能靠转换后再验的Host掩盖原类型。"""
+    tool, wrapper, handler = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": "Alice", "limit": value})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("arguments,expected", [({}, 10), ({"limit": 1}, 1), ({"limit": 10}, 10)])
+def test_c17_member_limit_keeps_legal_values_and_scope_default(arguments, expected):
+    """scope内默认值不变；不修改身份query或candidate选择。"""
+    tool, wrapper, handler = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": "Alice", **arguments})
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and handler.calls[0].limit == expected
+    assert tool.params_json_schema["properties"]["limit"]["minimum"] == 1
+    assert tool.params_json_schema["properties"]["limit"]["maximum"] == 10
+
+
+def test_c17_member_trusted_limit_rejects_before_repository(monkeypatch):
+    """真实成员Capability继续执行上界，不拿Schema代替Host授权。"""
+    from tests import test_stage_c_tools as fixtures
+
+    fixture = fixtures.StageCToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        called = []
+        original = app.read_repository.read_member_candidates
+
+        def track(query):
+            called.append(query)
+            return original(query)
+
+        monkeypatch.setattr(app.read_repository, "read_member_candidates", track)
+        context = RuntimeContext(scope=ExecutionScope(max_results=5), capability_registry=app.capability_registry,
+                                 available_capabilities=("find_members",), run_id="member-limit")
+        context.allocate_tool_call_id("above")
+        wrapper = ToolContext(context=context, tool_name="find_members", tool_call_id="above", tool_arguments="{}")
+        tool = FindMembersSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=5)
+        response = asyncio.run(tool.on_invoke_tool(wrapper, json.dumps({"query": "Alice", "limit": 6})))
+        assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+        assert called == []
+        assert tool.params_json_schema["properties"]["limit"]["default"] == 5
+    finally:
+        fixture.tearDown()
