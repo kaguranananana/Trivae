@@ -176,7 +176,9 @@ class SearchMessagesSDKToolAdapter:
             time_range: dict[str, object] | None = None,
             sender_user_ids: list[str] | None = None,
             message_types: list[str] | None = None,
-            limit: int = DEFAULT_LEXICAL_RESULT_LIMIT,
+            # limit 的严格类型与正值由真实SDK解析执行，拒绝bool/字符串/float的隐式转换。
+            # trusted scope 上界继续由Capability验证，Schema maximum仅公开当前上限。
+            limit: Annotated[int, Field(strict=True, ge=1)] = DEFAULT_LEXICAL_RESULT_LIMIT,
             context_before: int = 2,
             context_after: int = 2,
         ) -> dict[str, object]:

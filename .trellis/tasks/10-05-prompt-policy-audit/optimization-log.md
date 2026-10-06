@@ -35,3 +35,16 @@
 - Observed behavior：有提问消息时，即使小窗没见推荐，no_result被Finalizer拒绝；合法claims中的强负面语义仍不能由Finalizer证明。fixture不会声称模型必然选20/40，更不更改默认8/8。
 - Removed / Moved / Reworded：无；Unchanged high-risk policy：生产Prompt全字节不变。
 - Accepted：廉价证据回归层；不替代真实frozen snapshot或release paired gate。
+
+## P01：lexical limit 的确定性约束迁移候选
+
+- Commit：本节所属 `refactor(prompt): move lexical limit validation into the tool contract`。
+- Changed rules：仅P56的limit正整数/当前上限片段，104字符；候选20,346字符，production仍20,450。
+- Responsibility moved：Base候选 → 已有Tool description/Schema与Host；先补SDK严格类型/正值。其余参数/全部高风险策略不动，全文相等测试防止无关改写。
+- Static：static CLI 77 passed、Ruff通过、mypy116 source files通过；新增17项limit tests覆盖两adapter非法类型、非正值、Host上限、合法边界及整串候选diff。
+- Reproduction：修改前true/2.0均进入retrieval，证明typed input之前发生SDK类型转换。修复只在原SDK参数字段加strict/ge；无临时分支。越限envelope现有代码是INVALID_ARGUMENT，最初测试误写错误码已按真实contract修正；未放宽拒绝/零retrieval断言。
+- Candidate生成首命令用系统Python无法导入src布局，未产生candidate；测试显式FileNotFound。改用仓库uv环境生成后原断言全部通过，没有fallback。
+- Synthetic：F01 8项一起通过；Real cases=0；Provider calls=0、tokens=0、cost=0。
+- Observed behavior difference：原本非法JSON limit的隐式整数转换变为显式SDK错误；合法输入检索不变。production Base文字无变化。未测真实模型tool choice/answer差异。
+- Accepted：确定性contract修复与L0候选；未通过release semantic gate，不直接替换production。全文Removed/Moved/Reworded/Added详见prompt-p01-semantic-diff.md。
+- 下一轮：只验证context_before/context_after非负的真实SDK承接，不修改展开窗口选择或其他discussion prose；先补minimum/strict与必要契约，再独立候选。
