@@ -1591,3 +1591,47 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Next Steps
 
 - 使用现有category标签准备最小真实case；当前SDK与旧冻结合同不同，不跳过筛选或发布原文。
+
+
+## Session 62: Prompt continuous budget screening: retain Base after five rejected candidates
+
+**Date**: 2026-10-06
+**Task**: Prompt continuous budget screening: retain Base after five rejected candidates
+**Branch**: `main`
+
+### Summary
+
+继续原prompt-policy-audit，新增58/80 DeepSeek HTTP。P16/P08/P04/P02/P01五累计范围依次未通过，按停止条件3结束本批；production Prompt20450逐字保留，无release。H09跨轮硬budget/H10 fresh paired-targeted/C24既有lexical AND Schema说明与fixture通过。六领域真实Application E2E核验，全部失败、原始Trace及完整usage保留，父任务in_progress。
+
+### Main Changes
+
+- H09共享总预算发送前计数，H10复用生产paired引擎，C24仅公开既有AND参数语义
+- 保留关系、唯一负面、错误时间边界/作者数量、忽略用户时窗等失败；不宣称单句因果或Provider更省
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `39410f3` | (see git log) |
+| `6a8c65d` | (see git log) |
+| `1a9d1fc` | (see git log) |
+| `50990ab` | (see git log) |
+| `c7c5fd3` | (see git log) |
+| `3ec4631` | (see git log) |
+| `5671204` | (see git log) |
+| `cf273c1` | (see git log) |
+| `47bf1a6` | (see git log) |
+| `524c042` | (see git log) |
+
+### Testing
+
+- [OK] static311/full pytest921/Ruff/mypy116通过；生产Prompt与e48a852逐字相同
+- [OK] 新增HTTP58/input1245957/output47594/total1293551/cache328960，费用unknown；cold/warm/HF延迟不作效率归因
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 围绕单一time/negative真实Failure Case核实责任，先建立强GT冻结Baseline，禁止继续机械P17或放宽GT；本批剩余22HTTP不清零
