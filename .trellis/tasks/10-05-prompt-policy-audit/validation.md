@@ -274,3 +274,5 @@ H06：异常误判复现1失败→坏/合法CLI两路径通过；static276 passe
 C21：原类型转换/Schema缺minimum复现12 red→static288 passed in2.86s，Ruff/mypy116通过。0新增API；合法值及窗口策略保持，旧V01不同合同不可沿用。
 
 H07：合法先返回/坏参数后返回复现1 red/2 green→static289 passed in2.91s；Ruff/mypy116通过。保留实际异常、raw-only坏参数，阻止后case，0新增API。
+
+C22：6 red/3 green→static298 passed in2.55s；Ruff/mypy116通过，omit/null/合法数组保留，Host原有拒绝不虚报新增，0新API。

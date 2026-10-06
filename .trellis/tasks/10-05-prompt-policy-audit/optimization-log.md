@@ -393,3 +393,12 @@
 - Reproduction=1 failed/2 passed；SDK实际先返回哪个异常保持原样，不伪造canonical Trace。
 - Static289 passed in2.91s；Ruff/mypy116通过；坏两个顺序均停止下一case，正常仍可继续显式probe。
 - Accepted=Harness正确性。新Provider/tokens/cost=0，累计仍2；下一轮只补semantic空数组的Schema/SDK已存契约，不改filter选择。
+
+## C22：semantic空数组公开契约
+
+- Commit：本节所属`fix(tools): expose semantic nonempty filter constraints`。
+- Scope=semantic三个可选数组的非空形状；Risk=低；Prompt lines=0；Owner=SDK/typed input；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=minItems执行、9 tests；Base无对应semantic句，不虚报删除。
+- Reproduction=6 failed/3 passed，原Host拒绝已证明；合法值原保持，失败原因明确分SDK阶段和Schema缺口。
+- Static298 passed in2.55s；Ruff/mypy116通过。Accepted=L0 contract，新增API/tokens/cost=0；累计真实请求仍2、总费用未知。
+- 下一轮只核验recent同类数组契约；不修改time/default/cursor/filter选择。

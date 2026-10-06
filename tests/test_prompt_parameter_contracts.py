@@ -929,3 +929,38 @@ def test_c21_semantic_context_preserves_default_and_legal_windows(arguments, exp
     for field in ("context_before", "context_after"):
         assert tool.params_json_schema["properties"][field]["minimum"] == 0
         assert tool.params_json_schema["properties"][field]["default"] == 2
+
+
+@pytest.mark.parametrize("field", ["session_ids", "sender_user_ids", "message_types"])
+def test_c22_semantic_empty_filters_rejected_by_actual_sdk(field):
+    """Host已有非空数组约束，SDK必须同样公开并执行，不依赖工具描述文字。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search",
+                                         {"query": "learning", field: []})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("field", ["session_ids", "sender_user_ids", "message_types"])
+def test_c22_semantic_typed_owner_already_rejects_empty_filters(field):
+    """迁移Schema前证明现有Host实际拒绝；不新增检索语义或filter选择规则。"""
+    with pytest.raises(CapabilityContractError):
+        SemanticSearchInput(query="learning", **{field: ()})
+
+
+@pytest.mark.parametrize("form", ["omitted", "null", "non_empty"])
+def test_c22_semantic_optional_filter_forms_and_schema_remain_consistent(form):
+    """null/省略继续沿原scope继承，合法数组原值送达，默认与可选性不变。"""
+    values = {"session_ids": ["qq:100"], "sender_user_ids": ["user:alice"], "message_types": ["text"]}
+    arguments = {} if form == "omitted" else {field: None if form == "null" else value
+                                             for field, value in values.items()}
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search",
+                                         {"query": "learning", **arguments})
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok"
+    for field, value in values.items():
+        assert getattr(handler.calls[0], field) == (tuple(value) if form == "non_empty" else None)
+        schema = tool.params_json_schema["properties"][field]
+        array = next(branch for branch in schema["anyOf"] if branch["type"] == "array")
+        assert array["minItems"] == 1
+        assert {"type": "null"} in schema["anyOf"] and schema["default"] is None

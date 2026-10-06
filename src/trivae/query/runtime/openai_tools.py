@@ -362,12 +362,14 @@ class SemanticSearchSDKToolAdapter:
             query: Annotated[str, Field(
                 strict=True, min_length=1, description="One non-empty semantic query string."
             )],
-            session_ids: list[str] | None = None,
+            # SDK公开并执行原非空数组约束，omit/null继续保留Host scope语义。
+            session_ids: Annotated[list[str] | None, Field(min_length=1)] = None,
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
             time_range: dict[str, object] | None = None,
-            sender_user_ids: list[str] | None = None,
-            message_types: list[str] | None = None,
+            # 这里只约束数组形状；canonical身份与授权仍由原Host执行。
+            sender_user_ids: Annotated[list[str] | None, Field(min_length=1)] = None,
+            message_types: Annotated[list[str] | None, Field(min_length=1)] = None,
             source_message_id: str | None = None,
             reply_to_source_message_id: str | None = None,
             # SDK拒绝原始非法类型；省略值使用上方按scope推导的公开默认值。
