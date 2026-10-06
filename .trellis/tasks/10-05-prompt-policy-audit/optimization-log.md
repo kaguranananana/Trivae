@@ -94,3 +94,14 @@
 - Observed difference：非法bool/string/float不再转整数；负数提前在SDK拒绝。合法0/20及默认2不变，20/40讨论政策逐字保留。
 - Accepted：contract修复与L0候选接受；production正文不变，未通过semantic release gate。已有frozen tool schema变更后不能冒充同条件baseline。
 - 下一轮自动进入P03：仅semantic dense_top_k正整数；其余semantic参数不顺手改。
+
+## P03：semantic dense_top_k正整数
+
+- Commit：本节所属`refactor(prompt): move dense candidate count into the tool contract`。
+- Scope=P58:dense_top_k；Risk=低；Owner=SDK/typed input；Expected/Maximum calls=0/0。
+- Removed=43字符；Moved=Base候选→严格字段/description/原Host校验；Reworded=无；Added=一个Field与12项契约测试。
+- Reproduction=7 failed/5 passed，证明Host已有规则却无法看到SDK转换前类型；修改实现而非弱化测试。
+- Static=111 passed in1.88s，Ruff/mypy116通过；Synthetic=既有8项fixture通过；Real cases=0。
+- Provider=0；new input/output/total tokens=0；cost=0。非法类型/非正值提前拒绝；默认40及合法1不变。
+- Accepted=contract与L0候选；production原文不变；高风险全部逐字保持。候选20,243字符。
+- 下一轮自动进入P04：仅find_members.query非空字符串，不碰消歧、person routing或canonical identity策略。

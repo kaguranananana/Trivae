@@ -11,9 +11,13 @@ from agents.exceptions import ModelBehaviorError
 from agents.tool_context import ToolContext
 
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
-from trivae.capabilities.contracts import ToolEnvelope
+from trivae.capabilities.contracts import CapabilityContractError, SemanticSearchInput, ToolEnvelope
 from trivae.query.runtime.contracts import RuntimeContext
-from trivae.query.runtime.openai_tools import LexicalSearchSDKToolAdapter, SearchMessagesSDKToolAdapter
+from trivae.query.runtime.openai_tools import (
+    LexicalSearchSDKToolAdapter,
+    SearchMessagesSDKToolAdapter,
+    SemanticSearchSDKToolAdapter,
+)
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
 
 TASK = Path(__file__).parents[1] / ".trellis/tasks/10-05-prompt-policy-audit"
@@ -88,3 +92,36 @@ def test_all_iteration_candidates_only_remove_declared_fragments():
         expected = previous.replace(item["removed"], "", 1)
         assert (TASK / "research" / item["file"]).read_text() == expected
         previous = expected
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_p03_dense_candidates_reject_invalid_raw_values(value):
+    """真实SDK不得把非法原类型转成合法dense候选数。"""
+    tool, wrapper, handler = sdk_boundary(
+        SemanticSearchSDKToolAdapter, "semantic_search", {"query": "Agent后训练", "dense_top_k": value}
+    )
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_p03_dense_candidates_typed_owner_already_rejects(value):
+    """直接业务入口也执行相同正整数契约，不只依赖Schema。"""
+    with pytest.raises(CapabilityContractError):
+        SemanticSearchInput(query="Agent后训练", dense_top_k=value)
+
+
+@pytest.mark.parametrize("dense_args,expected", [({}, 40), ({"dense_top_k": 1}, 1)])
+def test_p03_schema_default_and_legal_dense_count(dense_args, expected):
+    """保持既有默认40与合法最小值1，不改候选召回算法或limit。"""
+    tool, wrapper, handler = sdk_boundary(
+        SemanticSearchSDKToolAdapter, "semantic_search", {"query": "Agent后训练", **dense_args}
+    )
+    schema = tool.params_json_schema["properties"]["dense_top_k"]
+    assert schema["minimum"] == 1 and schema["default"] == 40
+    assert "maximum" not in schema
+    assert "positive integer" in schema["description"].lower()
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok"
+    assert handler.calls[0].dense_top_k == expected

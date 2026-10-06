@@ -357,7 +357,11 @@ class SemanticSearchSDKToolAdapter:
             limit: int = 10,
             context_before: int = 2,
             context_after: int = 2,
-            dense_top_k: int = 40,
+            # 候选数先由SDK检查严格正整数，保留原默认40与既有检索算法。
+            # 字段描述公开原Prompt参数约束；Host仍保留业务入口校验。
+            dense_top_k: Annotated[int, Field(
+                strict=True, ge=1, description="Positive integer count of dense candidates before reranking."
+            )] = 40,
         ) -> dict[str, object]:
             """将模型字段投影为 SemanticSearchInput，scope 仍由 RuntimeContext 注入。"""
 

@@ -10,5 +10,11 @@
     "rule": "P57",
     "file": "prompt-p02.txt",
     "removed": "context_before/context_after must be non-negative integers. "
+  },
+  {
+    "iteration": "P03",
+    "rule": "P58:dense_top_k",
+    "file": "prompt-p03.txt",
+    "removed": " and dense_top_k must be a positive integer"
   }
 ]
