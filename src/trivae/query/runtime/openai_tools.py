@@ -728,7 +728,10 @@ class FindMembersSDKToolAdapter:
             query: Annotated[str, Field(
                 strict=True, min_length=1, description="One non-empty identity query string."
             )],
-            session_ids: list[str] | None = None,
+            # 非空数组由SDK公开执行，省略/null仍继承原trusted scope。
+            session_ids: Annotated[list[str] | None, Field(
+                min_length=1, description="Optional non-empty session ID array; omit when unused."
+            )] = None,
             limit: int = default_limit,
         ) -> dict[str, object]:
             """只将模型身份查询字段转换成 FindMembersInput。"""

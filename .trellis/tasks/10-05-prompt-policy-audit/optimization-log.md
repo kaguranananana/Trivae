@@ -168,3 +168,14 @@
 - Observed difference：空数组SDK更早失败；18种省略/null/合法数组传参保持相同。scope授权、canonical选择、query/time/limit不改。
 - Accepted=contract/L0候选；production不改；候选20,054字符。
 - 下一轮自动进入P09：仅find_members.session_ids非空数组契约，不修改身份消歧。
+
+## P09：member session_ids非空数组
+
+- Commit：本节所属`refactor(prompt): move member filter array bounds into the tool contract`。
+- Scope=P62:session_ids；Risk=低；Owner=SDK/FindMembersInput；Expected/Maximum calls=0/0。
+- Removed=29字符；Moved=Base候选→单字段minItems/description/Host；Reworded=无；Added=单字段与6测试。
+- Reproduction：先修漏导入测试构造问题，再2 failed/4 passed；Schema缺minItems，Host原检查保持。不放宽非法输入断言。
+- Static=176 passed；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、new tokens=0、cost=0。
+- Observed difference：空数组在SDK更早失败；省略/null/合法数组保持，identity消歧、scope和query不变。
+- Accepted=contract/L0候选；生产原文不动，候选20,025字符。
+- 后续最小范围：独立审计recent.limit严格正整数，不改time_range/默认日期/cursor或recent选择策略；预算仍先定0。真实Prompt发布仍须fresh paired gate，不跳级。

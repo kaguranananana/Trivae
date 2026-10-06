@@ -217,3 +217,5 @@ A01：旧matrix的六个候选规则定位全部MISMATCH；按真实句子锚点
 P07：已有SDK/typed input的14项单字符串检查修改前即通过；static141 passed in2.14s，Ruff/mypy116通过；Runtime不改。候选仅删36字符，0API。
 
 P08：8失败/21通过复现→static170 passed in1.87s；Ruff/mypy116通过；省略/null/数组的18种合法组合不变。候选只删25字符，0Provider。
+
+P09：测试导入错误先修复→实际契约2失败/4通过复现→static176通过，Ruff/mypy116通过；合法scope参数形式保留，候选仅删29字符，0Provider。

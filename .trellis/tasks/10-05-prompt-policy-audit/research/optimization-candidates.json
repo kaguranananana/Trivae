@@ -46,5 +46,11 @@
     "rule": "P55:filters",
     "file": "prompt-p08.txt",
     "removed": "never send empty arrays. "
+  },
+  {
+    "iteration": "P09",
+    "rule": "P62:session_ids",
+    "file": "prompt-p09.txt",
+    "removed": " and do not send empty arrays"
   }
 ]

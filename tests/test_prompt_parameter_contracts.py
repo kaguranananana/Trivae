@@ -13,6 +13,7 @@ from agents.tool_context import ToolContext
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import (
     CapabilityContractError,
+    FindMembersInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -299,3 +300,39 @@ def test_p08_legal_filter_forms_keep_typed_parameters(adapter, name, field, valu
     assert response["status"] == "ok"
     expected = (value,) if form == "array" else None
     assert getattr(handler.calls[0], field) == expected
+
+
+def test_p09_member_empty_session_filter_rejected_before_registry():
+    """同一参数契约在member工具也须真实拒绝，不能由lexical推定。"""
+    tool, wrapper, handler = sdk_boundary(
+        FindMembersSDKToolAdapter, "find_members", {"query": "用户A", "session_ids": []}
+    )
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+def test_p09_member_typed_owner_already_rejects_empty_sessions():
+    """Host原有非空数组检查继续存在。"""
+    with pytest.raises(CapabilityContractError):
+        FindMembersInput(query="用户A", session_ids=())
+
+
+def test_p09_member_filter_schema_is_optional_non_empty():
+    """实际Schema明确minItems，仍允许null及省略。"""
+    tool, _, _ = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": "用户A"})
+    schema = tool.params_json_schema["properties"]["session_ids"]
+    array = next(branch for branch in schema["anyOf"] if branch["type"] == "array")
+    assert array["minItems"] == 1
+    assert {"type": "null"} in schema["anyOf"] and schema["default"] is None
+    assert "non-empty" in schema["description"]
+
+
+@pytest.mark.parametrize(
+    "arguments,expected", [({}, None), ({"session_ids": None}, None), ({"session_ids": ["session:1"]}, ("session:1",))]
+)
+def test_p09_member_legal_session_forms_keep_parameters(arguments, expected):
+    """既有省略/null/正常数组不变；真实授权逻辑仍由Capability验证。"""
+    tool, wrapper, handler = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": "用户A", **arguments})
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and handler.calls[0].session_ids == expected
