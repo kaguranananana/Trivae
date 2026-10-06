@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 60
+- **Total Sessions**: 61
 - **Last Active**: 2026-10-06
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1562 | Active |
+| `journal-1.md` | ~1593 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 61 | 2026-10-06 | Prompt首工具观测隔离与剩余职责审计 | `eabd3b1`, `5a319ad`, `6f26a3c` | `main` |
 | 60 | 2026-10-06 | 继续Prompt低成本契约与首工具筛选修复 | `2f01877`, `26012e0`, `65ff7e4`, `81f9eaa`, `26080db` | `main` |
 | 59 | 2026-10-06 | Prompt P10–P16与低成本契约迭代 | `953a29e`, `a7d4ad0`, `6235ba2`, `519cc4c` | `main` |
 | 58 | 2026-10-06 | Prompt持续小步优化 P02-P09 | `03d928c`, `57ace57`, `23f7648`, `43047f2`, `ea35180`, `936d7dc`, `1ea1b8a`, `7a64694`, `40acc6a`, `1457e3b` | `main` |

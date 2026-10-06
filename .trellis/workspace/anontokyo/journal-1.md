@@ -1560,3 +1560,34 @@ H06/H07复现并修复并行首工具异常误判；C21–C23补SDK窗口及数�
 ### Next Steps
 
 - 任务继续in_progress，核验probe观测是否按run隔离及剩余可迁移确定性规则。
+
+
+## Session 61: Prompt首工具观测隔离与剩余职责审计
+
+**Date**: 2026-10-06
+**Task**: Prompt首工具观测隔离与剩余职责审计
+**Branch**: `main`
+
+### Summary
+
+H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实case标签选择，不重标冻结记录。八轮续做新增Provider0，生产Base/P16保持。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `eabd3b1` | (see git log) |
+| `5a319ad` | (see git log) |
+| `6f26a3c` | (see git log) |
+
+### Testing
+
+- [OK] full916 passed in16.91s；static306 passed；Ruff/mypy116通过；64 CaseBundle离线选择验证。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 使用现有category标签准备最小真实case；当前SDK与旧冻结合同不同，不跳过筛选或发布原文。
