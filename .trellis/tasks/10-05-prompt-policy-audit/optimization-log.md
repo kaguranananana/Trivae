@@ -452,3 +452,12 @@ H09 accepted：static307/Ruff/mypy116通过，0新HTTP；总ledger在data/evalua
 - 1 red/1 green复现缺mode；Added仅mode分支和生产Application条件相同断言；不改旧targeted复用门禁/GT/Provider配置。
 
 H10 accepted：static308通过；P16-T01=wide recommendation fresh pair、Expected6/Maximum8 HTTP、总80。Case=frozen-reply；SDK/数据/provider/model/route/budget均同，Prompt唯一变量。完整E2E，不能据工具次数判质量。
+
+## P16-T01/T02/R01：首次真实筛选与拒绝
+
+- DeepSeek/deepseek-flash，标准route，同snapshot/scope/预算/SDK；生产Application.query E2E，唯一变量Prompt。新总预算80。
+- T01 Expected6/Maximum8，actual6；两侧lexical+semantic→context_after40，书籍/评价已进入模型。Baseline limit200/before1，candidate100/before2；输出候选错误把HC附和接到更晚效果评价，先判borderline。
+- T02两个真实category case，Expected8/Maximum8，actual8：exact lexical三处GT正文进入模型、canonical locator保留；UTC空窗同区间complete/total_hits0。两个case通过筛选，不是release。
+- R01只对discussion candidate+2，Expected6/Maximum6，actual6；一次关系错未复现，另一次“本条线程唯一”未有完整线程覆盖。P16 rejected，production原Base20450字符保留；P01–P16历史与完整失败原件不覆盖。
+- 累计20HTTP；原始请求/Trace/answer/usage存ignored data/evaluation/prompt-loop-20261006各轮目录，semantic-review单独文件。不能将Trace截断当Tool projection截断；二者本次GT无projection遗漏。金钱费用未知，冷/热启动latency不作效率结论。
+- 下一步P16-B08：P01–P08子候选沿用历史原件；同case复用当前同SDK冻结Baseline，Expected3/Maximum4。Removed仅历史八片段；Moved→已验证Tool/Host；Reworded/Added无；高风险讨论/时间/路由/negative/stop逐字保留。二分只能缩小范围，不能凭一次结果宣称P09–P16因果。

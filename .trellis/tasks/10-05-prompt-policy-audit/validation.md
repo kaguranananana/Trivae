@@ -292,3 +292,5 @@ A06：实际解析64公开case并调用exact selector，确认category:context_r
 H09：共享budget缺口1 red→static307 passed in12.12s，Ruff/mypy116通过；跨实例3次上限先占用再发送，更改总上限明确拒绝。0新增HTTP。
 
 H10：缺入口1 red/1 green→static308 passed in4.29s、Ruff/mypy116通过；同Runtime paired两侧非Prompt conditions相同，0HTTP。六历史及cal-context-ui snapshot均匹配当前DB。
+
+P16真实首次screening：T01 6HTTP/T02 8HTTP/R01 6HTTP，累计20/80；P16拒绝，生产未发布。推荐不漏，但关系误接和无exhaustive证明的唯一断言不能由finalizer valid掩盖。详见optimization-log与独立semantic-review原件。
