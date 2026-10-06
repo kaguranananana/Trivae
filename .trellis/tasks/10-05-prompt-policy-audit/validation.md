@@ -262,3 +262,5 @@ P16：真实SDK count3及SQL_SCOPE_VIOLATION边界通过；static244 passed in2.
 C17：5项SDK失败复现→单字段strict/ge修复；scope/default/上界保持，static253 passed in2.54s，Ruff/mypy116通过。完整生产可见member合同与V01相等；0新API，无Prompt删除。
 
 C18：5项SDK失败复现→strict/ge修复，static262 passed in2.45s，Ruff/mypy116通过；Scope越界零search，生产可见合同未变，0新API。
+
+C19：scope1/5的Schema-default1/5实际10矛盾复现2失败→共享default_limit修复；static266 passed in2.47s，Ruff/mypy116通过；正常默认10/context2/2/dense40保持，0新API。

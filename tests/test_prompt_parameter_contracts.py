@@ -841,3 +841,21 @@ def test_c18_semantic_trusted_limit_rejects_before_search(monkeypatch):
         assert called == []
     finally:
         fixture.tearDown()
+
+
+@pytest.mark.parametrize("trusted", [1, 5, 10, 20])
+def test_c19_semantic_omitted_limit_matches_published_scope_default(trusted):
+    """省略值必须执行Schema真正公布的默认值；不能要求模型补参数绕过SDK缺口。"""
+    registry = CapabilityRegistry()
+    handler = RecordingHandler("semantic_search")
+    registry.register(handler)
+    context = RuntimeContext(scope=ExecutionScope(max_results=trusted), capability_registry=registry,
+                             available_capabilities=("semantic_search",), run_id="semantic-default")
+    context.allocate_tool_call_id("default")
+    wrapper = ToolContext(context=context, tool_name="semantic_search", tool_call_id="default", tool_arguments="{}")
+    tool = SemanticSearchSDKToolAdapter(registry).as_sdk_tool(trusted_max_results=trusted)
+    expected = min(10, trusted)
+    assert tool.params_json_schema["properties"]["limit"]["default"] == expected
+    response = asyncio.run(tool.on_invoke_tool(wrapper, json.dumps({"query": "learning"})))
+    assert response["status"] == "ok" and handler.calls[0].limit == expected
+    assert (handler.calls[0].dense_top_k, handler.calls[0].context_before, handler.calls[0].context_after) == (40, 2, 2)

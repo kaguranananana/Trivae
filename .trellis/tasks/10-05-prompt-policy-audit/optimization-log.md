@@ -348,3 +348,12 @@
 - Static262 passed in2.45s；Ruff/mypy116通过；真实越界零search，默认limit10/dense40/context2/2保持。
 - 生产可见完整工具合同与V01实物相等；本轮新Provider/tokens/cost=0，累计Provider仍2。
 - Accepted=确定性执行修复；候选仍P16。小scope Schema默认值与执行值不一致是独立缺口，自动进入C19，不在本轮改默认。
+
+## C19：semantic默认值执行符合Scope Schema
+
+- Commit：本节所属`fix(tools): align semantic execution default with scoped schema`。
+- Scope=semantic.limit省略默认；Risk=低/已公开契约修复；Prompt lines=无；Owner=SDK factory；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=共享default_limit与4 tests；Reproduction=2 failed/2 passed。
+- scope1/5 Schema默认1/5却实际10；修复factory时共用同一值，scope>=10仍10；显式值不夹取，context2/2/dense40不动。
+- Static266 passed in2.47s；Ruff/mypy116通过；新Provider/tokens/cost=0，累计仍V01的2。
+- Accepted=已公开默认值修复；生产Base/P16候选不改。自动继续C20 lexical/legacy同一factory的默认值矛盾，独立提交。

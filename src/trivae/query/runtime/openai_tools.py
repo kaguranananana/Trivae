@@ -320,6 +320,11 @@ class SemanticSearchSDKToolAdapter:
             if trusted_max_results <= 0:
                 raise ValueError("trusted_max_results must be positive when provided")
 
+        # 参数执行与Schema共用同一个默认值，避免小scope省略limit时落入固定10。
+        effective_maximum = MAX_SEMANTIC_RESULT_LIMIT if trusted_max_results is None else min(
+            trusted_max_results, MAX_SEMANTIC_RESULT_LIMIT
+        )
+        default_limit = min(DEFAULT_SEMANTIC_RESULT_LIMIT, effective_maximum)
         description = (
             "Search Trivae conversation meaning with the local semantic embedding index. "
             "Normally call this first when the user's wording differs from the wording in the chat, "
@@ -361,8 +366,8 @@ class SemanticSearchSDKToolAdapter:
             message_types: list[str] | None = None,
             source_message_id: str | None = None,
             reply_to_source_message_id: str | None = None,
-            # Schema已公开正整数，SDK须拒绝原始非法类型；本轮保留原默认值。
-            limit: Annotated[int, Field(strict=True, ge=1)] = 10,
+            # SDK拒绝原始非法类型；省略值使用上方按scope推导的公开默认值。
+            limit: Annotated[int, Field(strict=True, ge=1)] = default_limit,
             context_before: int = 2,
             context_after: int = 2,
             # 候选数先由SDK检查严格正整数，保留原默认40与既有检索算法。
@@ -458,10 +463,9 @@ class SemanticSearchSDKToolAdapter:
             if not isinstance(limit_schema, dict):
                 raise TypeError("semantic_search schema did not expose limit")
             # semantic 不继承 lexical umbrella，schema maximum 固定收紧到 20。
-            effective_maximum = min(trusted_max_results, MAX_SEMANTIC_RESULT_LIMIT)
             limit_schema["minimum"] = 1
             limit_schema["maximum"] = effective_maximum
-            limit_schema["default"] = min(DEFAULT_SEMANTIC_RESULT_LIMIT, effective_maximum)
+            limit_schema["default"] = default_limit
 
         return semantic_search
 
