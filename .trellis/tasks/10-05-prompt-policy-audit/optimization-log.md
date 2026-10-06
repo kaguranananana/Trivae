@@ -137,3 +137,13 @@
 - Real=0；Provider=0；new input/output/total tokens=0；cost=0。未知参数现在显式失败，合法SDK wire forms保留。
 - Accepted=contract/L0候选；生产原文不动；候选20,115字符。全部高风险策略字节及顺序不改。
 - 下一轮自动进入P07：审计并迁移已经实际承接的lexical keyword单字符串约束，优先不改运行时代码。
+
+## A01：修正责任矩阵错位，不修改Prompt或Runtime
+
+- Commit：本节所属`docs(prompt): align responsibility rules with their actual clauses`。
+- Scope=旧审计行范围与当前语义片段对应；Risk=低；Owner=matrix/static定位测试；Expected/Maximum calls=0/0。
+- Root cause：P41–P71沿用旧审计行范围，总行覆盖虽通过却不能证明owner说明匹配实际语句。重定位真实锚点，保持P01–P92身份语义；历史commit不改写。P04正确Rule=P62:query（此前log/P04 commentary误标P61）；manifest更正。
+- Reproduction：新删除片段定位检查对旧矩阵P01–P06全部MISMATCH。修正位置后发现P05依赖P03先删dense片段，测试必须按精确原片段顺序重建该句；曾strip导致保留空格，改为逐字replace，未更改任何candidate或非法参数断言。
+- Removed/Moved/Reworded/Added：无Prompt变更；matrix更正实际Current wording/行范围/owner分类。撤回四处F，它们不是完整相同句子，不以literal dedup名义删除。SQL安全混合停止、作者和负面句加G保护。
+- Static=127 passed；Ruff/mypy116通过；Synthetic既有8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- Accepted=审计与检查修正。参数契约修复及候选精确文本不受影响；生产原文全字节保留。下一轮继续P07只验证keyword已承接的单字符串规则。

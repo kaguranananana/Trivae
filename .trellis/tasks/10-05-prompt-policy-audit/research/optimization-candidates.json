@@ -19,7 +19,7 @@
   },
   {
     "iteration": "P04",
-    "rule": "P61:query",
+    "rule": "P62:query",
     "file": "prompt-p04.txt",
     "removed": "query must be one\nnon-empty string; "
   },

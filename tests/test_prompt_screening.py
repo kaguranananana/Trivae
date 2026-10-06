@@ -211,11 +211,31 @@ def test_static_prompt_responsibility_mapping_covers_exact_production_wording():
         span = fields[2].strip().removeprefix("prompt.py L").split("–")
         start, end = int(span[0]), int(span[-1])
         covered.update(range(start, end + 1))
-        wording = "\n".join(original[start - 1:end]).removeprefix('SYSTEM_PROMPT = """')
-        assert fields[1].strip().replace("<br>", "\n").replace("\\|", "|") == wording
+        wording = "\n".join(original[start - 1 : end]).removeprefix('SYSTEM_PROMPT = """')
+        # 精确语义片段可从行中间开始；仍必须属于所报当前源码范围。
+        quoted = fields[1].strip().replace("<br>", "\n").replace("\\|", "|")
+        assert quoted in wording
+        # 声明最小行范围，防止用大段覆盖掩盖错位。
+        assert quoted.splitlines()[0] in original[start - 1]
+        assert quoted.splitlines()[-1] in original[end - 1]
         assert set(fields[3].strip().split("/")) <= set("ABCDEFG")
         assert all(field.strip() for field in fields)
     assert covered == set(range(7, 231))
+    # 候选机械片段必须由相应规则实际引用，不只靠Rule ID名称或总行覆盖。
+    import json
+
+    manifest = json.loads(
+        (root / ".trellis/tasks/10-05-prompt-policy-audit/research/optimization-candidates.json").read_text()
+    )
+    quoted_by_rule = {fields[0].strip(): fields[1].strip().replace("<br>", "\n").replace("\\|", "|") for fields in rows}
+    preceding = []
+    for item in manifest:
+        quoted = quoted_by_rule[item["rule"].split(":")[0]]
+        # P05基于P03已经删除dense片段的同句；按顺序重建该规则局部原文。
+        for removed in preceding:
+            quoted = quoted.replace(removed, "")
+        assert item["removed"].strip() in quoted
+        preceding.append(item["removed"])
 
 
 def test_cli_does_not_repeat_baseline_or_probe_and_rejects_regression_before_provider(tmp_path, monkeypatch, capsys):

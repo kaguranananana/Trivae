@@ -211,3 +211,5 @@ P04：2失败/4通过复现→static117 passed in1.95s；Ruff/mypy116通过；0P
 P05：2失败/4通过复现→static123 passed in2.05s；Ruff/mypy116通过；0Provider/0tokens/0cost。只删semantic query机械约束57字符。
 
 P06：额外参数被忽略的3项红灯→strict Schema与调用入口拒绝；mypy callback类型按SDK接口修复。static127 passed in2.05s，Ruff/mypy116通过；0Provider/0tokens/0cost；合法{}和空串不变。
+
+A01：旧matrix的六个候选规则定位全部MISMATCH；按真实句子锚点修正文档，新增最小行范围/候选Rule ID片段归属检查，static127通过。P04 Rule ID更正P62；撤回四个非完整literal重复标签。0API，未改production/candidate内容。
