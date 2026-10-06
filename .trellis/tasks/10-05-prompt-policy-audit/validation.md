@@ -260,3 +260,5 @@ F03：after20/40通过正式query送达下一轮SDK input；推荐M12均可见�
 P16：真实SDK count3及SQL_SCOPE_VIOLATION边界通过；static244 passed in2.45s，Ruff/mypy116通过；无Runtime改动，0新API，仅L0候选，不能借用P15的V01筛选结论。
 
 C17：5项SDK失败复现→单字段strict/ge修复；scope/default/上界保持，static253 passed in2.54s，Ruff/mypy116通过。完整生产可见member合同与V01相等；0新API，无Prompt删除。
+
+C18：5项SDK失败复现→strict/ge修复，static262 passed in2.45s，Ruff/mypy116通过；Scope越界零search，生产可见合同未变，0新API。

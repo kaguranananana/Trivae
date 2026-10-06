@@ -793,3 +793,51 @@ def test_c17_member_trusted_limit_rejects_before_repository(monkeypatch):
         assert tool.params_json_schema["properties"]["limit"]["default"] == 5
     finally:
         fixture.tearDown()
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_c18_semantic_limit_rejects_invalid_raw_values(value):
+    """Schema已声明integer/minimum，实际解析须拒绝原始非法参数。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search", {"query": "learning", "limit": value})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("arguments,expected", [({}, 10), ({"limit": 1}, 1), ({"limit": 10}, 10)])
+def test_c18_semantic_limit_legal_values_preserve_retrieval_defaults(arguments, expected):
+    """本轮只改类型/正值校验，保留dense40与context2/2及原默认limit10。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search", {"query": "learning", **arguments})
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    request = handler.calls[0]
+    assert response["status"] == "ok" and request.limit == expected
+    assert (request.dense_top_k, request.context_before, request.context_after) == (40, 2, 2)
+    assert tool.params_json_schema["properties"]["limit"]["minimum"] == 1
+
+
+def test_c18_semantic_trusted_limit_rejects_before_search(monkeypatch):
+    """越界在真实Capability的semantic search之前拒绝，不触发本地embedding加载。"""
+    from tests import test_stage_c_tools as fixtures
+
+    fixture = fixtures.StageCToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        called = []
+        original = app.semantic_retrieval.search
+
+        def track(query):
+            called.append(query)
+            return original(query)
+
+        monkeypatch.setattr(app.semantic_retrieval, "search", track)
+        context = RuntimeContext(scope=ExecutionScope(max_results=5), capability_registry=app.capability_registry,
+                                 available_capabilities=("semantic_search",), run_id="semantic-limit")
+        context.allocate_tool_call_id("above")
+        wrapper = ToolContext(context=context, tool_name="semantic_search", tool_call_id="above", tool_arguments="{}")
+        tool = SemanticSearchSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=5)
+        response = asyncio.run(tool.on_invoke_tool(wrapper, json.dumps({"query": "learning", "limit": 6})))
+        assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+        assert called == []
+    finally:
+        fixture.tearDown()

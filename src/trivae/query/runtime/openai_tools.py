@@ -361,7 +361,8 @@ class SemanticSearchSDKToolAdapter:
             message_types: list[str] | None = None,
             source_message_id: str | None = None,
             reply_to_source_message_id: str | None = None,
-            limit: int = 10,
+            # Schema已公开正整数，SDK须拒绝原始非法类型；本轮保留原默认值。
+            limit: Annotated[int, Field(strict=True, ge=1)] = 10,
             context_before: int = 2,
             context_after: int = 2,
             # 候选数先由SDK检查严格正整数，保留原默认40与既有检索算法。

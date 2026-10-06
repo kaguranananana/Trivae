@@ -339,3 +339,12 @@
 - Static253 passed in2.54s；Ruff/mypy116通过；真实上界零repository；省略值/合法正值/identity语义保持。新Provider/tokens/cost=0，本会话累计Provider仍2。
 - 生产scope下SDK Schema/description/strict flag与V01 baseline实物相等，Model可见合同未改；变化仅非法JSON类型的实际拒绝。
 - Accepted=契约执行修复，Prompt候选仍P16。自动继续semantic.limit同类实证缺口；不顺带修改semantic routing/context。
+
+## C18：semantic.limit已公开整数契约实际执行
+
+- Commit：本节所属`fix(tools): enforce the semantic limit integer contract`。
+- Scope=semantic_search.limit；Risk=低；Prompt lines=无；Owner=SDK/typed input/Capability；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=单字段strict/ge、9 tests；Reproduction=5 failed/4 passed。
+- Static262 passed in2.45s；Ruff/mypy116通过；真实越界零search，默认limit10/dense40/context2/2保持。
+- 生产可见完整工具合同与V01实物相等；本轮新Provider/tokens/cost=0，累计Provider仍2。
+- Accepted=确定性执行修复；候选仍P16。小scope Schema默认值与执行值不一致是独立缺口，自动进入C19，不在本轮改默认。
