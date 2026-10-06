@@ -88,9 +88,11 @@ async def execute(args: argparse.Namespace) -> None:
         raise EvaluationContractError("candidate prompt must be explicit")
     extra = 0
     if args.candidate_extra or args.repeat_on_failure is not None:
-        if len(cases) != 1 or args.repeat_on_failure is None or args.review is None:
+        if args.mode not in {"candidate-only", "targeted"} or len(cases) != 1 or args.repeat_on_failure is None or args.review is None:
             raise EvaluationContractError("repeat-on-failure requires one case, prior artifact and explicit review")
         prior = read_artifact(args.repeat_on_failure)
+        if prior.get("kind") != "candidate_screen":
+            raise EvaluationContractError("repeat-on-failure requires a prior candidate, not baseline or probe")
         if prior.get("conditions", {}).get("case") != cases[0].identity:
             raise EvaluationContractError("repeat artifact does not belong to the selected case")
         extra = candidate_repeat_count(args.review, args.candidate_extra, args.repeat_reason)
@@ -170,7 +172,8 @@ async def execute(args: argparse.Namespace) -> None:
             paired = {}
             for label, prompt in variants:
                 current_variant = replace(variant, variant_id=f"prompt-screen:{label}:{commit}",
-                                          role="last_stable" if label == "baseline" else "candidate")
+                                          role="last_stable" if label == "baseline" else "candidate",
+                                          prompt_identity=f"prompt:{label}:{commit}")
                 for repeat in range(extra or 1):
                     runtime.screening_prompt = prompt
                     runtime.probe_calls.clear()

@@ -193,3 +193,49 @@ def test_historical_import_rejects_failed_candidate_without_provider(tmp_path):
     write_artifact(tmp_path / "initial_contract.json", {"instructions": SYSTEM_PROMPT})
     with pytest.raises(EvaluationContractError, match="production prompt baseline"):
         freeze_recorded_cell(tmp_path, snapshot=_snapshot(), commit="test", policy_tags=("discussion",))
+
+
+def test_static_prompt_responsibility_mapping_covers_exact_production_wording():
+    """L0检查92条mapping与224行实际原文，防止审计脱离当前baseline。"""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).parents[1]
+    matrix = (root / ".trellis/tasks/10-05-prompt-policy-audit/prompt-responsibility-matrix.md").read_text()
+    original = (root / "src/trivae/query/runtime/prompt.py").read_text().splitlines()
+    rows = [re.split(r"(?<!\\)\|", line)[1:-1] for line in matrix.splitlines() if re.match(r"\| P\d+ \|", line)]
+    assert len(rows) == 92
+    covered = set()
+    for index, fields in enumerate(rows, 1):
+        assert fields[0].strip() == f"P{index:02d}"
+        span = fields[2].strip().removeprefix("prompt.py L").split("–")
+        start, end = int(span[0]), int(span[-1])
+        covered.update(range(start, end + 1))
+        wording = "\n".join(original[start - 1:end]).removeprefix('SYSTEM_PROMPT = """')
+        assert fields[1].strip().replace("<br>", "\n").replace("\\|", "|") == wording
+        assert set(fields[3].strip().split("/")) <= set("ABCDEFG")
+        assert all(field.strip() for field in fields)
+    assert covered == set(range(7, 231))
+
+
+def test_cli_does_not_repeat_baseline_or_probe_and_rejects_regression_before_provider(tmp_path, monkeypatch, capsys):
+    """收口：candidate+2不能变成whole-suite/paired repeat，明确退步不构造Provider。"""
+    from scripts import run_prompt_screening as cli
+
+    case = _case()
+    case_path = tmp_path / "case.json"
+    case.to_json(case_path)
+    prior = tmp_path / "prior.json"
+    write_artifact(prior, {"kind": "candidate_screen", "conditions": {"case": case.identity}})
+    monkeypatch.setattr(cli, "load_settings", lambda: pytest.fail("provider settings must not be loaded"))
+    common = ["--case", str(case_path), "--database", str(tmp_path / "canonical.sqlite3"),
+        "--output", str(tmp_path / "output"), "--candidate-prompt", str(tmp_path / "prompt.txt"),
+        "--repeat-on-failure", str(prior), "--candidate-extra", "2", "--max-provider-calls", "2"]
+    args = cli.parser().parse_args(["--mode", "full-gate", "--review", "borderline",
+                                   "--repeat-reason", "provider_randomness", *common])
+    with pytest.raises(EvaluationContractError, match="repeat-on-failure"):
+        asyncio.run(cli.execute(args))
+    args = cli.parser().parse_args(["--mode", "candidate-only", "--baseline-dir", str(tmp_path / "baseline"),
+                                   "--review", "regression", *common])
+    asyncio.run(cli.execute(args))
+    assert json.loads(capsys.readouterr().out) == {"decision": "rejected", "provider_calls": 0}

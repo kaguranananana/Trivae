@@ -59,3 +59,13 @@
 - Provider calls=0、new tokens=0、new cost=0。
 - Accepted：Development reuse；历史GT没有完整标注的case明确保持空reference，不能变成Holdout或release gate。
 - Unchanged high-risk policy：全部生产Prompt文本不变。
+
+## H03：评估入口收口
+
+- Commit：本节所属 `fix(eval): restrict extra repeats to reviewed single candidates`。
+- Policy scope：重复编排边界；Prompt lines affected=无；Risk=低；Deterministic owner=Evaluation；Expected/Maximum Provider calls=0/0。
+- Removed / Moved / Reworded：无Prompt变化。Added：显式禁止full-gate/probe借candidate-extra重跑baseline；prior必须candidate_screen；baseline/candidate Prompt身份明确区分。
+- Tests：新增CLI边界测试证明明确regression在构造Provider前0调用返回rejected；新增静态92规则/224行原文覆盖测试。完整工程回归697 passed in18.11s、Ruff通过、mypy116source files通过、Trellis context与diff检查通过。
+- Observed behavior difference：防止误将追加candidate repeat应用到fresh baseline；不改变正式Agent执行。低成本CLI仍默认repeat=1/预算0。
+- Synthetic/Real：全量测试均provider-free；没有追加真实case。Provider calls=0/tokens=0/cost=0。Accepted=是（工程边界）；无semantic release结论。
+- Unchanged high-risk policy：全部原生产文本保留。
