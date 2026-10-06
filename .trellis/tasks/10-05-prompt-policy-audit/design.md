@@ -1,4 +1,4 @@
-# 等价重构设计（待评审）
+# 等价重构设计（第一批已批准）
 
 ## 问题与选项
 
@@ -64,4 +64,4 @@ Output policy
 
 ## 规划状态
 
-审计已完成；第一批实现尚未授权启动。Schema 扩展、Structured Outputs 和 no_result 语义纠正均未决定为本轮产品改动，不提前落地或写成已确认 spec。
+审计已完成；用户已批准第一批实施；后续由主会话直接实现和检查。Schema 扩展、Structured Outputs 和 no_result 语义纠正均未决定为本轮产品改动，不提前落地或写成已确认 spec。

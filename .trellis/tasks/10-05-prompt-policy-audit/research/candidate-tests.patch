@@ -1,0 +1,42 @@
+diff --git a/tests/test_agent_runtime.py b/tests/test_agent_runtime.py
+index d0ed615..466d4ea 100644
+--- a/tests/test_agent_runtime.py
++++ b/tests/test_agent_runtime.py
+@@ -488,12 +488,12 @@ class RuntimeAdapterTests(unittest.TestCase):
+     def test_final_synthesis_prompt_bounds_evidence_artifact(self) -> None:
+         self.assertIn("Keep the JSON artifact bounded", SYSTEM_PROMPT)
+         self.assertIn("Do not repeat the same", SYSTEM_PROMPT)
+-        self.assertIn('exact keyword "github.com"', SYSTEM_PROMPT)
++        self.assertIn('"github.com" the FIRST retrieval call', SYSTEM_PROMPT)
+         self.assertIn("effective start and end", SYSTEM_PROMPT)
+         self.assertIn('"anchor":"archive_latest"', SYSTEM_PROMPT)
+-        self.assertIn("never use SQL to calculate", SYSTEM_PROMPT)
++        self.assertIn("Never use SQL to calculate", SYSTEM_PROMPT)
+         self.assertIn("MUST set `limit` to the lexical maximum", SYSTEM_PROMPT)
+-        self.assertIn("never choose a smaller convenience limit such as 20 or 30", SYSTEM_PROMPT)
++        self.assertIn("rather than a smaller convenience limit", SYSTEM_PROMPT)
+         self.assertIn("Lexical calls that contribute to", SYSTEM_PROMPT)
+         self.assertIn("semantic maximum", SYSTEM_PROMPT)
+         self.assertIn("use the lexical result's returned/total metadata", SYSTEM_PROMPT)
+@@ -501,7 +501,7 @@ class RuntimeAdapterTests(unittest.TestCase):
+         self.assertIn("Do not generate block IDs", SYSTEM_PROMPT)
+         self.assertIn("multiple categories", SYSTEM_PROMPT)
+         self.assertIn("Semantic calls keep their own small", SYSTEM_PROMPT)
+-        self.assertIn("context_before` and\n`context_after` to 0", SYSTEM_PROMPT)
++        self.assertIn("context_before` and `context_after` to 0", SYSTEM_PROMPT)
+         self.assertIn("`sources` array for every claim MUST contain no more than 20 handles", SYSTEM_PROMPT)
+         self.assertIn("claims array and closing JSON braces", SYSTEM_PROMPT)
+ 
+diff --git a/tests/test_context_source_contract.py b/tests/test_context_source_contract.py
+index c0f8f4a..450b078 100644
+--- a/tests/test_context_source_contract.py
++++ b/tests/test_context_source_contract.py
+@@ -29,7 +29,7 @@ def test_generated_context_schema_explains_both_identities():
+         assert "canonical internal message ID" in fields["message_id"]["description"]
+         assert "Do not put" in fields["message_id"]["description"]
+         assert "mN-K" in tool.description
+-        assert 'source_id="m1-1"' in SYSTEM_PROMPT
++        assert "copy an exact returned source_id" in SYSTEM_PROMPT
+         assert "canonical internal message ID" in SYSTEM_PROMPT
+     finally:
+         fixture.tearDown()

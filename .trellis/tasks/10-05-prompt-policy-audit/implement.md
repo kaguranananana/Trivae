@@ -1,4 +1,4 @@
-# 执行计划（待最终规划评审）
+# 执行计划（第一批已批准）
 
 ## 本轮已授权审计
 
@@ -8,16 +8,16 @@
 - [x] 完成文档覆盖/链接/context 检查与 145 项 baseline 验证。
 - 规划文件在检查后提交并推送；推送结果以本轮最终回复为准。
 
-## 第一批产品实现：评审后开始
+## 第一批产品实现：执行记录与步骤
 
-1. 用户评审 PRD/design/本计划后，配置 context 并 `task.py start`；按项目路由调用 implement/check，不在 planning 写产品源码。agent-runtime-guidelines.md 超过自动注入单文件上限，子代理需从原文件读取相关完整章节，不能仅靠截断注入。
+1. 用户评审 PRD/design/本计划后，配置 context 并 `task.py start`；用户明确要求不使用子代理，由主会话应用 trellis-before-dev/trellis-check 直接实施。agent-runtime-guidelines.md 超过自动注入单文件上限，主会话需从原文件读取相关完整章节，不能仅靠截断注入。
 2. 固定 `460259d` 的原 Prompt 与相关 baseline；若 main 已前进，先重新审计相关差异，不能沿旧基线静默实现。
 3. 按审计重复簇重写 `prompt.py`：Markdown 层级、每条策略一次、已有 Host enforcement 简述；保留 JSON mode 生成字段与尚需字段指导。生成代码加简体中文注释，关键逻辑逐行解释。
 4. 必要时仅压缩 `openai_tools.py` 中跨工具重复文字；保留实际字段说明/Schema/typed input/description 语义。不变更 defaults、工具 surface、capability enforcement 或 Finalizer。
 5. 文本断言变化需记录旧断言 → Policy ID → 新语义的对应；运行参数、来源、zero-result、时序与执行路径测试不得因候选失败而放宽。
 6. 跑相关 pytest、全量 pytest、Ruff/mypy；随后执行真实 Development 配对，确认模型行为而非仅文字正确。
 7. 保存全部失败并定位；关键讨论/清单/时间/身份/零结果回归后才交付，不以更短或更少调用单独宣称质量提升。
-8. 评测通过后必要的 spec 同步、工作提交、归档/journal 收尾提交，最后统一 push。当前 planning 不提前归档为完成。
+8. 评测通过后必要的 spec 同步、工作提交、归档/journal 收尾提交，最后统一 push。真实回归通过前不归档；本轮候选未通过，恢复原版并等待评审。
 
 ## 相关契约 baseline 命令
 
@@ -44,3 +44,15 @@ git diff --check
 ## 第二批及 Deferred
 
 Schema 非空/非负/互斥只有在真实需求与 provider contract 证明有价值后补，Host 校验始终保留。Structured Outputs、日期解析/no_result 语义更改、全局去重 ledger 需独立评审与验证。本次不新增 fallback、retry、repair 或依赖。
+
+
+## 实际完成
+
+- [x] 用户批准第一批并 start，主会话直接实现。
+- [x] 完整候选的 Markdown 分层、同义去重、Policy 映射与五项断言 patch；回归失败后运行源码恢复原版。
+- [x] 145 相关测试、662 全量测试、Ruff/mypy、Trellis context 与链接检查。
+- [x] v1 32 次 + 最终修订14次真实配对，23/23 初始 HTTP 非策略 body 相同。
+- [x] 保存全部失败和候选版本，未扩大预算、修改 Provider 或新建 fallback/guard。
+- [x] 现有责任与评测边界沉淀到 runtime spec。
+
+全面语义等价没有证实，宽讨论仍漏推荐、精确查询答案有时序错误，详见 [validation.md](validation.md)。当前未通过等价门禁，任务继续 in_progress；候选保留供评审，不扩大预算、增加重试或样例补丁。

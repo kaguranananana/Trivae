@@ -1,9 +1,9 @@
 {
   "id": "prompt-policy-audit",
   "name": "prompt-policy-audit",
-  "title": "Prompt Policy Audit 与等价重构规划",
-  "description": "完成 Runtime Prompt 逐条职责审计与等价重构规划；保持运行行为不变，等待最终规划评审。",
-  "status": "planning",
+  "title": "Runtime Prompt 分层、去重与配对验证",
+  "description": "Runtime Prompt Markdown 分层、策略去重与等价回归；保持工具/Host/JSON contract。",
+  "status": "in_progress",
   "dev_type": "backend",
   "scope": "query/runtime",
   "package": null,
@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "2026-10-05 审计完成；P01–P92 覆盖 SYSTEM_PROMPT，145 项相关 baseline 通过。尚未批准启动产品实现。",
+  "notes": "用户批准第一批并要求不使用子代理。候选真实配对出现宽综述退步，运行 Prompt/测试已恢复原版，候选与失败证据保留，任务 in_progress 待缩小去重范围或人工评审。",
   "meta": {}
 }

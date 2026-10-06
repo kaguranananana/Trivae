@@ -914,3 +914,14 @@ SDK 真实 schema 验证 before/after 单位与默认值；ScriptedModel 验证�
 ### 7. Wrong vs Correct
 
 Wrong：窗口没看到回复就写“未解决”，连续对话都归于一个人，把毫秒自行换算成月份。Correct：写明已查范围的未确认项，按消息作者归属并读取 timestamp_utc；完整性与具体语义质量仍待真实回归，不承诺每次全面。
+
+
+## 19. Runtime Prompt 职责分层与回归边界（2026-10-06）
+
+分层候选使用 Core、Retrieval、Time/constraints、Evidence、Output 的 Markdown 层级，稳定策略各有一个主位置；本轮真实回归未通过，运行 `prompt.py` 保留原版。讨论/清单意图先于通用精确/概念查找默认。讨论锚点与选窗、清单 lexical 最大值、证据强度和完整正文仍是模型决策，不能因 Schema 已有参数类型或上界而删掉。
+
+当前 Provider 使用 JSON mode，未提供完整 Structured Output Schema。claims/no_result 生成形状及尚未由工具 Schema 表述的必要参数指导继续保留。Host 校验负责输入合法性和 trusted scope；Finalizer 通过只证明形状、来源与既有证据契约，不证明作者、日期、回复关系或穷尽性正确。
+
+Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、来源与结果断言不能放宽。真实配对固定快照、query/scope、模型、预算和路由，保存完整实际请求，核对首次 HTTP body 除 system 外一致。重构后再次出现已知漏召回或错误关系时如实记录，不因 Prompt 更短或 Finalizer valid 就宣布质量等价。版本修订的重复实验与原样重复须分别标明，不能合并为同一候选的成功率。
+
+候选已出现原版取到推荐而候选遗漏的配对时，不按结构完成率放行；保留候选与所有失败，恢复原版，再评审更小的去重范围或措辞保留方案。
