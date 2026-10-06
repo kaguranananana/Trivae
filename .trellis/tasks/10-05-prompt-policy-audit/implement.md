@@ -68,3 +68,9 @@ Schema 非空/非负/互斥只有在真实需求与 provider contract 证明有�
 关键模块七问：输入是当前 case/query/scope/snapshot 与生产 Prompt；输出是可复核 screening artifacts；依赖正式 Application.query 与既有 SDK/Trace；成功是明确拒绝非法 limit、预算内执行与可复用冻结结果，不宣称语义等价；失败保留原异常/Trace、不得覆盖 artifacts；验证由真实 SDK/SQLite、ScriptedModel 与 fixture 完成；演进只在受影响 policy 的最低 tier，release 才 fresh paired gate。
 
 分离提交：A00 只读审计；H01 评估能力；F01 fixture；P01 一个参数职责迁移。每轮真实 API 预计/最多均 0。Prompt 候选在 L0 接受后仍需 release gate，不替换 production。禁止使用之前失败候选作 baseline。
+
+## 当前会话连续迭代授权
+
+用户要求完成一轮后自主分析并进入下一轮，不请求继续确认。保持每轮唯一主要scope、独立commit和原失败记录；本会话预计/最大真实Provider请求均0。
+
+先按P02 lexical context非负 → P03 semantic dense_top_k正值 → P04 find_members query非空逐条核验，前一轮验证通过才开始下一轮。只触及对应SDK字段、零Provider contract tests、累计候选与log；production Prompt不变，discussion/negative/time/stop/routing字节不变。再依据实际剩余缺口选择下一轮，不顺带改其它参数。

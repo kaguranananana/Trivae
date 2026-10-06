@@ -179,8 +179,10 @@ class SearchMessagesSDKToolAdapter:
             # limit 的严格类型与正值由真实SDK解析执行，拒绝bool/字符串/float的隐式转换。
             # trusted scope 上界继续由Capability验证，Schema maximum仅公开当前上限。
             limit: Annotated[int, Field(strict=True, ge=1)] = DEFAULT_LEXICAL_RESULT_LIMIT,
-            context_before: int = 2,
-            context_after: int = 2,
+            # SDK先检查原始类型及非负值，避免隐式转换掩盖非法窗口参数。
+            # 默认窗口仍为2；如何扩大讨论上下文继续由原Prompt策略决定。
+            context_before: Annotated[int, Field(strict=True, ge=0)] = 2,
+            context_after: Annotated[int, Field(strict=True, ge=0)] = 2,
         ) -> dict[str, object]:
             """只接受 typed 字段；scope、registry 和 call identity 都来自 local context。
 

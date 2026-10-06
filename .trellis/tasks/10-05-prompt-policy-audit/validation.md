@@ -197,3 +197,9 @@ P01修改前四个true/2.0拒绝断言实际失败，因为SDK先coerce而typed 
 本轮工作已完成并提交；持续优化parent task保持in_progress，历史大改失败不转成完成，不归档其他任务。实际commit/push状态以本轮git输出为准。
 
 最终文档收口后再次执行static CLI：**80 passed in2.05s**，Ruff/mypy通过，provider ledger为0/0/0；较P01的77多H02/H03三项测试。以上是有新增边界后的定向回归，不是重复付费或追加real cases。
+
+## 连续小步 P02（0真实调用）
+
+真实SDK复现18项失败后补齐lexical/legacy窗口的strict int/minimum=0。相关52项测试通过；含discussion/negative fixture，未调用LLM。候选仅删除60字符非负参数约束，production原文不动。旧frozen合同不可静默沿用新schema。
+
+P02最终static：99 passed in1.90s；Ruff通过；mypy116文件通过；git diff --check通过。

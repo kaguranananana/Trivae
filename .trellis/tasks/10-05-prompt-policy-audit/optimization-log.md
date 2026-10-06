@@ -82,3 +82,15 @@
 | H03 | 949c690 | 单候选追加repeat边界接受 |
 
 最后一次static CLI为80 passed in2.05s，0Provider/0tokens/0cost（H03增加3项测试后分母由77更新）；全量工程回归仍为697 passed。Production Prompt未变化。真实语义接受/发布仍未执行，不沿用历史completed/finalizer统计。
+
+## P02：lexical / legacy context非负契约
+
+- Commit：本节所属`refactor(prompt): move lexical context bounds into the tool contract`。
+- Scope：P57参数片段；Risk=低；Prompt lines=原L152；Owner=SDK严格解析/typed input；Expected/Maximum Provider calls=0/0。
+- Removed：60字符；Moved：Base候选→Tool description/SDK/Host；Reworded=无；Added=两个strict/ge字段与候选逐步manifest测试。
+- Reproduction：18项预期失败明确定位SDK转换与Schema minimum缺失；不放宽非法输入断言。环境没有python命令，改用python3；一次测试引用不存在的test_context_source.py未收集，改为实际test_context_source_contract.py。
+- Static/Synthetic：52项相关测试通过，包含19项参数/候选检查及8项真实projection fixture；Ruff通过。最终static与mypy结果记validation。
+- Real cases executed=0；Provider calls=0；new input/output/total tokens=0；cost=0。
+- Observed difference：非法bool/string/float不再转整数；负数提前在SDK拒绝。合法0/20及默认2不变，20/40讨论政策逐字保留。
+- Accepted：contract修复与L0候选接受；production正文不变，未通过semantic release gate。已有frozen tool schema变更后不能冒充同条件baseline。
+- 下一轮自动进入P03：仅semantic dense_top_k正整数；其余semantic参数不顺手改。

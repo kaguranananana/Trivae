@@ -1,0 +1,14 @@
+[
+  {
+    "iteration": "P01",
+    "rule": "P56",
+    "file": "prompt-p01.txt",
+    "removed": "limit must be a positive integer no greater than the trusted result limit\nshown by the tool schema, and "
+  },
+  {
+    "iteration": "P02",
+    "rule": "P57",
+    "file": "prompt-p02.txt",
+    "removed": "context_before/context_after must be non-negative integers. "
+  }
+]
