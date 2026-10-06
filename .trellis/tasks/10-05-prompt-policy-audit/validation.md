@@ -237,3 +237,5 @@ P10：5失败/9通过复现→static190 passed in1.84s，Ruff/mypy116通过；�
 P11：11失败/3通过复现→static204 passed in1.90s，Ruff/mypy116通过；shared总量边界/默认8/8/0-20/0-40保持，真实fixture8项通过；0Provider。
 
 P12：原Host零/双身份实际拒绝，四种合法单身份/null真实projection通过；测试旧call ID问题按Runner修正。static209 passed in2.37s，Ruff/mypy116通过；无Runtime/Schema结构变更，0API。
+
+P13：9失败/9通过复现→18定向通过→static234 passed in2.80s，Ruff/mypy116通过；nullable合法形状与真实Host上界保持。0Provider/0tokens/0cost；只生成L0参数候选。

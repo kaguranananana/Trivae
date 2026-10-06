@@ -954,7 +954,9 @@ class ExecuteSQLSDKToolAdapter:
         async def execute_sql(
             context: RunContextWrapper[RuntimeContext],
             sql: str,
-            max_rows: int | None = None,
+            # 保留原始参数类型，防止SDK先把布尔、字符串或浮点数转换为整数。
+            # 省略/null仍由Host推导可信上界，正整数约束在真实解析入口执行。
+            max_rows: Annotated[int | None, Field(strict=True, ge=1)] = None,
         ) -> dict[str, object]:
             """执行一条模型 SQL；scope 不从 SQL 文本或模型参数读取。"""
 

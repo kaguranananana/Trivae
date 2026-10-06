@@ -13,6 +13,7 @@ from agents.tool_context import ToolContext
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import (
     CapabilityContractError,
+    ExecuteSQLInput,
     FindMembersInput,
     GetRecentMessagesInput,
     SearchMessagesInput,
@@ -21,6 +22,7 @@ from trivae.capabilities.contracts import (
 )
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import (
+    ExecuteSQLSDKToolAdapter,
     FindMembersSDKToolAdapter,
     GetMessageContextSDKToolAdapter,
     GetRecentMessagesSDKToolAdapter,
@@ -537,5 +539,83 @@ def test_p12_real_projection_supports_both_single_identity_forms_and_null():
                 assert context.resolve_message_source_handle(source_id) == canonical
 
         asyncio.run(check())
+    finally:
+        fixture.tearDown()
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_p13_sql_row_cap_rejects_invalid_raw_values(value):
+    """可选row cap必须保留原始类型事实，不能经SDK转换绕过Host。"""
+    tool, wrapper, handler = sdk_boundary(
+        ExecuteSQLSDKToolAdapter, "execute_sql", {"sql": "SELECT COUNT(*) FROM messages", "max_rows": value}
+    )
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_p13_sql_typed_owner_already_rejects_invalid_row_cap(value):
+    """直接业务入口原有正整数/null规则保持。"""
+    with pytest.raises(CapabilityContractError):
+        ExecuteSQLInput(sql="SELECT COUNT(*) FROM messages", max_rows=value)
+
+
+@pytest.mark.parametrize("sql", [True, 2, ["SELECT COUNT(*) FROM messages"]])
+def test_p13_sql_already_rejects_non_string_before_registry(sql):
+    """单SQL字符串已由真实SDK承接，本轮不修改sql解析或语句内容。"""
+    tool, wrapper, handler = sdk_boundary(ExecuteSQLSDKToolAdapter, "execute_sql", {"sql": sql})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize(
+    "arguments,expected", [({}, None), ({"max_rows": None}, None), ({"max_rows": 1}, 1), ({"max_rows": 10}, 10)]
+)
+def test_p13_sql_schema_and_legal_optional_cap(arguments, expected):
+    """省略/null仍交Host推导trusted bound，合法正值保持原参数。"""
+    tool, wrapper, handler = sdk_boundary(
+        ExecuteSQLSDKToolAdapter, "execute_sql", {"sql": "SELECT COUNT(*) FROM messages", **arguments}
+    )
+    schema = tool.params_json_schema["properties"]["max_rows"]
+    integer = next(branch for branch in schema["anyOf"] if branch["type"] == "integer")
+    assert integer["minimum"] == 1 and schema["maximum"] == 10
+    assert {"type": "null"} in schema["anyOf"] and schema["default"] is None
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and handler.calls[0].max_rows == expected
+    assert handler.calls[0].sql == "SELECT COUNT(*) FROM messages"
+
+
+def test_p13_sql_trusted_maximum_rejects_before_repository(monkeypatch):
+    """上界继续由Capability拒绝，不拿Schema maximum替代真实执行。"""
+    from tests import test_stage_b_tools as fixtures
+
+    fixture = fixtures.StageBToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        called = []
+        original = app.read_repository.execute_readonly_sql
+
+        def track(query, scope):
+            called.append(query)
+            return original(query, scope)
+
+        monkeypatch.setattr(app.read_repository, "execute_readonly_sql", track)
+        context = RuntimeContext(
+            scope=ExecutionScope(max_results=5),
+            capability_registry=app.capability_registry,
+            available_capabilities=("execute_sql",),
+            run_id="sql-cap",
+        )
+        context.allocate_tool_call_id("above")
+        wrapper = ToolContext(context=context, tool_name="execute_sql", tool_call_id="above", tool_arguments="{}")
+        tool = ExecuteSQLSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=5)
+        response = asyncio.run(
+            tool.on_invoke_tool(wrapper, json.dumps({"sql": "SELECT COUNT(*) FROM messages", "max_rows": 6}))
+        )
+        assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+        assert called == []
     finally:
         fixture.tearDown()

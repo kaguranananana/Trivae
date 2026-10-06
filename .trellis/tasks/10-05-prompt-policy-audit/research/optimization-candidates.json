@@ -70,5 +70,11 @@
     "rule": "P60:cardinality",
     "file": "prompt-p12.txt",
     "removed": "provide exactly one identity parameter. "
+  },
+  {
+    "iteration": "P13",
+    "rule": "P63:parameters",
+    "file": "prompt-p13.txt",
+    "removed": "send one\nSQL string and optionally max_rows; "
   }
 ]

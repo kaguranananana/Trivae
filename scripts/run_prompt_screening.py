@@ -68,6 +68,7 @@ def static_checks() -> None:
         ["uv", "run", "--all-extras", "pytest", "-q", "tests/test_prompt_screening.py",
          "tests/test_prompt_fixtures.py", "tests/test_prompt_limit_contract.py",
          "tests/test_prompt_parameter_contracts.py",
+         "tests/test_stage_c_tools.py",
          "tests/test_agent_tool_surface.py", "tests/test_context_source_contract.py",
          "tests/test_evaluation.py", "tests/test_no_result_finalization.py"],
     ]

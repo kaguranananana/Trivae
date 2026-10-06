@@ -225,3 +225,13 @@
 - 首次真实projection测试call ID未更新导致source handle重复；修测试调用元信息，保持原resolver断言，没有产品兼容补丁。四种合法单身份/null形式成功。
 - Static=209 passed in2.37s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
 - Accepted=已有Host承接验证/L0候选；生产原文不动，累计19,863字符。下一轮自动P13，只审计SQL参数形状与max_rows类型，不碰SQL routing/error stopping。
+
+## P13：SQL参数形状及optional max_rows
+
+- Commit：本节所属`refactor(prompt): move SQL parameter validation into the tool contract`。
+- Scope=P63:parameters；Risk=低；Owner=SDK/ExecuteSQLInput/Capability；Expected/Maximum calls=0/0。
+- Removed=45字符；Moved=Base候选→单字符串既有SDK及max_rows strict/ge；Reworded=无；Added=18 tests，static包含原SQL主链路7 tests。
+- Reproduction=9 failed/9 passed；SDK转换原始值，nullable整数分支缺minimum。补单字段strict/ge，不改变sql/Scope/read-only解析。
+- Static=234 passed in2.80s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- Accepted=contract/L0候选；生产原文不动，累计19,818字符；null/省略/合法cap保留，真实超界零repository调用。
+- 下一轮自动P14：只验证已有SQLite单语句执行拒绝，不改SQL路由、schema调查或error stopping。
