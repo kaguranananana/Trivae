@@ -22,6 +22,7 @@ from trivae.capabilities.contracts import (
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import (
     FindMembersSDKToolAdapter,
+    GetMessageContextSDKToolAdapter,
     GetRecentMessagesSDKToolAdapter,
     GetSchemaSDKToolAdapter,
     LexicalSearchSDKToolAdapter,
@@ -29,6 +30,7 @@ from trivae.query.runtime.openai_tools import (
     SemanticSearchSDKToolAdapter,
 )
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
+from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES
 
 TASK = Path(__file__).parents[1] / ".trellis/tasks/10-05-prompt-policy-audit"
 
@@ -60,10 +62,10 @@ def sdk_boundary(adapter, name, arguments):
     wrapper = ToolContext(
         context=context, tool_name=name, tool_call_id="parameter", tool_arguments=json.dumps(arguments)
     )
-    # 无参数schema工具没有结果数设置；其余工具继续使用同一trusted scope。
+    # schema/context工具不接收result设置；其余工具使用同一trusted scope。
     tool = (
         adapter(registry).as_sdk_tool()
-        if name == "get_schema"
+        if name in {"get_schema", "get_message_context"}
         else adapter(registry).as_sdk_tool(trusted_max_results=10)
     )
     return tool, wrapper, handler
@@ -401,3 +403,70 @@ def test_p10_recent_trusted_maximum_rejects_before_retrieval(monkeypatch):
         assert called == []
     finally:
         fixture.tearDown()
+
+
+@pytest.mark.parametrize("field", ["context_before", "context_after"])
+@pytest.mark.parametrize("value", [True, "2", 2.0, -1])
+def test_p11_explicit_context_rejects_invalid_raw_windows(field, value):
+    """显式context入口独立拒绝，不能依据lexical窗口已经strict就删除规则。"""
+    tool, wrapper, handler = sdk_boundary(
+        GetMessageContextSDKToolAdapter, "get_message_context", {"message_id": "qq:100:a2", field: value}
+    )
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize(
+    "windows,expected",
+    [
+        ({}, (8, 8)),
+        ({"context_before": 0, "context_after": 20}, (0, 20)),
+        ({"context_before": 0, "context_after": 40}, (0, 40)),
+    ],
+)
+def test_p11_context_schema_and_legal_windows_preserve_defaults(windows, expected):
+    """保留默认8/8及20/40合法消息数；不改变模型选择扩展大小的策略。"""
+    tool, wrapper, handler = sdk_boundary(
+        GetMessageContextSDKToolAdapter, "get_message_context", {"message_id": "qq:100:a2", **windows}
+    )
+    for field in ("context_before", "context_after"):
+        schema = tool.params_json_schema["properties"][field]
+        assert schema["minimum"] == 0 and schema["default"] == 8
+        assert "maximum" not in schema
+        assert "message count" in schema["description"]
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok"
+    request = handler.calls[0]
+    assert (request.context_before, request.context_after) == expected
+
+
+@pytest.mark.parametrize(
+    "before,after",
+    [
+        (MAX_CONTEXT_EXPANSION_MESSAGES, 0),
+        (MAX_CONTEXT_EXPANSION_MESSAGES // 2, MAX_CONTEXT_EXPANSION_MESSAGES - MAX_CONTEXT_EXPANSION_MESSAGES // 2),
+    ],
+)
+def test_p11_context_host_rejects_total_above_transport_bound(before, after):
+    """上界是before+anchor+after共享总量，不能误表达为两个独立max。"""
+    tool, wrapper, handler = sdk_boundary(
+        GetMessageContextSDKToolAdapter,
+        "get_message_context",
+        {"message_id": "qq:100:a2", "context_before": before, "context_after": after},
+    )
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+    assert str(MAX_CONTEXT_EXPANSION_MESSAGES) in response["error"]["message"]
+    assert handler.calls == []
+
+
+def test_p11_context_total_at_transport_bound_remains_legal():
+    """合法总量边界不因新增Schema被缩小；不把scope结果数混作单侧窗口上限。"""
+    tool, wrapper, handler = sdk_boundary(
+        GetMessageContextSDKToolAdapter,
+        "get_message_context",
+        {"message_id": "qq:100:a2", "context_before": MAX_CONTEXT_EXPANSION_MESSAGES - 1, "context_after": 0},
+    )
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and len(handler.calls) == 1

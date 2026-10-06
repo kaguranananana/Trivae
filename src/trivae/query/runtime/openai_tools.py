@@ -603,11 +603,13 @@ class GetMessageContextSDKToolAdapter:
                 "Do not put a run-local mN-K source handle such as m1-1 here; use source_id for that. "
                 "Provide message_id or source_id, never both."
             ))] = None,
-            context_before: Annotated[int, Field(description=(
+            # SDK仅落实原非负整数契约；默认8/8、消息单位与选窗description逐字保留。
+            # before+anchor+after共享上界仍由typed input执行，不新增单侧maximum。
+            context_before: Annotated[int, Field(strict=True, ge=0, description=(
                 "Number of messages before the anchor to include; this is a message count, not a "
                 "duration in minutes or seconds. Use 0 when earlier context is unnecessary."
             ))] = 8,
-            context_after: Annotated[int, Field(description=(
+            context_after: Annotated[int, Field(strict=True, ge=0, description=(
                 "Number of messages after the anchor to include; this is a message count, not a "
                 "duration in minutes or seconds. Increase it when checking later replies or advice; "
                 "a small value cannot establish that no reply exists."

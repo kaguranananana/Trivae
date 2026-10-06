@@ -58,5 +58,11 @@
     "rule": "P66:limit",
     "file": "prompt-p10.txt",
     "removed": "limit must be a positive\ninteger within the schema bound, and "
+  },
+  {
+    "iteration": "P11",
+    "rule": "P61",
+    "file": "prompt-p11.txt",
+    "removed": "Keep\ncontext_before/context_after non-negative and bounded. "
   }
 ]

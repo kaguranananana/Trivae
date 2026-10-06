@@ -233,3 +233,5 @@ P09：测试导入错误先修复→实际契约2失败/4通过复现→static17
 Context收口：新增长matrix会被注入截断、code context条目不合约；改为紧凑parameter-contract-migrations.md摘要并移除这两个新条目。既有69KB runtime spec仍有原注入警告，本会话手工读取相关章节；不重构无关长spec。
 
 P10：5失败/9通过复现→static190 passed in1.84s，Ruff/mypy116通过；真实Host超上界零retrieval；时间默认/互斥/cursor不改。0Provider/0tokens/0cost。
+
+P11：11失败/3通过复现→static204 passed in1.90s，Ruff/mypy116通过；shared总量边界/默认8/8/0-20/0-40保持，真实fixture8项通过；0Provider。

@@ -205,3 +205,13 @@
 - Static=190 passed in1.84s，Ruff/mypy116通过；Synthetic既有8项通过；Real=0；Provider=0、new tokens=0、cost=0。
 - Observed difference：非法原类型更早失败；合法limit/省略值保持，default archive_latest两天、时间互斥/cursor未改。
 - Accepted=contract/L0候选；生产Prompt原文不变，累计19,963字符。下一轮自动进入P11，只审计显式context工具的窗口合法性，不改选窗策略。
+
+## P11：显式context窗口的参数合法性
+
+- Commit：本节所属`refactor(prompt): move explicit context bounds into the tool contract`。
+- Scope=P61；Risk=低；Owner=SDK/GetMessageContextInput；Expected/Maximum calls=0/0。
+- Removed=60字符；Moved=Base候选→SDK非负整数+Host共享总量上界；Reworded=无；Added=两个strict/ge字段、14 tests。
+- Reproduction=11 failed/3 passed；原SDK转换输入、Schema缺minimum，Host总量正确。合法默认8/8、0/20、0/40及transport边界保持，不新增单侧max。
+- Static=204 passed in1.90s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- Accepted=contract/L0；生产原文保留，候选19,903字符。选窗description和所有discussion/negative/time/stop/routing字节不改。
+- 下一轮自动P12：只验证身份恰一参数的既有Host执行和可见字段description；不改变canonical ID/锚点选择。
