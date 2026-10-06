@@ -247,3 +247,8 @@ P15：2项真实SDK写入/DDL拒绝及物理状态检查通过；static239 passe
 A02/A03：承接状态更新并修复漏行尾；10列断言复现失败→完整列/原文定位通过。H04诊断失败复现→static240 passed in2.46s，Ruff/mypy116通过；拒绝漂移的条件不变。0Provider。
 
 H05：V01实证首工具终止丢失usage→ScriptedModel复现→保存SDK ToolContext公开usage，双tool不重复累计；static240 passed in2.29s，Ruff/mypy116通过。修复本身0新API，V01旧Baseline token保持未知。
+
+
+## V01真实Provider成本与边界
+
+全量850 passed in18.37s后，同fact首轮baseline/candidate各1 HTTP请求；最大2/实际2，0 Host/0 evidence。两侧除Base外HTTP body逐字结构相同，条件相同。选择lexical相同，但两条limit100 vs一条limit5000，L1=inconclusive，不据此发布或宣称效率提升。Baseline usageunknown；Candidate input8349/output115/total8464/cached2048。累计token与费用unknown，不能把P0零成本沿用到本次真实探测。H05保存新观测，旧baseline不回填，不追加付费。

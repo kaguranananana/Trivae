@@ -76,3 +76,5 @@ Schema 非空/非负/互斥只有在真实需求与 provider contract 证明有�
 先按P02 lexical context非负 → P03 semantic dense_top_k正值 → P04 find_members query非空逐条核验，前一轮验证通过才开始下一轮。只触及对应SDK字段、零Provider contract tests、累计候选与log；production Prompt不变，discussion/negative/time/stop/routing字节不变。再依据实际剩余缺口选择下一轮，不顺带改其它参数。
 
 继续自主进入P10 recent.limit、P11显式context窗口合法性；每轮最大Provider0。依据剩余真实owner选择下一项，不以一次工程收口作为等待用户确认的边界。
+
+V01为P15批次单fact首工具筛选独立预算2（每侧1），实际2已用完；两侧HTTP除Base一致，参数有差异，L1 inconclusive。不得继续付费补统计；后续零成本fixture/已承接机械规则另轮执行，production语义gate仍Pending。

@@ -284,3 +284,14 @@
 - 拦截时保存SDK已更新usage，按原adapter投影；两个同轮call保存同一aggregate而不相加，新run清空。artifact新增probe_usage/source，原canonical Trace/Run失败终态不变，公开工具选择仍由probe_calls保留。
 - ScriptedModel明确100 input/20 output/120 total/17 cached，先复现缺字段失败；SDK默认cached=0与新版InputTokensDetails必填cache_write_tokens按真实结构显式构造fixture，没有放宽token断言或产品补丁。
 - Static240 passed in2.29s；Ruff/mypy116通过；本修复新Provider=0，fixture数字不计真实tokens。Accepted=成本观测修复；V01已发生1请求的usage仍unknown。
+
+## V01：参数迁移批次的首轮真实决策探测
+
+- Commit：本节所属`docs(prompt): record bounded first-tool screening observations`。
+- Scope=P15累计候选首轮lexical决策；Risk=低实验；production变化=无；Expected/Maximum calls=2/2（每侧1）。
+- 全量工程850 passed in18.37s、static240、Ruff/mypy116、Trellis/diff通过后执行；不跳到全Tool Loop。
+- Actual Provider=2（DeepSeek/deepseek-flash）；两侧精确conditions及非Base HTTP body相等；Host calls=0，evidence/answer未评测。
+- Baseline两条lexical（精确书名和较短query），均limit100；Candidate一条精确书名limit5000/context2/2。差异公开记录，不把较少tool选择或较大limit说成质量提升。
+- Baseline usageunknown触发H05；Candidate SDKinput8349/output115/total8464/cached2048；累计tokens/costunknown，未重跑补数。
+- Decision=Inconclusive-L1；不是确定semantic regression，也不是语义等价接受；候选仅维持L0接受，禁止发布生产。上限2已用完，不继续加repeat/full case。
+- 自动回零成本工作：补强合法claims里的强负面synthetic Failure Case，暴露Finalizer有效不代表负面真实这一边界。
