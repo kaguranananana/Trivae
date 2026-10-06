@@ -284,3 +284,5 @@ C23工程checkpoint：full pytest915 passed in18.47s；static305，Ruff/mypy116�
 H08：同Runtime二query观测污染1 red→static306 passed in2.70s；清理归builder入口后screening15及Ruff通过。旧快照保留，当前usage与choice独立，0新增API。
 
 A05：剩余5条混合规则owner复核/过时状态修正，Current wording和迁移结论保持。static306 passed in2.70s；Ruff/mypy116通过。命名核对使用真实Capability/module函数，不虚构Service类；0新API。
+
+A06：实际解析64公开case并调用exact selector，确认category:context_recovery5 / temporal_overview8 / exact_lexical13 / zero_result5；不是Provider执行或质量证明。版本化case及冻结metadata不改写，0新增API。

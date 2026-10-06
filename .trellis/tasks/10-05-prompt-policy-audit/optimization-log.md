@@ -427,3 +427,11 @@
 - Removed/Moved/Reworded=无Prompt文字；Added=实际函数/dataflow说明。Current wording/位置/分类/能否迁移结论不动。
 - 不把Trace、scope、locator、cursor字段校验扩大成正文语义/选窗/停止/跨轮去重的完整owner；没有新校验、regex、fallback或API。
 - Accepted=责任审计更新；production与P16不变；剩余混合语义暂留，0新增Provider/tokens/cost。
+
+## A06：case标签覆盖与真实targeted选择
+
+- Commit：本节所属`docs(eval): audit existing policy tag coverage`。
+- Scope=当前64公开case与6 frozen case标签；Risk=只读低；Prompt lines=0；Owner=CaseBundle/selector；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=policy-tag-coverage.md；版本化case/冻结metadata未改写，无alias、fallback或第二套Suite。
+- 实际CaseBundle解析64份并离线执行selector：短标签discussion/recent/retrieval/no_result只选design_seed；已有category标签可精确选中5/8/13/5个真实benchmark case。
+- Accepted=标签审计与使用边界。case数不代表必须全跑，也不表示snapshot/SDK冻结条件通过。0新增Provider/tokens/cost；自动继续基于现有标签准备最小可复核筛选输入，仍不付费。
