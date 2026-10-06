@@ -444,3 +444,11 @@
 - 新预算阶段起点main=e48a852；production20450字符；P16候选19736字符。P16先wide reply一对Expected6/Maximum8，再按语义审查继续六领域；本轮不得先做P17。
 
 H09 accepted：static307/Ruff/mypy116通过，0新HTTP；总ledger在data/evaluation/prompt-loop-20261006/total-budget.json固定80。每轮另有local上限，全部实验顺序执行。
+
+## H10：小规模fresh paired targeted入口
+
+- Scope=现有CLI paired引擎入口；Risk=低；Prompt lines=0；Owner=同一EvaluationRunner/Application；Expected/Maximum calls=0/0。
+- 旧frozen与当前SDK合同不同，不能重绑；paired-targeted与full-gate复用同一单变量路径，明确targeted不代表release。
+- 1 red/1 green复现缺mode；Added仅mode分支和生产Application条件相同断言；不改旧targeted复用门禁/GT/Provider配置。
+
+H10 accepted：static308通过；P16-T01=wide recommendation fresh pair、Expected6/Maximum8 HTTP、总80。Case=frozen-reply；SDK/数据/provider/model/route/budget均同，Prompt唯一变量。完整E2E，不能据工具次数判质量。

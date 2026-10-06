@@ -140,7 +140,8 @@ def test_candidate_injection_preserves_dynamic_suffix_and_production_prompt(tmp_
         application.close()
 
 
-def test_cli_freeze_then_candidate_only_runs_candidate_once_and_builds_comparison(tmp_path, monkeypatch):
+@pytest.mark.parametrize("mode", ["candidate-only", "paired-targeted"])
+def test_cli_freeze_then_candidate_only_runs_candidate_once_and_builds_comparison(tmp_path, monkeypatch, mode):
     """真实 Runner/Application freeze 后只跑候选；无重付 baseline、无 semantic 自动放行。"""
     from scripts import run_prompt_screening as cli
 
@@ -161,10 +162,12 @@ def test_cli_freeze_then_candidate_only_runs_candidate_once_and_builds_compariso
 
     def injected_runtime(**kwargs):
         # 同一正式 runtime 子类，仅 Provider 端口注入 ScriptedModel，全部执行语义保持。
-        model = ScriptedModel([ModelStep(output=[assistant_message(json.dumps({"claims": [{
+        step = ModelStep(output=[assistant_message(json.dumps({"claims": [{
             "text": "fixture answer", "finding": "fixture", "criterion": "no tool used",
             "sufficiency": "insufficient", "sources": [], "limitations": [],
-        }], "limitations": []}))])])
+        }], "limitations": []}))])
+        # paired-targeted复用同Runtime跑两侧；脚本响应只验证链路与条件，不能当语义gate。
+        model = ScriptedModel([step, step])
         models.append(model)
         runtime = ScreeningRuntime(model=model, provider_name="injected", model_name="test",
                                    first_tool=kwargs["first_tool"])
@@ -176,12 +179,18 @@ def test_cli_freeze_then_candidate_only_runs_candidate_once_and_builds_compariso
     args = cli.parser().parse_args(["--mode", "freeze-baseline", "--output", str(frozen_dir), *common])
     asyncio.run(cli.execute(args))
     output = tmp_path / "candidate"
-    args = cli.parser().parse_args(["--mode", "candidate-only", "--baseline-dir", str(frozen_dir),
+    args = cli.parser().parse_args(["--mode", mode, "--baseline-dir", str(frozen_dir),
         "--candidate-prompt", str(prompt_path), "--output", str(output), *common])
     asyncio.run(cli.execute(args))
     assert len(models) == 2
     assert len(list(output.glob("*-candidate-*.json"))) == 1
-    assert not list(output.glob("*-baseline-*.json"))
+    assert len(list(output.glob("*-baseline-*.json"))) == (1 if mode == "paired-targeted" else 0)
+    assert len(models[-1].calls) == (2 if mode == "paired-targeted" else 1)
+    if mode == "paired-targeted":
+        # 新鲜两侧除Prompt外的scope/snapshot/SDK/Provider/预算条件逐字段相等。
+        left = read_artifact(output / f"{case.case_id}-baseline-0.json")
+        right = read_artifact(output / f"{case.case_id}-candidate-0.json")
+        assert left["conditions"] == right["conditions"]
     comparison = read_artifact(output / f"{case.case_id}-comparison-0.json")
     assert comparison["status"] == "pending_review"
     assert len(comparison["baseline_run_ids"]) == len(comparison["candidate_run_ids"]) == 1

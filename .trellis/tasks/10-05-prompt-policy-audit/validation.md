@@ -290,3 +290,5 @@ A06：实际解析64公开case并调用exact selector，确认category:context_r
 最后工程checkpoint：H08后full pytest916 passed in16.91s；A05相关static306 passed in2.70s，Ruff/mypy116通过。A06仅离线标签审计。生产Base与9256550逐字无diff，P16/manifest无新增候选；本次续做H06/C21/H07/C22/C23/H08/A05/A06八轮新增Provider0、tokens0、cost0。历史V01仍2请求、总token/费用未知。任务保持in_progress，未归档。
 
 H09：共享budget缺口1 red→static307 passed in12.12s，Ruff/mypy116通过；跨实例3次上限先占用再发送，更改总上限明确拒绝。0新增HTTP。
+
+H10：缺入口1 red/1 green→static308 passed in4.29s、Ruff/mypy116通过；同Runtime paired两侧非Prompt conditions相同，0HTTP。六历史及cal-context-ui snapshot均匹配当前DB。

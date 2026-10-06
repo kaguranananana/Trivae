@@ -38,7 +38,7 @@ from trivae.query.runtime.prompt import SYSTEM_PROMPT
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--mode", required=True, choices=(
-        "static", "first-tool", "targeted", "candidate-only", "freeze-baseline", "full-gate",
+        "static", "first-tool", "targeted", "paired-targeted", "candidate-only", "freeze-baseline", "full-gate",
     ))
     result.add_argument("--case", action="append", type=Path, default=[])
     result.add_argument("--policy")
@@ -172,7 +172,8 @@ async def execute(args: argparse.Namespace) -> None:
             variants = [("candidate", candidate)]
             if args.mode == "freeze-baseline":
                 variants = [("baseline", baseline)]
-            if args.mode == "full-gate":
+            # 小样本fresh paired复用release的相同执行语义，阶段由mode明确区分。
+            if args.mode in {"paired-targeted", "full-gate"}:
                 variants = [("baseline", baseline), ("candidate", candidate)]
                 if args.order == "BA":
                     variants.reverse()
