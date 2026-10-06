@@ -1,0 +1,367 @@
+{
+  "starting_production_commit": "e48a852",
+  "starting_code_commit": "e48a852",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "budget_maximum": 80,
+  "totals": {
+    "http_requests": 58,
+    "input_tokens": 1245957,
+    "output_tokens": 47594,
+    "total_tokens": 1293551,
+    "cached_input_tokens": 328960,
+    "latency_ms": 475442.0
+  },
+  "unknown_usage_artifacts": [],
+  "currency_cost": null,
+  "latency_caveat": "每run wall累计，含HF元数据SSL重试/本地encoder冷启动，不做A/B效率收益归因。",
+  "rows": [
+    {
+      "directory": "c24-probe",
+      "artifact": "cal-context-ui-skill-candidate-0.json",
+      "variant": "first_tool_probe",
+      "http_requests": 1,
+      "usage": {
+        "requests": 1,
+        "input_tokens": 8508,
+        "output_tokens": 237,
+        "total_tokens": 8745,
+        "cached_input_tokens": 4608
+      },
+      "latency_ms": 2224.0,
+      "full_e2e": false
+    },
+    {
+      "directory": "c24-ui-pair",
+      "artifact": "cal-context-ui-skill-baseline-0.json",
+      "variant": "frozen_baseline",
+      "http_requests": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 109918,
+        "output_tokens": 1457,
+        "total_tokens": 111375,
+        "cached_input_tokens": 18432
+      },
+      "latency_ms": 33185.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "c24-ui-pair",
+      "artifact": "cal-context-ui-skill-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 160444,
+        "output_tokens": 2421,
+        "total_tokens": 162865,
+        "cached_input_tokens": 21504
+      },
+      "latency_ms": 24668.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b01-inventory",
+      "artifact": "frozen-github-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 31195,
+        "output_tokens": 2766,
+        "total_tokens": 33961,
+        "cached_input_tokens": 6656
+      },
+      "latency_ms": 12255.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b02-inventory",
+      "artifact": "frozen-github-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 20120,
+        "output_tokens": 1857,
+        "total_tokens": 21977,
+        "cached_input_tokens": 6528
+      },
+      "latency_ms": 8864.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-discussion",
+      "artifact": "frozen-reply-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 74659,
+        "output_tokens": 3418,
+        "total_tokens": 78077,
+        "cached_input_tokens": 10496
+      },
+      "latency_ms": 41519.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t02",
+      "artifact": "cal-lexical-token-monitor-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 18265,
+        "output_tokens": 483,
+        "total_tokens": 18748,
+        "cached_input_tokens": 9216
+      },
+      "latency_ms": 4479.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t02",
+      "artifact": "cal-zero-empty-window-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 18417,
+        "output_tokens": 699,
+        "total_tokens": 19116,
+        "cached_input_tokens": 16640
+      },
+      "latency_ms": 4430.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t03",
+      "artifact": "cal-temporal-last-7d-baseline-0.json",
+      "variant": "frozen_baseline",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 30577,
+        "output_tokens": 2821,
+        "total_tokens": 33398,
+        "cached_input_tokens": 16640
+      },
+      "latency_ms": 14642.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t03",
+      "artifact": "cal-temporal-last-7d-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 30441,
+        "output_tokens": 2868,
+        "total_tokens": 33309,
+        "cached_input_tokens": 16640
+      },
+      "latency_ms": 14939.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t04",
+      "artifact": "cal-context-ui-skill-baseline-0.json",
+      "variant": "frozen_baseline",
+      "http_requests": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 164389,
+        "output_tokens": 3980,
+        "total_tokens": 168369,
+        "cached_input_tokens": 25472
+      },
+      "latency_ms": 72231.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t04",
+      "artifact": "cal-context-ui-skill-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 103186,
+        "output_tokens": 5425,
+        "total_tokens": 108611,
+        "cached_input_tokens": 21248
+      },
+      "latency_ms": 42155.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t05",
+      "artifact": "frozen-github-baseline-0.json",
+      "variant": "frozen_baseline",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 20222,
+        "output_tokens": 2246,
+        "total_tokens": 22468,
+        "cached_input_tokens": 9472
+      },
+      "latency_ms": 10747.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b04-t05",
+      "artifact": "frozen-github-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 31649,
+        "output_tokens": 2686,
+        "total_tokens": 34335,
+        "cached_input_tokens": 9216
+      },
+      "latency_ms": 11896.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-b08-discussion",
+      "artifact": "frozen-reply-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 63180,
+        "output_tokens": 1884,
+        "total_tokens": 65064,
+        "cached_input_tokens": 10496
+      },
+      "latency_ms": 38771.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-r01",
+      "artifact": "frozen-reply-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 45761,
+        "output_tokens": 1646,
+        "total_tokens": 47407,
+        "cached_input_tokens": 24576
+      },
+      "latency_ms": 11613.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-r01",
+      "artifact": "frozen-reply-candidate-1.json",
+      "variant": "candidate_screen",
+      "http_requests": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 69077,
+        "output_tokens": 2804,
+        "total_tokens": 71881,
+        "cached_input_tokens": 24576
+      },
+      "latency_ms": 37450.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-t01",
+      "artifact": "frozen-reply-baseline-0.json",
+      "variant": "frozen_baseline",
+      "http_requests": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 76897,
+        "output_tokens": 2650,
+        "total_tokens": 79547,
+        "cached_input_tokens": 15104
+      },
+      "latency_ms": 50418.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-t01",
+      "artifact": "frozen-reply-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 75650,
+        "output_tokens": 2294,
+        "total_tokens": 77944,
+        "cached_input_tokens": 9984
+      },
+      "latency_ms": 16678.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-t02",
+      "artifact": "cal-lexical-token-monitor-baseline-0.json",
+      "variant": "frozen_baseline",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 28735,
+        "output_tokens": 995,
+        "total_tokens": 29730,
+        "cached_input_tokens": 9472
+      },
+      "latency_ms": 7873.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-t02",
+      "artifact": "cal-lexical-token-monitor-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 28221,
+        "output_tokens": 809,
+        "total_tokens": 29030,
+        "cached_input_tokens": 8960
+      },
+      "latency_ms": 5912.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-t02",
+      "artifact": "cal-zero-empty-window-baseline-0.json",
+      "variant": "frozen_baseline",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 18315,
+        "output_tokens": 526,
+        "total_tokens": 18841,
+        "cached_input_tokens": 16640
+      },
+      "latency_ms": 3430.0,
+      "full_e2e": true
+    },
+    {
+      "directory": "p16-t02",
+      "artifact": "cal-zero-empty-window-candidate-0.json",
+      "variant": "candidate_screen",
+      "http_requests": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 18131,
+        "output_tokens": 622,
+        "total_tokens": 18753,
+        "cached_input_tokens": 16384
+      },
+      "latency_ms": 5063.0,
+      "full_e2e": true
+    }
+  ],
+  "production_prompt_last_changed_commit": "460259d",
+  "original_prompt_audit_checkpoint": "9256550"
+}

@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "用户批准第一批并要求不使用子代理。候选真实配对出现宽综述退步，运行 Prompt/测试已恢复原版，候选与失败证据保留，任务 in_progress 待缩小去重范围或人工评审。",
+  "notes": "保留P01–P16/C17–C24/H06–H10/A05–A06与原大改失败。用户授权80新增HTTP连续验证，本批58HTTP后五候选P16/P08/P04/P02/P01依次Rejected，停止条件3；production原Base20450逐字保持，release未启动。H09/H10/C24工程合同通过，完整失败/usage保留。父任务in_progress；不把参数合法/Finalizer valid当语义等价，下一步独立time/negative真实Failure Case职责研究。",
   "meta": {}
 }

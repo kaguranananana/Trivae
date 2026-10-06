@@ -495,3 +495,11 @@ C24 UI fresh pair：actual8HTTP，累计50/80；两侧GT direct/reply均进入�
 - Canonical独立核实3个不同sender_user_id；candidate写4位（括号列3人），并把8月14日GitHub最新命中称归档最新，scope archive_latest实为8月16日。Rejected；错误属Model计数/时间语义，未证明某片段删除为因果。
 - 更正P04 T05观测：Base传start_timestamp，candidate省略，实际10 vs56消息；所有10相关消息可见不等于candidate仅读10。完整原件+独立correction保留，不覆盖失败。
 - 继续P01，仅P56 limit一条，Expected2/Maximum4；全其他正文逐字保留。
+
+## P16-B01：单句子候选与连续循环停止
+
+- Expected2/Maximum4，actual2，累计58/80；Base按用户起点传start_timestamp，candidate省略，返回56条而非要求的10条窗口，再在答案排除旧链接。原时间策略仍逐字存在，却未被遵守；7链接覆盖不证明工具语义等价。Rejected，无production更改。
+- “最后一条相关”有排序歧义，未以该歧义伪造明确max-time错误；本轮拒绝依据为requested time_range调用违背。五候选P16/P08/P04/P02/P01依次未通过，符合停止条件3；没有单句因果定位，不称全部机械规则永不可移。
+- Stop=3，保留22请求，不为漂亮数字/统计继续API。新增58HTTP/input1245957/output47594/total1293551/cache328960，currency unknown；wall累计475442ms含HF/encoder冷启动。旧V01不计入新80。
+- Production20450→20450，原Base完整保留；release gate未开始/未通过，无Prompt production commit。新增H09/H10/C24独立接受工程合同；原文规则未实际发布迁移，候选成功/失败与correction原件全部留存。
+- 详见research/loop-20261006-review.md与usage聚合；父task继续in_progress，未归档。下一步是单一time/negative真Failure Case职责研究，而不是P17机械删词。

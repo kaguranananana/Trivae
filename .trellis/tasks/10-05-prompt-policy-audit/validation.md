@@ -298,3 +298,5 @@ P16真实首次screening：T01 6HTTP/T02 8HTTP/R01 6HTTP，累计20/80；P16拒�
 C24：keyword Schema说明及四消息SQLite AND验证；static311/Ruff/mypy116，full pytest921 passed in17.53s。L1 actual1、UI fresh E2E actual8，两侧恢复GT；新增累计50/80。旧T04共同漏检artifact保留，索引实际completed不是缺失；参数说明的新合同拒绝旧freeze复用。
 
 P04子集六领域筛选完成但inventory最新时间与正文引用自相矛盾，Rejected；54/80HTTP，release gate未启动，production原文20450保持。Baseline去重错误也保留，GT不修改。
+
+2026-10-06连续预算阶段收口：58/80新增HTTP，五累计候选P16/P08/P04/P02/P01均Rejected，停止条件3。原Base20450字符逐字保持，release未启动，不宣称semantic equivalence。static311/full921/Ruff/mypy116通过，usage均已获得（input1245957/output47594/total1293551/cache328960）；币种费用unknown，wall475.442s不能做效率归因。完整Provider/Trace失败原件保留ignored目录，研究/聚合记录提交；task in_progress保留。
