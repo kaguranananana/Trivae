@@ -30,7 +30,7 @@ P06保留SDK原有空对象/空字符串合法形式；额外字段在SDK忽略�
 - 参数测试在真实FunctionTool解析/typed input之后才允许recording registry；非法输入必须registry零调用，合法输入保留同样参数。真实检索、scope、projection与Finalizer由原有fixture和全量工程测试覆盖。
 - 精确候选manifest按production→前一候选逐步删一个片段，其他字节/空白/顺序相等。mapping定位用实际片段和最小源码行范围；不能按旧审计行号机械取行。A01已经更正P41–P71附近错位，P04 Rule是P62。
 - P48–P51为近似重复，当前不标完整literal duplication，不去重。Discussion/Negative/Temporal/Stop/Routing全部保持原文。
-- 本批915全量测试（18.47s）；C23最新305相关static、Ruff/mypy116通过。P10–P16、C17–C23及fixture轮次各0新增Provider；V01实际2次单独计入。L0与synthetic不证明真实模型语义等价。
+- 本批916全量测试（16.91s）；A05最新306相关static、Ruff/mypy116通过。P10–P16、C17–C23及fixture轮次各0新增Provider；V01实际2次单独计入。L0与synthetic不证明真实模型语义等价。
 - C17/C18分别修复member/semantic limit已公开的严格正整数执行；C19/C20让semantic及lexical/legacy执行默认值与scope Schema共用。Base无待删对应文字，因此不虚报Prompt迁移。正常默认/显式参数/窗口/路由不改。
 - F02复现合法claims的错误强负面结论仍可Finalizer valid；F03确认after20/40实际送入下一轮模型input并解析推荐来源。只证明送达与错误边界，不证明真实模型自行选窗。
 - 历史6个frozen baseline保存旧SDK合同，新lexical/semantic/member/get_schema/recent/context/SQL合同有差异；当前candidate-only/targeted预检显式拒绝，不能改写历史条件或自动付费刷新。
@@ -44,3 +44,5 @@ C21仅补semantic窗口strict/ge=0，合法2/2与0/20/40原样；C22/C23分别�
 H06/H07在正式SDK并行调用中复现坏JSON被当正常probe、继续后case的问题。先保留arguments_raw、原异常，再要求FirstToolProbeStop且每个已观测call解析完成、Host零执行。坏/合法两个顺序都立即阻止下一case；正常probe可继续显式选择case。没有隐藏异常、伪造Trace或重试。全部ScriptedModel验证，新Provider调用0。
 
 当前剩余mixed规则：known canonical身份/相关锚点属于模型选择；cursor不能跨轮重复和不改位置尚不能声称全部由Host承接；时间选择、unused filter、read-only主语及SQL停止指导保护；E输出生成Schema/证据蕴含/负面判断不能靠Finalizer valid删除。纯literal duplication仍F=0。不因剩余字数继续删语义句。
+
+H08把choice/usage重置统一归实验Runtime新run入口，真实二query复现污染并验证独立。A05补mixed规则实际函数owner；A06离线解析64公开CaseBundle，确认短标签只选design seed时，既有category标签仍能精确选5个context/8个temporal/13个exact/5个zero case。未重标已有版本/freeze、未添加alias。必要时直接用已有category标签并显式选择最小case，不因匹配数自动跑全组。
