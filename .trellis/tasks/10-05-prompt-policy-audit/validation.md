@@ -213,3 +213,5 @@ P05：2失败/4通过复现→static123 passed in2.05s；Ruff/mypy116通过；0P
 P06：额外参数被忽略的3项红灯→strict Schema与调用入口拒绝；mypy callback类型按SDK接口修复。static127 passed in2.05s，Ruff/mypy116通过；0Provider/0tokens/0cost；合法{}和空串不变。
 
 A01：旧matrix的六个候选规则定位全部MISMATCH；按真实句子锚点修正文档，新增最小行范围/候选Rule ID片段归属检查，static127通过。P04 Rule ID更正P62；撤回四个非完整literal重复标签。0API，未改production/candidate内容。
+
+P07：已有SDK/typed input的14项单字符串检查修改前即通过；static141 passed in2.14s，Ruff/mypy116通过；Runtime不改。候选仅删36字符，0API。

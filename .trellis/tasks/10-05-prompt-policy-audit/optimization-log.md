@@ -147,3 +147,13 @@
 - Removed/Moved/Reworded/Added：无Prompt变更；matrix更正实际Current wording/行范围/owner分类。撤回四处F，它们不是完整相同句子，不以literal dedup名义删除。SQL安全混合停止、作者和负面句加G保护。
 - Static=127 passed；Ruff/mypy116通过；Synthetic既有8项通过；Real=0；Provider=0、tokens=0、cost=0。
 - Accepted=审计与检查修正。参数契约修复及候选精确文本不受影响；生产原文全字节保留。下一轮继续P07只验证keyword已承接的单字符串规则。
+
+## P07：迁移已经实际承接的keyword单字符串
+
+- Commit：本节所属`refactor(prompt): remove verified single-keyword parameter guidance`。
+- Scope=P55:keyword；Risk=极低；Owner=已有SDK/typed input/Tool description；Expected/Maximum calls=0/0。
+- Removed=36字符；Moved=Base候选→已有工具契约；Reworded=无；Added=14项契约测试；Runtime实现变化=无。
+- Static=修改前14/14已经通过；最终static141 passed in2.14s；Ruff/mypy116通过；Synthetic8项通过。
+- 非字符串原始值SDK拒绝且registry零调用，直接typed input也拒绝；合法anchor参数未变。无需增加未有依据的minLength或其他检索规则。
+- Real=0；Provider=0；new input/output/total tokens=0；cost=0。Accepted=L0候选；production原文不动，候选20,079字符。
+- 下一轮自动进入P08：只补lexical/legacy三个optional filter的非空数组契约，不改filter选择语义或scope。

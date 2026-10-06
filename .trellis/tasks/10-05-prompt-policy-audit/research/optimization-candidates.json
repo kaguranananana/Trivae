@@ -34,5 +34,11 @@
     "rule": "P64",
     "file": "prompt-p06.txt",
     "removed": "For\nget_schema, send no arguments. "
+  },
+  {
+    "iteration": "P07",
+    "rule": "P55:keyword",
+    "file": "prompt-p07.txt",
+    "removed": "keyword must be exactly one string. "
   }
 ]

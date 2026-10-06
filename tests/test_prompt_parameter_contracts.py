@@ -11,7 +11,12 @@ from agents.exceptions import ModelBehaviorError
 from agents.tool_context import ToolContext
 
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
-from trivae.capabilities.contracts import CapabilityContractError, SemanticSearchInput, ToolEnvelope
+from trivae.capabilities.contracts import (
+    CapabilityContractError,
+    SearchMessagesInput,
+    SemanticSearchInput,
+    ToolEnvelope,
+)
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import (
     FindMembersSDKToolAdapter,
@@ -207,7 +212,6 @@ def test_p06_no_arguments_keep_sdk_wire_forms(raw_arguments):
     assert response["status"] == "ok" and len(handler.calls) == 1
 
 
-
 def test_p06_invalid_json_keeps_explicit_error_cause():
     """入口解析失败保持原始异常链，不能静默当作无参数调用。"""
     tool, wrapper, handler = sdk_boundary(GetSchemaSDKToolAdapter, "get_schema", {})
@@ -215,3 +219,34 @@ def test_p06_invalid_json_keeps_explicit_error_cause():
         asyncio.run(tool.on_invoke_tool(wrapper, "{"))
     assert isinstance(caught.value.__cause__, json.JSONDecodeError)
     assert handler.calls == []
+
+
+@pytest.mark.parametrize(
+    "adapter,name", [(LexicalSearchSDKToolAdapter, "lexical_search"), (SearchMessagesSDKToolAdapter, "search_messages")]
+)
+@pytest.mark.parametrize("value", [True, 2, ["anchor"], {"keyword": "anchor"}])
+def test_p07_keyword_is_already_one_string_at_sdk(adapter, name, value):
+    """先证明原SDK已拒绝非字符串；本轮不修改任何解析实现。"""
+    tool, wrapper, handler = sdk_boundary(adapter, name, {"keyword": value, "limit": 5})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("value", [True, 2, ["anchor"], {"keyword": "anchor"}])
+def test_p07_keyword_typed_owner_already_rejects(value):
+    """直接业务输入也拒绝多值/非字符串，不仅是对JSON Schema的推测。"""
+    with pytest.raises(CapabilityContractError):
+        SearchMessagesInput(keyword=value)
+
+
+@pytest.mark.parametrize(
+    "adapter,name", [(LexicalSearchSDKToolAdapter, "lexical_search"), (SearchMessagesSDKToolAdapter, "search_messages")]
+)
+def test_p07_schema_and_visible_description_keep_single_keyword(adapter, name):
+    """单字符串契约已在可见工具层；合法anchor保持原参数与执行链。"""
+    tool, wrapper, handler = sdk_boundary(adapter, name, {"keyword": "anchor", "limit": 5})
+    assert tool.params_json_schema["properties"]["keyword"]["type"] == "string"
+    assert "keyword must be exactly one non-empty string" in tool.description
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and handler.calls[0].keyword == "anchor"
