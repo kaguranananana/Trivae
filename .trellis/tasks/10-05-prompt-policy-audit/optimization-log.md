@@ -375,3 +375,12 @@
 - 原实现坏JSON+合法call继续下一case，1测试明确失败；修复后坏case1轮/Host0/后case不存在，正常case仍继续显式下一probe。
 - Static276 passed；Ruff/mypy116通过。新Provider/tokens/cost=0，累计Provider仍2；baseline usage及总费用未知。
 - Accepted=Harness正确性修复。生产Base/P16候选不变；自动进入C21 semantic context字段实际契约检查。
+
+## C21：semantic context实际非负整数契约
+
+- Commit：本节所属`fix(tools): enforce semantic context integer bounds`。
+- Scope=semantic context双字段同一契约；Risk=低；Prompt lines=0；Owner=SDK/typed input；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=strict/ge=0及12 SDK tests；Base无对应机械句，不虚报删除。
+- 12 red中6非法类型被原SDK转换、2负值原Host已拒绝但SDK未拒绝、4合法值仅缺Schema minimum；修复后全部通过。
+- Static288 passed in2.86s；Ruff/mypy116通过；默认2/2及0/20/40/limit10/dense40保持。新Schema与V01不同，旧probe不可当本轮同条件验证。
+- Accepted=contract/L0；0新Provider/tokens/cost，累计2且总费用未知。下一轮复核first-tool并行调用错误顺序，保持生产Prompt不动。

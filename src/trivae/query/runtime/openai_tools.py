@@ -372,8 +372,9 @@ class SemanticSearchSDKToolAdapter:
             reply_to_source_message_id: str | None = None,
             # SDK拒绝原始非法类型；省略值使用上方按scope推导的公开默认值。
             limit: Annotated[int, Field(strict=True, ge=1)] = default_limit,
-            context_before: int = 2,
-            context_after: int = 2,
+            # 非负整数在SDK解析时直接校验，保留默认2/2及Host原有窗口语义。
+            context_before: Annotated[int, Field(strict=True, ge=0)] = 2,
+            context_after: Annotated[int, Field(strict=True, ge=0)] = 2,
             # 候选数先由SDK检查严格正整数，保留原默认40与既有检索算法。
             # 字段描述公开原Prompt参数约束；Host仍保留业务入口校验。
             dense_top_k: Annotated[int, Field(

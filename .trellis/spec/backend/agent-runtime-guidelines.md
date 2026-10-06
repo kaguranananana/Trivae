@@ -950,3 +950,5 @@ Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、�
 - first-tool拦截可能让streamed Runner在model hook事件排空前终止；实验artifact从SDK ToolContext.usage按原数字投影保存probe_usage，不依赖失败Run汇总，不回填canonical Trace。同轮多tool不能重复累加；缺失旧观测保持unknown，不为补统计付费重跑。
 
 - first-tool记录选择必须先保存原始参数，再解析JSON；坏调用不能因同轮另一合法call留有probe而视为成功。CLI只接受实际FirstToolProbeStop且Host零调用；其他工程异常保存失败artifact/Trace后停止后续case，不重试。SDK包装后的真实异常类型保持原样。
+
+- semantic context双字段现在与原typed input共用非负整数契约，SDK strict/ge=0阻止bool/string/float转换。默认2/2、合法0/20/40与原evaluation-only clamp不变；新增Schema minimum造成冻结条件漂移须显式处理，不能外推真实模型选窗等价。

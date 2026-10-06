@@ -270,3 +270,5 @@ C20：SDK/default及真实FTS复现6失败/2通过→共享默认值修复；sta
 Checkpoint：C20后全量884 passed in17.04s；上次终端session输出已不可恢复，重新以本地文件保存零Provider检查结果。production prompt.py与9256550逐字无差异；任务继续in_progress。
 
 H06：异常误判复现1失败→坏/合法CLI两路径通过；static276 passed，Ruff/mypy116通过。失败保留raw和实际SDK UserError，1轮即停止剩余case，0新API。
+
+C21：原类型转换/Schema缺minimum复现12 red→static288 passed in2.86s，Ruff/mypy116通过。0新增API；合法值及窗口策略保持，旧V01不同合同不可沿用。

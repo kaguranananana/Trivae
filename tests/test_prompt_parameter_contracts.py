@@ -900,3 +900,32 @@ def test_c20_real_scoped_lexical_omission_executes_without_contract_error(adapte
         assert len(response["data"]["hits"]) == 1
     finally:
         fixture.tearDown()
+
+
+@pytest.mark.parametrize("field", ["context_before", "context_after"])
+@pytest.mark.parametrize("value", [True, "2", 2.0, -1])
+def test_c21_semantic_context_rejects_invalid_raw_values(field, value):
+    """SDK须执行typed input原有的非负整数约束，不能先把非法类型转换成整数。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search",
+                                         {"query": "learning", field: value})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("arguments,expected", [({}, (2, 2)),
+    ({"context_before": 0, "context_after": 0}, (0, 0)),
+    ({"context_before": 0, "context_after": 20}, (0, 20)),
+    ({"context_before": 0, "context_after": 40}, (0, 40))])
+def test_c21_semantic_context_preserves_default_and_legal_windows(arguments, expected):
+    """原默认2/2与合法深窗原值送达；只验证参数，不能推断模型选窗等价。"""
+    tool, wrapper, handler = sdk_boundary(SemanticSearchSDKToolAdapter, "semantic_search",
+                                         {"query": "learning", **arguments})
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    request = handler.calls[0]
+    assert response["status"] == "ok"
+    assert (request.context_before, request.context_after) == expected
+    assert (request.limit, request.dense_top_k) == (10, 40)
+    for field in ("context_before", "context_after"):
+        assert tool.params_json_schema["properties"][field]["minimum"] == 0
+        assert tool.params_json_schema["properties"][field]["default"] == 2
