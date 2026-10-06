@@ -74,3 +74,5 @@ Schema 非空/非负/互斥只有在真实需求与 provider contract 证明有�
 用户要求完成一轮后自主分析并进入下一轮，不请求继续确认。保持每轮唯一主要scope、独立commit和原失败记录；本会话预计/最大真实Provider请求均0。
 
 先按P02 lexical context非负 → P03 semantic dense_top_k正值 → P04 find_members query非空逐条核验，前一轮验证通过才开始下一轮。只触及对应SDK字段、零Provider contract tests、累计候选与log；production Prompt不变，discussion/negative/time/stop/routing字节不变。再依据实际剩余缺口选择下一轮，不顺带改其它参数。
+
+继续自主进入P10 recent.limit、P11显式context窗口合法性；每轮最大Provider0。依据剩余真实owner选择下一项，不以一次工程收口作为等待用户确认的边界。

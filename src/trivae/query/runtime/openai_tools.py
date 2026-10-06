@@ -1096,7 +1096,9 @@ class GetRecentMessagesSDKToolAdapter:
             session_ids: list[str] | None = None,
             sender_user_ids: list[str] | None = None,
             cursor: dict[str, object] | None = None,
-            limit: int = default_limit,
+            # SDK在类型转换前拒绝非法limit；trusted上界继续由Capability执行。
+            # default_limit仍按原scope推导，时间窗与cursor不参与本轮修改。
+            limit: Annotated[int, Field(strict=True, ge=1)] = default_limit,
         ) -> dict[str, object]:
             """只接受 typed 时间窗字段；trusted scope 不从模型参数读取。
 

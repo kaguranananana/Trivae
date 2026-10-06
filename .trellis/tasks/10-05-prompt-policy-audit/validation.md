@@ -231,3 +231,5 @@ P09：测试导入错误先修复→实际契约2失败/4通过复现→static17
 - 接受8轮contract/L0候选；A01修正审计错误接受。真实Prompt语义gate未执行，任务保持in_progress，未归档。
 
 Context收口：新增长matrix会被注入截断、code context条目不合约；改为紧凑parameter-contract-migrations.md摘要并移除这两个新条目。既有69KB runtime spec仍有原注入警告，本会话手工读取相关章节；不重构无关长spec。
+
+P10：5失败/9通过复现→static190 passed in1.84s，Ruff/mypy116通过；真实Host超上界零retrieval；时间默认/互斥/cursor不改。0Provider/0tokens/0cost。

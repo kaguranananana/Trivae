@@ -52,5 +52,11 @@
     "rule": "P62:session_ids",
     "file": "prompt-p09.txt",
     "removed": " and do not send empty arrays"
+  },
+  {
+    "iteration": "P10",
+    "rule": "P66:limit",
+    "file": "prompt-p10.txt",
+    "removed": "limit must be a positive\ninteger within the schema bound, and "
   }
 ]

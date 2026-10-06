@@ -195,3 +195,13 @@
 | P09 | 40acc6a | member filter空数组 / L0接受 |
 
 本会话8轮Prompt参数候选 + A01审计修正各自提交；完整工程793 passed in17.81s、static176、Ruff/mypy116/diff检查通过。Provider=0、input/output/total tokens=0、cost=0。六个历史baseline因新SDK合同按预期拒绝，未改历史证据、未付费重跑。生产SYSTEM_PROMPT全字节不变；L0接受不等于语义发布接受。当前任务保持进行中，后续recent.limit可独立零成本审计，仍不动时间语义与cursor。
+
+## P10：recent.limit严格正整数
+
+- Commit：本节所属`refactor(prompt): move recent limit validation into the tool contract`。
+- Scope=P66:limit；Risk=低；Owner=SDK/Capability；Expected/Maximum Provider calls=0/0。
+- Removed=62字符；Moved=Base候选→原description/Schema/Host及新增strict解析；Reworded=无；Added=单字段strict/ge与14 tests。
+- Reproduction=5 failed/9 passed；非严格SDK转换原始类型，Host正整数/上界既有拒绝未改。
+- Static=190 passed in1.84s，Ruff/mypy116通过；Synthetic既有8项通过；Real=0；Provider=0、new tokens=0、cost=0。
+- Observed difference：非法原类型更早失败；合法limit/省略值保持，default archive_latest两天、时间互斥/cursor未改。
+- Accepted=contract/L0候选；生产Prompt原文不变，累计19,963字符。下一轮自动进入P11，只审计显式context工具的窗口合法性，不改选窗策略。

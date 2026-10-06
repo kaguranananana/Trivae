@@ -14,6 +14,7 @@ from trivae.capabilities import CapabilityRegistry, ExecutionScope
 from trivae.capabilities.contracts import (
     CapabilityContractError,
     FindMembersInput,
+    GetRecentMessagesInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -21,6 +22,7 @@ from trivae.capabilities.contracts import (
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import (
     FindMembersSDKToolAdapter,
+    GetRecentMessagesSDKToolAdapter,
     GetSchemaSDKToolAdapter,
     LexicalSearchSDKToolAdapter,
     SearchMessagesSDKToolAdapter,
@@ -336,3 +338,66 @@ def test_p09_member_legal_session_forms_keep_parameters(arguments, expected):
     tool, wrapper, handler = sdk_boundary(FindMembersSDKToolAdapter, "find_members", {"query": "用户A", **arguments})
     response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
     assert response["status"] == "ok" and handler.calls[0].session_ids == expected
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_p10_recent_limit_rejects_invalid_raw_types_before_registry(value):
+    """recent独立验证真实SDK，不由lexical的strict字段推定。"""
+    tool, wrapper, handler = sdk_boundary(GetRecentMessagesSDKToolAdapter, "get_recent_messages", {"limit": value})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("value", [True, "2", 2.0, 0, -1])
+def test_p10_recent_typed_owner_already_rejects_invalid_limit(value):
+    """Host已有严格正整数规则保持，不新增时间解释。"""
+    with pytest.raises(CapabilityContractError):
+        GetRecentMessagesInput(limit=value)
+
+
+@pytest.mark.parametrize("arguments,expected", [({}, 10), ({"limit": 1}, 1), ({"limit": 10}, 10)])
+def test_p10_recent_schema_default_and_legal_limit(arguments, expected):
+    """省略值保持当前scope推导的默认；缺省时间仍由Host锚定archive_latest。"""
+    tool, wrapper, handler = sdk_boundary(GetRecentMessagesSDKToolAdapter, "get_recent_messages", arguments)
+    schema = tool.params_json_schema["properties"]["limit"]
+    assert schema["minimum"] == 1 and schema["maximum"] == 10 and schema["default"] == 10
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok" and handler.calls[0].limit == expected
+    time_range = handler.calls[0].time_range
+    assert time_range.amount == 2 and time_range.anchor == "archive_latest"
+
+
+def test_p10_recent_trusted_maximum_rejects_before_retrieval(monkeypatch):
+    """Schema上界不是执行保障；实际Capability必须在检索前拒绝。"""
+    from tests import test_stage_b_tools as fixtures
+
+    fixture = fixtures.StageBToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        called = []
+        original = app.structured_retrieval.retrieve_recent_messages
+
+        def track(query):
+            called.append(query)
+            return original(query)
+
+        monkeypatch.setattr(app.structured_retrieval, "retrieve_recent_messages", track)
+        scope = ExecutionScope(max_results=5)
+        context = RuntimeContext(
+            scope=scope,
+            capability_registry=app.capability_registry,
+            available_capabilities=("get_recent_messages",),
+            run_id="recent-limit",
+        )
+        context.allocate_tool_call_id("above")
+        wrapper = ToolContext(
+            context=context, tool_name="get_recent_messages", tool_call_id="above", tool_arguments="{}"
+        )
+        tool = GetRecentMessagesSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=5)
+        response = asyncio.run(tool.on_invoke_tool(wrapper, json.dumps({"limit": 6})))
+        assert response["status"] == "error" and response["error"]["code"] == "INVALID_ARGUMENT"
+        assert called == []
+    finally:
+        fixture.tearDown()
