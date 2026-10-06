@@ -219,3 +219,13 @@ P07：已有SDK/typed input的14项单字符串检查修改前即通过；static
 P08：8失败/21通过复现→static170 passed in1.87s；Ruff/mypy116通过；省略/null/数组的18种合法组合不变。候选只删25字符，0Provider。
 
 P09：测试导入错误先修复→实际契约2失败/4通过复现→static176通过，Ruff/mypy116通过；合法scope参数形式保留，候选仅删29字符，0Provider。
+
+## P02–P09这一批的最终工程验证
+
+- full pytest：793 passed in17.81s；相关static176 passed in2.03s。
+- Ruff src/tests/两入口通过；mypy116文件通过；diff空白与Trellis context检查通过。
+- P09累计候选只删除425字符机械约束；其中本会话P02–P09删除321字符，P01既有104字符。长度只作diff事实，未统计真实模型token或宣称效率改善。
+- 完整生产prompt.py与原生产commit逐字比较无变化；高风险Discussion/Negative/Temporal/Stop/Routing都保持原顺序和措辞。
+- 新SDK四工具合同与历史6个frozen baseline不同；逐个调用verify_frozen_baseline均在任何Provider构造/请求之前明确拒绝。历史artifact未改，未自动付费刷新；这项限制不可称为candidate-only实测质量通过。
+- Real cases executed=0；DeepSeek/其他Provider HTTP调用=0；new input/output/total tokens=0；new API cost=0。历史tokens不计入本次新增成本。
+- 接受8轮contract/L0候选；A01修正审计错误接受。真实Prompt语义gate未执行，任务保持in_progress，未归档。

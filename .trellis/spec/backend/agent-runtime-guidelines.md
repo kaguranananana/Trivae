@@ -933,3 +933,12 @@ Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、�
 - `run_prompt_screening.py --mode static`不读密钥或构造Provider；targeted用现有suite_tags，candidate-only在付费前验证冻结Prompt原文、scope/snapshot/model/budget/实物tool contract等条件。默认repeat=1/预算0，真实HTTP attempts由hook硬约束；明确regression停止，只有单case人工borderline可追加candidate，不重跑baseline/probe/full suite。
 - first-tool实验复用Application.query和生产builder，在SDK已记录模型输出/usage后拦截工具callable；没有Host工具执行，FirstToolProbeStop不能算完整答案成功。full-gate显式fresh pairs/AB或BA与人工review，不自动发布production或把Finalizer状态当质量分。
 - 历史real_pair的production记录可由显式导入器零API冻结，保留未知GT/checks和原失败；私有原文/请求/Trace/答案只在ignored data/evaluation。精确原文+commit使用既有文本身份，不新增摘要算法。synthetic只证明证据送达/确定性边界，真实语义仍走成本漏斗与release gate。
+
+
+### P0参数迁移补充与审计定位（2026-10-06）
+
+- lexical/legacy context现以strict int/ge=0在真实SDK拒绝；默认2不变，讨论20/40选窗仍由模型决定。semantic dense_top_k以strict/ge=1执行，默认40不变；semantic/member query以minLength=1公开，空白串仍由typed input拒绝。
+- lexical三种filter与member session_ids以minItems=1公开且在SDK执行；omit/null沿用原scope继承。Host仍校验非空项/授权，不把选择unused filter的模型判断当成机械约束迁移。
+- get_schema strict空Schema与SDK入口共同落实无参数；SDK空串/空对象合法形式不变。额外字段在SDK忽略之前显式拒绝，JSON失败保留异常链。Schema单独禁止additionalProperties不能证明函数执行已拒绝。
+- 每条迁移除全文精确删除测试，还须验证删除片段属于对应matrix规则的当前原文。旧审计行号不能直接承接；相邻规则共用一行时用精确片段和最小行范围。组合候选按已声明片段顺序重建，不靠总行覆盖推断语义归属。
+- 完整相同句子才属于literal dedup；大小写/主语/范围不同的近似重复保持敏感策略标签。新SDK合同与历史frozen不同必须显式拒绝或进入单独审计，不自动修改历史artifact条件、不默认为同条件配对。L0候选不能直接替换production。

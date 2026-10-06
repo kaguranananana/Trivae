@@ -179,3 +179,19 @@
 - Observed difference：空数组在SDK更早失败；省略/null/合法数组保持，identity消歧、scope和query不变。
 - Accepted=contract/L0候选；生产原文不动，候选20,025字符。
 - 后续最小范围：独立审计recent.limit严格正整数，不改time_range/默认日期/cursor或recent选择策略；预算仍先定0。真实Prompt发布仍须fresh paired gate，不跳级。
+
+## 本会话提交索引与收口
+
+| Iteration | Commit | 结果 |
+| --- | --- | --- |
+| P02 | 03d928c | lexical context contract / L0候选接受 |
+| P03 | 57ace57 | dense候选数 contract / L0接受 |
+| P04 | 23f7648 | member query contract / L0接受；Rule修正P62 |
+| P05 | 43047f2 | semantic query contract / L0接受 |
+| P06 | ea35180 | get_schema无参数入口 / L0接受 |
+| A01 | 936d7dc | 责任定位/分类根因修正接受 |
+| P07 | 1ea1b8a | keyword现有承接验证 / L0接受；无Runtime改动 |
+| P08 | 7a64694 | lexical filter空数组 / L0接受 |
+| P09 | 40acc6a | member filter空数组 / L0接受 |
+
+本会话8轮Prompt参数候选 + A01审计修正各自提交；完整工程793 passed in17.81s、static176、Ruff/mypy116/diff检查通过。Provider=0、input/output/total tokens=0、cost=0。六个历史baseline因新SDK合同按预期拒绝，未改历史证据、未付费重跑。生产SYSTEM_PROMPT全字节不变；L0接受不等于语义发布接受。当前任务保持进行中，后续recent.limit可独立零成本审计，仍不动时间语义与cursor。

@@ -62,14 +62,14 @@ Can move now 指是否允许进入独立候选的最低层筛选，不表示可�
 | P52 | If retrieval or model projection is partial or truncated, do not make exhaustive or strong negative claims<br>such as "there are no other resources", "no link exists", or "these are all the resources". State the<br>observed boundary and keep the conclusion uncertain. | prompt.py L142–144 | A/G | Model依据partial/truncated边界限制负面与穷尽结论 | 否 | Finalizer不验证任意negative语义；原文与顺序保留 | 高 | L1→L2→L3→L4 | 开发2–3；release另计 |
 | P53 | Do not expose internal scope, SQL, registry, runtime, or trace details. | prompt.py L145 | A | Model负责正文不泄漏内部实现细节 | 否 | 没有机械正文过滤承接；仍保留生成要求 | 中 | L1→L2→L3→L4 | 开发2–3；release另计 |
 | P54 | If a tool reports no results, a weak result, or an error, state that plainly and do not silently<br>switch data sources. | prompt.py L146–147 | A/G | Model解释weak/empty/error并决定继续路径；Host不代判数据源语义 | 否 | 保留弱结果、错误与跨源边界，不扩大成禁止独立路径补查 | 高 | L1→L2→L3→L4 | 开发2–3；release另计 |
-| P55 | For lexical_search and the legacy search_messages tool, keyword must be exactly one string. Omit unused optional filters or use null;<br>never send empty arrays. | prompt.py L148–149 | C | SDK拒绝非单字符串keyword；typed input拒绝空filter数组；工具description公开omit/null | 仅keyword片段可验证 | keyword可独立L0；filters缺minItems，不一起删；非空白在Retrieval校验 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
+| P55 | For lexical_search and the legacy search_messages tool, keyword must be exactly one string. Omit unused optional filters or use null;<br>never send empty arrays. | prompt.py L148–149 | A/C | SDK string/minItems + typed input/Tool description；Model选择unused filter | keyword/空数组片段L0已验证 | P07/P08承接keyword/空数组；omit unused/null指导保留，不假定Host能判断用户需要的filter | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
 | P56 | limit must be a positive integer no greater than the trusted result limit<br>shown by the tool schema, and | prompt.py L149–150 | C | P01 SDK strict/ge + lexical Capability trusted上界 + 工具description | L0候选已验证 | production原文暂留；真实release gate仍待执行 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
 | P57 | context_before/context_after must be non-negative integers. | prompt.py L150 | C | P02 lexical/legacy SDK strict/ge=0 + typed input + 原description | L0候选已验证 | 只承接合法性；选窗/默认2/讨论20与40策略不迁移 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
 | P58 | For<br>semantic_search, query must be one non-empty string and dense_top_k must be a positive integer. | prompt.py L150–151 | C | P03 dense strict/ge=1；P05 query minLength/description；typed input非空白 | L0候选已验证 | 只承接参数合法性；semantic routing保留 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
 | P59 | For get_message_context, copy one exact `source_id` from a returned message projection into source_id. | prompt.py L152 | A/E/G | SDK解析当前source handle；Model负责选能锚定讨论的返回证据 | 否 | 合法handle不证明锚点相关；保留原生成指导 | 高 | L1→L2→L3→L4 | 开发2–3；release另计 |
 | P60 | Use message_id only for a known canonical internal message ID; provide exactly one identity parameter. | prompt.py L153 | C/D | get_message_context函数体执行恰一身份；typed locator/Host执行存在性与scope | 否 | Schema仍缺互斥，须补真实contract tests；不创造canonical ID正则 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
 | P61 | Keep<br>context_before/context_after non-negative and bounded. | prompt.py L153–154 | C | GetMessageContextInput拒绝负值及超过transport总量；SDK非严格int仍可能转换 | 否 | 独立补strict/minimum，保持总量上界而不创造单侧上界；discussion策略另管 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
-| P62 | For find_members, query must be one<br>non-empty string; omit session_ids when unused and do not send empty arrays. | prompt.py L154–155 | C | P04 member query minLength/description；typed input非空白/非空filter | query片段L0已验证 | session_ids Schema缺minItems；只迁移已验证query片段 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
+| P62 | For find_members, query must be one<br>non-empty string; omit session_ids when unused and do not send empty arrays. | prompt.py L154–155 | A/C | P04 query minLength；P09 session minItems/description；typed input；Model选择filter | query/空数组片段L0已验证 | query/空数组可进候选；omit session_ids when unused指导保留，生产发布须L4 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
 | P63 | For execute_sql, send one<br>SQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. | prompt.py L155–156 | A/C/D/G | SDK/typed input校验sql形状；SQLite拒绝多语句/写入；Model负责未知Schema选择 | 否 | SQL安全机械片段须独立；hidden schema/SQL routing/error stopping原文保留 | 高 | L0机械片段；语义L1→L4 | 本轮0；release另计 |
 | P64 | For<br>get_schema, send no arguments. | prompt.py L156–157 | C | P06严格空Schema+SDK调用入口拒绝额外参数+工具description | L0候选已验证 | 合法空对象/空串原SDK形式保留；production暂留 | 低（仅机械片段） | L0；发布前L4 | 本轮0；release另计 |
 | P65 | get_recent_messages may be called with no time arguments; the host then<br>defaults to the most recent 2 days anchored at archive_latest. | prompt.py L157–158 | A/G | recent Host执行archive_latest默认2天，description公开；Model理解时间含义 | 否 | temporal salience保护，本轮不搬默认事实 | 高 | L1→L2→L3→L4 | 开发2–3；release另计 |
@@ -101,7 +101,7 @@ Can move now 指是否允许进入独立候选的最低层筛选，不表示可�
 | P91 | For a recent overview, if the Tool Result exposes resolved_time_range, that Host-generated range is the<br>only valid time fact: copy its UTC text exactly when mentioning dates, and never calculate dates from<br>millisecond timestamps or use dates from historical context. Keep finding, criterion, and limitation text concise. | prompt.py L225–227 | A/G | Model；Runtime/ToolResult 只提供证据事实，不验证正文蕴含或停止决策 | 否 | 保留原文字节和顺序；任何迁移须独立真实语义实验，不能沿旧大改建议合并 | 高 | L1→L2→L3→L4 | 开发 2–3；release 另计 |
 | P92 | For individual returned messages, copy the Host-derived `timestamp_utc` exactly when stating a date or<br>time; never convert the canonical millisecond `timestamp` yourself. Keep dates outside the returned<br>evidence as unknown instead of filling them from nearby or historical context. | prompt.py L228–230 | A/G | Model；Runtime/ToolResult 只提供证据事实，不验证正文蕴含或停止决策 | 否 | 保留原文字节和顺序；任何迁移须独立真实语义实验，不能沿旧大改建议合并 | 高 | L1→L2→L3→L4 | 开发 2–3；release 另计 |
 
-## 实物承接与阻塞项
+## 原审计实物缺口（实施前记录；当前状态以表内owner及进度为准）
 
 - C/P56：实际 lexical/legacy Schema 为 integer、minimum=1、maximum=min(trusted bound, lexical cap)。上界在 Capability 再验证；SDK 非严格 int 转换尚不是严格类型拒绝，因此不是立即删除。清单选择最大 limit 是 P19/P22 的 G/A，必须保留。
 - C/P57/P58/P61/P62：context/dense 缺 minimum；query 缺 minLength；optional arrays 缺 minItems。typed input 的非空白/非负检查保留；SDK 类型转换还需逐项审计，不能声称所有非法 JSON 输入已拒绝。
@@ -123,7 +123,7 @@ Can move now 指是否允许进入独立候选的最低层筛选，不表示可�
 
 ## 分布与检查
 
-92 条完整位置映射；多标签计数：{'A': 81, 'G': 64, 'E': 17, 'D': 8, 'C': 11}。B 另列 5 个动态事实，不混进 Base 的条目分母。
+92 条完整位置映射；多标签计数：{'A': 83, 'G': 64, 'E': 17, 'D': 8, 'C': 11}。B 另列 5 个动态事实，不混进 Base 的条目分母。
 保护范围：Discussion、Negative、Temporal、Stop、Retrieval semantic routing 全部保留。原四个F是近似重复而非完整相同句子，A01撤回literal标签；保留G，不进入普通dedup。
 
 ## ChatLab 事实与偏离
@@ -141,3 +141,11 @@ P01/P02已补lexical/legacy limit与context真实SDK strict/ge；P03/P05补seman
 旧审计在P41–P71附近沿用旧行范围，实际Current wording与owner说明可能错句。仅检查92行/224源码行覆盖无法证明语义定位；本轮以原文锚点重定位，并额外断言manifest每个删除片段包含在对应规则Current wording内。历史commit不改写；当前文档更正P04→P62、P01/P02/P03/P05/P06对应P56/P57/P58/P58/P64。
 
 P39混合SQL安全与停止，不再仅标D；P43不虚报工具结果、P46作者归属标G。P48–P51近似重复不属于完整literal句子，不应机械去重。P55 keyword单字符串是下一轮可独立验证的已承接片段；其余filter缺口、identity互斥、context窗口、recent时间/cursor继续保留。
+
+## P02–P09连续迭代收口
+
+8轮各自提交：lexical窗口、dense count、member query、semantic query、get_schema无参数、keyword已承接迁移、lexical空filter、member空filter。生产Base全文仍20,450字符；累计P09开发候选20,025字符。每步只删除manifest片段，没有重写正文/重排，也没有新的语义策略。
+
+P07已有规则无Runtime改动；其余仅参数合法性执行/Schema公开，非法输入更早显式失败。模型仍负责工具选择、窗口大小、停止、时间理解、作者与推荐关系、negative语义。纯literal完整重复当前F=0，近似重复保持G。
+
+当前6个Frozen Baseline的SDK contract预检均按预期拒绝差异，变更工具仅lexical/semantic/member/get_schema；历史条件/记录不重标。开发筛选不得静默跨contract给出同条件结论，真实release仍需一致合同下fresh paired gate。

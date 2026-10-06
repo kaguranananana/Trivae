@@ -38,3 +38,8 @@ uv run --all-extras python scripts/freeze_recorded_prompt_baseline.py --cell .tr
 本轮已本地冻结6个历史场景：discussion/reply/github/fact/empty/recent；每个保存原prompt+commit、snapshot、query、完整scope、provider/model、预算、Tool Schema、完整记录请求、Trace、证据、答案、既有Evaluation snapshot、usage与latency。以原大改失败中相关的最终baseline记录为固定Development参考，不合并重复、不计新运行、不宣称新质量统计。6/6生产SDK原始schema/model_settings/snapshot reuse预检通过；0网络请求、未执行Candidate。
 
 本地case与baseline目录：`data/evaluation/prompt-frozen-20261006/cases/`和`baselines/`。实际聊天材料只在ignored目录；版本库只存导入器、说明与不含聊天正文的测试。Snapshot/模型配置/工具契约漂移时必须拒绝复用，不能偷换当前默认值。
+
+
+## 参数Schema迁移后的冻结条件
+
+P02–P09新增minimum/minLength/minItems与get_schema无参数contract后，历史6个Frozen Baseline仍保存原SDK合同。当前candidate-only/targeted预检会显式拒绝contract drift；不自动重新付费运行baseline，也不把旧artifact条件修改成当前合同。旧记录仍可供人工开发对照，不能算同条件语义验证。需要真实筛选时先明确所选case、工具条件和最大HTTP calls；最终Prompt发布仍走fresh paired gate。
