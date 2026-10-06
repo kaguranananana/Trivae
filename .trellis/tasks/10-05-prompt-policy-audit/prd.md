@@ -54,3 +54,7 @@
 关键模块七问：输入是当前 case/query/scope/snapshot 与生产 Prompt；输出是可复核 screening artifacts；依赖正式 Application.query 与既有 SDK/Trace；成功是明确拒绝非法 limit、预算内执行与可复用冻结结果，不宣称语义等价；失败保留原异常/Trace、不得覆盖 artifacts；验证由真实 SDK/SQLite、ScriptedModel 与 fixture 完成；演进只在受影响 policy 的最低 tier，release 才 fresh paired gate。
 
 分离提交：A00 只读审计；H01 评估能力；F01 fixture；P01 一个参数职责迁移。每轮真实 API 预计/最多均 0。Prompt 候选在 L0 接受后仍需 release gate，不替换 production。禁止使用之前失败候选作 baseline。
+
+## 2026-10-06：80新增HTTP请求连续循环（用户重新授权）
+
+沿用P01–P16/C17–C23/H06–H08/A05–A06与全部历史失败，不启动新设计。先验证P16，真实Application.query单变量相同条件，至少覆盖exact/temporal/context/zero/discussion-recommendation/inventory；targeted后必须fresh paired release才替换production。成功提交新Base后自动下一项；失败留Trace/根因定位并修订。全部新请求硬上限80，历史V01两次不计入。只在80耗尽、无可优化规则、连续5候选高风险失败、不可合理修复环境/正确性blocker时终止；不在每轮询问。总预算通过既有HTTP hook的共享ledger落实，顺序实验计数，不并行Agent或第二套Harness。

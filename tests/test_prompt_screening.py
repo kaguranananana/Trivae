@@ -390,3 +390,23 @@ def test_first_tool_observations_belong_to_current_application_run(tmp_path):
         finally:
             await application.aclose()
     asyncio.run(check())
+
+
+def test_shared_provider_budget_survives_rounds_and_blocks_before_send(tmp_path):
+    """连续优化多次脚本共用硬预算，重建对象不能重置已经发生的请求。"""
+    ledger = tmp_path / "total.json"
+    request = SimpleNamespace(content=b'{"model":"test"}')
+
+    async def check():
+        first = ProviderCallBudget(2, total_ledger=ledger, total_maximum=3)
+        await first.before_request(request)
+        await first.before_request(request)
+        second = ProviderCallBudget(2, total_ledger=ledger, total_maximum=3)
+        await second.before_request(request)
+        with pytest.raises(EvaluationContractError, match="total provider calls exhausted"):
+            await second.before_request(request)
+        assert read_artifact(ledger) == {"maximum": 3, "provider_calls": 3}
+        assert len(first.requests) == 2 and len(second.requests) == 1
+        with pytest.raises(EvaluationContractError, match="maximum changed"):
+            ProviderCallBudget(2, total_ledger=ledger, total_maximum=4)
+    asyncio.run(check())

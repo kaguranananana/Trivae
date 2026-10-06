@@ -435,3 +435,12 @@
 - Removed/Moved/Reworded=无；Added=policy-tag-coverage.md；版本化case/冻结metadata未改写，无alias、fallback或第二套Suite。
 - 实际CaseBundle解析64份并离线执行selector：短标签discussion/recent/retrieval/no_result只选design_seed；已有category标签可精确选中5/8/13/5个真实benchmark case。
 - Accepted=标签审计与使用边界。case数不代表必须全跑，也不表示snapshot/SDK冻结条件通过。0新增Provider/tokens/cost；自动继续基于现有标签准备最小可复核筛选输入，仍不付费。
+
+## H09：连续循环总HTTP请求硬上限
+
+- Scope=既有ProviderCallBudget跨轮持久计数；Risk=低/实验Harness；Prompt lines=0；Owner=HTTP发送前hook；Expected/Maximum calls=0/0。
+- 输入：单轮/总上限与ledger；输出：发送前占用计数。依赖：现有CLI/hook；成功：跨脚本不能清零/扩大，80之外不能发送；失败：显式错误与保留ledger。验证：两个budget实例耗尽共享3次预算。演进：仅顺序实验，不加并发状态机。
+- Removed/Moved/Reworded=无Prompt变化；Added=shared ledger、CLI参数、contract test。
+- 新预算阶段起点main=e48a852；production20450字符；P16候选19736字符。P16先wide reply一对Expected6/Maximum8，再按语义审查继续六领域；本轮不得先做P17。
+
+H09 accepted：static307/Ruff/mypy116通过，0新HTTP；总ledger在data/evaluation/prompt-loop-20261006/total-budget.json固定80。每轮另有local上限，全部实验顺序执行。

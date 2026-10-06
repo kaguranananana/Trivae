@@ -70,10 +70,22 @@ class ProviderCallBudget:
 
     maximum: int
     requests: list[dict[str, object]] = field(default_factory=list)
+    total_ledger: Path | None = None
+    total_maximum: int | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.maximum, bool) or not isinstance(self.maximum, int) or self.maximum < 0:
             raise EvaluationContractError("maximum provider calls must be a non-negative integer")
+        if (self.total_ledger is None) != (self.total_maximum is None):
+            raise EvaluationContractError("total provider budget requires ledger and maximum together")
+        if self.total_ledger is not None:
+            if self.total_maximum is None or self.total_maximum <= 0:
+                raise EvaluationContractError("total provider maximum must be positive")
+            # 连续实验顺序执行；已有ledger原样复用，不能重开脚本清零或更改上限。
+            if not self.total_ledger.exists():
+                write_artifact(self.total_ledger, {"maximum": self.total_maximum, "provider_calls": 0})
+            if read_artifact(self.total_ledger)["maximum"] != self.total_maximum:
+                raise EvaluationContractError("total provider maximum changed")
 
     async def before_request(self, request: Any) -> None:
         # 计数包含真实 transport attempts；超额请求在发送前显式失败，绝不自动扩大预算。
@@ -82,6 +94,14 @@ class ProviderCallBudget:
         body = json.loads(request.content)
         # 不保存鉴权头或隐藏 reasoning；完整可见请求用于检查首轮非策略字段一致性。
         body = {key: value for key, value in body.items() if key not in {"reasoning", "reasoning_content"}}
+        if self.total_ledger is not None:
+            # 每次发送前重新读取总量，跨脚本的实际attempt共同计数；格式错误显式暴露。
+            total = read_artifact(self.total_ledger)
+            if total["provider_calls"] >= total["maximum"]:
+                raise EvaluationContractError("total provider calls exhausted before sending request")
+            total["provider_calls"] += 1
+            # 先持久化再允许发送，后续查询失败也不能丢失已占用的请求预算。
+            self.total_ledger.write_text(json.dumps(total, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self.requests.append(body)
 
 

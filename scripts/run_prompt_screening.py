@@ -51,6 +51,9 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--env-file", type=Path, default=Path(".env"))
     # 每轮先声明实际 HTTP 调用最大值，不能把一个完整 Query 当一次 API 请求。
     result.add_argument("--max-provider-calls", type=int, default=0)
+    # 多轮独立脚本共享发送前总量门禁；顺序执行，不扩大Provider或业务预算。
+    result.add_argument("--provider-budget-ledger", type=Path)
+    result.add_argument("--total-max-provider-calls", type=int)
     result.add_argument("--repeat", type=int, default=1, choices=(1,))
     result.add_argument("--repeat-on-failure", type=Path, help="单 case 已有 candidate artifact")
     result.add_argument("--candidate-extra", type=int, default=0)
@@ -108,7 +111,8 @@ async def execute(args: argparse.Namespace) -> None:
         raise EvaluationContractError("baseline must be the current production prompt")
     load_environment_file(args.env_file)
     settings = load_settings()
-    budget = ProviderCallBudget(args.max_provider_calls)
+    budget = ProviderCallBudget(args.max_provider_calls, total_ledger=args.provider_budget_ledger,
+                                total_maximum=args.total_max_provider_calls)
     # 输出目录只创建一次，避免覆盖旧成功或失败；实验输出应放 ignored data/evaluation 下。
     args.output.mkdir(parents=True, exist_ok=False)
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
