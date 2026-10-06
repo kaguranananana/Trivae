@@ -619,3 +619,49 @@ def test_p13_sql_trusted_maximum_rejects_before_repository(monkeypatch):
         assert called == []
     finally:
         fixture.tearDown()
+
+
+@pytest.mark.parametrize(
+    "sql",
+    ["SELECT COUNT(*) FROM messages; SELECT COUNT(*) FROM users", "SELECT COUNT(*) FROM messages; DELETE FROM messages"],
+)
+def test_p14_sql_driver_rejects_second_statement_through_real_sdk(sql):
+    """真实SDK→Capability→SQLite拒绝第二语句，错误不被转换为成功空结果。"""
+    from tests import test_stage_c_tools as fixtures
+
+    fixture = fixtures.StageCToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        context = RuntimeContext(
+            scope=ExecutionScope(max_results=10),
+            capability_registry=app.capability_registry,
+            available_capabilities=("execute_sql",),
+            run_id="single-statement",
+        )
+        context.allocate_tool_call_id("invalid")
+        wrapper = ToolContext(context=context, tool_name="execute_sql", tool_call_id="invalid", tool_arguments="{}")
+        tool = ExecuteSQLSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=10)
+        # 不在测试中拆分SQL；必须由正式driver拒绝完整模型输入。
+        response = asyncio.run(tool.on_invoke_tool(wrapper, json.dumps({"sql": sql})))
+        assert response["status"] == "error" and response["error"]["code"] == "SQL_MALFORMED"
+        assert "one statement at a time" in response["error"]["message"]
+        # 查询原始fixture总量，证明第二条DELETE未执行；不只断言Finalizer有效。
+        count = fixture._execute("SELECT COUNT(*) AS total FROM messages")
+        assert count.status == "ok" and count.data.rows == ({"total": 8},)
+        assert "one read-only SQL statement" in tool.description
+    finally:
+        fixture.tearDown()
+
+
+def test_p14_sql_single_statement_with_literal_semicolon_remains_legal():
+    """合法字面量/结尾分号仍由SQLite原生解析，不增加粗糙分号过滤。"""
+    from tests import test_stage_c_tools as fixtures
+
+    fixture = fixtures.StageCToolsTests()
+    fixture.setUp()
+    try:
+        result = fixture._execute("SELECT ';' AS marker, COUNT(*) AS total FROM messages; -- single statement")
+        assert result.status == "ok" and result.data.rows == ({"marker": ";", "total": 8},)
+    finally:
+        fixture.tearDown()

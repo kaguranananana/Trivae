@@ -76,5 +76,11 @@
     "rule": "P63:parameters",
     "file": "prompt-p13.txt",
     "removed": "send one\nSQL string and optionally max_rows; "
+  },
+  {
+    "iteration": "P14",
+    "rule": "P63:single_statement",
+    "file": "prompt-p14.txt",
+    "removed": "add a second statement or "
   }
 ]

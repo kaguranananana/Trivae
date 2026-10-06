@@ -235,3 +235,12 @@
 - Static=234 passed in2.80s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
 - Accepted=contract/L0候选；生产原文不动，累计19,818字符；null/省略/合法cap保留，真实超界零repository调用。
 - 下一轮自动P14：只验证已有SQLite单语句执行拒绝，不改SQL路由、schema调查或error stopping。
+
+## P14：SQL单语句既有driver承接
+
+- Commit：本节所属`refactor(prompt): remove driver-enforced single-statement guidance`。
+- Scope=P63:single_statement；Risk=低；Owner=SQLite driver/既有SQL错误映射；Expected/Maximum calls=0/0。
+- Removed=26字符；Moved=Base候选→既有driver/Tool description；Reworded=无；Added=3 tests；Runtime变化=无。
+- Static=237 passed in2.14s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- 两条语句真实SDK返回SQL_MALFORMED且数据不变；合法分号原生解析保留。不删hidden schema，不加分号特殊规则。
+- Accepted=已有确定性承接/L0候选；生产原文不动，累计19,792字符。自动继续审计SQL写入/DDL的实际拒绝，不触及其余安全/语义策略。
