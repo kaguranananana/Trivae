@@ -26,3 +26,15 @@ uv run --all-extras python scripts/run_prompt_screening.py --mode candidate-only
 人工复核comparison与完整Trace：tool selection/order/arguments/repeated retrieval/expansion/stopping；GT送达/anchor/reply/projection omission；事实/作者/UTC/时间关系/reply/recommendation/inventory；单列强负面与其证据边界；最后才看token、tool rounds、result size、latency。comparison的pending_review不是Accepted。
 
 当前历史实验脚本 `real_pair.py` 保留完整原始结果，不再作为日常默认入口；不得继续使用旧失败candidate作为baseline。L0/L1失败停止该候选；本轮没有真实Provider执行，也没有额外fresh Baseline成本。
+
+## 零API导入既有生产结果
+
+`freeze_recorded_prompt_baseline.py`显式读取旧`real_pair`的baseline cell，核对生产原文、query、route与settings，并复用同一冻结snapshot。不是隐式兼容或重新执行Agent；旧candidate被拒绝。没有人工GT则保持空标注，不捏造checks，完整Trace/答案/证据保留供Development人工review。
+
+```bash
+uv run --all-extras python scripts/freeze_recorded_prompt_baseline.py --cell .trellis/tasks/10-05-prompt-policy-audit/experiment/baseline-discussion-3 --snapshot .trellis/tasks/10-05-prompt-policy-audit/experiment/snapshot/trivae.sqlite3 --baseline-commit 460259d --policy discussion --policy negative --policy retrieval --output data/evaluation/prompt-frozen-20261006
+```
+
+本轮已本地冻结6个历史场景：discussion/reply/github/fact/empty/recent；每个保存原prompt+commit、snapshot、query、完整scope、provider/model、预算、Tool Schema、完整记录请求、Trace、证据、答案、既有Evaluation snapshot、usage与latency。以原大改失败中相关的最终baseline记录为固定Development参考，不合并重复、不计新运行、不宣称新质量统计。6/6生产SDK原始schema/model_settings/snapshot reuse预检通过；0网络请求、未执行Candidate。
+
+本地case与baseline目录：`data/evaluation/prompt-frozen-20261006/cases/`和`baselines/`。实际聊天材料只在ignored目录；版本库只存导入器、说明与不含聊天正文的测试。Snapshot/模型配置/工具契约漂移时必须拒绝复用，不能偷换当前默认值。

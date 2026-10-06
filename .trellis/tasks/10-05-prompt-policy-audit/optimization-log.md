@@ -48,3 +48,14 @@
 - Observed behavior difference：原本非法JSON limit的隐式整数转换变为显式SDK错误；合法输入检索不变。production Base文字无变化。未测真实模型tool choice/answer差异。
 - Accepted：确定性contract修复与L0候选；未通过release semantic gate，不直接替换production。全文Removed/Moved/Reworded/Added详见prompt-p01-semantic-diff.md。
 - 下一轮：只验证context_before/context_after非负的真实SDK承接，不修改展开窗口选择或其他discussion prose；先补minimum/strict与必要契约，再独立候选。
+
+## H02：导入既有Frozen Baseline，不重付API
+
+- Commit：本节所属 `feat(eval): freeze recorded production prompt baselines without API calls`。
+- Changed rules / Removed / Moved / Reworded：无；Added：显式历史baseline导入器，case与artifact复用现有contract，不建第二套Agent。
+- Static：8 screening tests passed、Ruff通过；拒绝旧candidate测试通过。实际本地6/6 baseline snapshot/当前SDK工具描述与schema/model_settings/settings/原文条件一致预检通过，生产SDK只使用ScriptedModel构造、不执行query。
+- Synthetic：H01集成freeze→candidate-only继续通过；Real cases executed=0。
+- Frozen历史case：discussion/reply/github/fact/empty/recent。完整私有产物在ignored data/evaluation/prompt-frozen-20261006，历史请求/token只作为既有事实，不算本轮花费。首次明确导入snapshot、完整scope、路由、budget、provider/model、请求、Trace、evidence、answer与existing Evaluation snapshot。
+- Provider calls=0、new tokens=0、new cost=0。
+- Accepted：Development reuse；历史GT没有完整标注的case明确保持空reference，不能变成Holdout或release gate。
+- Unchanged high-risk policy：全部生产Prompt文本不变。

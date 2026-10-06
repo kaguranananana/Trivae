@@ -182,3 +182,14 @@ def test_cli_freeze_then_candidate_only_runs_candidate_once_and_builds_compariso
 
 async def _async_noop():
     """测试客户端无资源；关闭接口与 AsyncOpenAI 保持相同 await 形态。"""
+
+
+def test_historical_import_rejects_failed_candidate_without_provider(tmp_path):
+    """明确导入边界拒绝旧失败candidate；不能用更短文本覆盖production baseline。"""
+    from scripts.freeze_recorded_prompt_baseline import freeze_recorded_cell
+    from tests.test_evaluation import _snapshot
+
+    write_artifact(tmp_path / "result.json", {"variant": "candidate"})
+    write_artifact(tmp_path / "initial_contract.json", {"instructions": SYSTEM_PROMPT})
+    with pytest.raises(EvaluationContractError, match="production prompt baseline"):
+        freeze_recorded_cell(tmp_path, snapshot=_snapshot(), commit="test", policy_tags=("discussion",))
