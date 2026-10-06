@@ -1527,3 +1527,36 @@ P10–P16独立候选、C17–C20实际SDK契约修复；生产Base不变。V01�
 ### Next Steps
 
 - 任务继续in_progress，检查first-tool异常分类及剩余SDK契约。
+
+
+## Session 60: 继续Prompt低成本契约与首工具筛选修复
+
+**Date**: 2026-10-06
+**Task**: 继续Prompt低成本契约与首工具筛选修复
+**Branch**: `main`
+
+### Summary
+
+H06/H07复现并修复并行首工具异常误判；C21–C23补SDK窗口及数组契约。新真实API0，生产Base与P16不动。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2f01877` | (see git log) |
+| `26012e0` | (see git log) |
+| `65ff7e4` | (see git log) |
+| `81f9eaa` | (see git log) |
+| `26080db` | (see git log) |
+
+### Testing
+
+- [OK] full915 passed in18.47s；static305 passed；Ruff/mypy116通过。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 任务继续in_progress，核验probe观测是否按run隔离及剩余可迁移确定性规则。
