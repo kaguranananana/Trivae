@@ -78,3 +78,9 @@ Schema 非空/非负/互斥只有在真实需求与 provider contract 证明有�
 继续自主进入P10 recent.limit、P11显式context窗口合法性；每轮最大Provider0。依据剩余真实owner选择下一项，不以一次工程收口作为等待用户确认的边界。
 
 V01为P15批次单fact首工具筛选独立预算2（每侧1），实际2已用完；两侧HTTP除Base一致，参数有差异，L1 inconclusive。不得继续付费补统计；后续零成本fixture/已承接机械规则另轮执行，production语义gate仍Pending。
+
+## 2026-10-06：80HTTP连续循环（替代上节零新增限制）
+
+用户直接授权真实E2E、fresh paired release、生产替换及自动进入下一项，总新增HTTP最多80。先收口P16；每个付费入口同时指定shared ledger与80，单轮仍按最小验证scope设置local上限。标准路由/同Application、snapshot/provider/model/scope/工具与输出预算一致，只替换Base；每个结果需人工语义复核。明显失败立即拒绝，仅borderline可单case追加。失败历史不覆盖，不扩全suite。发布必须当前候选fresh gate，发布后当前production commit成为新Base。
+
+已发生：H09/H10完成后P16首次discussion有错误附和，局部candidate+2又产生未证唯一断言；P16拒绝。二分P08仍有强负面，因此继续P04。不得根据二分相关性虚报是哪句导致；所有机械迁移的Host承接证明与真实模型语义是两层。未通过不得修改production、GT或Finalizer。

@@ -467,3 +467,8 @@ H10 accepted：static308通过；P16-T01=wide recommendation fresh pair、Expect
 - Scope=历史P01–P08子集；Risk=筛选/negative；Expected3/Maximum4，actual3，累计23/80。candidate-only复用T01相同条件Baselines；当前production与冻结原文相等。
 - 核心书籍/作者保留，但唯一材料/此后没有新教程缺完整线程覆盖；末句局部窗口不能自动替整个答案限定强断言。Rejected，失败Trace/HTTP/answer保留。没有凭结果归因P09–P16，也没有增加样例规则。
 - 自动继续P16-B04，Expected3/Maximum4；仅历史P01–P04四个已验证机械片段；高风险策略未改，不发布。
+
+## P16-B04：二分子集discussion初步通过
+
+- Expected3/Maximum4，actual3，累计26/80；candidate-only与T01当前合同冻结Baseline比较。推荐/作者/UTC时间/请求关系保留；另外时间材料明确非本次reply，缺链接限定为检索证据，没有唯一/线程exhaustive negative。
+- Accepted仅单case targeted，非production；不宣称P05–P08因果。继续六领域筛选再fresh release。Removed仅P01–P04累计四片段，Model高风险策略逐字不变。
