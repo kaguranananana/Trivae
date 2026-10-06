@@ -275,3 +275,12 @@
 - 复现1 failed：既有拒绝只能报drifted，无法定位本批实际tool_contract漂移。现在列出变化的顶层字段，如tool_budget/tool_contract；条件精确相等要求不变，不打印完整条件值、不重绑历史合同。
 - Static240 passed in2.46s；Ruff/mypy116通过；新增实证诊断断言，原完全相等合法路径保持。
 - Accepted=诊断改进；Real=0；Provider=0、tokens=0、cost=0。旧frozen仍不可冒充当前SDK baseline。
+
+## H05：first-tool实证usage丢失的最小修复
+
+- Commit：本节所属`fix(evaluation): retain SDK usage before decision probe stops`。
+- Scope=probe telemetry；Risk=低离线实验；Prompt/production Runtime变化=无；Owner=SDK ToolContext.usage/原数字投影；Expected/Maximum新calls=0/0。
+- Failure Case=V01 baseline首轮确实1 HTTP请求/2 tool选择/0 Host，但Runner终止后EvaluationRun/Trace无usage；模型hook待发事件未排空。未知不能记0，也不付费重跑补数。
+- 拦截时保存SDK已更新usage，按原adapter投影；两个同轮call保存同一aggregate而不相加，新run清空。artifact新增probe_usage/source，原canonical Trace/Run失败终态不变，公开工具选择仍由probe_calls保留。
+- ScriptedModel明确100 input/20 output/120 total/17 cached，先复现缺字段失败；SDK默认cached=0与新版InputTokensDetails必填cache_write_tokens按真实结构显式构造fixture，没有放宽token断言或产品补丁。
+- Static240 passed in2.29s；Ruff/mypy116通过；本修复新Provider=0，fixture数字不计真实tokens。Accepted=成本观测修复；V01已发生1请求的usage仍unknown。

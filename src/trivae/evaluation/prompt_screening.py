@@ -10,7 +10,7 @@ from typing import Any, Mapping, Sequence
 from agents.exceptions import ModelBehaviorError
 
 from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationContractError
-from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter, _project_usage_mapping
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
 
 
@@ -26,6 +26,7 @@ class ScreeningRuntime(OpenAIAgentsRuntimeAdapter):
         self.screening_prompt = prompt
         self.first_tool = first_tool
         self.probe_calls: list[dict[str, object]] = []
+        self.probe_usage: dict[str, int | float] | None = None
 
     def _build_agent(self, request: Any, context: Any, state: Any) -> Any:
         # 保留生产工具、模型、预算和动态 instructions 的唯一构造入口。
@@ -41,13 +42,17 @@ class ScreeningRuntime(OpenAIAgentsRuntimeAdapter):
 
         agent.instructions = instructions
         if self.first_tool:
+            # 每次正式构造新run时清空观测，不能继承上一case的usage。
+            self.probe_usage = None
             # SDK 已完成模型轮次和 usage hook，替换工具 callable 可在任何 Host 查询之前停止。
             for tool in agent.tools:
                 tool.on_invoke_tool = self._probe_invoker(tool.name)
         return agent
 
     def _probe_invoker(self, name: str) -> Any:
-        async def stop_before_tool(_context: Any, arguments: str) -> None:
+        async def stop_before_tool(context: Any, arguments: str) -> None:
+            # ToolContext.usage在SDK完成本模型轮后已更新，不依赖失败流是否排空Trace hook队列。
+            self.probe_usage = _project_usage_mapping(context.usage) or None
             # 保存完整参数；同一模型轮次并行选择的工具也只记录，全部不执行。
             self.probe_calls.append({"name": name, "arguments": json.loads(arguments)})
             raise FirstToolProbeStop("first-tool probe stopped before capability execution")

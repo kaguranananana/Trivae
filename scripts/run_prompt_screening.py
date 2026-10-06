@@ -193,6 +193,9 @@ async def execute(args: argparse.Namespace) -> None:
                                                             rubric_version=case.review_policy.rubric_version).to_dict(),
                         "trace": asdict(application.read_trace(result.trace_id)),
                         "probe_calls": list(runtime.probe_calls),
+                        # 截断实验单独保存SDK观测，不回填或伪造canonical Trace/完整Run状态。
+                        "probe_usage": runtime.probe_usage,
+                        "probe_usage_source": "sdk_tool_context" if runtime.probe_usage is not None else None,
                         "provider_requests": budget.requests[first_request:],
                         "provider_calls": len(budget.requests) - first_request,
                         "frozen_baseline": None if frozen is None else frozen["run"]["run_id"],

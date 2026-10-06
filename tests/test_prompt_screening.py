@@ -9,6 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
+from agents.usage import Usage
+from openai.types.responses.response_usage import InputTokensDetails
 
 from tests.test_evaluation import _case
 from trivae.bootstrap.application import create_application
@@ -91,7 +93,9 @@ def test_first_tool_probe_uses_application_and_executes_no_tool_or_second_model_
     """同一生产 query/SDK loop；多个首轮 tool call 均拦截，不跑后续模型或 Host。"""
     model = ScriptedModel([
         ModelStep(output=[function_call("lexical_search", {"keyword": "Agent", "limit": 5}, call_id="one"),
-                          function_call("get_message_context", {"source_id": "m1-1", "context_after": 20}, call_id="two")]),
+                          function_call("get_message_context", {"source_id": "m1-1", "context_after": 20}, call_id="two")],
+                  usage=Usage(requests=1, input_tokens=100, output_tokens=20, total_tokens=120,
+                              input_tokens_details=InputTokensDetails(cached_tokens=17, cache_write_tokens=0))),
         ModelStep(output=[assistant_message("should never run")]),
     ])
     runtime = ScreeningRuntime(model=model, first_tool=True)
@@ -109,6 +113,9 @@ def test_first_tool_probe_uses_application_and_executes_no_tool_or_second_model_
             assert result.runtime_result.tool_results == ()
             assert [call["name"] for call in runtime.probe_calls] == ["lexical_search", "get_message_context"]
             assert runtime.probe_calls[1]["arguments"]["context_after"] == 20
+            # 工具前终止不能丢掉SDK已经记录的真实usage；两个并行call不得重复累加。
+            assert runtime.probe_usage == {"requests": 1, "input_tokens": 100, "output_tokens": 20,
+                                           "total_tokens": 120, "cached_input_tokens": 17}
             trace = application.read_trace(result.trace_id)
             assert sum(item.operation == "model.turn" and item.phase == "started" for item in trace.timeline) == 1
             assert not any(item.operation == "tool.call.started" for item in trace.timeline)

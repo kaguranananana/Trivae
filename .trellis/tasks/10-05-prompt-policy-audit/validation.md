@@ -245,3 +245,5 @@ P14：既有driver三项真实单语句执行检查通过；static237 passed in2
 P15：2项真实SDK写入/DDL拒绝及物理状态检查通过；static239 passed in2.08s，Ruff/mypy116通过。0API；候选只迁移16字符，其他安全/停止指导保持。
 
 A02/A03：承接状态更新并修复漏行尾；10列断言复现失败→完整列/原文定位通过。H04诊断失败复现→static240 passed in2.46s，Ruff/mypy116通过；拒绝漂移的条件不变。0Provider。
+
+H05：V01实证首工具终止丢失usage→ScriptedModel复现→保存SDK ToolContext公开usage，双tool不重复累计；static240 passed in2.29s，Ruff/mypy116通过。修复本身0新API，V01旧Baseline token保持未知。
