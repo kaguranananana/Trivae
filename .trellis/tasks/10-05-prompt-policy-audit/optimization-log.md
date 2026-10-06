@@ -419,3 +419,11 @@
 - Reproduction=1 failed，第二run包含上一tool；修复后当前choice独立，usage110/220原值、旧快照不变，两run IDs不同，Host0。
 - Static306 passed in2.70s，重置入口整理后screening15及Ruff通过；0新API/tokens/cost。Accepted=实验观测修复，不扩展并行run执行。
 - 自动继续A05剩余责任复核，更新过时的待修复状态；无新增Prompt候选，生产原文保持。
+
+## A05：混合规则实际owner与过时状态复核
+
+- Commit：本节所属`docs(prompt): clarify remaining mixed rule enforcement owners`。
+- Scope=P10/P17/P29/P30/P67 owner及C17–C23状态；Risk=文档低；Prompt lines=0；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无Prompt文字；Added=实际函数/dataflow说明。Current wording/位置/分类/能否迁移结论不动。
+- 不把Trace、scope、locator、cursor字段校验扩大成正文语义/选窗/停止/跨轮去重的完整owner；没有新校验、regex、fallback或API。
+- Accepted=责任审计更新；production与P16不变；剩余混合语义暂留，0新增Provider/tokens/cost。
