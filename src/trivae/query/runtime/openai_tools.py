@@ -120,6 +120,11 @@ class SearchMessagesSDKToolAdapter:
             if trusted_max_results <= 0:
                 raise ValueError("trusted_max_results must be positive when provided")
 
+        # 共用factory先计算公开默认值，canonical/legacy省略参数时都执行同一scope内值。
+        effective_maximum = MAX_LEXICAL_RESULT_LIMIT if trusted_max_results is None else min(
+            trusted_max_results, MAX_LEXICAL_RESULT_LIMIT
+        )
+        default_limit = min(DEFAULT_LEXICAL_RESULT_LIMIT, effective_maximum)
         if self.tool_name == "lexical_search":
             # canonical lexical tool 只提供选择提示；实际是否继续 semantic 由 Agent 自主判断。
             description = (
@@ -182,7 +187,7 @@ class SearchMessagesSDKToolAdapter:
             message_types: Annotated[list[str] | None, Field(min_length=1)] = None,
             # limit 的严格类型与正值由真实SDK解析执行，拒绝bool/字符串/float的隐式转换。
             # trusted scope 上界继续由Capability验证，Schema maximum仅公开当前上限。
-            limit: Annotated[int, Field(strict=True, ge=1)] = DEFAULT_LEXICAL_RESULT_LIMIT,
+            limit: Annotated[int, Field(strict=True, ge=1)] = default_limit,
             # SDK先检查原始类型及非负值，避免隐式转换掩盖非法窗口参数。
             # 默认窗口仍为2；如何扩大讨论上下文继续由原Prompt策略决定。
             context_before: Annotated[int, Field(strict=True, ge=0)] = 2,
@@ -290,10 +295,9 @@ class SearchMessagesSDKToolAdapter:
                 raise TypeError(f"{self.tool_name} schema did not expose limit")
             # 只增强 provider-facing schema，不把 schema 约束当成 trusted enforcement 的替代品。
             # Provider schema 只展示 lexical 自己的 hard cap；Capability 仍会再次检查 scope。
-            effective_maximum = min(trusted_max_results, MAX_LEXICAL_RESULT_LIMIT)
             limit_schema["minimum"] = 1
             limit_schema["maximum"] = effective_maximum
-            limit_schema["default"] = min(DEFAULT_LEXICAL_RESULT_LIMIT, effective_maximum)
+            limit_schema["default"] = default_limit
 
         return search_messages
 

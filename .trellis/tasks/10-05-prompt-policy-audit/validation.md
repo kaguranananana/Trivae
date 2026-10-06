@@ -264,3 +264,5 @@ C17：5项SDK失败复现→单字段strict/ge修复；scope/default/上界保�
 C18：5项SDK失败复现→strict/ge修复，static262 passed in2.45s，Ruff/mypy116通过；Scope越界零search，生产可见合同未变，0新API。
 
 C19：scope1/5的Schema-default1/5实际10矛盾复现2失败→共享default_limit修复；static266 passed in2.47s，Ruff/mypy116通过；正常默认10/context2/2/dense40保持，0新API。
+
+C20：SDK/default及真实FTS复现6失败/2通过→共享默认值修复；static274 passed in2.67s，Ruff/mypy116通过；scope5两名称省略值各实际1命中，0新API。

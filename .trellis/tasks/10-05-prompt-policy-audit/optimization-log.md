@@ -357,3 +357,12 @@
 - scope1/5 Schema默认1/5却实际10；修复factory时共用同一值，scope>=10仍10；显式值不夹取，context2/2/dense40不动。
 - Static266 passed in2.47s；Ruff/mypy116通过；新Provider/tokens/cost=0，累计仍V01的2。
 - Accepted=已公开默认值修复；生产Base/P16候选不改。自动继续C20 lexical/legacy同一factory的默认值矛盾，独立提交。
+
+## C20：lexical/legacy默认值符合Scope Schema
+
+- Commit：本节所属`fix(tools): align lexical execution default with scoped schema`。
+- Scope=共用factory的省略limit；Risk=低；Prompt lines=无；Owner=SDK factory/Capability；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=共享default_limit、8 tests；Reproduction=6 failed/2 passed，包括实际scope5两名称都错误拒绝合法省略值。
+- 修复SDK默认值与Schema共用，原1000/context2/2及显式参数保留；两个名称实际FTS返回已知1命中，原Host越界拒绝仍通过。
+- Static274 passed in2.67s；Ruff/mypy116通过；新Provider/tokens/cost=0。本会话累计仍2，tokens/cost总量unknown。
+- Accepted=已公开默认值修复；production Base及最新P16候选不动。完成本批工程/checkpoint推送，任务继续in_progress，下一scope由剩余真实SDK缺口决定。
