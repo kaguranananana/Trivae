@@ -366,3 +366,12 @@
 - 修复SDK默认值与Schema共用，原1000/context2/2及显式参数保留；两个名称实际FTS返回已知1命中，原Host越界拒绝仍通过。
 - Static274 passed in2.67s；Ruff/mypy116通过；新Provider/tokens/cost=0。本会话累计仍2，tokens/cost总量unknown。
 - Accepted=已公开默认值修复；production Base及最新P16候选不动。完成本批工程/checkpoint推送，任务继续in_progress，下一scope由剩余真实SDK缺口决定。
+
+## H06：真实probe错误不能伪装预期停止
+
+- Commit：本节所属`fix(eval): stop decision probes on unexpected tool errors`。
+- Scope=first-tool异常分类/原始参数诊断；Risk=低；Prompt lines=0；Owner=实验Harness；Expected/Maximum calls=0/0。
+- Removed/Moved/Reworded=无；Added=arguments_raw、实际FirstToolProbeStop判定、两条CLI生产链路case。
+- 原实现坏JSON+合法call继续下一case，1测试明确失败；修复后坏case1轮/Host0/后case不存在，正常case仍继续显式下一probe。
+- Static276 passed；Ruff/mypy116通过。新Provider/tokens/cost=0，累计Provider仍2；baseline usage及总费用未知。
+- Accepted=Harness正确性修复。生产Base/P16候选不变；自动进入C21 semantic context字段实际契约检查。

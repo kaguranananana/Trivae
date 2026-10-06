@@ -282,3 +282,72 @@ def test_frozen_baseline_drift_names_changed_conditions_without_dumping_values()
     assert "minimum" not in str(error.value)
     # 完全相同的原条件仍能复用，诊断改进不能偷偷放宽或收紧相等条件。
     verify_frozen_baseline(frozen, original, SYSTEM_PROMPT)
+
+
+@pytest.mark.parametrize("malformed", (True, False))
+def test_first_tool_cli_distinguishes_parse_failure_from_expected_stop(tmp_path, monkeypatch, malformed):
+    """首轮一坏一好并行调用不能把解析异常当预期截停，更不能继续付费case。"""
+    from scripts import run_prompt_screening as cli
+
+    database = tmp_path / "canonical.sqlite3"
+    app = create_application(database)
+    try:
+        snapshot = app.materialize_evaluation_snapshot()
+    finally:
+        app.close()
+    cases = [replace(_case(case_id=case_id), dataset_snapshot=snapshot, reference_findings=())
+             for case_id in ("malformed", "later")]
+    common = ["--database", str(database), "--max-provider-calls", "2"]
+    for case in cases:
+        path = tmp_path / f"{case.case_id}.json"
+        case.to_json(path)
+        common.extend(["--case", str(path)])
+    prompt_path = tmp_path / "prompt.txt"
+    prompt_path.write_text(SYSTEM_PROMPT)
+    settings = SimpleNamespace(provider="injected", model_name="test", to_safe_dict=lambda: {})
+    monkeypatch.setattr(cli, "load_environment_file", lambda _: None)
+    monkeypatch.setattr(cli, "load_settings", lambda: settings)
+    model = ScriptedModel([
+        # 坏参数先返回；同轮合法调用仍会留下probe，复现旧布尔判断的误判。
+        ModelStep(output=[function_call("lexical_search", {"keyword": "Agent"}, call_id="bad").model_copy(
+            update={"arguments": '{"keyword":'}) if malformed else
+            function_call("lexical_search", {"keyword": "Agent"}, call_id="valid_search"),
+            function_call("get_schema", {}, call_id="valid")]),
+        ModelStep(output=[function_call("get_schema", {}, call_id="must_not_run")]),
+    ])
+
+    def injected_runtime(**kwargs):
+        # 只注入Provider端口，正式Application/Runner/SDK执行路径不改。
+        runtime = ScreeningRuntime(model=model, provider_name="injected", model_name="test",
+                                   first_tool=kwargs["first_tool"])
+        runtime._provider_client = SimpleNamespace(_client=SimpleNamespace(event_hooks={}), close=_async_noop)
+        return runtime
+
+    monkeypatch.setattr(cli, "ScreeningRuntime", injected_runtime)
+    output = tmp_path / "probe"
+    args = cli.parser().parse_args(["--mode", "first-tool", "--candidate-prompt", str(prompt_path),
+                                   "--output", str(output), *common])
+    if not malformed:
+        # 合法首调用仍允许继续显式选择的下一probe，不能把所有截停都当工程失败。
+        asyncio.run(cli.execute(args))
+        assert len(model.calls) == 2
+        later = read_artifact(output / "later-candidate-0.json")
+        assert later["run"]["query_result"]["runtime"]["error"]["exception_type"] == "FirstToolProbeStop"
+        assert later["run"]["query_result"]["runtime"]["tool_count"] == 0
+        return
+    with pytest.raises(EvaluationContractError, match="failed; stopped subsequent provider calls"):
+        asyncio.run(cli.execute(args))
+    assert len(model.calls) == 1
+    assert not (output / "later-candidate-0.json").exists()
+    artifact = read_artifact(output / "malformed-candidate-0.json")
+    # 失败诊断保留原始选择，SDK包装后的UserError不能被伪造为正常probe状态。
+    bad_call = artifact["probe_calls"][0]
+    assert bad_call["name"] == "lexical_search"
+    assert bad_call["arguments_raw"] == '{"keyword":'
+    assert "arguments" not in bad_call
+    assert artifact["run"]["query_result"]["runtime"]["error"]["exception_type"] == "UserError"
+    assert artifact["run"]["query_result"]["runtime"]["tool_count"] == 0
+    failed_event = next(event for event in artifact["trace"]["timeline"]
+                        if event["operation"] == "runtime.run" and event["phase"] == "failed")
+    assert failed_event["payload"]["exception_type"] == "UserError"
+    assert read_artifact(output / "provider-ledger.json")["provider_calls"] == 0

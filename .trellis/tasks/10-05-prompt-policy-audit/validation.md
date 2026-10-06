@@ -268,3 +268,5 @@ C19：scope1/5的Schema-default1/5实际10矛盾复现2失败→共享default_li
 C20：SDK/default及真实FTS复现6失败/2通过→共享默认值修复；static274 passed in2.67s，Ruff/mypy116通过；scope5两名称省略值各实际1命中，0新API。
 
 Checkpoint：C20后全量884 passed in17.04s；上次终端session输出已不可恢复，重新以本地文件保存零Provider检查结果。production prompt.py与9256550逐字无差异；任务继续in_progress。
+
+H06：异常误判复现1失败→坏/合法CLI两路径通过；static276 passed，Ruff/mypy116通过。失败保留raw和实际SDK UserError，1轮即停止剩余case，0新API。

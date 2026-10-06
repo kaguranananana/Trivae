@@ -16,6 +16,7 @@ from trivae.config.settings import load_settings
 from trivae.conversation import SQLiteConversationStore
 from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationContractError, EvaluationRun
 from trivae.evaluation.prompt_screening import (
+    FirstToolProbeStop,
     ProviderCallBudget,
     ScreeningRuntime,
     candidate_repeat_count,
@@ -213,7 +214,11 @@ async def execute(args: argparse.Namespace) -> None:
                             baseline_variant=paired["baseline"][0], candidate_variant=paired["candidate"][0],
                             baseline_runs=(paired["baseline"][1],), candidate_runs=(paired["candidate"][1],))
                         write_artifact(args.output / f"{case.case_id}-comparison-{repeat}.json", comparison.to_dict())
-                    probe_ok = runtime.first_tool and bool(runtime.probe_calls) and not result.runtime_result.tool_calls
+                    # 只有明确的实验截停异常才算probe完成；有观测不能证明错误属于预期。
+                    error = result.runtime_result.error
+                    probe_ok = (runtime.first_tool and bool(runtime.probe_calls)
+                                and not result.runtime_result.tool_calls and error is not None
+                                and error.exception_type == FirstToolProbeStop.__name__)
                     # 明确工程失败停止所有后续付费；semantic_review 待人工，不冒充质量通过。
                     if not probe_ok and (run.has_hard_failure or not result.is_successful):
                         raise EvaluationContractError(f"{case.identity} failed; stopped subsequent provider calls")

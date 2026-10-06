@@ -53,8 +53,11 @@ class ScreeningRuntime(OpenAIAgentsRuntimeAdapter):
         async def stop_before_tool(context: Any, arguments: str) -> None:
             # ToolContext.usage在SDK完成本模型轮后已更新，不依赖失败流是否排空Trace hook队列。
             self.probe_usage = _project_usage_mapping(context.usage) or None
-            # 保存完整参数；同一模型轮次并行选择的工具也只记录，全部不执行。
-            self.probe_calls.append({"name": name, "arguments": json.loads(arguments)})
+            # 先保存原始选择，解析异常也必须留下诊断，不让合法并行call掩盖失败。
+            call: dict[str, object] = {"name": name, "arguments_raw": arguments}
+            self.probe_calls.append(call)
+            # 不吞掉JSON错误；成功解析才记录对象，所有call均不执行Host。
+            call["arguments"] = json.loads(arguments)
             raise FirstToolProbeStop("first-tool probe stopped before capability execution")
         return stop_before_tool
 

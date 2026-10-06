@@ -948,3 +948,5 @@ Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、�
 - 冻结结果仍须精确匹配全部非Prompt条件；当前SDK修改与旧frozen tool_contract不相等。失败信息列出漂移顶层字段，不允许为了复用旧记录重绑或忽略新Schema。H04只改善诊断，不放宽门禁。
 
 - first-tool拦截可能让streamed Runner在model hook事件排空前终止；实验artifact从SDK ToolContext.usage按原数字投影保存probe_usage，不依赖失败Run汇总，不回填canonical Trace。同轮多tool不能重复累加；缺失旧观测保持unknown，不为补统计付费重跑。
+
+- first-tool记录选择必须先保存原始参数，再解析JSON；坏调用不能因同轮另一合法call留有probe而视为成功。CLI只接受实际FirstToolProbeStop且Host零调用；其他工程异常保存失败artifact/Trace后停止后续case，不重试。SDK包装后的真实异常类型保持原样。
