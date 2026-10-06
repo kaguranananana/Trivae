@@ -244,3 +244,13 @@
 - Static=237 passed in2.14s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
 - 两条语句真实SDK返回SQL_MALFORMED且数据不变；合法分号原生解析保留。不删hidden schema，不加分号特殊规则。
 - Accepted=已有确定性承接/L0候选；生产原文不动，累计19,792字符。自动继续审计SQL写入/DDL的实际拒绝，不触及其余安全/语义策略。
+
+## P15：SQL写入与DDL的既有确定性承接
+
+- Commit：本节所属`refactor(prompt): remove host-enforced SQL write restrictions`。
+- Scope=P39:write_ddl（commentary旧P44误标已纠正）；Risk=低机械片段；Owner=原SQLite authorizer/read-only connection；Expected/Maximum calls=0/0。
+- Removed=16字符；Moved=Base候选→已有Host/Tool description；Reworded=无；Added=2 tests；Runtime变化=无。
+- Static=239 passed in2.08s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、tokens=0、cost=0。
+- DELETE/CREATE实际SDK拒绝；fixture count与实际sqlite_master证明未写入/建表，不以public schema可见性替代物理状态检查。
+- Accepted=已有确定性承接/L0候选；production不动，累计19,776字符；不更改其余安全/Scope/LIMIT/停止指导。
+- 自动继续责任矩阵承接状态更新及低成本Harness审查；不存在literal duplicate可顺便去重，不强行生成语义候选。

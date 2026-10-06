@@ -241,3 +241,5 @@ P12：原Host零/双身份实际拒绝，四种合法单身份/null真实project
 P13：9失败/9通过复现→18定向通过→static234 passed in2.80s，Ruff/mypy116通过；nullable合法形状与真实Host上界保持。0Provider/0tokens/0cost；只生成L0参数候选。
 
 P14：既有driver三项真实单语句执行检查通过；static237 passed in2.14s，Ruff/mypy116通过。0API；错误透明、数据保持，SQL语义指导不改。
+
+P15：2项真实SDK写入/DDL拒绝及物理状态检查通过；static239 passed in2.08s，Ruff/mypy116通过。0API；候选只迁移16字符，其他安全/停止指导保持。

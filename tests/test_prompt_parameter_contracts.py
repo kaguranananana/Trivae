@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from trivae.capabilities.contracts import (
     ExecuteSQLInput,
     FindMembersInput,
     GetRecentMessagesInput,
+    GetSchemaInput,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -663,5 +665,44 @@ def test_p14_sql_single_statement_with_literal_semicolon_remains_legal():
     try:
         result = fixture._execute("SELECT ';' AS marker, COUNT(*) AS total FROM messages; -- single statement")
         assert result.status == "ok" and result.data.rows == ({"marker": ";", "total": 8},)
+    finally:
+        fixture.tearDown()
+
+
+@pytest.mark.parametrize("sql", ["DELETE FROM messages", "CREATE TABLE injected(value TEXT)"])
+def test_p15_sql_write_and_ddl_rejected_through_real_sdk(sql):
+    """只验证已有只读执行，不新增安全过滤；真实错误码和数据状态必须可观察。"""
+    from tests import test_stage_c_tools as fixtures
+
+    fixture = fixtures.StageCToolsTests()
+    fixture.setUp()
+    try:
+        app = fixture.application
+        context = RuntimeContext(
+            scope=ExecutionScope(max_results=10),
+            capability_registry=app.capability_registry,
+            available_capabilities=("execute_sql",),
+            run_id="read-only",
+        )
+        context.allocate_tool_call_id("write")
+        wrapper = ToolContext(context=context, tool_name="execute_sql", tool_call_id="write", tool_arguments="{}")
+        tool = ExecuteSQLSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=10)
+        # SDK不重写SQL；authorizer必须拒绝传入的原始写入或DDL。
+        response = asyncio.run(tool.on_invoke_tool(wrapper, json.dumps({"sql": sql})))
+        assert response["status"] == "error" and response["error"]["code"] == "SQL_READ_ONLY_VIOLATION"
+        assert "read-only SQL statement was rejected" in response["error"]["message"]
+        # 查询所有原消息以及原业务schema，确保失败不是静默执行后伪报。
+        count = fixture._execute("SELECT COUNT(*) AS total FROM messages")
+        assert count.status == "ok" and count.data.rows == ({"total": 8},)
+        schema = app.invoke_tool("get_schema", GetSchemaInput(), ExecutionScope(max_results=10))
+        assert tuple(table.name for table in schema.data.tables) == ("chat_sessions", "users", "memberships", "messages")
+        # public schema会隐藏未知表，因此还须直接检查fixture库，不能拿投影视图证明DDL未发生。
+        database = Path(fixture.temporary.name) / "stage-c.sqlite3"
+        connection = sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)
+        try:
+            assert connection.execute("SELECT name FROM sqlite_master WHERE name = 'injected'").fetchall() == []
+        finally:
+            connection.close()
+        assert "Writes, DDL" in tool.description
     finally:
         fixture.tearDown()

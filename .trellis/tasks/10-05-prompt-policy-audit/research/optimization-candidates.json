@@ -82,5 +82,11 @@
     "rule": "P63:single_statement",
     "file": "prompt-p14.txt",
     "removed": "add a second statement or "
+  },
+  {
+    "iteration": "P15",
+    "rule": "P39:write_ddl",
+    "file": "prompt-p15.txt",
+    "removed": ", writes, or DDL"
   }
 ]
