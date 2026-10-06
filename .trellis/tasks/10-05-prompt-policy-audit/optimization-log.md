@@ -488,3 +488,10 @@ C24 UI fresh pair：actual8HTTP，累计50/80；两侧GT direct/reply均进入�
 - Candidate概述声称最新覆盖截至8月14日10:19:23，正文却引用12:59:10消息，时间事实矛盾；Baseline误算去重总数6resources，候选6repo相关地址+1主页虽更准，不能抵销时间退步。P01–P04 rejected；不进入release gate，不发布。
 - 已完成六类实际筛选：exact、zero、temporal、discussion、UI recovery、inventory；P04改善部分case不能算整个候选通过。保持全部成功与失败，不归因哪一句删除。
 - 自动二分P01–P02，Scope=lexical参数两句；Expected2/Maximum4，先current SDK同条件candidate-only inventory，冻结条件预检。所有高风险policy逐字不动。
+
+## P16-B02：单责任子集仍有合成错误
+
+- Expected2/Maximum4，actual2，累计56/80。实际同合同candidate-only；10条相关消息均进入Model，7地址覆盖正确。
+- Canonical独立核实3个不同sender_user_id；candidate写4位（括号列3人），并把8月14日GitHub最新命中称归档最新，scope archive_latest实为8月16日。Rejected；错误属Model计数/时间语义，未证明某片段删除为因果。
+- 更正P04 T05观测：Base传start_timestamp，candidate省略，实际10 vs56消息；所有10相关消息可见不等于candidate仅读10。完整原件+独立correction保留，不覆盖失败。
+- 继续P01，仅P56 limit一条，Expected2/Maximum4；全其他正文逐字保留。
