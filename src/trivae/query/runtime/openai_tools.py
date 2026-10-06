@@ -173,12 +173,13 @@ class SearchMessagesSDKToolAdapter:
         async def search_messages(
             context: RunContextWrapper[RuntimeContext],
             keyword: str,
-            session_ids: list[str] | None = None,
+            # SDK公开并拒绝空filter数组；省略/null仍沿用原Host scope继承。
+            session_ids: Annotated[list[str] | None, Field(min_length=1)] = None,
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
             time_range: dict[str, object] | None = None,
-            sender_user_ids: list[str] | None = None,
-            message_types: list[str] | None = None,
+            sender_user_ids: Annotated[list[str] | None, Field(min_length=1)] = None,
+            message_types: Annotated[list[str] | None, Field(min_length=1)] = None,
             # limit 的严格类型与正值由真实SDK解析执行，拒绝bool/字符串/float的隐式转换。
             # trusted scope 上界继续由Capability验证，Schema maximum仅公开当前上限。
             limit: Annotated[int, Field(strict=True, ge=1)] = DEFAULT_LEXICAL_RESULT_LIMIT,

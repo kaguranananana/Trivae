@@ -40,5 +40,11 @@
     "rule": "P55:keyword",
     "file": "prompt-p07.txt",
     "removed": "keyword must be exactly one string. "
+  },
+  {
+    "iteration": "P08",
+    "rule": "P55:filters",
+    "file": "prompt-p08.txt",
+    "removed": "never send empty arrays. "
   }
 ]

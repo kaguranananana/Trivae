@@ -250,3 +250,52 @@ def test_p07_schema_and_visible_description_keep_single_keyword(adapter, name):
     assert "keyword must be exactly one non-empty string" in tool.description
     response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
     assert response["status"] == "ok" and handler.calls[0].keyword == "anchor"
+
+
+LEXICAL_ADAPTERS = [(LexicalSearchSDKToolAdapter, "lexical_search"), (SearchMessagesSDKToolAdapter, "search_messages")]
+FILTERS = ("session_ids", "sender_user_ids", "message_types")
+
+
+@pytest.mark.parametrize("adapter,name", LEXICAL_ADAPTERS)
+@pytest.mark.parametrize("field", FILTERS)
+def test_p08_empty_filters_rejected_before_registry(adapter, name, field):
+    """空数组是原明确非法参数；真实SDK应在业务执行前拒绝。"""
+    tool, wrapper, handler = sdk_boundary(adapter, name, {"keyword": "anchor", "limit": 5, field: []})
+    with pytest.raises(ModelBehaviorError):
+        asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert handler.calls == []
+
+
+@pytest.mark.parametrize("field", FILTERS)
+def test_p08_typed_owner_already_rejects_empty_filters(field):
+    """直接业务入口的非空数组规则仍保留，避免只依赖provider校验。"""
+    with pytest.raises(CapabilityContractError):
+        SearchMessagesInput(keyword="anchor", **{field: ()})
+
+
+@pytest.mark.parametrize("adapter,name", LEXICAL_ADAPTERS)
+def test_p08_schema_exposes_optional_non_empty_filters(adapter, name):
+    """数组分支公开minItems=1，null分支和默认None保持原契约。"""
+    tool, _, _ = sdk_boundary(adapter, name, {"keyword": "anchor", "limit": 5})
+    for field in FILTERS:
+        schema = tool.params_json_schema["properties"][field]
+        array = next(branch for branch in schema["anyOf"] if branch["type"] == "array")
+        assert array["minItems"] == 1
+        assert {"type": "null"} in schema["anyOf"] and schema["default"] is None
+
+
+@pytest.mark.parametrize("adapter,name", LEXICAL_ADAPTERS)
+@pytest.mark.parametrize(
+    "field,value", [("session_ids", "session:1"), ("sender_user_ids", "qq:user:A"), ("message_types", "text")]
+)
+@pytest.mark.parametrize("form", ["omit", "null", "array"])
+def test_p08_legal_filter_forms_keep_typed_parameters(adapter, name, field, value, form):
+    """只检查参数解析；授权与真实filter效果继续由既有Capability回归验证。"""
+    arguments = {"keyword": "anchor", "limit": 5}
+    if form != "omit":
+        arguments[field] = None if form == "null" else [value]
+    tool, wrapper, handler = sdk_boundary(adapter, name, arguments)
+    response = asyncio.run(tool.on_invoke_tool(wrapper, wrapper.tool_arguments))
+    assert response["status"] == "ok"
+    expected = (value,) if form == "array" else None
+    assert getattr(handler.calls[0], field) == expected

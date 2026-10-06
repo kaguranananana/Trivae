@@ -157,3 +157,14 @@
 - 非字符串原始值SDK拒绝且registry零调用，直接typed input也拒绝；合法anchor参数未变。无需增加未有依据的minLength或其他检索规则。
 - Real=0；Provider=0；new input/output/total tokens=0；cost=0。Accepted=L0候选；production原文不动，候选20,079字符。
 - 下一轮自动进入P08：只补lexical/legacy三个optional filter的非空数组契约，不改filter选择语义或scope。
+
+## P08：lexical/legacy optional filter非空数组
+
+- Commit：本节所属`refactor(prompt): move lexical filter array bounds into the tool contract`。
+- Scope=P55:filters；Risk=低；Owner=SDK/typed input；Expected/Maximum calls=0/0。
+- Removed=25字符；Moved=Base候选→三个filter minItems/已有description/Host；Reworded=无；Added=三个同类字段约束与29测试。
+- Reproduction=8 failed/21 passed；SDK缺minItems，原typed input已拒绝空数组。首次编辑脚本class锚点遗漏继承声明，未修改源码；更正定位后修复主链路。
+- Static=170 passed in1.87s；Ruff/mypy116通过；Synthetic8项通过；Real=0；Provider=0、new tokens=0、cost=0。
+- Observed difference：空数组SDK更早失败；18种省略/null/合法数组传参保持相同。scope授权、canonical选择、query/time/limit不改。
+- Accepted=contract/L0候选；production不改；候选20,054字符。
+- 下一轮自动进入P09：仅find_members.session_ids非空数组契约，不修改身份消歧。
