@@ -461,3 +461,9 @@ H10 accepted：static308通过；P16-T01=wide recommendation fresh pair、Expect
 - R01只对discussion candidate+2，Expected6/Maximum6，actual6；一次关系错未复现，另一次“本条线程唯一”未有完整线程覆盖。P16 rejected，production原Base20450字符保留；P01–P16历史与完整失败原件不覆盖。
 - 累计20HTTP；原始请求/Trace/answer/usage存ignored data/evaluation/prompt-loop-20261006各轮目录，semantic-review单独文件。不能将Trace截断当Tool projection截断；二者本次GT无projection遗漏。金钱费用未知，冷/热启动latency不作效率结论。
 - 下一步P16-B08：P01–P08子候选沿用历史原件；同case复用当前同SDK冻结Baseline，Expected3/Maximum4。Removed仅历史八片段；Moved→已验证Tool/Host；Reworded/Added无；高风险讨论/时间/路由/negative/stop逐字保留。二分只能缩小范围，不能凭一次结果宣称P09–P16因果。
+
+## P16-B08：缩小累计候选仍不通过
+
+- Scope=历史P01–P08子集；Risk=筛选/negative；Expected3/Maximum4，actual3，累计23/80。candidate-only复用T01相同条件Baselines；当前production与冻结原文相等。
+- 核心书籍/作者保留，但唯一材料/此后没有新教程缺完整线程覆盖；末句局部窗口不能自动替整个答案限定强断言。Rejected，失败Trace/HTTP/answer保留。没有凭结果归因P09–P16，也没有增加样例规则。
+- 自动继续P16-B04，Expected3/Maximum4；仅历史P01–P04四个已验证机械片段；高风险策略未改，不发布。
