@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "9220d2fe-be1e-43e1-9f64-9201b5343048",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/architecture-trivae-system-20261010-104943/candidate.json",
+  "output": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/architecture-trivae-system-20261010-104943/trivae-system.html",
+  "specification": {
+    "sha256": "048b5a7225d1dcde2f491db43813f6a4aab9fbab9c45465a9ea107e5398c87e9",
+    "bytes": 12595
+  },
+  "artifact": {
+    "sha256": "57548ef356190185f44953271fb11e24f6bc4ae49729037d9dbb29a16844a196",
+    "bytes": 776065
+  }
+}

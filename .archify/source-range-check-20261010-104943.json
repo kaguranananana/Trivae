@@ -1,0 +1,916 @@
+{
+  "status": "pass",
+  "revision": "9e531eb8793757eb00bb41b5869f045f212a13a4",
+  "checked_references": 151,
+  "checked_files": 32,
+  "relationship_ids_match": true,
+  "cited_sources_match_pinned_revision": true,
+  "checks": [
+    {
+      "owner": "architecture:node:interfaces",
+      "path": "web/src/api/client.ts",
+      "line": 86,
+      "end_line": 119
+    },
+    {
+      "owner": "architecture:node:interfaces",
+      "path": "src/trivae/interfaces/web/routes.py",
+      "line": 29,
+      "end_line": 98
+    },
+    {
+      "owner": "architecture:node:interfaces",
+      "path": "src/trivae/interfaces/cli.py",
+      "line": 2040,
+      "end_line": 2088
+    },
+    {
+      "owner": "architecture:node:core",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 621,
+      "end_line": 761
+    },
+    {
+      "owner": "architecture:node:core",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 115,
+      "end_line": 174
+    },
+    {
+      "owner": "architecture:node:core",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 302,
+      "end_line": 440
+    },
+    {
+      "owner": "architecture:node:runtime",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1182,
+      "end_line": 1231
+    },
+    {
+      "owner": "architecture:node:runtime",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1462,
+      "end_line": 1555
+    },
+    {
+      "owner": "architecture:node:runtime",
+      "path": "src/trivae/query/runtime/budget.py",
+      "line": 1,
+      "end_line": 50
+    },
+    {
+      "owner": "architecture:node:provider",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1133,
+      "end_line": 1160
+    },
+    {
+      "owner": "architecture:node:provider",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1803,
+      "end_line": 1852
+    },
+    {
+      "owner": "architecture:node:conversation",
+      "path": "src/trivae/conversation/sqlite.py",
+      "line": 247,
+      "end_line": 330
+    },
+    {
+      "owner": "architecture:node:conversation",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 763,
+      "end_line": 838
+    },
+    {
+      "owner": "architecture:node:evidence",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 490,
+      "end_line": 559
+    },
+    {
+      "owner": "architecture:node:evidence",
+      "path": "src/trivae/query/evidence.py",
+      "line": 2646,
+      "end_line": 2698
+    },
+    {
+      "owner": "architecture:node:evidence",
+      "path": "src/trivae/query/evidence.py",
+      "line": 3139,
+      "end_line": 3269
+    },
+    {
+      "owner": "architecture:node:trace",
+      "path": "src/trivae/observability/collector.py",
+      "line": 178,
+      "end_line": 213
+    },
+    {
+      "owner": "architecture:node:trace",
+      "path": "src/trivae/observability/collector.py",
+      "line": 316,
+      "end_line": 335
+    },
+    {
+      "owner": "architecture:node:trace",
+      "path": "src/trivae/observability/sqlite.py",
+      "line": 36,
+      "end_line": 75
+    },
+    {
+      "owner": "architecture:node:tools",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 254,
+      "end_line": 282
+    },
+    {
+      "owner": "architecture:node:tools",
+      "path": "src/trivae/capabilities/registry.py",
+      "line": 53,
+      "end_line": 70
+    },
+    {
+      "owner": "architecture:node:tools",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 1121,
+      "end_line": 1130
+    },
+    {
+      "owner": "architecture:node:raw",
+      "path": "src/trivae/data/ingestion/qq_export.py",
+      "line": 31,
+      "end_line": 92
+    },
+    {
+      "owner": "architecture:node:ingestion",
+      "path": "src/trivae/data/ingestion/importer.py",
+      "line": 31,
+      "end_line": 61
+    },
+    {
+      "owner": "architecture:node:ingestion",
+      "path": "src/trivae/data/ingestion/importer.py",
+      "line": 82,
+      "end_line": 153
+    },
+    {
+      "owner": "architecture:node:canonical",
+      "path": "src/trivae/data/storage/sqlite.py",
+      "line": 96,
+      "end_line": 135
+    },
+    {
+      "owner": "architecture:node:canonical",
+      "path": "src/trivae/data/storage/sqlite_lexical.py",
+      "line": 47,
+      "end_line": 106
+    },
+    {
+      "owner": "architecture:node:retrieval",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 1098,
+      "end_line": 1130
+    },
+    {
+      "owner": "architecture:node:retrieval",
+      "path": "src/trivae/retrieval/lexical.py",
+      "line": 26,
+      "end_line": 67
+    },
+    {
+      "owner": "architecture:node:retrieval",
+      "path": "src/trivae/retrieval/semantic/retrieval.py",
+      "line": 73,
+      "end_line": 147
+    },
+    {
+      "owner": "architecture:node:vectors",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 1087,
+      "end_line": 1094
+    },
+    {
+      "owner": "architecture:node:vectors",
+      "path": "src/trivae/retrieval/semantic/index.py",
+      "line": 399,
+      "end_line": 469
+    },
+    {
+      "owner": "architecture:node:vectors",
+      "path": "src/trivae/retrieval/semantic/embedding.py",
+      "line": 17,
+      "end_line": 35
+    },
+    {
+      "owner": "architecture:edge:query-entry",
+      "path": "src/trivae/interfaces/web/streaming.py",
+      "line": 172,
+      "end_line": 184
+    },
+    {
+      "owner": "architecture:edge:run-agent",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 421,
+      "end_line": 440
+    },
+    {
+      "owner": "architecture:edge:model-call",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1224,
+      "end_line": 1231
+    },
+    {
+      "owner": "architecture:edge:model-call",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1133,
+      "end_line": 1160
+    },
+    {
+      "owner": "architecture:edge:conversation-state",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 684,
+      "end_line": 692
+    },
+    {
+      "owner": "architecture:edge:conversation-state",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 775,
+      "end_line": 782
+    },
+    {
+      "owner": "architecture:edge:finalize",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 490,
+      "end_line": 499
+    },
+    {
+      "owner": "architecture:edge:trace-query",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 659,
+      "end_line": 680
+    },
+    {
+      "owner": "architecture:edge:trace-query",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 142,
+      "end_line": 174
+    },
+    {
+      "owner": "architecture:edge:trace-runtime",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 431,
+      "end_line": 440
+    },
+    {
+      "owner": "architecture:edge:trace-runtime",
+      "path": "src/trivae/observability/collector.py",
+      "line": 394,
+      "end_line": 438
+    },
+    {
+      "owner": "architecture:edge:tool-invoke",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1462,
+      "end_line": 1506
+    },
+    {
+      "owner": "architecture:edge:tool-invoke",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 254,
+      "end_line": 282
+    },
+    {
+      "owner": "architecture:edge:tool-retrieve",
+      "path": "src/trivae/capabilities/tools.py",
+      "line": 49,
+      "end_line": 94
+    },
+    {
+      "owner": "architecture:edge:tool-retrieve",
+      "path": "src/trivae/capabilities/search_messages.py",
+      "line": 47,
+      "end_line": 90
+    },
+    {
+      "owner": "architecture:edge:tool-retrieve",
+      "path": "src/trivae/capabilities/semantic_search.py",
+      "line": 85,
+      "end_line": 98
+    },
+    {
+      "owner": "architecture:edge:read-canonical",
+      "path": "src/trivae/retrieval/lexical.py",
+      "line": 26,
+      "end_line": 37
+    },
+    {
+      "owner": "architecture:edge:read-canonical",
+      "path": "src/trivae/retrieval/semantic/retrieval.py",
+      "line": 195,
+      "end_line": 217
+    },
+    {
+      "owner": "architecture:edge:read-canonical",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 1098,
+      "end_line": 1102
+    },
+    {
+      "owner": "architecture:edge:read-vectors",
+      "path": "src/trivae/retrieval/semantic/retrieval.py",
+      "line": 98,
+      "end_line": 108
+    },
+    {
+      "owner": "architecture:edge:parse-files",
+      "path": "src/trivae/data/ingestion/importer.py",
+      "line": 40,
+      "end_line": 59
+    },
+    {
+      "owner": "architecture:edge:parse-files",
+      "path": "src/trivae/data/ingestion/qq_export.py",
+      "line": 43,
+      "end_line": 45
+    },
+    {
+      "owner": "architecture:edge:write-canonical",
+      "path": "src/trivae/data/ingestion/importer.py",
+      "line": 93,
+      "end_line": 148
+    },
+    {
+      "owner": "sequence:node:web",
+      "path": "web/src/api/client.ts",
+      "line": 86,
+      "end_line": 119
+    },
+    {
+      "owner": "sequence:node:web",
+      "path": "src/trivae/interfaces/web/streaming.py",
+      "line": 130,
+      "end_line": 210
+    },
+    {
+      "owner": "sequence:node:app",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 621,
+      "end_line": 704
+    },
+    {
+      "owner": "sequence:node:app",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 754,
+      "end_line": 855
+    },
+    {
+      "owner": "sequence:node:conv",
+      "path": "src/trivae/conversation/sqlite.py",
+      "line": 247,
+      "end_line": 330
+    },
+    {
+      "owner": "sequence:node:conv",
+      "path": "src/trivae/observability/sqlite.py",
+      "line": 36,
+      "end_line": 75
+    },
+    {
+      "owner": "sequence:node:conv",
+      "path": "src/trivae/observability/collector.py",
+      "line": 178,
+      "end_line": 213
+    },
+    {
+      "owner": "sequence:node:core",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 140,
+      "end_line": 203
+    },
+    {
+      "owner": "sequence:node:core",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 302,
+      "end_line": 440
+    },
+    {
+      "owner": "sequence:node:core",
+      "path": "src/trivae/query/router.py",
+      "line": 193,
+      "end_line": 265
+    },
+    {
+      "owner": "sequence:node:runtime",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1182,
+      "end_line": 1231
+    },
+    {
+      "owner": "sequence:node:runtime",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1308,
+      "end_line": 1434
+    },
+    {
+      "owner": "sequence:node:model",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1133,
+      "end_line": 1160
+    },
+    {
+      "owner": "sequence:node:model",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1803,
+      "end_line": 1852
+    },
+    {
+      "owner": "sequence:node:tools",
+      "path": "src/trivae/capabilities/registry.py",
+      "line": 53,
+      "end_line": 70
+    },
+    {
+      "owner": "sequence:node:tools",
+      "path": "src/trivae/retrieval/lexical.py",
+      "line": 26,
+      "end_line": 67
+    },
+    {
+      "owner": "sequence:node:tools",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 515,
+      "end_line": 570
+    },
+    {
+      "owner": "sequence:node:finalizer",
+      "path": "src/trivae/query/evidence.py",
+      "line": 2646,
+      "end_line": 2698
+    },
+    {
+      "owner": "sequence:node:finalizer",
+      "path": "src/trivae/query/evidence.py",
+      "line": 3139,
+      "end_line": 3269
+    },
+    {
+      "owner": "sequence:edge:enter",
+      "path": "src/trivae/interfaces/web/streaming.py",
+      "line": 139,
+      "end_line": 184
+    },
+    {
+      "owner": "sequence:edge:new-trace",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 659,
+      "end_line": 680
+    },
+    {
+      "owner": "sequence:edge:load-conversation",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 942,
+      "end_line": 954
+    },
+    {
+      "owner": "sequence:edge:history",
+      "path": "src/trivae/conversation/contracts.py",
+      "line": 172,
+      "end_line": 199
+    },
+    {
+      "owner": "sequence:edge:dispatch",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 115,
+      "end_line": 152
+    },
+    {
+      "owner": "sequence:edge:route-model",
+      "path": "src/trivae/query/router.py",
+      "line": 193,
+      "end_line": 211
+    },
+    {
+      "owner": "sequence:edge:route-result",
+      "path": "src/trivae/query/router.py",
+      "line": 213,
+      "end_line": 265
+    },
+    {
+      "owner": "sequence:edge:plan-model",
+      "path": "src/trivae/query/planner.py",
+      "line": 185,
+      "end_line": 275
+    },
+    {
+      "owner": "sequence:edge:plan-result",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 319,
+      "end_line": 419
+    },
+    {
+      "owner": "sequence:edge:run",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 421,
+      "end_line": 440
+    },
+    {
+      "owner": "sequence:edge:model-input",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1462,
+      "end_line": 1555
+    },
+    {
+      "owner": "sequence:edge:function-call",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1224,
+      "end_line": 1231
+    },
+    {
+      "owner": "sequence:edge:invoke",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 254,
+      "end_line": 282
+    },
+    {
+      "owner": "sequence:edge:tool-record",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 515,
+      "end_line": 570
+    },
+    {
+      "owner": "sequence:edge:runtime-trace",
+      "path": "src/trivae/observability/collector.py",
+      "line": 394,
+      "end_line": 478
+    },
+    {
+      "owner": "sequence:edge:resynthesis",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1508,
+      "end_line": 1529
+    },
+    {
+      "owner": "sequence:edge:candidate",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1326,
+      "end_line": 1355
+    },
+    {
+      "owner": "sequence:edge:json-repair",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 393,
+      "end_line": 434
+    },
+    {
+      "owner": "sequence:edge:repaired",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 393,
+      "end_line": 434
+    },
+    {
+      "owner": "sequence:edge:repaired",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1144,
+      "end_line": 1149
+    },
+    {
+      "owner": "sequence:edge:runtime-result",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 441,
+      "end_line": 459
+    },
+    {
+      "owner": "sequence:edge:finalize-answer",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 490,
+      "end_line": 499
+    },
+    {
+      "owner": "sequence:edge:artifact",
+      "path": "src/trivae/query/evidence.py",
+      "line": 3139,
+      "end_line": 3269
+    },
+    {
+      "owner": "sequence:edge:return-query",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 754,
+      "end_line": 763
+    },
+    {
+      "owner": "sequence:edge:commit",
+      "path": "src/trivae/conversation/sqlite.py",
+      "line": 247,
+      "end_line": 326
+    },
+    {
+      "owner": "sequence:edge:committed",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 783,
+      "end_line": 829
+    },
+    {
+      "owner": "sequence:edge:terminal",
+      "path": "src/trivae/observability/collector.py",
+      "line": 322,
+      "end_line": 335
+    },
+    {
+      "owner": "sequence:edge:terminal",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 839,
+      "end_line": 855
+    },
+    {
+      "owner": "sequence:edge:response",
+      "path": "src/trivae/interfaces/web/streaming.py",
+      "line": 213,
+      "end_line": 268
+    },
+    {
+      "owner": "sequence:edge:stop",
+      "path": "src/trivae/interfaces/web/routes.py",
+      "line": 100,
+      "end_line": 108
+    },
+    {
+      "owner": "sequence:edge:stop",
+      "path": "src/trivae/interfaces/web/streaming.py",
+      "line": 196,
+      "end_line": 206
+    },
+    {
+      "owner": "sequence:edge:abort",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1316,
+      "end_line": 1324
+    },
+    {
+      "owner": "sequence:edge:abort",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 441,
+      "end_line": 459
+    },
+    {
+      "owner": "dataflow:node:raw",
+      "path": "src/trivae/data/ingestion/qq_export.py",
+      "line": 31,
+      "end_line": 92
+    },
+    {
+      "owner": "dataflow:node:import",
+      "path": "src/trivae/data/ingestion/qq_export.py",
+      "line": 95,
+      "end_line": 180
+    },
+    {
+      "owner": "dataflow:node:import",
+      "path": "src/trivae/data/ingestion/importer.py",
+      "line": 82,
+      "end_line": 153
+    },
+    {
+      "owner": "dataflow:node:facts",
+      "path": "src/trivae/data/storage/sqlite.py",
+      "line": 96,
+      "end_line": 135
+    },
+    {
+      "owner": "dataflow:node:lexbuild",
+      "path": "src/trivae/data/storage/sqlite_lexical.py",
+      "line": 47,
+      "end_line": 106
+    },
+    {
+      "owner": "dataflow:node:sembuild",
+      "path": "src/trivae/retrieval/semantic/builder.py",
+      "line": 80,
+      "end_line": 170
+    },
+    {
+      "owner": "dataflow:node:sembuild",
+      "path": "src/trivae/retrieval/semantic/chunking.py",
+      "line": 210,
+      "end_line": 264
+    },
+    {
+      "owner": "dataflow:node:sembuild",
+      "path": "src/trivae/retrieval/semantic/embedding.py",
+      "line": 17,
+      "end_line": 35
+    },
+    {
+      "owner": "dataflow:node:fts",
+      "path": "src/trivae/data/storage/sqlite_lexical.py",
+      "line": 60,
+      "end_line": 84
+    },
+    {
+      "owner": "dataflow:node:vec",
+      "path": "src/trivae/retrieval/semantic/index.py",
+      "line": 66,
+      "end_line": 101
+    },
+    {
+      "owner": "dataflow:node:vec",
+      "path": "src/trivae/retrieval/semantic/index.py",
+      "line": 132,
+      "end_line": 177
+    },
+    {
+      "owner": "dataflow:node:vec",
+      "path": "src/trivae/retrieval/semantic/index.py",
+      "line": 493,
+      "end_line": 501
+    },
+    {
+      "owner": "dataflow:node:retrieve",
+      "path": "src/trivae/retrieval/lexical.py",
+      "line": 26,
+      "end_line": 67
+    },
+    {
+      "owner": "dataflow:node:retrieve",
+      "path": "src/trivae/retrieval/semantic/retrieval.py",
+      "line": 98,
+      "end_line": 147
+    },
+    {
+      "owner": "dataflow:node:retrieve",
+      "path": "src/trivae/retrieval/semantic/retrieval.py",
+      "line": 195,
+      "end_line": 217
+    },
+    {
+      "owner": "dataflow:node:record",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 515,
+      "end_line": 570
+    },
+    {
+      "owner": "dataflow:node:synthesis",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1224,
+      "end_line": 1231
+    },
+    {
+      "owner": "dataflow:node:synthesis",
+      "path": "src/trivae/query/runtime/openai_adapter.py",
+      "line": 1326,
+      "end_line": 1355
+    },
+    {
+      "owner": "dataflow:node:synthesis",
+      "path": "src/trivae/query/runtime/prompt.py",
+      "line": 163,
+      "end_line": 185
+    },
+    {
+      "owner": "dataflow:node:finalizer",
+      "path": "src/trivae/query/evidence.py",
+      "line": 2646,
+      "end_line": 2698
+    },
+    {
+      "owner": "dataflow:node:finalizer",
+      "path": "src/trivae/query/evidence.py",
+      "line": 3139,
+      "end_line": 3269
+    },
+    {
+      "owner": "dataflow:node:answer",
+      "path": "src/trivae/interfaces/web/streaming.py",
+      "line": 250,
+      "end_line": 268
+    },
+    {
+      "owner": "dataflow:node:answer",
+      "path": "src/trivae/bootstrap/application.py",
+      "line": 775,
+      "end_line": 782
+    },
+    {
+      "owner": "dataflow:edge:raw-normalized",
+      "path": "src/trivae/data/ingestion/qq_export.py",
+      "line": 95,
+      "end_line": 180
+    },
+    {
+      "owner": "dataflow:edge:canonical-write",
+      "path": "src/trivae/data/ingestion/importer.py",
+      "line": 127,
+      "end_line": 148
+    },
+    {
+      "owner": "dataflow:edge:build-fts",
+      "path": "src/trivae/data/storage/sqlite_lexical.py",
+      "line": 76,
+      "end_line": 84
+    },
+    {
+      "owner": "dataflow:edge:fts-write",
+      "path": "src/trivae/data/storage/sqlite_lexical.py",
+      "line": 60,
+      "end_line": 84
+    },
+    {
+      "owner": "dataflow:edge:build-vectors",
+      "path": "src/trivae/retrieval/semantic/builder.py",
+      "line": 103,
+      "end_line": 119
+    },
+    {
+      "owner": "dataflow:edge:vector-write",
+      "path": "src/trivae/retrieval/semantic/builder.py",
+      "line": 139,
+      "end_line": 163
+    },
+    {
+      "owner": "dataflow:edge:vector-write",
+      "path": "src/trivae/retrieval/semantic/index.py",
+      "line": 132,
+      "end_line": 177
+    },
+    {
+      "owner": "dataflow:edge:canonical-read",
+      "path": "src/trivae/retrieval/semantic/retrieval.py",
+      "line": 195,
+      "end_line": 217
+    },
+    {
+      "owner": "dataflow:edge:canonical-read",
+      "path": "src/trivae/retrieval/lexical.py",
+      "line": 30,
+      "end_line": 37
+    },
+    {
+      "owner": "dataflow:edge:fts-hits",
+      "path": "src/trivae/data/storage/sqlite_read.py",
+      "line": 918,
+      "end_line": 966
+    },
+    {
+      "owner": "dataflow:edge:vector-hits",
+      "path": "src/trivae/retrieval/semantic/retrieval.py",
+      "line": 98,
+      "end_line": 147
+    },
+    {
+      "owner": "dataflow:edge:candidate-record",
+      "path": "src/trivae/capabilities/tools.py",
+      "line": 49,
+      "end_line": 94
+    },
+    {
+      "owner": "dataflow:edge:candidate-record",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 515,
+      "end_line": 556
+    },
+    {
+      "owner": "dataflow:edge:model-projection",
+      "path": "src/trivae/query/runtime/openai_tools.py",
+      "line": 527,
+      "end_line": 556
+    },
+    {
+      "owner": "dataflow:edge:model-projection",
+      "path": "src/trivae/query/runtime/prompt.py",
+      "line": 163,
+      "end_line": 170
+    },
+    {
+      "owner": "dataflow:edge:trusted-provenance",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 490,
+      "end_line": 499
+    },
+    {
+      "owner": "dataflow:edge:model-claims",
+      "path": "src/trivae/query/orchestrator.py",
+      "line": 490,
+      "end_line": 499
+    },
+    {
+      "owner": "dataflow:edge:model-claims",
+      "path": "src/trivae/query/evidence.py",
+      "line": 2675,
+      "end_line": 2698
+    },
+    {
+      "owner": "dataflow:edge:final-artifact",
+      "path": "src/trivae/query/evidence.py",
+      "line": 2692,
+      "end_line": 2698
+    },
+    {
+      "owner": "dataflow:edge:final-artifact",
+      "path": "src/trivae/interfaces/web/streaming.py",
+      "line": 258,
+      "end_line": 263
+    }
+  ]
+}

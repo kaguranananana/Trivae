@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "sequence",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/sequence-trivae-request-20261010-104943/candidate.json",
+    "sha256": "2f6609bcaf104587347de4d9a5807b867e3ae1380152e4eda868efa574e68af9",
+    "bytes": 12747
+  },
+  "artifact": {
+    "path": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/sequence-trivae-request-20261010-104943/trivae-request.html",
+    "sha256": "50ae01ccb60f7ed5eba052ec868331321933529f1990495fa3f691cb0daea777",
+    "bytes": 778907
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/sequence-trivae-request-20261010-104943/review-5/trivae-request.finalize.json",
+    "summaryReceipt": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/sequence-trivae-request-20261010-104943/review-5/trivae-request.finalize-summary.json",
+    "browserCheckReceipt": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/sequence-trivae-request-20261010-104943/review-5/trivae-request.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-10T02:53:07.858Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1880
+}

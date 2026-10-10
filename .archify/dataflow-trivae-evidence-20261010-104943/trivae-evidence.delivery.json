@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "e646885f-c634-4379-9cab-b84d41f561ef",
+  "status": "current",
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/dataflow-trivae-evidence-20261010-104943/candidate.json",
+  "output": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/dataflow-trivae-evidence-20261010-104943/trivae-evidence.html",
+  "specification": {
+    "sha256": "370ec525a7571f21220e4ab965c5290ad505927d60c63555c9f3083bdd1cf569",
+    "bytes": 12094
+  },
+  "artifact": {
+    "sha256": "2a1d10c2e4653fb00cd300eced033725fb7d85f6f23dae4e78c3cafd15e98cf7",
+    "bytes": 770105
+  }
+}

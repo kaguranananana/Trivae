@@ -1,0 +1,505 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Trivae · 群聊数据到回答证据",
+    "locale": "zh-CN",
+    "output": ".archify/dataflow-trivae-evidence-20261010-104943/trivae-evidence.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:kaguranananana/Trivae.git",
+      "revision": "9e531eb8793757eb00bb41b5869f045f212a13a4",
+      "link_mode": "local-only"
+    },
+    "viewBox": [
+      1080,
+      696
+    ]
+  },
+  "stages": [
+    {
+      "label": "原始与事实"
+    },
+    {
+      "label": "显式构建"
+    },
+    {
+      "label": "派生索引"
+    },
+    {
+      "label": "检索与候选"
+    },
+    {
+      "label": "最终证据"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "raw",
+      "type": "external",
+      "label": "QQ JSON",
+      "sublabel": "外部导出文件",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/data/ingestion/qq_export.py",
+          "line": 31,
+          "end_line": 92
+        }
+      ],
+      "yOffset": 0
+    },
+    {
+      "id": "import",
+      "type": "backend",
+      "label": "Parser / Importer",
+      "sublabel": "规范化 · 去重 · 事务",
+      "stage": 0,
+      "row": 1,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/data/ingestion/qq_export.py",
+          "line": 95,
+          "end_line": 180
+        },
+        {
+          "path": "src/trivae/data/ingestion/importer.py",
+          "line": 82,
+          "end_line": 153
+        }
+      ],
+      "yOffset": -10
+    },
+    {
+      "id": "facts",
+      "type": "database",
+      "label": "Canonical SQLite",
+      "sublabel": "messages / raw payload",
+      "stage": 0,
+      "row": 2,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/data/storage/sqlite.py",
+          "line": 96,
+          "end_line": 135
+        }
+      ],
+      "yOffset": -20
+    },
+    {
+      "id": "lexbuild",
+      "type": "backend",
+      "label": "Lexical rebuild",
+      "sublabel": "CJK bigram · unicode61",
+      "stage": 1,
+      "row": 0,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/data/storage/sqlite_lexical.py",
+          "line": 47,
+          "end_line": 106
+        }
+      ],
+      "yOffset": 0
+    },
+    {
+      "id": "sembuild",
+      "type": "backend",
+      "label": "Semantic rebuild",
+      "sublabel": "Parent/Child → Qwen3",
+      "stage": 1,
+      "row": 4,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/retrieval/semantic/builder.py",
+          "line": 80,
+          "end_line": 170
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/chunking.py",
+          "line": 210,
+          "end_line": 264
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/embedding.py",
+          "line": 17,
+          "end_line": 35
+        }
+      ],
+      "yOffset": -40
+    },
+    {
+      "id": "fts",
+      "type": "database",
+      "label": "messages_fts",
+      "sublabel": "同库 FTS5 · 派生数据",
+      "stage": 2,
+      "row": 0,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/data/storage/sqlite_lexical.py",
+          "line": 60,
+          "end_line": 84
+        }
+      ],
+      "yOffset": 0
+    },
+    {
+      "id": "vec",
+      "type": "database",
+      "label": "sqlite-vec",
+      "sublabel": "独立库 · chunk / vector",
+      "stage": 2,
+      "row": 4,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/retrieval/semantic/index.py",
+          "line": 66,
+          "end_line": 101
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/index.py",
+          "line": 132,
+          "end_line": 177
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/index.py",
+          "line": 493,
+          "end_line": 501
+        }
+      ],
+      "yOffset": -40
+    },
+    {
+      "id": "retrieve",
+      "type": "backend",
+      "label": "Retrieval",
+      "sublabel": "过滤 · 原始消息恢复",
+      "stage": 3,
+      "row": 2,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/retrieval/lexical.py",
+          "line": 26,
+          "end_line": 67
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/retrieval.py",
+          "line": 98,
+          "end_line": 147
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/retrieval.py",
+          "line": 195,
+          "end_line": 217
+        }
+      ],
+      "yOffset": -20
+    },
+    {
+      "id": "record",
+      "type": "backend",
+      "label": "Tool Result",
+      "sublabel": "候选数据 / 本次来源",
+      "stage": 3,
+      "row": 3,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/query/runtime/openai_tools.py",
+          "line": 515,
+          "end_line": 570
+        }
+      ],
+      "yOffset": -30
+    },
+    {
+      "id": "synthesis",
+      "type": "backend",
+      "label": "Runtime / LLM",
+      "sublabel": "模型投影 → claims JSON",
+      "stage": 3,
+      "row": 4,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1224,
+          "end_line": 1231
+        },
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1326,
+          "end_line": 1355
+        },
+        {
+          "path": "src/trivae/query/runtime/prompt.py",
+          "line": 163,
+          "end_line": 185
+        }
+      ],
+      "yOffset": -40
+    },
+    {
+      "id": "finalizer",
+      "type": "backend",
+      "label": "Evidence / Citation",
+      "sublabel": "来源 hydrate · 绑定校验",
+      "stage": 4,
+      "row": 3,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/query/evidence.py",
+          "line": 2646,
+          "end_line": 2698
+        },
+        {
+          "path": "src/trivae/query/evidence.py",
+          "line": 3139,
+          "end_line": 3269
+        }
+      ],
+      "yOffset": -30
+    },
+    {
+      "id": "answer",
+      "type": "frontend",
+      "label": "AnswerArtifact",
+      "sublabel": "回答 + Final Evidence",
+      "stage": 4,
+      "row": 4,
+      "width": 150,
+      "height": 64,
+      "sources": [
+        {
+          "path": "src/trivae/interfaces/web/streaming.py",
+          "line": 250,
+          "end_line": 268
+        },
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 775,
+          "end_line": 782
+        }
+      ],
+      "yOffset": -40
+    }
+  ],
+  "flows": [
+    {
+      "id": "raw-normalized",
+      "from": "raw",
+      "to": "import",
+      "label": "原始记录",
+      "classification": "原始数据",
+      "variant": "default",
+      "labelAt": [
+        100,
+        212
+      ]
+    },
+    {
+      "id": "canonical-write",
+      "from": "import",
+      "to": "facts",
+      "label": "CanonicalMessage",
+      "classification": "原始事实",
+      "variant": "default",
+      "labelAt": [
+        100,
+        316
+      ]
+    },
+    {
+      "id": "build-fts",
+      "from": "facts",
+      "to": "lexbuild",
+      "label": "显式全量读",
+      "classification": "离线构建",
+      "variant": "default",
+      "labelAt": [
+        208,
+        316
+      ]
+    },
+    {
+      "id": "fts-write",
+      "from": "lexbuild",
+      "to": "fts",
+      "label": "归一化文本",
+      "classification": "派生索引",
+      "variant": "default",
+      "labelAt": [
+        423,
+        222
+      ]
+    },
+    {
+      "id": "build-vectors",
+      "from": "facts",
+      "to": "sembuild",
+      "label": "顺序消息流",
+      "classification": "离线构建",
+      "variant": "default"
+    },
+    {
+      "id": "vector-write",
+      "from": "sembuild",
+      "to": "vec",
+      "label": "chunks + vectors",
+      "classification": "派生索引",
+      "variant": "default",
+      "labelAt": [
+        423,
+        524
+      ]
+    },
+    {
+      "id": "canonical-read",
+      "from": "facts",
+      "to": "retrieve",
+      "label": "过滤 / 原文",
+      "classification": "权威事实",
+      "variant": "default",
+      "route": "straight"
+    },
+    {
+      "id": "fts-hits",
+      "from": "fts",
+      "to": "retrieve",
+      "label": "词法 hits",
+      "classification": "候选定位",
+      "variant": "default"
+    },
+    {
+      "id": "vector-hits",
+      "from": "vec",
+      "to": "retrieve",
+      "label": "dense ranges",
+      "classification": "候选定位",
+      "variant": "default",
+      "labelAt": [
+        638,
+        524
+      ]
+    },
+    {
+      "id": "candidate-record",
+      "from": "retrieve",
+      "to": "record",
+      "label": "消息 / 结构化值",
+      "classification": "候选数据",
+      "variant": "default",
+      "labelAt": [
+        745,
+        420
+      ]
+    },
+    {
+      "id": "model-projection",
+      "from": "record",
+      "to": "synthesis",
+      "label": "预算投影 / source_id",
+      "classification": "模型可见",
+      "variant": "default",
+      "labelAt": [
+        745,
+        524
+      ]
+    },
+    {
+      "id": "trusted-provenance",
+      "from": "record",
+      "to": "finalizer",
+      "label": "本次 ToolResultRecord",
+      "classification": "可信来源",
+      "variant": "default",
+      "labelAt": [
+        853,
+        420
+      ],
+      "route": "straight"
+    },
+    {
+      "id": "model-claims",
+      "from": "synthesis",
+      "to": "finalizer",
+      "label": "claims / handles",
+      "classification": "待校验答案",
+      "variant": "default"
+    },
+    {
+      "id": "final-artifact",
+      "from": "finalizer",
+      "to": "answer",
+      "label": "绑定后的证据",
+      "classification": "最终引用",
+      "variant": "default",
+      "labelAt": [
+        960,
+        524
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "原始事实与来源",
+      "items": [
+        "输入是 QQ exporter JSON；没有在线 QQ 接入或实时事件总线。",
+        "Canonical messages 同时保存 content_text、content_json、raw_payload_json 和 source record locator。",
+        "重复/冲突、坏记录与 ImportBatch 都有落盘诊断；未知文件事务错误回滚并抛出。"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "派生数据可重建",
+      "items": [
+        "导入不自动同步索引；Lexical 与 Semantic 由显式 rebuild 命令创建。",
+        "FTS5 与 messages 共用数据库；Semantic metadata/vec0 写入独立 *.semantic.sqlite3。",
+        "Semantic 从 time-aware Parent/Child 生成 Qwen3 embedding；query 也用同一个本地 provider。",
+        "索引缺失 / stale / failed 显式报错；不存在自动 lexical fallback 或独立 reranker。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "候选与证据边界",
+      "items": [
+        "三种 Retrieval 路径独立；Agent 选择调用，图中的汇聚不表示自动 hybrid 融合。",
+        "Semantic chunk/range 必须恢复为 Canonical 消息；chunk 和相似度分数不是最终 Citation source。",
+        "Tool Result 保留完整宿主 provenance；模型只看到预算内投影与本轮 source_id。",
+        "Finalizer 同时接收模型 claims 与本次 ToolResultRecord，编译 Final Evidence 和 CitationBinding。"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "回答与状态",
+      "items": [
+        "通过 finalization 的 Artifact 由 Application 提交 Conversation；Web sources 只来自验证后的 Artifact。",
+        "Conversation / Trace 保存执行状态，不能成为新的群聊原始事实。",
+        "Trace 与 Evaluation 是旁路观测/评测，不是群聊 ETL 或新的回答证据来源。"
+      ]
+    }
+  ]
+}

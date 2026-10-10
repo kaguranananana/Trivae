@@ -1,0 +1,773 @@
+{
+  "repository": {
+    "url": "git@github.com:kaguranananana/Trivae.git",
+    "revision": "9e531eb8793757eb00bb41b5869f045f212a13a4",
+    "link_mode": "local-only"
+  },
+  "dirty_at_start": [
+    ".opencode/package.json"
+  ],
+  "scope": "仅依据固定版本源码；不读取私密环境变量，不调用模型服务。",
+  "diagrams": {
+    "architecture": {
+      "relationships": [
+        {
+          "id": "query-entry",
+          "sources": [
+            {
+              "path": "src/trivae/interfaces/web/streaming.py",
+              "line": 172,
+              "end_line": 184
+            }
+          ]
+        },
+        {
+          "id": "run-agent",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 421,
+              "end_line": 440
+            }
+          ]
+        },
+        {
+          "id": "model-call",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1224,
+              "end_line": 1231
+            },
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1133,
+              "end_line": 1160
+            }
+          ]
+        },
+        {
+          "id": "conversation-state",
+          "sources": [
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 684,
+              "end_line": 692
+            },
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 775,
+              "end_line": 782
+            }
+          ]
+        },
+        {
+          "id": "finalize",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 490,
+              "end_line": 499
+            }
+          ]
+        },
+        {
+          "id": "trace-query",
+          "sources": [
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 659,
+              "end_line": 680
+            },
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 142,
+              "end_line": 174
+            }
+          ]
+        },
+        {
+          "id": "trace-runtime",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 431,
+              "end_line": 440
+            },
+            {
+              "path": "src/trivae/observability/collector.py",
+              "line": 394,
+              "end_line": 438
+            }
+          ]
+        },
+        {
+          "id": "tool-invoke",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1462,
+              "end_line": 1506
+            },
+            {
+              "path": "src/trivae/query/runtime/openai_tools.py",
+              "line": 254,
+              "end_line": 282
+            }
+          ]
+        },
+        {
+          "id": "tool-retrieve",
+          "sources": [
+            {
+              "path": "src/trivae/capabilities/tools.py",
+              "line": 49,
+              "end_line": 94
+            },
+            {
+              "path": "src/trivae/capabilities/search_messages.py",
+              "line": 47,
+              "end_line": 90
+            },
+            {
+              "path": "src/trivae/capabilities/semantic_search.py",
+              "line": 85,
+              "end_line": 98
+            }
+          ]
+        },
+        {
+          "id": "read-canonical",
+          "sources": [
+            {
+              "path": "src/trivae/retrieval/lexical.py",
+              "line": 26,
+              "end_line": 37
+            },
+            {
+              "path": "src/trivae/retrieval/semantic/retrieval.py",
+              "line": 195,
+              "end_line": 217
+            },
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 1098,
+              "end_line": 1102
+            }
+          ]
+        },
+        {
+          "id": "read-vectors",
+          "sources": [
+            {
+              "path": "src/trivae/retrieval/semantic/retrieval.py",
+              "line": 98,
+              "end_line": 108
+            }
+          ]
+        },
+        {
+          "id": "parse-files",
+          "sources": [
+            {
+              "path": "src/trivae/data/ingestion/importer.py",
+              "line": 40,
+              "end_line": 59
+            },
+            {
+              "path": "src/trivae/data/ingestion/qq_export.py",
+              "line": 43,
+              "end_line": 45
+            }
+          ]
+        },
+        {
+          "id": "write-canonical",
+          "sources": [
+            {
+              "path": "src/trivae/data/ingestion/importer.py",
+              "line": 93,
+              "end_line": 148
+            }
+          ]
+        }
+      ]
+    },
+    "sequence": {
+      "messages": [
+        {
+          "id": "enter",
+          "from": "web",
+          "to": "app",
+          "evidence_note": "streaming.py:139–184：scope 预检；同一个 Application.query。",
+          "sources": [
+            {
+              "path": "src/trivae/interfaces/web/streaming.py",
+              "line": 139,
+              "end_line": 184
+            }
+          ]
+        },
+        {
+          "id": "new-trace",
+          "from": "app",
+          "to": "conv",
+          "evidence_note": "application.py:659–680；业务阶段持续追加事件。",
+          "sources": [
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 659,
+              "end_line": 680
+            }
+          ]
+        },
+        {
+          "id": "load-conversation",
+          "from": "app",
+          "to": "conv",
+          "evidence_note": "application.py:684–692；读取会话前 Web 已预检 scope。",
+          "sources": [
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 942,
+              "end_line": 954
+            }
+          ]
+        },
+        {
+          "id": "history",
+          "from": "conv",
+          "to": "app",
+          "evidence_note": "contracts.py:172–199：历史证据不作本轮 fresh source。",
+          "sources": [
+            {
+              "path": "src/trivae/conversation/contracts.py",
+              "line": 172,
+              "end_line": 199
+            }
+          ]
+        },
+        {
+          "id": "dispatch",
+          "from": "app",
+          "to": "core",
+          "evidence_note": "orchestrator.py:115–152；scope 留在宿主执行上下文。",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 115,
+              "end_line": 152
+            }
+          ]
+        },
+        {
+          "id": "route-model",
+          "from": "core",
+          "to": "model",
+          "evidence_note": "router.py:193–265：高置信规则跳过模型；可配置 Jev/shadow。",
+          "sources": [
+            {
+              "path": "src/trivae/query/router.py",
+              "line": 193,
+              "end_line": 211
+            }
+          ]
+        },
+        {
+          "id": "route-result",
+          "from": "model",
+          "to": "core",
+          "evidence_note": "router.py:229–255：timeout/provider/JSON 错误标记 degraded。",
+          "sources": [
+            {
+              "path": "src/trivae/query/router.py",
+              "line": 213,
+              "end_line": 265
+            }
+          ]
+        },
+        {
+          "id": "plan-model",
+          "from": "core",
+          "to": "model",
+          "evidence_note": "planner.py:185–275：standard 跳过；生成/校验失败返回无计划。",
+          "sources": [
+            {
+              "path": "src/trivae/query/planner.py",
+              "line": 185,
+              "end_line": 275
+            }
+          ]
+        },
+        {
+          "id": "plan-result",
+          "from": "model",
+          "to": "core",
+          "evidence_note": "orchestrator.py:319–419：分类失败记诊断并无计划继续；未知异常传播。",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 319,
+              "end_line": 419
+            }
+          ]
+        },
+        {
+          "id": "run",
+          "from": "core",
+          "to": "runtime",
+          "evidence_note": "orchestrator.py:421–440：TraceableAgentRuntime 包装同一 runtime。",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 421,
+              "end_line": 440
+            }
+          ]
+        },
+        {
+          "id": "model-input",
+          "from": "runtime",
+          "to": "model",
+          "evidence_note": "openai_adapter.py:1462–1555：plan 附到 instructions，scope 不进入 input。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1462,
+              "end_line": 1555
+            }
+          ]
+        },
+        {
+          "id": "function-call",
+          "from": "model",
+          "to": "runtime",
+          "evidence_note": "Agents SDK 驱动模型—工具循环；下方为一轮词法检索示例。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1224,
+              "end_line": 1231
+            }
+          ]
+        },
+        {
+          "id": "invoke",
+          "from": "runtime",
+          "to": "tools",
+          "evidence_note": "openai_tools.py:254–282；Capability 执行检索 / SQLite 读取。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_tools.py",
+              "line": 254,
+              "end_line": 282
+            }
+          ]
+        },
+        {
+          "id": "tool-record",
+          "from": "tools",
+          "to": "runtime",
+          "evidence_note": "openai_tools.py:515–570：当前 run 记录与模型投影分别保留。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_tools.py",
+              "line": 515,
+              "end_line": 570
+            }
+          ]
+        },
+        {
+          "id": "runtime-trace",
+          "from": "runtime",
+          "to": "conv",
+          "evidence_note": "collector.py:394–438：wrapper 消费 RuntimeEvent 并落盘；不是独立后台队列。",
+          "sources": [
+            {
+              "path": "src/trivae/observability/collector.py",
+              "line": 394,
+              "end_line": 478
+            }
+          ]
+        },
+        {
+          "id": "resynthesis",
+          "from": "runtime",
+          "to": "model",
+          "evidence_note": "openai_adapter.py:1508–1529：达到工具轮预算后只允许最终合成。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1508,
+              "end_line": 1529
+            }
+          ]
+        },
+        {
+          "id": "candidate",
+          "from": "model",
+          "to": "runtime",
+          "evidence_note": "openai_adapter.py:1326–1355；无工具调用也是允许的实际分支。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1326,
+              "end_line": 1355
+            }
+          ]
+        },
+        {
+          "id": "json-repair",
+          "from": "runtime",
+          "to": "model",
+          "evidence_note": "openai_adapter.py:393–434：有工具且无 function call、最终非 JSON 时，移除工具重发一次。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 393,
+              "end_line": 434
+            }
+          ]
+        },
+        {
+          "id": "repaired",
+          "from": "model",
+          "to": "runtime",
+          "evidence_note": "仅 OpenCode Go 模型适配器；当前配置未核实。AsyncOpenAI max_retries=0。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 393,
+              "end_line": 434
+            },
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1144,
+              "end_line": 1149
+            }
+          ]
+        },
+        {
+          "id": "runtime-result",
+          "from": "runtime",
+          "to": "core",
+          "evidence_note": "orchestrator.py:441–459：失败 / aborted / max-turn 则跳过 finalizer。",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 441,
+              "end_line": 459
+            }
+          ]
+        },
+        {
+          "id": "finalize-answer",
+          "from": "core",
+          "to": "finalizer",
+          "evidence_note": "orchestrator.py:490–499；Finalizer 不再请求模型或执行检索。",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 490,
+              "end_line": 499
+            }
+          ]
+        },
+        {
+          "id": "artifact",
+          "from": "finalizer",
+          "to": "core",
+          "evidence_note": "evidence.py:3139–3269：局部可恢复错误显式降级；scope/provenance 等错误 fatal。",
+          "sources": [
+            {
+              "path": "src/trivae/query/evidence.py",
+              "line": 3139,
+              "end_line": 3269
+            }
+          ]
+        },
+        {
+          "id": "return-query",
+          "from": "core",
+          "to": "app",
+          "evidence_note": "application.py:754–763：仅 is_successful 进入 commit。",
+          "sources": [
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 754,
+              "end_line": 763
+            }
+          ]
+        },
+        {
+          "id": "commit",
+          "from": "app",
+          "to": "conv",
+          "evidence_note": "conversation/sqlite.py:247–330：单事务保存 Artifact、trace_id 和过程摘要。",
+          "sources": [
+            {
+              "path": "src/trivae/conversation/sqlite.py",
+              "line": 247,
+              "end_line": 326
+            }
+          ]
+        },
+        {
+          "id": "committed",
+          "from": "conv",
+          "to": "app",
+          "evidence_note": "application.py:783–829：提交失败记 Trace 并传播，不报告完成。",
+          "sources": [
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 783,
+              "end_line": 829
+            }
+          ]
+        },
+        {
+          "id": "terminal",
+          "from": "app",
+          "to": "conv",
+          "evidence_note": "application.py:839–875；collector.py:322–331：更新 Trace 终态。",
+          "sources": [
+            {
+              "path": "src/trivae/observability/collector.py",
+              "line": 322,
+              "end_line": 335
+            },
+            {
+              "path": "src/trivae/bootstrap/application.py",
+              "line": 839,
+              "end_line": 855
+            }
+          ]
+        },
+        {
+          "id": "response",
+          "from": "app",
+          "to": "web",
+          "evidence_note": "streaming.py:213–268：sources 只来自 Artifact；过程中已有 provisional delta。",
+          "sources": [
+            {
+              "path": "src/trivae/interfaces/web/streaming.py",
+              "line": 213,
+              "end_line": 268
+            }
+          ]
+        },
+        {
+          "id": "stop",
+          "from": "web",
+          "to": "app",
+          "evidence_note": "routes.py:100–108；streaming.py:196–206：stop 设置 abort_event，断连也取消 task。",
+          "sources": [
+            {
+              "path": "src/trivae/interfaces/web/routes.py",
+              "line": 100,
+              "end_line": 108
+            },
+            {
+              "path": "src/trivae/interfaces/web/streaming.py",
+              "line": 196,
+              "end_line": 206
+            }
+          ]
+        },
+        {
+          "id": "abort",
+          "from": "app",
+          "to": "runtime",
+          "evidence_note": "openai_adapter.py:1232、1316–1324：aborted 不提交 turn；终态对 caller 可见。",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_adapter.py",
+              "line": 1316,
+              "end_line": 1324
+            },
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 441,
+              "end_line": 459
+            }
+          ]
+        }
+      ],
+      "state_lane": "State Stores 同时呈现 Conversation Store 与 Trace Store；逻辑责任分别由调用标签指明。"
+    },
+    "dataflow": {
+      "relationships": [
+        {
+          "id": "raw-normalized",
+          "sources": [
+            {
+              "path": "src/trivae/data/ingestion/qq_export.py",
+              "line": 95,
+              "end_line": 180
+            }
+          ]
+        },
+        {
+          "id": "canonical-write",
+          "sources": [
+            {
+              "path": "src/trivae/data/ingestion/importer.py",
+              "line": 127,
+              "end_line": 148
+            }
+          ]
+        },
+        {
+          "id": "build-fts",
+          "sources": [
+            {
+              "path": "src/trivae/data/storage/sqlite_lexical.py",
+              "line": 76,
+              "end_line": 84
+            }
+          ]
+        },
+        {
+          "id": "fts-write",
+          "sources": [
+            {
+              "path": "src/trivae/data/storage/sqlite_lexical.py",
+              "line": 60,
+              "end_line": 84
+            }
+          ]
+        },
+        {
+          "id": "build-vectors",
+          "sources": [
+            {
+              "path": "src/trivae/retrieval/semantic/builder.py",
+              "line": 103,
+              "end_line": 119
+            }
+          ]
+        },
+        {
+          "id": "vector-write",
+          "sources": [
+            {
+              "path": "src/trivae/retrieval/semantic/builder.py",
+              "line": 139,
+              "end_line": 163
+            },
+            {
+              "path": "src/trivae/retrieval/semantic/index.py",
+              "line": 132,
+              "end_line": 177
+            }
+          ]
+        },
+        {
+          "id": "canonical-read",
+          "sources": [
+            {
+              "path": "src/trivae/retrieval/semantic/retrieval.py",
+              "line": 195,
+              "end_line": 217
+            },
+            {
+              "path": "src/trivae/retrieval/lexical.py",
+              "line": 30,
+              "end_line": 37
+            }
+          ]
+        },
+        {
+          "id": "fts-hits",
+          "sources": [
+            {
+              "path": "src/trivae/data/storage/sqlite_read.py",
+              "line": 918,
+              "end_line": 966
+            }
+          ]
+        },
+        {
+          "id": "vector-hits",
+          "sources": [
+            {
+              "path": "src/trivae/retrieval/semantic/retrieval.py",
+              "line": 98,
+              "end_line": 147
+            }
+          ]
+        },
+        {
+          "id": "candidate-record",
+          "sources": [
+            {
+              "path": "src/trivae/capabilities/tools.py",
+              "line": 49,
+              "end_line": 94
+            },
+            {
+              "path": "src/trivae/query/runtime/openai_tools.py",
+              "line": 515,
+              "end_line": 556
+            }
+          ]
+        },
+        {
+          "id": "model-projection",
+          "sources": [
+            {
+              "path": "src/trivae/query/runtime/openai_tools.py",
+              "line": 527,
+              "end_line": 556
+            },
+            {
+              "path": "src/trivae/query/runtime/prompt.py",
+              "line": 163,
+              "end_line": 170
+            }
+          ]
+        },
+        {
+          "id": "trusted-provenance",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 490,
+              "end_line": 499
+            }
+          ]
+        },
+        {
+          "id": "model-claims",
+          "sources": [
+            {
+              "path": "src/trivae/query/orchestrator.py",
+              "line": 490,
+              "end_line": 499
+            },
+            {
+              "path": "src/trivae/query/evidence.py",
+              "line": 2675,
+              "end_line": 2698
+            }
+          ]
+        },
+        {
+          "id": "final-artifact",
+          "sources": [
+            {
+              "path": "src/trivae/query/evidence.py",
+              "line": 2692,
+              "end_line": 2698
+            },
+            {
+              "path": "src/trivae/interfaces/web/streaming.py",
+              "line": 258,
+              "end_line": 263
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

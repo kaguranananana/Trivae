@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "bd151cf5-2fc1-454f-abb4-8e8130eaec2d",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/sequence-trivae-request-20261010-104943/candidate.json",
+  "output": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/sequence-trivae-request-20261010-104943/trivae-request.html",
+  "specification": {
+    "sha256": "2f6609bcaf104587347de4d9a5807b867e3ae1380152e4eda868efa574e68af9",
+    "bytes": 12747
+  },
+  "artifact": {
+    "sha256": "50ae01ccb60f7ed5eba052ec868331321933529f1990495fa3f691cb0daea777",
+    "bytes": 778907
+  }
+}

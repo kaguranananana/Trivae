@@ -1,0 +1,549 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Trivae · 系统总体架构",
+    "locale": "zh-CN",
+    "output": ".archify/architecture-trivae-system-20261010-104943/trivae-system.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:kaguranananana/Trivae.git",
+      "revision": "9e531eb8793757eb00bb41b5869f045f212a13a4",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "interfaces",
+      "type": "frontend",
+      "label": "Web / CLI / TUI",
+      "sublabel": "查询入口与结果呈现",
+      "pos": [
+        20,
+        100
+      ],
+      "size": [
+        210,
+        86
+      ],
+      "sources": [
+        {
+          "path": "web/src/api/client.ts",
+          "line": 86,
+          "end_line": 119
+        },
+        {
+          "path": "src/trivae/interfaces/web/routes.py",
+          "line": 29,
+          "end_line": 98
+        },
+        {
+          "path": "src/trivae/interfaces/cli.py",
+          "line": 2040,
+          "end_line": 2088
+        }
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Application / Query Core",
+      "sublabel": "Context · Router · Planner",
+      "pos": [
+        300,
+        100
+      ],
+      "size": [
+        230,
+        90
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 621,
+          "end_line": 761
+        },
+        {
+          "path": "src/trivae/query/orchestrator.py",
+          "line": 115,
+          "end_line": 174
+        },
+        {
+          "path": "src/trivae/query/orchestrator.py",
+          "line": 302,
+          "end_line": 440
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "Agent Runtime",
+      "sublabel": "Agents SDK · 工具循环与预算",
+      "pos": [
+        620,
+        100
+      ],
+      "size": [
+        220,
+        90
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1182,
+          "end_line": 1231
+        },
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1462,
+          "end_line": 1555
+        },
+        {
+          "path": "src/trivae/query/runtime/budget.py",
+          "line": 1,
+          "end_line": 50
+        }
+      ]
+    },
+    {
+      "id": "provider",
+      "type": "external",
+      "label": "LLM Provider",
+      "sublabel": "Chat Completions",
+      "pos": [
+        940,
+        100
+      ],
+      "size": [
+        180,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1133,
+          "end_line": 1160
+        },
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1803,
+          "end_line": 1852
+        }
+      ]
+    },
+    {
+      "id": "conversation",
+      "type": "database",
+      "label": "Conversation Store",
+      "sublabel": "会话历史 · 已验证回答",
+      "pos": [
+        20,
+        350
+      ],
+      "size": [
+        210,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/conversation/sqlite.py",
+          "line": 247,
+          "end_line": 330
+        },
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 763,
+          "end_line": 838
+        }
+      ]
+    },
+    {
+      "id": "evidence",
+      "type": "backend",
+      "label": "Evidence / Citation",
+      "sublabel": "本次来源校验与答案编译",
+      "pos": [
+        300,
+        350
+      ],
+      "size": [
+        230,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/query/orchestrator.py",
+          "line": 490,
+          "end_line": 559
+        },
+        {
+          "path": "src/trivae/query/evidence.py",
+          "line": 2646,
+          "end_line": 2698
+        },
+        {
+          "path": "src/trivae/query/evidence.py",
+          "line": 3139,
+          "end_line": 3269
+        }
+      ]
+    },
+    {
+      "id": "trace",
+      "type": "database",
+      "label": "Trace Collector / Store",
+      "sublabel": "normalized events · SQLite",
+      "pos": [
+        620,
+        350
+      ],
+      "size": [
+        220,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/observability/collector.py",
+          "line": 178,
+          "end_line": 213
+        },
+        {
+          "path": "src/trivae/observability/collector.py",
+          "line": 316,
+          "end_line": 335
+        },
+        {
+          "path": "src/trivae/observability/sqlite.py",
+          "line": 36,
+          "end_line": 75
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "backend",
+      "label": "Tool Layer",
+      "sublabel": "SDK adapters → Registry",
+      "pos": [
+        940,
+        350
+      ],
+      "size": [
+        180,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/query/runtime/openai_tools.py",
+          "line": 254,
+          "end_line": 282
+        },
+        {
+          "path": "src/trivae/capabilities/registry.py",
+          "line": 53,
+          "end_line": 70
+        },
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 1121,
+          "end_line": 1130
+        }
+      ]
+    },
+    {
+      "id": "raw",
+      "type": "external",
+      "label": "QQ 导出 JSON",
+      "sublabel": "文件输入 · 非实时采集",
+      "pos": [
+        20,
+        610
+      ],
+      "size": [
+        210,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/data/ingestion/qq_export.py",
+          "line": 31,
+          "end_line": 92
+        }
+      ]
+    },
+    {
+      "id": "ingestion",
+      "type": "backend",
+      "label": "Ingestion",
+      "sublabel": "Parser · 规范化 · 文件事务",
+      "pos": [
+        300,
+        610
+      ],
+      "size": [
+        230,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/data/ingestion/importer.py",
+          "line": 31,
+          "end_line": 61
+        },
+        {
+          "path": "src/trivae/data/ingestion/importer.py",
+          "line": 82,
+          "end_line": 153
+        }
+      ]
+    },
+    {
+      "id": "canonical",
+      "type": "database",
+      "label": "Canonical / FTS5",
+      "sublabel": "原始消息事实与词法派生索引",
+      "pos": [
+        620,
+        610
+      ],
+      "size": [
+        220,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/data/storage/sqlite.py",
+          "line": 96,
+          "end_line": 135
+        },
+        {
+          "path": "src/trivae/data/storage/sqlite_lexical.py",
+          "line": 47,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "retrieval",
+      "type": "backend",
+      "label": "Retrieval",
+      "sublabel": "Structured · Lexical · Semantic",
+      "pos": [
+        940,
+        610
+      ],
+      "size": [
+        180,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 1098,
+          "end_line": 1130
+        },
+        {
+          "path": "src/trivae/retrieval/lexical.py",
+          "line": 26,
+          "end_line": 67
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/retrieval.py",
+          "line": 73,
+          "end_line": 147
+        }
+      ]
+    },
+    {
+      "id": "vectors",
+      "type": "database",
+      "label": "Semantic Index",
+      "sublabel": "sqlite-vec · 独立派生库",
+      "pos": [
+        940,
+        850
+      ],
+      "size": [
+        180,
+        86
+      ],
+      "sources": [
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 1087,
+          "end_line": 1094
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/index.py",
+          "line": 399,
+          "end_line": 469
+        },
+        {
+          "path": "src/trivae/retrieval/semantic/embedding.py",
+          "line": 17,
+          "end_line": 35
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "query-entry",
+      "from": "interfaces",
+      "to": "core",
+      "label": "query()",
+      "variant": "default"
+    },
+    {
+      "id": "run-agent",
+      "from": "core",
+      "to": "runtime",
+      "label": "run()",
+      "variant": "default"
+    },
+    {
+      "id": "model-call",
+      "from": "runtime",
+      "to": "provider",
+      "label": "模型请求",
+      "variant": "default"
+    },
+    {
+      "id": "conversation-state",
+      "from": "core",
+      "to": "conversation",
+      "label": "历史 / commit",
+      "variant": "default"
+    },
+    {
+      "id": "finalize",
+      "from": "core",
+      "to": "evidence",
+      "label": "最终化",
+      "variant": "default"
+    },
+    {
+      "id": "trace-query",
+      "from": "core",
+      "to": "trace",
+      "label": "阶段事件",
+      "variant": "dashed"
+    },
+    {
+      "id": "trace-runtime",
+      "from": "runtime",
+      "to": "trace",
+      "label": "RuntimeEvent",
+      "variant": "dashed"
+    },
+    {
+      "id": "tool-invoke",
+      "from": "runtime",
+      "to": "tools",
+      "label": "function calls",
+      "variant": "default"
+    },
+    {
+      "id": "tool-retrieve",
+      "from": "tools",
+      "to": "retrieval",
+      "label": "Capability",
+      "variant": "default"
+    },
+    {
+      "id": "read-canonical",
+      "from": "retrieval",
+      "to": "canonical",
+      "label": "只读查询",
+      "variant": "default"
+    },
+    {
+      "id": "read-vectors",
+      "from": "retrieval",
+      "to": "vectors",
+      "label": "dense search",
+      "variant": "default"
+    },
+    {
+      "id": "parse-files",
+      "from": "raw",
+      "to": "ingestion",
+      "label": "读取 JSON",
+      "variant": "default"
+    },
+    {
+      "id": "write-canonical",
+      "from": "ingestion",
+      "to": "canonical",
+      "label": "写入事实",
+      "variant": "default"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Query Plane · 编排与执行",
+      "wraps": [
+        "core",
+        "runtime",
+        "evidence",
+        "trace"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "region",
+      "label": "Data Plane · 导入与检索",
+      "wraps": [
+        "ingestion",
+        "canonical",
+        "retrieval",
+        "vectors"
+      ],
+      "pad": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "控制权与返回值",
+      "items": [
+        "Application 读取历史并派生 QueryContext；Router 只决定 standard / planned。",
+        "planned 才调用 SoftPlanner；Plan 是 soft guidance，不执行步骤。",
+        "Runtime 返回 RuntimeResult；Query Core 调用 Evidence finalizer，再提交会话。",
+        "源码：application.py:684–761；orchestrator.py:302–499。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "数据与工具边界",
+      "items": [
+        "默认工具：lexical_search、semantic_search、get_recent_messages、get_message_context、find_members、get_schema、execute_sql。",
+        "search_messages 仍注册，但不在 QueryRequest 默认工具列表。",
+        "模型选择工具和参数；Registry/Capability 在宿主执行 trusted scope。",
+        "源码：contracts.py:109–117；application.py:1121–1130；openai_tools.py:254–282。"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "持久化与外部依赖",
+      "items": [
+        "Canonical、FTS5、Conversation、Trace 默认共用一份 SQLite；概念 Store 不代表独立数据库。",
+        "Semantic 使用独立 *.semantic.sqlite3；Qwen3 embedding 在本机执行，需 semantic extra。",
+        "模型端点由配置决定；Jev / shadow 是可选 Router provider。",
+        "Evaluation 与 Feedback 已实现，使用独立 SQLite；属于辅助子系统，未展开查询主图。"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "实现边界",
+      "items": [
+        "Context Assembly 已由 Application、QueryRequest、Runtime 分段实现；没有独立 ContextAssembly 服务。",
+        "当前 Web 是 FastAPI + NDJSON /api；文档 /api/v1 尚未落地。",
+        "没有实时 QQ 采集、自动索引同步、独立 reranker 或 Trace 自动保留期清理。",
+        "主图箭头表示调用/数据访问；方法返回值与生命周期细节见时序图。"
+      ]
+    }
+  ]
+}

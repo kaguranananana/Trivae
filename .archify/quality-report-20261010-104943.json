@@ -1,0 +1,117 @@
+{
+  "status": "pass",
+  "generated_at": "2026-10-10",
+  "skill": {
+    "name": "Archify",
+    "version": "3.0.1"
+  },
+  "scope": "仅新增 .archify 交付文件；不修改业务源码、配置或依赖。",
+  "diagrams": [
+    {
+      "type": "architecture",
+      "html": "architecture-trivae-system-20261010-104943/trivae-system.html",
+      "editable_json": "architecture-trivae-system-20261010-104943/candidate.json",
+      "finalize_status": "pass",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      },
+      "diagnostic_count": 0,
+      "finalize_receipt": "architecture-trivae-system-20261010-104943/trivae-system.finalize-summary.json",
+      "visual_receipt": "architecture-trivae-system-20261010-104943/visual-check/trivae-system.visual-check.json",
+      "automated_visual_status": "pass",
+      "native_visual_review": "pending",
+      "author_visual_review": {
+        "status": "pass",
+        "method": "目视检查实际 Chrome 截图；只声明下列已查看图像。",
+        "inspected_images": [
+          "architecture-trivae-system-20261010-104943/visual-check/trivae-system.visual-check.2048x1320.light.png",
+          "architecture-trivae-system-20261010-104943/visual-check/trivae-system.visual-check.1440x900.dark.png"
+        ],
+        "findings": "主链方向、节点层次、箭头与标签清晰；明暗主题可读；纵向滚动保留长图内容。"
+      }
+    },
+    {
+      "type": "sequence",
+      "html": "sequence-trivae-request-20261010-104943/trivae-request.html",
+      "editable_json": "sequence-trivae-request-20261010-104943/candidate.json",
+      "finalize_status": "pass",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      },
+      "diagnostic_count": 0,
+      "finalize_receipt": "sequence-trivae-request-20261010-104943/review-5/trivae-request.finalize-summary.json",
+      "visual_receipt": "sequence-trivae-request-20261010-104943/visual-check-5/trivae-request.visual-check.json",
+      "automated_visual_status": "pass",
+      "native_visual_review": "pending",
+      "author_visual_review": {
+        "status": "pass",
+        "method": "目视检查实际 Chrome 截图；只声明下列已查看图像。",
+        "inspected_images": [
+          "sequence-trivae-request-20261010-104943/visual-check-5/trivae-request.visual-check.1440x900.dark.png",
+          "sequence-trivae-request-20261010-104943/sequence-lower-supplemental.png"
+        ],
+        "findings": "主链方向、节点层次、箭头与标签清晰；明暗主题可读；纵向滚动保留长图内容。"
+      }
+    },
+    {
+      "type": "dataflow",
+      "html": "dataflow-trivae-evidence-20261010-104943/trivae-evidence.html",
+      "editable_json": "dataflow-trivae-evidence-20261010-104943/candidate.json",
+      "finalize_status": "pass",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      },
+      "diagnostic_count": 0,
+      "finalize_receipt": "dataflow-trivae-evidence-20261010-104943/review-5/trivae-evidence.finalize-summary.json",
+      "visual_receipt": "dataflow-trivae-evidence-20261010-104943/visual-check-5/trivae-evidence.visual-check.json",
+      "automated_visual_status": "pass",
+      "native_visual_review": "pending",
+      "author_visual_review": {
+        "status": "pass",
+        "method": "目视检查实际 Chrome 截图；只声明下列已查看图像。",
+        "inspected_images": [
+          "dataflow-trivae-evidence-20261010-104943/visual-check-5/trivae-evidence.visual-check.1440x900.light.png",
+          "dataflow-trivae-evidence-20261010-104943/visual-check-5/trivae-evidence.visual-check.1440x900.dark.png"
+        ],
+        "findings": "主链方向、节点层次、箭头与标签清晰；明暗主题可读；纵向滚动保留长图内容。"
+      }
+    }
+  ],
+  "source_check": {
+    "status": "pass",
+    "checked_files": 32,
+    "checked_references": 151,
+    "relationship_ids_match": true,
+    "cited_sources_match_pinned_revision": true,
+    "receipt": "source-range-check-20261010-104943.json",
+    "semantic_evidence": "实际调用点阅读及 evidence-20261010-104943.json；行区间合法性不替代语义核实。"
+  },
+  "interaction_check": {
+    "status": "pass",
+    "receipt": "viewer-interaction-20261010-104943.json",
+    "checks": "三张图真实 Chrome 节点聚焦、directed Route Probe 和源码元数据保留。"
+  },
+  "boundaries": [
+    "Context Assembly 职责已实现但没有独立服务；SoftPlanner 提供 guidance。",
+    "QQ JSON 批量导入已实现；实时采集、自动索引同步、融合检索和独立 reranker 未发现实现。",
+    "实际 Web 入口为 /api/query/stream；/api/v1、Trace retention 不作为已实现能力。",
+    "未读取私密配置；当前 Provider、Jev mode、现有索引状态未确认。",
+    "原生 visualReview: pending 保持不变；本报告单独记录作者目视结论。"
+  ],
+  "git_whitespace_check": {
+    "status": "native-template-whitespace-warning",
+    "native_html_trailing_whitespace_lines_each": 15,
+    "other_added_files_status": "pass",
+    "root_cause": "Archify assets/template.html 内置空白行含空格，三张原生产物继承相同格式。",
+    "disposition": "保留原生 HTML 与验证回执；不后处理已验证产物，不修改已安装 Skill。"
+  }
+}

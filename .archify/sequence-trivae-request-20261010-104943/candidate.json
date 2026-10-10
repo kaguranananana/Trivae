@@ -1,0 +1,499 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Trivae · Web 查询执行时序",
+    "locale": "zh-CN",
+    "output": ".archify/sequence-trivae-request-20261010-104943/trivae-request.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:kaguranananana/Trivae.git",
+      "revision": "9e531eb8793757eb00bb41b5869f045f212a13a4",
+      "link_mode": "local-only"
+    },
+    "column_fit": "fixed"
+  },
+  "participants": [
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Web",
+      "sublabel": "POST + NDJSON",
+      "sources": [
+        {
+          "path": "web/src/api/client.ts",
+          "line": 86,
+          "end_line": 119
+        },
+        {
+          "path": "src/trivae/interfaces/web/streaming.py",
+          "line": 130,
+          "end_line": 210
+        }
+      ]
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "Application",
+      "sublabel": "上下文 / 提交",
+      "sources": [
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 621,
+          "end_line": 704
+        },
+        {
+          "path": "src/trivae/bootstrap/application.py",
+          "line": 754,
+          "end_line": 855
+        }
+      ]
+    },
+    {
+      "id": "conv",
+      "type": "database",
+      "label": "State Stores",
+      "sublabel": "会话 / Trace",
+      "sources": [
+        {
+          "path": "src/trivae/conversation/sqlite.py",
+          "line": 247,
+          "end_line": 330
+        },
+        {
+          "path": "src/trivae/observability/sqlite.py",
+          "line": 36,
+          "end_line": 75
+        },
+        {
+          "path": "src/trivae/observability/collector.py",
+          "line": 178,
+          "end_line": 213
+        }
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Query Core",
+      "sublabel": "Router / Planner",
+      "sources": [
+        {
+          "path": "src/trivae/query/orchestrator.py",
+          "line": 140,
+          "end_line": 203
+        },
+        {
+          "path": "src/trivae/query/orchestrator.py",
+          "line": 302,
+          "end_line": 440
+        },
+        {
+          "path": "src/trivae/query/router.py",
+          "line": 193,
+          "end_line": 265
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "Runtime",
+      "sublabel": "Agents SDK",
+      "sources": [
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1182,
+          "end_line": 1231
+        },
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1308,
+          "end_line": 1434
+        }
+      ]
+    },
+    {
+      "id": "model",
+      "type": "external",
+      "label": "LLM",
+      "sublabel": "Chat Completions",
+      "sources": [
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1133,
+          "end_line": 1160
+        },
+        {
+          "path": "src/trivae/query/runtime/openai_adapter.py",
+          "line": 1803,
+          "end_line": 1852
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "backend",
+      "label": "Tools / Data",
+      "sublabel": "Registry / 检索",
+      "sources": [
+        {
+          "path": "src/trivae/capabilities/registry.py",
+          "line": 53,
+          "end_line": 70
+        },
+        {
+          "path": "src/trivae/retrieval/lexical.py",
+          "line": 26,
+          "end_line": 67
+        },
+        {
+          "path": "src/trivae/query/runtime/openai_tools.py",
+          "line": 515,
+          "end_line": 570
+        }
+      ]
+    },
+    {
+      "id": "finalizer",
+      "type": "backend",
+      "label": "Evidence",
+      "sublabel": "Citation 校验",
+      "sources": [
+        {
+          "path": "src/trivae/query/evidence.py",
+          "line": 2646,
+          "end_line": 2698
+        },
+        {
+          "path": "src/trivae/query/evidence.py",
+          "line": 3139,
+          "end_line": 3269
+        }
+      ]
+    }
+  ],
+  "segments": [
+    {
+      "from": 158,
+      "to": 425,
+      "label": "入口与上下文"
+    },
+    {
+      "from": 430,
+      "to": 690,
+      "label": "路由与可选规划"
+    },
+    {
+      "from": 696,
+      "to": 1223,
+      "label": "模型—工具循环及有界修复"
+    },
+    {
+      "from": 1228,
+      "to": 1680,
+      "label": "证据最终化与持久化"
+    },
+    {
+      "from": 1684,
+      "to": 1790,
+      "label": "取消支路：可在执行中触发"
+    }
+  ],
+  "messages": [
+    {
+      "id": "enter",
+      "from": "web",
+      "to": "app",
+      "y": 170,
+      "label": "POST /api/query/stream",
+      "variant": "default",
+      "note": "streaming.py:139–184"
+    },
+    {
+      "id": "new-trace",
+      "from": "app",
+      "to": "conv",
+      "y": 224,
+      "label": "create_trace / query.received",
+      "variant": "default",
+      "note": "application.py:659–680"
+    },
+    {
+      "id": "load-conversation",
+      "from": "app",
+      "to": "conv",
+      "y": 278,
+      "label": "读已有会话 / 创建新会话",
+      "variant": "default",
+      "note": "application.py:684–692"
+    },
+    {
+      "id": "history",
+      "from": "conv",
+      "to": "app",
+      "y": 332,
+      "label": "历史 → prior_context",
+      "variant": "return",
+      "note": "contracts.py:172–199"
+    },
+    {
+      "id": "dispatch",
+      "from": "app",
+      "to": "core",
+      "y": 386,
+      "label": "QueryContext → route()",
+      "variant": "emphasis",
+      "note": "orchestrator.py:115–152"
+    },
+    {
+      "id": "route-model",
+      "from": "core",
+      "to": "model",
+      "y": 440,
+      "label": "条件：模糊路由 completion",
+      "variant": "default",
+      "note": "router.py:193–265"
+    },
+    {
+      "id": "route-result",
+      "from": "model",
+      "to": "core",
+      "y": 494,
+      "label": "route / 失败时保留规则",
+      "variant": "return",
+      "note": "router.py:229–255"
+    },
+    {
+      "id": "plan-model",
+      "from": "core",
+      "to": "model",
+      "y": 548,
+      "label": "planned：一次 Planner completion",
+      "variant": "default",
+      "note": "planner.py:185–275"
+    },
+    {
+      "id": "plan-result",
+      "from": "model",
+      "to": "core",
+      "y": 602,
+      "label": "Plan 校验 → soft guidance",
+      "variant": "return",
+      "note": "orchestrator.py:319–419"
+    },
+    {
+      "id": "run",
+      "from": "core",
+      "to": "runtime",
+      "y": 656,
+      "label": "同一个 Runtime.run()",
+      "variant": "emphasis",
+      "note": "orchestrator.py:421–440"
+    },
+    {
+      "id": "model-input",
+      "from": "runtime",
+      "to": "model",
+      "y": 710,
+      "label": "历史 + Query + Prompt + 工具",
+      "variant": "default",
+      "note": "openai_adapter.py:1462–1555"
+    },
+    {
+      "id": "function-call",
+      "from": "model",
+      "to": "runtime",
+      "y": 764,
+      "label": "工具名 / 参数",
+      "variant": "return",
+      "note": "Agents SDK 驱动模型—工具循环"
+    },
+    {
+      "id": "invoke",
+      "from": "runtime",
+      "to": "tools",
+      "y": 818,
+      "label": "Registry.invoke(trusted scope)",
+      "variant": "emphasis",
+      "note": "openai_tools.py:254–282"
+    },
+    {
+      "id": "tool-record",
+      "from": "tools",
+      "to": "runtime",
+      "y": 872,
+      "label": "Tool Result + provenance",
+      "variant": "return",
+      "note": "openai_tools.py:515–570"
+    },
+    {
+      "id": "runtime-trace",
+      "from": "runtime",
+      "to": "conv",
+      "y": 926,
+      "label": "工具 / 模型 normalized events",
+      "variant": "default",
+      "note": "collector.py:394–438"
+    },
+    {
+      "id": "resynthesis",
+      "from": "runtime",
+      "to": "model",
+      "y": 980,
+      "label": "loop：投影结果 → 继续 / 合成",
+      "variant": "default",
+      "note": "openai_adapter.py:1508–1529"
+    },
+    {
+      "id": "candidate",
+      "from": "model",
+      "to": "runtime",
+      "y": 1034,
+      "label": "最终候选 JSON",
+      "variant": "return",
+      "note": "openai_adapter.py:1326–1355"
+    },
+    {
+      "id": "json-repair",
+      "from": "runtime",
+      "to": "model",
+      "y": 1088,
+      "label": "条件：OpenCode Go 单次 JSON 修复",
+      "variant": "default",
+      "note": "openai_adapter.py:393–434"
+    },
+    {
+      "id": "repaired",
+      "from": "model",
+      "to": "runtime",
+      "y": 1142,
+      "label": "条件返回：修复后的输出",
+      "variant": "return",
+      "note": "仅 OpenCode Go 模型适配器"
+    },
+    {
+      "id": "runtime-result",
+      "from": "runtime",
+      "to": "core",
+      "y": 1196,
+      "label": "completed：RuntimeResult",
+      "variant": "return",
+      "note": "orchestrator.py:441–459"
+    },
+    {
+      "id": "finalize-answer",
+      "from": "core",
+      "to": "finalizer",
+      "y": 1250,
+      "label": "候选 + 本次记录 + scope",
+      "variant": "emphasis",
+      "note": "orchestrator.py:490–499"
+    },
+    {
+      "id": "artifact",
+      "from": "finalizer",
+      "to": "core",
+      "y": 1358,
+      "label": "valid / degraded Artifact；或 failed",
+      "variant": "return",
+      "note": "evidence.py:3139–3269"
+    },
+    {
+      "id": "return-query",
+      "from": "core",
+      "to": "app",
+      "y": 1412,
+      "label": "QueryResult + AnswerArtifact",
+      "variant": "return",
+      "note": "application.py:754–763"
+    },
+    {
+      "id": "commit",
+      "from": "app",
+      "to": "conv",
+      "y": 1466,
+      "label": "成功：commit_turn(user + answer)",
+      "variant": "emphasis",
+      "note": "conversation/sqlite.py:247–330"
+    },
+    {
+      "id": "committed",
+      "from": "conv",
+      "to": "app",
+      "y": 1520,
+      "label": "事务完成 / 写入错误抛出",
+      "variant": "return",
+      "note": "application.py:783–829"
+    },
+    {
+      "id": "terminal",
+      "from": "app",
+      "to": "conv",
+      "y": 1574,
+      "label": "query.completed / failed / aborted",
+      "variant": "default",
+      "note": "application.py:839–875"
+    },
+    {
+      "id": "response",
+      "from": "app",
+      "to": "web",
+      "y": 1628,
+      "label": "validated answer / stream.end",
+      "variant": "return",
+      "note": "streaming.py:213–268"
+    },
+    {
+      "id": "stop",
+      "from": "web",
+      "to": "app",
+      "y": 1682,
+      "label": "可选：stop / disconnect",
+      "variant": "dashed",
+      "note": "routes.py:100–108"
+    },
+    {
+      "id": "abort",
+      "from": "app",
+      "to": "runtime",
+      "y": 1736,
+      "label": "可选：cooperative abort",
+      "variant": "dashed",
+      "note": "openai_adapter.py:1232、1316–1324"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "如何阅读",
+      "items": [
+        "从实际 Web POST 入口追踪；展示 planned 且工具检索成功的完整分支，条件行单独标注。",
+        "取消支路放在尾部方便阅读，实际可在执行期间发生，不在完成后再取消。",
+        "Router / Planner 通过 Runtime adapter 提供的 completion 回调复用模型 client；图中直连 LLM 表示该回调内的请求。"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "已实现的异常与恢复",
+      "items": [
+        "规则高置信直接选路；模糊 provider 失败保留规则并记录 degraded；Jev shadow 不控制主路由。",
+        "SoftPlanner 分类失败后无计划继续；注入组件的未知异常由 Orchestrator 记录并传播。",
+        "Runtime 的 provider 异常、预算错误、max-turn 或 aborted 跳过最终化与会话提交。",
+        "局部 Citation/字段问题可 deterministic recovery 并标 degraded；可信 scope/provenance 错误返回 failed。"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "时序与状态边界",
+      "items": [
+        "State Stores 泳道合并呈现 Conversation Store 与 Trace Store；两者是不同逻辑组件，默认使用同一 SQLite。",
+        "模型—工具循环可能多轮，也可能无工具；工具结果是候选数据，完成时才编译 Final Evidence。",
+        "Trace 写入是同步观察步骤；Store 失败记录 TRACE warning，业务可继续，不能理解为持久化保证。",
+        "AsyncOpenAI max_retries=0；Router/Planner 不自动重试。OpenCode Go 有一次条件 JSON 修复，不是通用网络重试。",
+        "Web 外层 request_id 与内部 query request_id 分别生成；不得把两个 ID 画成同一身份。"
+      ]
+    }
+  ]
+}

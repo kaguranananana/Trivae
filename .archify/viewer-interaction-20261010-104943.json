@@ -1,0 +1,89 @@
+{
+  "evidence_kind": "supplemental-viewer-interaction",
+  "checks": [
+    {
+      "type": "architecture",
+      "status": "pass",
+      "focus": "core",
+      "source": "raw",
+      "target": "canonical",
+      "facts": {
+        "focused": true,
+        "active": "core",
+        "reached": true,
+        "route": {
+          "source": "raw",
+          "target": "canonical",
+          "nodes": [
+            "raw",
+            "ingestion",
+            "canonical"
+          ],
+          "hops": 2,
+          "journey": -1,
+          "playing": false
+        },
+        "sourceBadges": 0,
+        "sourceMetadataPresent": true
+      }
+    },
+    {
+      "type": "sequence",
+      "status": "pass",
+      "focus": "runtime",
+      "source": "web",
+      "target": "finalizer",
+      "facts": {
+        "focused": true,
+        "active": "runtime",
+        "reached": true,
+        "route": {
+          "source": "web",
+          "target": "finalizer",
+          "nodes": [
+            "web",
+            "app",
+            "core",
+            "finalizer"
+          ],
+          "hops": 3,
+          "journey": -1,
+          "playing": false
+        },
+        "sourceBadges": 0,
+        "sourceMetadataPresent": true
+      }
+    },
+    {
+      "type": "dataflow",
+      "status": "pass",
+      "focus": "retrieve",
+      "source": "raw",
+      "target": "answer",
+      "facts": {
+        "focused": true,
+        "active": "retrieve",
+        "reached": true,
+        "route": {
+          "source": "raw",
+          "target": "answer",
+          "nodes": [
+            "raw",
+            "import",
+            "facts",
+            "retrieve",
+            "record",
+            "finalizer",
+            "answer"
+          ],
+          "hops": 6,
+          "journey": -1,
+          "playing": false
+        },
+        "sourceBadges": 0,
+        "sourceMetadataPresent": true
+      }
+    }
+  ],
+  "status": "pass"
+}

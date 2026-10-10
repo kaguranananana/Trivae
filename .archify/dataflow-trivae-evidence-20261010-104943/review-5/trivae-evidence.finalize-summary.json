@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "dataflow",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/dataflow-trivae-evidence-20261010-104943/candidate.json",
+    "sha256": "370ec525a7571f21220e4ab965c5290ad505927d60c63555c9f3083bdd1cf569",
+    "bytes": 12094
+  },
+  "artifact": {
+    "path": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/dataflow-trivae-evidence-20261010-104943/trivae-evidence.html",
+    "sha256": "2a1d10c2e4653fb00cd300eced033725fb7d85f6f23dae4e78c3cafd15e98cf7",
+    "bytes": 770105
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/dataflow-trivae-evidence-20261010-104943/review-5/trivae-evidence.finalize.json",
+    "summaryReceipt": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/dataflow-trivae-evidence-20261010-104943/review-5/trivae-evidence.finalize-summary.json",
+    "browserCheckReceipt": "/Users/anontokyo/Downloads/Project/Learn/Trivae/.archify/dataflow-trivae-evidence-20261010-104943/review-5/trivae-evidence.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-10T02:53:07.858Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2092
+}
