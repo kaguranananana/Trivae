@@ -1635,3 +1635,38 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Next Steps
 
 - 围绕单一time/negative真实Failure Case核实责任，先建立强GT冻结Baseline，禁止继续机械P17或放宽GT；本批剩余22HTTP不清零
+
+
+## Session 63: ChatGPT plan OAuth and real Agent verification
+
+**Date**: 2026-10-13
+**Task**: ChatGPT plan OAuth and real Agent verification
+**Branch**: `main`
+
+### Summary
+
+官方OAuth及受限Responses接入完成；gpt-6.1-sol四类生产Query与Web真实流通过，1006 tests、ruff、mypy、frontend build通过。
+
+### Main Changes
+
+- OAuth独立本机凭证、账号绑定、刷新轮换与CLI；SDK namespace/Responses白名单；实际配置与安全错误进入Trace/Evaluation。
+- 真实服务缺header、JSON input条件和args.done name差异已按实际Failure Case精确修复；Jev原配置保留。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e3b1963` | (see git log) |
+
+### Testing
+
+- [OK] 1006 passed；Ruff/Mypy全通过；pnpm web build通过；四类Query全部valid及Web100事件完成。
+- [OK] 真实日志/结果19文件检查无OAuth Token；凭证0600；自然过期refresh与logout由Mock验证。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 当前macOS接入可用；其它操作系统、长期额度与模型质量Benchmark未验证。
