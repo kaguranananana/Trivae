@@ -42,6 +42,12 @@ class LLMRetrievalAnnotator:
     def __init__(self, settings: ModelSettings) -> None:
         if not isinstance(settings, ModelSettings):
             raise EvaluationContractError("LLMRetrievalAnnotator requires ModelSettings")
+        # 此独立工具使用 Chat Completions，不能把订阅 OAuth 当成传统 API key 发送。
+        if settings.provider == "chatgpt-plan":
+            raise EvaluationContractError(
+                "LLMRetrievalAnnotator does not support chatgpt-plan; "
+                "use an explicit DeepSeek or OpenCode Go API key configuration for annotation"
+            )
         self._settings = settings
 
     async def annotate(

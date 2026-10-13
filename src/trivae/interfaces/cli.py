@@ -71,6 +71,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(prog="trivae", description="Trivae high-noise chat intelligence system")
     subparsers = parser.add_subparsers(dest="command")
+    # 认证入口只配置命令，不在解析阶段读取凭证、创建数据库或打开浏览器。
+    from trivae.interfaces.auth_cli import configure_auth_parser
+
+    configure_auth_parser(subparsers)
     import_parser = subparsers.add_parser("import", help="Import QQ chat exports into the Canonical Store")
     import_parser.add_argument(
         "--raw-dir",
@@ -2123,6 +2127,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "auth":
+        # OAuth 生命周期由独立认证模块拥有，CLI 不接触或打印 Token。
+        from trivae.interfaces.auth_cli import run_auth_command
+
+        return run_auth_command(args)
     if args.command == "chat":
         return _run_chat_command(args)
     if args.command == "web":

@@ -285,6 +285,8 @@ def query_result_snapshot(result: QueryResult | None) -> dict[str, object] | Non
                 "category": runtime_error.category,
                 "diagnostic_type": runtime_error.diagnostic_type,
                 "exception_type": runtime_error.exception_type,
+                # Runtime boundary 已完成脱敏；保存可定位原因，不仅保留异常类型。
+                "message": runtime_error.message,
             },
         },
         "finalization_error": None
@@ -401,6 +403,21 @@ def operational_measurements(
         limitations: list[str] = []
         coverage_statuses: list[str] = []
         for item in trace.timeline:
+            # 配置来自本轮 Runtime 的安全 Trace projection，不能用 frozen Variant 冒充实际设置。
+            if item.operation == "runtime.configuration" and item.phase == "completed":
+                measurements["model_configuration"] = dict(item.payload)
+            # Router/Planner terminal Provider 错误会在 Runtime 前停止，身份只能来自本轮安全 Trace。
+            if result is None and item.operation == "query.failed" and item.phase == "failed":
+                payload = item.payload
+                # 未返回 QueryResult 时不把 frozen Variant 声明代替实际 Provider 观测。
+                for name in ("provider", "model", "error_code", "error_message"):
+                    if isinstance(payload.get(name), str):
+                        measurements[name] = payload[name]
+                # 请求参数与传输错误已由边界脱敏；没有观测时保持缺失，不构造成功 usage。
+                for name in ("completion_request", "provider_observation"):
+                    observation = payload.get(name)
+                    if isinstance(observation, Mapping):
+                        measurements[name] = dict(observation)
             limitations.extend(item.limitations)
             coverage = item.payload.get("coverage")
             if isinstance(coverage, Mapping):

@@ -16,6 +16,7 @@ from typing import Any, Literal, cast
 from agents import Agent, MaxTurnsExceeded, RunConfig, RunHooks, Runner, set_tracing_disabled
 from agents.model_settings import ModelSettings as SDKModelSettings
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+from agents.tool import tool_namespace
 from openai import AsyncOpenAI
 
 from trivae.capabilities.registry import CapabilityRegistry
@@ -27,6 +28,13 @@ from trivae.query.runtime.budget import (
     ToolResultBudgetConfig,
     ToolResultBudgetError,
     ToolResultBudgetExhausted,
+)
+from trivae.query.runtime.chatgpt_responses import (
+    ChatGPTAuth,
+    ChatGPTResponsesError,
+    ChatGPTResponsesModel,
+    json_mode_input,
+    project_response_usage,
 )
 from trivae.query.runtime.contracts import (
     AgentRunRequest,
@@ -821,11 +829,13 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         # 达到产品预算后，下一次模型调用必须保持无工具状态。
         if self._state.finalizing:
             agent.tools.clear()
+        # ChatGPT HTTP 边界会加入 JSON 协议前缀，Trace 必须投影同一实际 model-visible input。
+        visible_input_items = json_mode_input(input_items) if self._state.provider == "chatgpt-plan" else input_items
         self._state.pending.append(
             _PendingEvent(
                 "turn_started",
                 tool_round=self._state.tool_rounds + 1,
-                model_visible_context=self._project_model_visible_context(system_prompt, input_items),
+                model_visible_context=self._project_model_visible_context(system_prompt, visible_input_items),
             )
         )
 
@@ -1019,12 +1029,14 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         model_name: str | None = None,
         max_turns: int | None = None,
         max_tool_rounds: int | None = None,
+        chatgpt_auth: ChatGPTAuth | None = None,
     ) -> None:
         """真实 provider 延迟到 runtime 构造时创建；注入模型不需要密钥。"""
 
         self.capability_registry = capability_registry
         self._provider_client: AsyncOpenAI | None = None
         self._closed = False
+        self._chatgpt_auth = chatgpt_auth
         runtime_settings = settings
         if model is None:
             # 只有显式创建真实 runtime 时才读取密钥并创建外部 client。
@@ -1103,6 +1115,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             ),
         )
 
+        self._runtime_settings = runtime_settings
         self.max_turns = configured_max_turns if max_turns is None else max_turns
         self.max_tool_rounds = (
             configured_max_tool_rounds if max_tool_rounds is None else max_tool_rounds
@@ -1130,11 +1143,26 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         ):
             raise ValueError("completion_max_tokens must be a positive integer")
 
-    def _build_openai_compatible_model(self, settings: ModelSettings) -> tuple[Any, AsyncOpenAI]:
+    def _build_openai_compatible_model(self, settings: ModelSettings) -> tuple[Any, AsyncOpenAI | None]:
         """构造并保留兼容 Chat Completions 的 client，供 runtime 和 aclose 共用。"""
 
         # M4 没有 Trivae Trace backend；显式关闭 hosted tracing，避免产生额外外部依赖。
         set_tracing_disabled(True)
+        if settings.provider == "chatgpt-plan":
+            # OAuth 只存在独立认证管理器，不放进 Settings、Agent 或 hosted tracing。
+            if self._chatgpt_auth is None:
+                from trivae.auth import ChatGPTAuthManager
+                self._chatgpt_auth = ChatGPTAuthManager()
+            def observe(observation: Mapping[str, object]) -> None:
+                # 每次读取当前任务的 ContextVar，避免复用 Runtime 时串联 Query。
+                observer = _PROVIDER_RESPONSE_OBSERVER.get()
+                if observer is not None:
+                    observer(observation)
+
+            chatgpt_model = ChatGPTResponsesModel(
+                model=settings.model_name, auth=self._chatgpt_auth, observer=observe,
+            )
+            return chatgpt_model, None
         # OpenCode Go 要求每个客户端声明稳定 session 和自有 User-Agent，否则请求不会进入 Go 通道。
         default_headers = (
             {"x-opencode-session": "trivae-runtime", "User-Agent": "trivae/0.1.0"}
@@ -1158,6 +1186,34 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             openai_client=client,
         )
         return model, client
+
+    def safe_configuration(self) -> dict[str, object]:
+        """返回实际 Runtime 配置的安全快照，供 Trace/Evaluation 同源记录。"""
+
+        settings = self._runtime_settings
+        configuration: dict[str, object] = {
+            "identity": {"provider": self._provider_name, "model_name": self._model_name,
+                         "base_url": settings.base_url if settings is not None else None},
+            "local_budgets": {"max_turns": self.max_turns, "max_tool_rounds": self.max_tool_rounds,
+                              "max_output_tokens": self.max_output_tokens,
+                              "completion_max_tokens": self.completion_max_tokens},
+        }
+        if settings is not None:
+            # 将原配置分组，避免 normal Trace 的集合边界截掉协议身份或预算事实。
+            safe = settings.to_safe_dict()
+            configuration["tool_result_budget"] = {
+                name: value for name, value in safe.items()
+                if name.startswith(("tool_result_", "model_context_", "per_call_", "run_tool_"))
+            }
+        if self._provider_name == "chatgpt-plan":
+            configuration["protocol"] = {
+                "auth_mode": "chatgpt_oauth", "name": "responses", "store": False, "stream": True,
+                "server_max_tokens_allowed": False,
+            }
+        else:
+            configuration["protocol"] = {"name": "chat_completions"}
+
+        return configuration
 
     async def run(self, request: AgentRunRequest) -> RuntimeResult:
         """完整消费 stream，并返回其中最后一个 terminal result。"""
@@ -1412,12 +1468,14 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 )
                 yield self._event(state, "aborted", result=result)
                 return
+            # ChatGPT 异常已在 HTTP 边界脱敏，必须保留 Provider 的真实错误代码和原因。
+            safe_chatgpt_error = exc if isinstance(exc, ChatGPTResponsesError) else None
             # 对外只保留稳定 code/type；原始异常正文可能含 key、请求体或 provider 敏感内容。
             result = self._failed_result(
                 context,
                 state,
-                "RUNTIME_ERROR",
-                "agent runtime execution failed",
+                safe_chatgpt_error.code if safe_chatgpt_error else "RUNTIME_ERROR",
+                str(exc) if safe_chatgpt_error else "agent runtime execution failed",
                 category="terminal",
                 diagnostic_type=type(exc).__name__,
                 exception_type=type(exc).__name__,
@@ -1533,17 +1591,23 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         reasoning_effort = self._resolved_reasoning_effort()
         reasoning = None if reasoning_effort is None else {"effort": reasoning_effort}
 
+        if self._provider_name == "chatgpt-plan":
+            # SDK 的公开 namespace API 同时约束 payload 与 Runner dispatch，不拼接函数名。
+            tools = tool_namespace(name="trivae", description="Trivae local evidence tools", tools=tools)
+        sdk_settings = (
+            SDKModelSettings(store=False, reasoning={"summary": "auto"})
+            if self._provider_name == "chatgpt-plan"
+            else SDKModelSettings(
+                max_tokens=self.max_output_tokens, reasoning=reasoning,
+                extra_args={"response_format": _FINAL_SYNTHESIS_RESPONSE_FORMAT},
+            )
+        )
         return Agent(
             name="Trivae Agent",
             instructions=instructions,
             model=self._model,
             # 让兼容 Provider 透传已验证的 JSON mode；最终文本仍由 M5 finalizer 解析和验证。
-            model_settings=SDKModelSettings(
-                # JSON Output 需要显式预算；否则 provider 默认边界可能在 JSON 中间结束。
-                max_tokens=self.max_output_tokens,
-                reasoning=reasoning,
-                extra_args={"response_format": _FINAL_SYNTHESIS_RESPONSE_FORMAT},
-            ),
+            model_settings=sdk_settings,
             tools=tools,
         )
 
@@ -1617,7 +1681,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
     ) -> RuntimeEvent:
         """为每个事件分配进程内 sequence，不暴露 provider 原始 sequence。"""
 
-        if provider_observation is None and state.provider_transport_observations:
+        if (provider_observation is None and state.provider_transport_observations
+                and (self._provider_name != "chatgpt-plan" or event_type in {"failed", "aborted", "completed"})):
             # provider 在 on_llm_end 之前断流时没有 model_output 事件；失败终态仍必须带上
             # 已经观察到的 status/chunk/finish facts，避免把 provider failure 变成不可诊断黑洞。
             provider_observation = {
@@ -1758,6 +1823,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
     ) -> dict[str, object]:
         """返回 Router/Planner completion 的 provider-facing 安全请求投影。"""
 
+        if isinstance(self._model, ChatGPTResponsesModel):
+            return self._model.request_projection()
         # 这些字段是实际发送给 Chat Completions 的非敏感参数，不包含 API key/header。
         # override 只用于已验证的 Planner treatment；默认 Router 仍使用模型 registry 档位。
         effort = self._resolved_reasoning_effort() if reasoning_effort_override is None else reasoning_effort_override
@@ -1810,6 +1877,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
 
         if self._closed:
             raise RuntimeError("runtime is closed")
+        if isinstance(self._model, ChatGPTResponsesModel):
+            return await self._complete_chatgpt_text(prompt)
         if self._provider_client is None:
             raise RuntimeError("injected runtime model has no provider completion client")
         request_projection = self.completion_request_projection(
@@ -1850,6 +1919,32 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         )
         # content 非字符串时返回 None，让 SoftPlanner 将其归为 provider response 阶段失败。
         return CompletionResult(content if isinstance(content, str) else None, observation)
+
+    async def _complete_chatgpt_text(self, prompt: str) -> CompletionResult:
+        """Router/Planner 收集同一 Responses 流；JSON 和终态校验不绕过 Provider。"""
+
+        model = cast(ChatGPTResponsesModel, self._model)
+        started = perf_counter()
+        projection = model.request_projection()
+        payload = model._payload(
+            "Return only the requested JSON.", [{"role": "user", "content": prompt}],
+            SDKModelSettings(), [], None, [],
+        )
+        try:
+            response, transport = await model.collect_response(payload)
+        except ChatGPTResponsesError as exc:
+            # 错误观测使用同一安全元数据，供 Router/Planner 的原 failure contract 归因。
+            exc.completion_observation = CompletionObservation(
+                provider=self._provider_name, model=self._model_name, request=projection,
+                latency_ms=(perf_counter() - started) * 1000, transport=exc.safe_observation,
+            )
+            raise
+        content = response.output_text
+        return CompletionResult(content, CompletionObservation(
+            provider=self._provider_name, model=response.model, request=projection,
+            latency_ms=(perf_counter() - started) * 1000, finish_reason="stop",
+            usage=project_response_usage(response), response_content=content, transport=transport,
+        ))
 
     async def aclose(self) -> None:
         """幂等关闭 model 和 provider client，确保连接不会跨越 Application。"""

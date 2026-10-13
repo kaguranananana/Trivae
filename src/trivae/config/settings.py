@@ -16,8 +16,9 @@ from trivae.config.limits import (
 )
 
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+CHATGPT_PLAN_BASE_URL = "https://api.openai.com/v1"
 _DEFAULT_PROVIDER = "deepseek"
-_SUPPORTED_PROVIDERS = frozenset({"deepseek", "opencode-go"})
+_SUPPORTED_PROVIDERS = frozenset({"deepseek", "opencode-go", "chatgpt-plan"})
 _DEFAULT_MAX_TURNS = 8
 _DEFAULT_MAX_TOOL_ROUNDS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 16384
@@ -34,7 +35,7 @@ class SettingsError(ValueError):
 
 @dataclass(frozen=True)
 class ModelSettings:
-    """OpenAI-compatible Chat Completions 的配置和分离式运行预算。"""
+    """主模型配置和本地运行预算；OAuth 凭证由独立 Auth Store 持有。"""
 
     api_key: str
     base_url: str
@@ -51,6 +52,18 @@ class ModelSettings:
     run_tool_evidence_percent: int = DEFAULT_RUN_TOOL_EVIDENCE_PERCENT
     run_tool_evidence_cap: int = DEFAULT_RUN_TOOL_EVIDENCE_CAP
     run_tool_evidence_budget: int | None = None
+
+    def __post_init__(self) -> None:
+        """ChatGPT 订阅模式固定公开端点，直接构造也不能混入 API key。"""
+
+        # Runtime 和测试可直接构造 settings，不能只在环境变量入口约束凭证边界。
+        if self.provider == "chatgpt-plan":
+            # OAuth token 仅能由独立 Auth Store 读取；普通 API key 不参与订阅调用。
+            if self.api_key:
+                raise SettingsError("chatgpt-plan must not contain an API key; use trivae auth login")
+            # 公开 Responses 端点是协议契约，禁止将 OAuth 请求重定向到第三方服务。
+            if self.base_url != CHATGPT_PLAN_BASE_URL:
+                raise SettingsError(f"chatgpt-plan requires the official base URL {CHATGPT_PLAN_BASE_URL}")
 
     def __repr__(self) -> str:
         """调试时只显示密钥存在性，绝不显示密钥正文。"""
@@ -75,7 +88,7 @@ class ModelSettings:
     def to_safe_dict(self) -> dict[str, object]:
         """返回可用于日志或测试快照的非敏感配置。"""
 
-        return {
+        result: dict[str, object] = {
             "api_key_configured": bool(self.api_key),
             "base_url": self.base_url,
             "provider": self.provider,
@@ -92,6 +105,14 @@ class ModelSettings:
             "run_tool_evidence_cap": self.run_tool_evidence_cap,
             "run_tool_evidence_budget": self.run_tool_evidence_budget,
         }
+        # 仅为订阅模式补充协议事实，保留旧 Provider 的历史快照形态。
+        if self.provider == "chatgpt-plan":
+            result.update(
+                auth_mode="chatgpt_oauth",
+                protocol="responses",
+                server_max_tokens_allowed=False,
+            )
+        return result
 
 
 @dataclass(frozen=True)
@@ -179,22 +200,21 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
     if provider not in _SUPPORTED_PROVIDERS:
         raise SettingsError(f"unsupported model provider: {provider or '<empty>'}")
 
-    # 新 key 是唯一通用入口；只有 DeepSeek 才允许按字段读取 legacy key。
-    api_key = _provider_value(
-        values,
-        provider,
-        "TRIVAE_MODEL_API_KEY",
-        "DEEPSEEK_API_KEY",
-        label="API key",
+    # 切换订阅 Provider 时忽略已存在的传统 key，避免意外消费 API key 额度。
+    api_key = "" if provider == "chatgpt-plan" else _provider_value(
+        values, provider, "TRIVAE_MODEL_API_KEY", "DEEPSEEK_API_KEY", label="API key",
     )
 
     model_name = values.get("TRIVAE_MODEL_NAME", "").strip()
     if not model_name:
+        if provider == "chatgpt-plan":
+            raise SettingsError("TRIVAE_MODEL_NAME requires a slug from trivae auth models --provider chatgpt")
         raise SettingsError("TRIVAE_MODEL_NAME is required when the model is invoked")
 
     # 新 generic 配置必须明确 URL；仅 legacy-only DeepSeek 保留历史默认 URL。
     legacy_only_deepseek = provider == "deepseek" and "TRIVAE_MODEL_API_KEY" not in values
-    base_url = _provider_value(
+    # .env 中保存的 DeepSeek/OpenCode URL 不应污染订阅 Provider 的官方 endpoint。
+    base_url = CHATGPT_PLAN_BASE_URL if provider == "chatgpt-plan" else _provider_value(
         values,
         provider,
         "TRIVAE_MODEL_BASE_URL",

@@ -191,6 +191,9 @@ class QueryOrchestrator:
                 "shadow_latency_ms": None if decision.shadow is None else decision.shadow.latency_ms,
                 "execution_override": request.execution_override.to_dict(),
             }
+            # Responses 传输观测已经在 Provider 边界脱敏，原样贯穿唯一 Trace。
+            if decision.provider_transport is not None:
+                decision_payload["provider_observation"] = dict(decision.provider_transport)
             trace.emit(
                 stage="router",
                 operation="router.decision",
@@ -705,6 +708,9 @@ class QueryOrchestrator:
             "parse_stage": observation.parse_stage,
         }
         usage = observation.usage
+        # 成功终态和失败 status/code/request ID 共享同一非敏感传输投影。
+        if observation.provider_transport is not None:
+            payload["provider_observation"] = dict(observation.provider_transport)
         if usage is not None:
             # Provider 可能使用 output_tokens 或 completion_tokens，Trace 统一提供一个易读别名。
             for key in ("output_tokens", "completion_tokens"):

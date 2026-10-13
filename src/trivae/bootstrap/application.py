@@ -87,6 +87,7 @@ from trivae.observability.projection import project_trace
 from trivae.observability.sqlite import SQLiteImportDiagnosticsReader, SQLiteTraceStore, TraceStoreError
 from trivae.observability.text import TraceTextLogError, TraceTextLogWriter, TraceTextView
 from trivae.observability.transcript import TranscriptContextMode
+from trivae.query.completion import CompletionProviderError
 from trivae.query.contracts import QueryContractError, QueryRequest, QueryResult
 from trivae.query.evidence import MessageSource, SourceInspectionError, scope_snapshot
 from trivae.query.orchestrator import QueryOrchestrator
@@ -703,6 +704,19 @@ class TrivaeApplication:
                 },
             )
             runtime = self._get_agent_runtime()
+            # 实际模型配置由 Runtime 提供；Evaluation 的冻结声明不能冒充执行事实。
+            safe_configuration = getattr(runtime, "safe_configuration", None)
+            if callable(safe_configuration):
+                # 这里只接收 Provider-neutral 安全投影，OAuth 凭证从不进入 Application。
+                trace.emit(
+                    stage="runtime",
+                    operation="runtime.configuration",
+                    phase="completed",
+                    operation_id="runtime-configuration",
+                    parent_operation_id="query",
+                    outcome="ok",
+                    payload=safe_configuration(),
+                )
             if self._query_orchestrator is None:
                 # Router 仍只需要文本；Planner 优先使用同一 runtime 提供的 metadata-aware boundary。
                 completion = getattr(runtime, "complete_text", None)
@@ -900,20 +914,34 @@ class TrivaeApplication:
             return replace(result, conversation_id=conversation.conversation_id, trace_id=trace.trace_id)
         except Exception as exc:
             if not terminal_emitted:
+                # 只有 Provider-neutral 安全异常允许公开根因，未知异常仍沿用类型诊断。
+                safe_error = exc if isinstance(exc, CompletionProviderError) else None
+                observation = None if safe_error is None else safe_error.completion_observation
+                transport = None if observation is None else observation.transport
+                error_code = str(transport.get("error_code", "QUERY_EXCEPTION")) if transport else "QUERY_EXCEPTION"
+                failure_payload: dict[str, object] = {
+                    "exception_type": type(exc).__name__,
+                    "error_code": error_code,
+                    "error_message": "query execution failed" if safe_error is None else str(safe_error),
+                }
+                if observation is not None:
+                    # HTTP 状态、请求 ID 与公开错误形状已经在 Provider 边界完成脱敏。
+                    failure_payload.update({
+                        "provider": observation.provider,
+                        "model": observation.model,
+                        "provider_observation": transport,
+                        "completion_request": observation.request,
+                    })
                 trace.emit(
                     stage="query",
                     operation="query.failed",
                     phase="failed",
                     operation_id="query",
                     outcome="error",
-                    payload={
-                        "exception_type": type(exc).__name__,
-                        "error_code": "QUERY_EXCEPTION",
-                        "error_message": "query execution failed",
-                    },
+                    payload=failure_payload,
                     failure=FailureInfo(
-                        error_code="QUERY_EXCEPTION",
-                        origin_stage="query",
+                        error_code=error_code,
+                        origin_stage="query" if safe_error is None else safe_error.origin_stage or "query",
                         observed_stage="query",
                         category="exception",
                         handling="propagated",

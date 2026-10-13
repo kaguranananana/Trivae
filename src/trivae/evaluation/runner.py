@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Awaitable, Callable, Mapping, cast
 
 from trivae.observability.contracts import TraceProfile, TraceProjection
+from trivae.query.completion import CompletionProviderError
 from trivae.query.contracts import QueryRequest, QueryResult
 from trivae.query.evidence import scope_snapshot
 
@@ -185,8 +186,11 @@ class EvaluationRunner:
         except Exception as exc:
             raised = exc
             exception_type = type(exc).__name__
-            # 不把 provider exception 正文或可能含用户内容的 message 写入 Evaluation Store。
-            exception_message = "query executor raised before returning QueryResult"
+            # 仅 Provider-neutral 已脱敏异常可保存根因，未知 callback 仍不复制正文。
+            exception_message = (
+                str(exc) if isinstance(exc, CompletionProviderError)
+                else "query executor raised before returning QueryResult"
+            )
             trace_id = getattr(exc, "trace_id", None)
             if isinstance(trace_id, str) and trace_id:
                 try:

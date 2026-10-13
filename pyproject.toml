@@ -4,9 +4,15 @@ version = "0.1.0"
 description = "High-noise group chat intelligence analysis system"
 requires-python = ">=3.12"
 dependencies = [
+    # OAuth PKCE 使用标准协议库；不在业务层实现摘要算法。
+    "authlib>=1.6,<2",
     "fastapi>=0.141.1",
+    # OAuth 与公开 Responses HTTP/SSE 使用显式网络依赖。
+    "httpx>=0.28.1,<1",
     # 当前 streamed/cancellation contract 已按本地验证的 SDK API 固定到 0.22.0。
     "openai-agents==0.22.0",
+    # OIDC 验证签名与标准身份声明，不将未验证 JWT 作为账号身份。
+    "pyjwt[crypto]>=2.10,<3",
     # semantic index 使用 sqlite-vec；sentence-transformers 放在可选 extra，避免检索-only 启动下载模型。
     "sqlite-vec>=0.1.9,<0.2",
     # 默认 `trivae chat` 使用 Textual TUI；--plain 与非 TTY 回退到 stdout renderer。

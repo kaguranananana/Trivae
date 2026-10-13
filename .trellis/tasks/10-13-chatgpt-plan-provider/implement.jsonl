@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/project/engineering-principles.md", "reason": "根因优先与证据化交付"}
+{"file": ".trellis/spec/backend/agent-runtime-guidelines.md", "reason": "Runtime、工具预算、Completion 与 Trace 契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "显式失败与保留根因"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "测试与生产链路验证"}

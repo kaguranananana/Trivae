@@ -12,6 +12,7 @@ from typing import Literal, Protocol
 from trivae.capabilities.contracts import CapabilityMetadata
 from trivae.query.completion import (
     CompletionCallback,
+    CompletionProviderError,
     CompletionResult,
     invoke_completion,
 )
@@ -93,6 +94,8 @@ class PlannerObservation:
     # parse_stage/detail 由 Planner-owned parser 填写，明确拒绝发生在哪个 contract。
     parse_stage: str | None = None
     failure_detail_code: str | None = None
+    # 安全传输事实和规划请求分开保存，错误不伪装成请求参数。
+    provider_transport: Mapping[str, object] | None = None
 
 
 class PlannerParseError(ValueError):
@@ -207,10 +210,19 @@ class SoftPlanner:
                 observation,
             )
         except Exception as exc:
+            # 已分类 Provider 错误只携带边界脱敏后的事实，保留真实失败原因。
+            safe_error = exc if isinstance(exc, CompletionProviderError) else None
+            if safe_error is not None and safe_error.stops_inference:
+                # 订阅额度/授权故障不能通过跳过 Planner 掩盖，交由 Application 终止并记录。
+                safe_error.origin_stage = "planner"
+                raise
+            failed_completion = (
+                None if safe_error is None else CompletionResult(None, safe_error.completion_observation)
+            )
             observation = self._observation(
                 prompt,
                 started,
-                None,
+                failed_completion,
                 parse_stage="provider_request",
                 failure_detail_code="provider_exception",
             )
@@ -218,10 +230,11 @@ class SoftPlanner:
                 None,
                 PlannerFailure(
                     "generation_error",
-                    "planner completion failed",
+                    "planner completion failed" if safe_error is None else str(safe_error),
                     detail_code="provider_exception",
                     parse_stage="provider_request",
                     exception_type=type(exc).__name__,
+                    diagnostic=None if safe_error is None else str(safe_error),
                 ),
                 observation,
             )
@@ -311,6 +324,7 @@ class SoftPlanner:
             response_content=response_content,
             parse_stage=parse_stage,
             failure_detail_code=failure_detail_code,
+            provider_transport=None if completion is None else completion.transport,
         )
 
     @staticmethod

@@ -163,6 +163,12 @@ class LLMClaimJudge:
     def __init__(self, settings: ModelSettings) -> None:
         if not isinstance(settings, ModelSettings):
             raise EvaluationContractError("LLMClaimJudge requires ModelSettings")
+        # Judge 拥有独立 Chat Completions 请求，不能复用订阅授权或自动切换计费。
+        if settings.provider == "chatgpt-plan":
+            raise EvaluationContractError(
+                "LLMClaimJudge does not support chatgpt-plan; "
+                "use an explicit DeepSeek or OpenCode Go API key configuration for judging"
+            )
         self._settings = settings
 
     @property

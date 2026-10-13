@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace
 from time import perf_counter
 from typing import Literal, Mapping, Protocol
 
-from trivae.query.completion import CompletionCallback, invoke_completion
+from trivae.query.completion import CompletionCallback, CompletionProviderError, invoke_completion
 from trivae.query.contracts import QueryContext
 
 RouteName = Literal["standard_execution", "planned_execution"]
@@ -95,6 +95,8 @@ class RouteDecision:
     primary_latency_ms: float | None = None
     shadow: RouterShadowObservation | None = None
     provider_error_type: str | None = None
+    # 只接受 Provider 边界已经脱敏的传输事实，不保存凭证或原始 SDK 对象。
+    provider_transport: Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         """把 Router output 限制为两个 route 与有界的普通 metadata。"""
@@ -235,14 +237,25 @@ class RuleRouter:
             )
         except Exception as exc:
             # Provider call failure 与下面的 JSON contract failure 分开统计。
+            # 已分类异常携带安全观测；未知异常仍只保留类型，避免复制秘密正文。
+            observation = exc.completion_observation if isinstance(exc, CompletionProviderError) else None
+            if isinstance(exc, CompletionProviderError) and exc.stops_inference:
+                # 额度或权限失败必须终止本次 Query，不能继续向 Runtime 发起同样无效的请求。
+                exc.origin_stage = "router"
+                raise
             return replace(
                 static_decision,
                 degraded=True,
                 degradation_code="ROUTER_COMPLETION_PROVIDER_ERROR",
                 primary_latency_ms=_elapsed_ms(route_started),
                 provider_error_type=type(exc).__name__,
+                provider=None if observation is None else observation.provider,
+                model=None if observation is None else observation.model,
+                provider_transport=None if observation is None else observation.transport,
             )
         # 空 response、strict JSON 错误或未知 route 属于 provider output contract failure。
+        # 在 JSON 解析之前保留真实调用观测，非法模型文本也消耗了订阅额度。
+        observation = result.observation
         try:
             if not isinstance(result.content, str) or not result.content.strip():
                 raise ValueError("router completion returned no text")
@@ -253,6 +266,10 @@ class RuleRouter:
                 degraded=True,
                 degradation_code="ROUTER_COMPLETION_INVALID",
                 primary_latency_ms=_elapsed_ms(route_started),
+                usage=None if observation is None else observation.usage,
+                provider=None if observation is None else observation.provider,
+                model=None if observation is None else observation.model,
+                provider_transport=None if observation is None else observation.transport,
             )
         # Runtime completion observation 只投影实际 usage/provider/model，不保存 response text。
         observation = result.observation
@@ -262,6 +279,7 @@ class RuleRouter:
             provider=None if observation is None else observation.provider,
             model=None if observation is None else observation.model,
             primary_latency_ms=_elapsed_ms(route_started),
+            provider_transport=None if observation is None else observation.transport,
         )
 
     async def _route_jev(

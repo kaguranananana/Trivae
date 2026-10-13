@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,26 @@ class CompletionObservation:
     usage: dict[str, int | float] | None = None
     # response_content 是模型公开文本，不是 SDK raw repr；Trace profile 决定是否落盘正文。
     response_content: str | None = None
+    # transport 只携带脱敏后的 HTTP/SSE 终态、request ID 与错误诊断。
+    transport: dict[str, object] | None = None
+
+
+class CompletionProviderError(RuntimeError):
+    """Provider 显式失败，保留可供 Router/Planner Trace 使用的安全观测。"""
+
+    def __init__(
+        self,
+        message: str,
+        observation: CompletionObservation | None = None,
+        *,
+        stops_inference: bool = False,
+    ) -> None:
+        super().__init__(message)
+        self.completion_observation = observation
+        # 额度或授权失败必须终止 Query；短暂网络错误沿用既有阶段 failure contract。
+        self.stops_inference = stops_inference
+        # Router/Planner 在重抛前标记实际阶段，Application 不把 Provider 失败归错到 Query。
+        self.origin_stage: Literal["router", "planner"] | None = None
 
 
 @dataclass(frozen=True)

@@ -14,17 +14,52 @@ DatabaseStatus = Literal["ready", "unavailable"]
 
 @dataclass(frozen=True)
 class ProviderReadiness:
-    """只表示配置是否可用，不在启动时发起网络健康检查。"""
+    """表示配置与本机授权是否可用，不在启动时发起网络健康检查。"""
 
     status: ProviderStatus
     provider: str | None
     model: str | None
     error_code: str | None = None
     message: str | None = None
+    auth_mode: str | None = None
+    protocol: str | None = None
 
     @classmethod
     def from_settings(cls, settings: ModelSettings) -> ProviderReadiness:
         """从已校验 settings 创建不含密钥的 provider projection。"""
+
+        # 普通 API key Provider 保留配置预检；订阅 Provider 必须检查本机授权事实。
+        if settings.provider == "chatgpt-plan":
+            # 延迟导入避免检索-only 启动依赖 OAuth 存储；status 不发起网络请求。
+            from trivae.auth import ChatGPTAuthError, ChatGPTAuthStore
+
+            try:
+                auth = ChatGPTAuthStore().status()
+            except (ChatGPTAuthError, OSError) as exc:
+                # 损坏或不可读凭证明确暴露，不能伪装为已登录。
+                return cls(
+                    status="not_configured", provider=settings.provider, model=settings.model_name,
+                    error_code=getattr(exc, "code", type(exc).__name__), message=str(exc),
+                    auth_mode="chatgpt_oauth", protocol="responses",
+                )
+            # authenticated 同时涵盖未过期 access token 与可刷新的 session。
+            authenticated = bool(auth["authenticated"])
+            # 登录成功不等于获准消费订阅额度；scope 必须由 Auth Store 的事实判断。
+            plan_enabled = bool(auth["plan_usage_enabled"])
+            return cls(
+                status="ready" if authenticated and plan_enabled else "not_configured",
+                provider=settings.provider,
+                model=settings.model_name,
+                error_code=None if authenticated and plan_enabled else (
+                    "CHATGPT_PLAN_SCOPE_REQUIRED" if authenticated else "CHATGPT_LOGIN_REQUIRED"
+                ),
+                message=None if authenticated and plan_enabled else (
+                    "ChatGPT plan usage scopes are missing; run trivae auth login --provider chatgpt"
+                    if authenticated else "Run trivae auth login --provider chatgpt"
+                ),
+                auth_mode="chatgpt_oauth",
+                protocol="responses",
+            )
 
         return cls(
             status="ready",
@@ -47,13 +82,18 @@ class ProviderReadiness:
     def to_dict(self) -> dict[str, object]:
         """输出 safe provider 状态，不输出 API key 或原始配置对象。"""
 
-        return {
+        result: dict[str, object] = {
             "status": self.status,
             "provider": self.provider,
             "model": self.model,
             "error_code": self.error_code,
             "message": self.message,
         }
+        # 只扩展 ChatGPT projection，旧 Provider 的 readiness 输出保持原结构。
+        if self.auth_mode is not None:
+            result["auth_mode"] = self.auth_mode
+            result["protocol"] = self.protocol
+        return result
 
 
 @dataclass(frozen=True)
