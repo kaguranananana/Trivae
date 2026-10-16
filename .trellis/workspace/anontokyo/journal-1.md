@@ -1670,3 +1670,25 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Next Steps
 
 - 当前macOS接入可用；其它操作系统、长期额度与模型质量Benchmark未验证。
+
+
+## Session 64: QQ 合并转发全量检索与证据追溯验收
+
+**Date**: 2026-10-17
+**Task**: QQ 合并转发全量检索与证据追溯验收
+**Branch**: `main`
+
+### Summary
+
+实现 QQ 递归转发独立投影，接通 FTS5、Qwen semantic、Agent 与具体子消息 Citation；双时间及原始文件/记录号/父子路径可追溯。完成全库 765780 Canonical + 12484 子消息、92288 向量块与 4903 范围回读校验，原子切换索引。修复实际中断续建、dense rank28 截断、默认模型预算正文丢词，并增强真实核验避免只看候选或 handle。两个词的双工具与自然问法四项真实 Agent 均通过；1057 Python、69 Web、Ruff/Mypy 通过。23 原文件和 Canonical 计数/revision 保持不变，11 个缺正文节点明确标缺失；未修改冻结 GT/历史实验或混入其他未提交改动。详细证据见本任务归档 validation.md。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d29f3f3` | (see git log) |
+| `10e73b9` | (see git log) |
+
+### Status
+
+[OK] **Completed**
