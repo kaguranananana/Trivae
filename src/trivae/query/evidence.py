@@ -24,6 +24,7 @@ from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
 from trivae.retrieval.sql import SchemaResult, SQLQueryResult
 from trivae.retrieval.structured import (
     Coverage,
+    ForwardProvenance,
     MessageProjection,
     RetrievalResult,
     StructuredAggregateResult,
@@ -463,6 +464,12 @@ class MessageDisplaySnapshot:
     excerpt_truncated: bool
     source_message_id: str | None
     urls: tuple[str, ...] = ()
+    # 合并转发保留 occurrence 位置与原始时间，timestamp_ms 仍是当前群转发时间。
+    forward: ForwardProvenance | None = None
+    unexpanded_forward_paths: tuple[str, ...] = ()
+    # 昵称可重复，内部发送者的导出身份必须随可信快照一起持久化。
+    sender_platform_id: str | None = None
+    sender_uin: str | None = None
 
     def __post_init__(self) -> None:
         # session display、timezone 和 excerpt 都来自 trusted projection，仍需限制长度。
@@ -491,6 +498,14 @@ class MessageDisplaySnapshot:
                 for index, url in enumerate(self.urls)
             ),
         )
+        if self.forward is not None and not isinstance(self.forward, ForwardProvenance):
+            raise AnswerContractError("forward must be a ForwardProvenance or None")
+        if not isinstance(self.unexpanded_forward_paths, tuple) or any(
+            not isinstance(path, str) or not path for path in self.unexpanded_forward_paths
+        ):
+            raise AnswerContractError("unexpanded_forward_paths must contain non-empty paths")
+        for name in ("sender_platform_id", "sender_uin"):
+            object.__setattr__(self, name, _optional_text(name, getattr(self, name), max_chars=512))
 
 
 @dataclass(frozen=True)
@@ -952,6 +967,7 @@ _INCOMPLETE_ZERO_SIGNALS = frozenset(
         "tool_result_partial",
         "retrieval_partial",
         "retrieval_truncated",
+        "unexpanded_forward_content",
     }
 )
 
@@ -1342,6 +1358,9 @@ def _retrieval_limitations(status: ToolResultStatus, data: object | None, error_
             limitations.append("retrieval_truncated")
         if isinstance(coverage, Coverage) and coverage.status != "complete":
             limitations.append(f"coverage:{coverage.status}")
+        if isinstance(coverage, Coverage) and "unexpanded_forward_content" in coverage.known_gaps:
+            # 即使命中本身完整，scope 内的其他空转发节点仍是回答完整性的真实限制。
+            limitations.append("unexpanded_forward_content")
     return tuple(limitations)
 
 
@@ -1645,6 +1664,12 @@ def build_tool_result_record(
         structured_items = _sql_items(data)
 
     error_code = envelope.error.code if envelope.error is not None else None
+    limitations = _retrieval_limitations(envelope.status, data, error_code)
+    if "unexpanded_forward_content" not in limitations and any(
+        item.message.unexpanded_forward_paths for item in message_items
+    ):
+        # 缺失正文是来源事实；即使模型漏写限制，也要随当前 Tool Result 进入最终 Artifact。
+        limitations = (*limitations, "unexpanded_forward_content")
     return ToolResultRecord(
         run_id=run_id,
         tool_call_id=tool_call_id,
@@ -1655,7 +1680,7 @@ def build_tool_result_record(
         query_scope_snapshot=query_snapshot,
         message_items=message_items,
         structured_items=structured_items,
-        limitations=_retrieval_limitations(envelope.status, data, error_code),
+        limitations=limitations,
     )
 
 
@@ -1714,7 +1739,7 @@ def _model_message_projection(
     item: ToolMessageItem,
     source_id: str,
 ) -> tuple[dict[str, object], tuple[dict[str, object], bool, str, bool]]:
-    """生成不含内部 provenance 的消息 projection，并返回 budget trimming slot。"""
+    """生成正文与必要转发来源 projection，并返回 budget trimming slot。"""
 
     message = item.message
     content, model_content_truncated = _model_content(message.normalized_content)
@@ -1731,6 +1756,23 @@ def _model_message_projection(
         "content_truncated": item.content_truncated or model_content_truncated,
         "hit": item.is_hit,
     }
+    if message.forward is not None:
+        # 使用同一个 canonical provenance，模型无需从预览或相邻消息猜测父消息与作者。
+        entry["forward"] = message.forward.to_dict()
+        # 时间范围按当前群转发时间过滤，原始发送时间单独给出可直接引用的 UTC 文本。
+        entry["timestamp_semantics"] = "forwarded_at"
+        entry["original_timestamp_utc"] = (
+            None
+            if message.forward.original_timestamp is None
+            else format_timestamp_utc(message.forward.original_timestamp)
+        )
+        entry["source_message_id"] = message.source_message_id
+        entry["sender_platform_id"] = message.sender_platform_id
+        entry["sender_uin"] = message.sender_uin
+    if message.unexpanded_forward_paths:
+        # 只说明该位置没有导出正文；预览不能证明缺失子消息的具体内容。
+        entry["unexpanded_forward_paths"] = list(message.unexpanded_forward_paths)
+        entry["forward_content_limitation"] = "Exported forward messages are empty; previews are not full message content."
     # slot 只存在 Host 内存中，full_content 不会随 model payload 返回。
     return entry, (entry, item.is_hit, message.normalized_content, item.content_truncated)
 
@@ -1789,6 +1831,8 @@ def _project_model_data(
                     "context_after",
                     "expanded_candidate_messages",
                     "known_gaps",
+                    "unexpanded_forward_node_count",
+                    "unexpanded_forward_nodes",
                 }
                 metadata["details"] = {
                     name: value for name, value in raw_details.items() if name in visible_detail_names
@@ -2441,6 +2485,10 @@ def _hydrate_snapshot(
         excerpt_truncated=truncated,
         source_message_id=message.source_message_id,
         urls=source_urls or extract_urls(content),
+        forward=message.forward,
+        unexpanded_forward_paths=message.unexpanded_forward_paths,
+        sender_platform_id=message.sender_platform_id if message.forward is not None else None,
+        sender_uin=message.sender_uin if message.forward is not None else None,
     )
 
 

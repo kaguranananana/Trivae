@@ -108,6 +108,7 @@ from trivae.retrieval.semantic.contracts import (
     SemanticBuildStats,
     SemanticError,
     SemanticIndexIntegrityReport,
+    SemanticIndexStale,
     SemanticIndexStatusReport,
 )
 from trivae.retrieval.semantic.embedding import SentenceTransformerEmbeddingProvider
@@ -262,13 +263,13 @@ class TrivaeApplication:
             self._lexical_index = SQLiteLexicalIndex(self.store.database_path)
         return self._lexical_index.rebuild()
 
-    def rebuild_semantic_index(self) -> SemanticBuildStats:
-        """显式重建 Qwen3 semantic derived index；模型/向量错误不会被 lexical 结果掩盖。"""
+    def rebuild_semantic_index(self, *, resume: bool = False) -> SemanticBuildStats:
+        """显式重建或续建同一 semantic index；模型/向量错误原样暴露。"""
 
         self._ensure_open()
         if self._semantic_builder is None:
             raise RuntimeError("semantic index builder is not configured")
-        return self._semantic_builder.rebuild()
+        return self._semantic_builder.rebuild(resume=resume)
 
     def semantic_index_status(self) -> SemanticIndexStatusReport:
         """返回当前 provider/chunker 与 derived index 的可运维状态。"""
@@ -282,6 +283,7 @@ class TrivaeApplication:
             self._semantic_builder.identity,
             self._semantic_index.state(),
             canonical_count,
+            self.read_repository.canonical_revision(),
         )
 
     def validate_semantic_index(self, *, sample_size: int = 16) -> SemanticIndexIntegrityReport:
@@ -291,6 +293,10 @@ class TrivaeApplication:
         if self._semantic_builder is None or self._semantic_index is None:
             raise RuntimeError("semantic index validation is not configured")
         identity = self._semantic_builder.identity
+        # 同计数的正文/嵌套 JSON 修改也会让恢复核验失效，不能报告旧向量为有效。
+        state = self._semantic_index.state()
+        if state is not None and state.canonical_revision != self.read_repository.canonical_revision():
+            raise SemanticIndexStale("canonical messages changed; rebuild semantic index before validation")
         report = self._semantic_index.integrity_report(identity, sample_size=sample_size)
         ranges = self._semantic_index.sample_ranges(identity, sample_size=sample_size)
         recovered = 0

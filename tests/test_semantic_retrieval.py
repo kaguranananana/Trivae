@@ -116,7 +116,7 @@ class SemanticRetrievalTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.limit: int | None = None
 
-            def expand_ranges(self, ranges, before, after, limit):
+            def expand_ranges(self, ranges, before, after, limit, *, scope=None):
                 # 只记录 Retrieval 传入的 transport bound，不重新实现 context merge。
                 self.limit = limit
                 return ContextExpansionResult((), False, False, 0)
@@ -124,6 +124,12 @@ class SemanticRetrievalTests(unittest.TestCase):
         class Repository:
             def count_messages(self, query) -> int:
                 return 1
+
+            def canonical_revision(self) -> int:
+                return 0
+
+            def forward_content_gaps(self, scope) -> tuple[str, ...]:
+                return ()
 
             def read_message_range(self, session_id, start_message_id, end_message_id, limit):
                 return (
@@ -190,6 +196,9 @@ class SemanticRetrievalTests(unittest.TestCase):
             chunk_count=1,
             last_error=None,
             updated_at=1,
+            canonical_revision=0,
+            forwarded_message_count=0,
+            indexed_forwarded_message_count=0,
         )
 
         retrieval.search(

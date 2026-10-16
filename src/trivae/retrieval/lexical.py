@@ -13,6 +13,7 @@ from trivae.retrieval.structured import (
     LexicalQuery,
     RetrievalMetadata,
     RetrievalResult,
+    ScopeFilters,
 )
 
 
@@ -34,7 +35,14 @@ class LexicalRetrieval:
             before=query.context_before,
             after=query.context_after,
             limit=query.limit if query.limit is not None else 0,
+            # 邻居可来自其他发送者，但群聊与外层转发时间不得越过用户的查询范围。
+            scope=ScopeFilters(
+                session_ids=query.session_ids,
+                start_timestamp=query.start_timestamp,
+                end_timestamp=query.end_timestamp,
+            ),
         )
+        gaps = self.repository.forward_content_gaps(query)
         latency_ms = (perf_counter() - started) * 1000
 
         # total_hits 超过本次 bounded hit fetch 时，不能声称所有真实 hit 都已返回。
@@ -48,7 +56,11 @@ class LexicalRetrieval:
             expanded_messages=expansion.messages,
             total_hits=total_hits,
             returned_messages=len(expansion.messages),
-            coverage=Coverage(status="complete", basis="canonical_plus_lexical_index"),
+            coverage=Coverage(
+                status="partial" if gaps else "complete",
+                basis="canonical_plus_lexical_index",
+                known_gaps=("unexpanded_forward_content",) if gaps else (),
+            ),
             partial=partial,
             truncated=truncated,
             metadata=RetrievalMetadata(
@@ -62,6 +74,8 @@ class LexicalRetrieval:
                     "context_after": query.context_after,
                     "context_source_hits": expansion.context_source_hits,
                     "context_source_budget": MAX_AUTOMATIC_CONTEXT_SOURCE_HITS,
+                    "unexpanded_forward_nodes": len(gaps),
+                    "unexpanded_forward_locations": gaps[:20],
                 },
             ),
         )

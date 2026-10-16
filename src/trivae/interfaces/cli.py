@@ -63,7 +63,7 @@ from trivae.retrieval.semantic.contracts import (
     SemanticIndexStatusReport,
     SemanticRetrievalResult,
 )
-from trivae.retrieval.structured import RetrievalError
+from trivae.retrieval.structured import ForwardProvenance, RetrievalError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -430,6 +430,11 @@ def build_parser() -> argparse.ArgumentParser:
     semantic_rebuild_parser = semantic_subparsers.add_parser(
         "rebuild",
         help="Explicitly rebuild the semantic derived index",
+    )
+    semantic_rebuild_parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume an unfinished index with exactly matching source and index identity",
     )
     semantic_smoke_parser = semantic_subparsers.add_parser(
         "smoke",
@@ -1219,7 +1224,8 @@ def _run_semantic_command(args: argparse.Namespace) -> int:
             rebuild: dict[str, object] | None = None
             integrity: dict[str, object] | None = None
             if args.semantic_command == "rebuild":
-                rebuild = application.rebuild_semantic_index().to_dict()
+                # 续建必须由用户显式选择；默认 rebuild 仍然清空并重建派生索引。
+                rebuild = application.rebuild_semantic_index(resume=args.resume).to_dict()
                 integrity = application.validate_semantic_index().to_dict()
             elif args.semantic_command == "smoke" and args.rebuild:
                 rebuild = application.rebuild_semantic_index().to_dict()
@@ -1576,14 +1582,25 @@ def _print_source_block(
                 output_fn(f"{summary.index}. message source metadata unavailable")
                 continue
             author = snapshot.author_display or "unknown author"
+            time_label = "forwarded at " if snapshot.forward is not None else ""
             rendered = (
                 f"{summary.index}. message · {snapshot.session_display} · "
-                f"{author} · {_format_timestamp(snapshot.timestamp_ms, snapshot.timezone)} · "
+                f"{author} · {time_label}{_format_timestamp(snapshot.timestamp_ms, snapshot.timezone)} · "
                 f"{_bounded_cli_text(snapshot.excerpt, 240)}"
             )
             if verbose:
                 rendered += f" · {reference.internal_message_id}"
             output_fn(rendered)
+            if snapshot.forward is not None:
+                _print_forward_details(
+                    snapshot.forward,
+                    source_message_id=snapshot.source_message_id,
+                    sender_platform_id=snapshot.sender_platform_id,
+                    sender_uin=snapshot.sender_uin,
+                    output_fn=output_fn,
+                )
+            for path in snapshot.unexpanded_forward_paths:
+                output_fn(f"   Missing forward content: {path} · exported messages=[]; preview is incomplete")
             for url in snapshot.urls:
                 output_fn(f"   URL: {url}")
             continue
@@ -1660,6 +1677,7 @@ def _answer_limitations(artifact: AnswerArtifact) -> tuple[str, ...]:
         "tool_result_partial": "a tool returned partial results",
         "retrieval_partial": "retrieval was partial",
         "retrieval_truncated": "retrieval was truncated",
+        "unexpanded_forward_content": "some forwarded nodes have no exported messages; previews do not establish their content",
     }
     rendered: list[str] = []
     for limitation in artifact.limitations:
@@ -1676,6 +1694,36 @@ def _format_timestamp(timestamp_ms: int, timezone_name: str) -> str:
 
     rendered = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat(timespec="seconds")
     return f"{rendered} ({timezone_name})"
+
+
+def _print_forward_details(
+    forward: ForwardProvenance,
+    *,
+    source_message_id: str | None,
+    sender_platform_id: str | None,
+    sender_uin: str | None,
+    output_fn: Callable[[str], None],
+) -> None:
+    """来源摘要和 drill-down 共同展示 canonical 的父子链与原始时间。"""
+
+    original_time = (
+        "unknown"
+        if forward.original_timestamp is None
+        else _format_timestamp(forward.original_timestamp, "UTC")
+    )
+    output_fn(f"   Original sent at: {original_time}")
+    output_fn(
+        f"   Forward: root={forward.root_message_id} · root source ID={forward.root_source_message_id or 'unknown'} · "
+        f"parent={forward.parent_message_id} · {forward.path}"
+    )
+    output_fn(
+        f"   Original message: ID={source_message_id or 'unknown'} · "
+        f"sender={sender_platform_id or 'unknown'} · UIN={sender_uin or 'unknown'}"
+    )
+    if forward.source_file is not None:
+        # 只显示文件名，record index 与 JSON 路径可定位到导出文件内的原始记录。
+        record = f"messages[{forward.source_record_index}]" if forward.source_record_index is not None else "record unknown"
+        output_fn(f"   Export: {Path(forward.source_file).name} · {record}.{forward.path}")
 
 
 def _print_source_detail(
@@ -1713,10 +1761,21 @@ def _print_source_detail(
         marker = ">" if message.internal_message_id == reference.internal_message_id else " "
         author = message.sender_name or message.sender_user_id or "unknown author"
         excerpt = _bounded_cli_text(message.normalized_content, 480)
+        time_label = "forwarded at " if message.forward is not None else ""
         output_fn(
             f"{marker} {message.session_display} · {author} · "
-            f"{_format_timestamp(message.timestamp, 'UTC')} · {excerpt}"
+            f"{time_label}{_format_timestamp(message.timestamp, 'UTC')} · {excerpt}"
         )
+        if message.forward is not None:
+            _print_forward_details(
+                message.forward,
+                source_message_id=message.source_message_id,
+                sender_platform_id=message.sender_platform_id,
+                sender_uin=message.sender_uin,
+                output_fn=output_fn,
+            )
+        for path in message.unexpanded_forward_paths:
+            output_fn(f"   Missing forward content: {path} · exported messages=[]; preview is incomplete")
         if verbose and marker == ">":
             output_fn(f"  message_id: {message.internal_message_id}")
 

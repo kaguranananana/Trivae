@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 from time import perf_counter
 from typing import Literal
 
+from trivae.data.ingestion.qq_forward import (
+    FORWARD_PROJECTION_VERSION,
+    ForwardMessageTree,
+    project_forward_tree,
+    split_forward_message_id,
+)
 from trivae.data.model import ChatSession
+from trivae.data.storage.sqlite_forward import FORWARD_CONTENT_PREDICATE
 from trivae.data.storage.sqlite_lexical_text import FTS_TOKENIZER_STRATEGY_ID, normalize_lexical_query_term
 from trivae.retrieval.identity import (
     FindMembersResult,
@@ -49,7 +57,7 @@ from trivae.retrieval.structured import (
 )
 
 # 只允许这些 canonical 列穿过 data/storage 到 Retrieval projection。
-PROJECTION_COLUMNS = """
+PROJECTION_COLUMNS = f"""
     m.internal_message_id,
     m.session_id,
     s.name AS session_display,
@@ -64,7 +72,12 @@ PROJECTION_COLUMNS = """
     m.content_text,
     m.reply_to_source_message_id,
     m.recalled,
-    m.system
+    m.system,
+    CASE WHEN {FORWARD_CONTENT_PREDICATE} THEN m.content_json END AS forward_content_json,
+    CASE WHEN {FORWARD_CONTENT_PREDICATE} THEN (
+        SELECT file_name FROM sources WHERE source_id = m.canonical_source_id
+    ) END AS forward_source_file,
+    m.canonical_source_record_index AS forward_source_record_index
 """
 
 # 显式把 NULL seq 分到有 seq 之后；不能依赖 SQLite 的默认 NULL 排序。
@@ -340,10 +353,10 @@ def _where_clause(scope: ScopeFilters, alias: str = "m") -> tuple[str, list[obje
     return (" AND ".join(clauses) if clauses else "1 = 1"), parameters
 
 
-def _row_to_projection(row: sqlite3.Row) -> MessageProjection:
-    """把限定列转换为 retrieval-owned projection，不返回 sqlite3.Row。"""
+def _row_to_forward_tree(row: sqlite3.Row) -> ForwardMessageTree:
+    """canonical root 是唯一事实来源；JSON 只在 storage 边界内参与子消息恢复。"""
 
-    return MessageProjection(
+    projection = MessageProjection(
         internal_message_id=str(row["internal_message_id"]),
         session_id=str(row["session_id"]),
         session_display=str(row["session_display"] or ""),
@@ -360,6 +373,20 @@ def _row_to_projection(row: sqlite3.Row) -> MessageProjection:
         recalled=bool(row["recalled"]),
         system=bool(row["system"]),
     )
+    if row["forward_content_json"] is None:
+        return ForwardMessageTree(root=projection, messages=())
+    return project_forward_tree(
+        projection,
+        json.loads(row["forward_content_json"]),
+        source_file=row["forward_source_file"],
+        source_record_index=int(row["forward_source_record_index"]),
+    )
+
+
+def _row_to_projection(row: sqlite3.Row) -> MessageProjection:
+    """把限定列转换为 retrieval-owned projection，不返回 sqlite3.Row 或 raw JSON。"""
+
+    return _row_to_forward_tree(row).root
 
 
 def _fts_match_expression(query: LexicalQuery) -> str:
@@ -546,6 +573,8 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA query_only = ON")
         self._connection.execute("PRAGMA foreign_keys = ON")
+        # 只缓存缺失路径与计数，不缓存消息正文；canonical revision 改变即整批失效。
+        self._forward_inventory: tuple[int, int, tuple[tuple[str, int, str], ...]] | None = None
 
     def close(self) -> None:
         """释放独立 read connection；Application 负责调用此生命周期方法。"""
@@ -810,6 +839,8 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
 
         if not isinstance(internal_message_id, str) or not internal_message_id:
             raise ValueError("internal_message_id must be a non-empty string")
+        locator = split_forward_message_id(internal_message_id)
+        root_id = internal_message_id if locator is None else locator[0]
         row = self._connection.execute(
             f"""
             SELECT {PROJECTION_COLUMNS}
@@ -817,9 +848,95 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
             WHERE m.internal_message_id = ?
             """,
-            (internal_message_id,),
+            (root_id,),
         ).fetchone()
-        return None if row is None else _row_to_projection(row)
+        if row is None:
+            return None
+        tree = _row_to_forward_tree(row)
+        if locator is None:
+            return tree.root
+        # 不查询 forwarded_messages 正文；由 root 的原始 JSON 逐条恢复并核对 occurrence。
+        return next((message for message in tree.messages if message.internal_message_id == internal_message_id), None)
+
+    def canonical_revision(self) -> int:
+        """动态读取单调版本，索引不能接受缺少变更追踪的数据库。"""
+
+        try:
+            row = self._connection.execute(
+                "SELECT value FROM trivae_derived_meta WHERE key = 'canonical_revision'"
+            ).fetchone()
+        except sqlite3.OperationalError as exc:
+            raise RetrievalError("Canonical revision is unavailable; initialize the canonical store first") from exc
+        if row is None:
+            raise RetrievalError("Canonical revision is unavailable; initialize the canonical store first")
+        return int(row["value"])
+
+    def _iter_forward_trees(
+        self,
+        batch_size: int,
+        scope: ScopeFilters | None = None,
+    ) -> Iterator[ForwardMessageTree]:
+        """只读取包含 forward element 的 canonical roots，并保留 first-wins 来源。"""
+
+        if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
+            raise ValueError("forward batch_size must be positive")
+        where_sql, parameters = _where_clause(scope or ScopeFilters())
+        cursor = self._connection.execute(
+            f"""
+            SELECT {PROJECTION_COLUMNS}
+            FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE {FORWARD_CONTENT_PREDICATE} AND {where_sql}
+            ORDER BY m.session_id ASC, {ORDER_BY_SQL}
+            """,
+            parameters,
+        )
+        while rows := cursor.fetchmany(batch_size):
+            for row in rows:
+                yield _row_to_forward_tree(row)
+
+    def iter_forwarded_messages(self, batch_size: int) -> Iterator[MessageProjection]:
+        """semantic 使用独立 DFS 流；无需先建立 FTS 或信任派生正文。"""
+
+        for tree in self._iter_forward_trees(batch_size):
+            yield from tree.messages
+
+    def count_forwarded_messages(self) -> int:
+        """统计转发 occurrence；不把它混入普通消息数量与成员事实。"""
+
+        return self._read_forward_inventory()[1]
+
+    def _read_forward_inventory(self) -> tuple[int, int, tuple[tuple[str, int, str], ...]]:
+        """一次遍历建立轻量覆盖清单，避免每次检索重新解析全库 JSON。"""
+
+        revision = self.canonical_revision()
+        if self._forward_inventory is not None and self._forward_inventory[0] == revision:
+            return self._forward_inventory
+        count = 0
+        gaps: list[tuple[str, int, str]] = []
+        for tree in self._iter_forward_trees(256):
+            count += len(tree.messages)
+            gaps.extend(
+                (tree.root.session_id, tree.root.timestamp, f"{tree.root.internal_message_id}:{path}")
+                for path in tree.root.unexpanded_forward_paths
+            )
+        # 版本跨遍历变化意味着无法给出一致覆盖事实，必须让调用方看到失败。
+        if self.canonical_revision() != revision:
+            raise RetrievalError("Canonical messages changed while reading forward coverage")
+        self._forward_inventory = (revision, count, tuple(gaps))
+        return self._forward_inventory
+
+    def forward_content_gaps(self, scope: ScopeFilters) -> tuple[str, ...]:
+        """按当前群和转发时间表达导出缺失，即使查询零命中也不宣称完整覆盖。"""
+
+        # 缺失正文无法证明发送者或类型，覆盖事实只受已知的外层群聊/时间范围约束。
+        return tuple(
+            locator
+            for session_id, timestamp, locator in self._read_forward_inventory()[2]
+            if (scope.session_ids is None or session_id in scope.session_ids)
+            and (scope.start_timestamp is None or timestamp >= scope.start_timestamp)
+            and (scope.end_timestamp is None or timestamp < scope.end_timestamp)
+        )
 
     def iter_semantic_messages(self, batch_size: int) -> Iterator[MessageProjection]:
         """以 cursor/fetchmany 流式读取全量 canonical projection，避免 build 一次性载入消息。"""
@@ -908,63 +1025,97 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
                 f" (expected {FTS_TOKENIZER_STRATEGY_ID}, found {observed})"
             )
 
+        metadata = {
+            str(row["key"]): str(row["value"])
+            for row in self._connection.execute(
+                "SELECT key, value FROM trivae_derived_meta WHERE key LIKE 'lexical_%'"
+            ).fetchall()
+        }
+        if metadata.get("lexical_forward_projection") != FORWARD_PROJECTION_VERSION:
+            raise LexicalIndexError("messages_fts forward projection is stale; rebuild the derived index")
+        projection_table = self._connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forwarded_messages'"
+        ).fetchone()
+        if projection_table is None:
+            raise LexicalIndexError("Forward occurrence projection is unavailable; rebuild the derived index")
+        if metadata.get("lexical_canonical_revision") != str(self.canonical_revision()):
+            raise LexicalIndexError("messages_fts canonical revision is stale; rebuild the derived index")
         fts_count_row = self._connection.execute("SELECT COUNT(*) AS total FROM messages_fts").fetchone()
         canonical_count_row = self._connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()
-        if fts_count_row is None or canonical_count_row is None:
+        forward_count_row = self._connection.execute("SELECT COUNT(*) AS total FROM forwarded_messages").fetchone()
+        if fts_count_row is None or canonical_count_row is None or forward_count_row is None:
             raise RetrievalError("Lexical readiness check returned no scalar row")
-        if int(fts_count_row["total"]) != int(canonical_count_row["total"]):
+        canonical_count = int(canonical_count_row["total"])
+        forward_count = int(forward_count_row["total"])
+        if (
+            metadata.get("lexical_canonical_count") != str(canonical_count)
+            or metadata.get("lexical_forwarded_count") != str(forward_count)
+            or int(fts_count_row["total"]) != canonical_count + forward_count
+        ):
             raise LexicalIndexError("messages_fts is stale; rebuild the derived index")
 
+    def _lexical_match_union(self, query: LexicalQuery, *, scored: bool) -> tuple[str, list[object]]:
+        """普通与转发 occurrence 共用唯一 FTS；SQL scope 分别绑定到对应事实投影。"""
+
+        where_sql, parameters = _where_clause(query)
+        columns = "m.internal_message_id AS internal_message_id, m.session_id AS session_id"
+        if scored:
+            columns += (
+                ", m.timestamp, CASE WHEN m.seq IS NULL THEN 1 ELSE 0 END AS missing_seq, "
+                "COALESCE(m.seq, 0) AS order_seq, bm25(messages_fts) AS lexical_score"
+            )
+        branches = []
+        for table in ("messages", "forwarded_messages"):
+            # 表名来自内部固定枚举；query、scope 和 ID 始终使用参数绑定。
+            branches.append(
+                f"""
+                SELECT {columns}
+                FROM messages_fts AS f
+                INNER JOIN {table} AS m
+                  ON m.internal_message_id = f.internal_message_id AND m.session_id = f.session_id
+                WHERE messages_fts MATCH ? AND {where_sql}
+                """
+            )
+        bound = [_fts_match_expression(query), *parameters]
+        return " UNION ALL ".join(branches), [*bound, *bound]
+
     def count_lexical_hits(self, query: LexicalQuery) -> int:
-        """统计 FTS 命中；scope 仍由 canonical messages predicate 约束。"""
+        """统计普通消息与各转发位置的命中，重复转发不会被正文或 source ID 合并。"""
 
         self._ensure_lexical_ready()
-        where_sql, parameters = _where_clause(query)
-        match_expression = _fts_match_expression(query)
-        row = self._connection.execute(
-            f"""
-            SELECT COUNT(*) AS total
-            FROM messages_fts AS f
-            INNER JOIN messages AS m
-              ON m.internal_message_id = f.internal_message_id
-             AND m.session_id = f.session_id
-            WHERE messages_fts MATCH ? AND {where_sql}
-            """,
-            [match_expression, *parameters],
-        ).fetchone()
+        union_sql, parameters = self._lexical_match_union(query, scored=False)
+        row = self._connection.execute(f"SELECT COUNT(*) AS total FROM ({union_sql})", parameters).fetchone()
         if row is None:
             raise RetrievalError("Lexical count returned no scalar row")
         return int(row["total"])
 
     def read_lexical_hits(self, query: LexicalQuery) -> tuple[MessageHit, ...]:
-        """从 FTS 取 score，从 canonical messages hydrate retrieval projection。"""
+        """FTS 只提供候选 ID/score，所有证据正文重新从 canonical root JSON 恢复。"""
 
         self._ensure_lexical_ready()
-        where_sql, parameters = _where_clause(query)
-        match_expression = _fts_match_expression(query)
+        union_sql, parameters = self._lexical_match_union(query, scored=True)
         rows = self._connection.execute(
             f"""
-            SELECT {PROJECTION_COLUMNS}, bm25(messages_fts) AS lexical_score
-            FROM messages_fts AS f
-            INNER JOIN messages AS m
-              ON m.internal_message_id = f.internal_message_id
-             AND m.session_id = f.session_id
-            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
-            WHERE messages_fts MATCH ? AND {where_sql}
-            ORDER BY lexical_score ASC, {ORDER_BY_SQL}
+            {union_sql}
+            ORDER BY lexical_score ASC, timestamp ASC, missing_seq ASC, order_seq ASC, internal_message_id ASC
             LIMIT ?
             """,
-            [match_expression, *parameters, query.limit],
+            [*parameters, query.limit],
         ).fetchall()
-        return tuple(
-            MessageHit(
-                message=_row_to_projection(row),
-                matched_terms=query.terms,
-                score=float(row["lexical_score"]),
-                score_type="fts5_bm25",
+        hits: list[MessageHit] = []
+        for row in rows:
+            message = self.read_message_by_id(str(row["internal_message_id"]))
+            if message is None or message.session_id != row["session_id"]:
+                raise LexicalIndexError("Lexical candidate cannot be recovered from its canonical source")
+            hits.append(
+                MessageHit(
+                    message=message,
+                    matched_terms=query.terms,
+                    score=float(row["lexical_score"]),
+                    score_type="fts5_bm25",
+                )
             )
-            for row in rows
-        )
+        return tuple(hits)
 
     def read_message_context(
         self,
@@ -1016,6 +1167,23 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             raise ValueError("context before must be non-negative")
         if isinstance(after, bool) or not isinstance(after, int) or after < 0:
             raise ValueError("context after must be non-negative")
+
+        if split_forward_message_id(internal_message_id) is not None:
+            tree, anchor = self._read_forward_anchor(session_id, internal_message_id)
+            peers = tuple(
+                message
+                for message in tree.messages
+                if message.forward is not None
+                and anchor.forward is not None
+                and message.forward.parent_message_id == anchor.forward.parent_message_id
+                and message.forward.container_path == anchor.forward.container_path
+                and self._projection_in_scope(message, scope)
+            )
+            if anchor not in peers:
+                raise RetrievalError(f"Context anchor is outside scope: {session_id}/{internal_message_id}")
+            position = peers.index(anchor)
+            # 窗口只在同一个直接转发容器内移动，不把原始群普通邻居混成内部讨论。
+            return peers[max(0, position - before):position + after + 1]
 
         scope_sql = "1 = 1"
         scope_parameters: list[object] = []
@@ -1176,6 +1344,31 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
 
         if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
             raise ValueError("message range limit must be positive")
+        if split_forward_message_id(start_message_id) is not None or split_forward_message_id(end_message_id) is not None:
+            tree, start_message = self._read_forward_anchor(session_id, start_message_id)
+            end_message = next(
+                (message for message in tree.messages if message.internal_message_id == end_message_id), None
+            )
+            if (
+                end_message is None
+                or start_message.forward is None
+                or end_message.forward is None
+                or start_message.forward.parent_message_id != end_message.forward.parent_message_id
+                or start_message.forward.container_path != end_message.forward.container_path
+            ):
+                raise RetrievalError("Forward range must stay within one root, direct parent, and forward container")
+            if start_message.seq is None or end_message.seq is None or start_message.seq > end_message.seq:
+                raise RetrievalError(f"Forward range is reversed: {start_message_id}:{end_message_id}")
+            # 子消息的 ordinal 属于转发树；不能用相同 timestamp 混入外层 canonical 消息。
+            return tuple(
+                message
+                for message in tree.messages
+                if message.forward is not None
+                and message.forward.parent_message_id == start_message.forward.parent_message_id
+                and message.forward.container_path == start_message.forward.container_path
+                and message.seq is not None
+                and start_message.seq <= message.seq <= end_message.seq
+            )[:limit]
         start = self._read_message_order(session_id, start_message_id, "range start")
         end = self._read_message_order(session_id, end_message_id, "range end")
         if self._order_key(start) > self._order_key(end):
@@ -1209,6 +1402,54 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             [session_id, *start_parameters, *end_parameters, limit],
         ).fetchall()
         return tuple(_row_to_projection(row) for row in rows)
+
+    def _read_forward_anchor(
+        self,
+        session_id: str,
+        internal_message_id: str,
+    ) -> tuple[ForwardMessageTree, MessageProjection]:
+        """根据 occurrence locator 恢复同群 canonical root，派生表不能提供证据正文。"""
+
+        locator = split_forward_message_id(internal_message_id)
+        if locator is None:
+            raise RetrievalError(f"Not a forward occurrence: {internal_message_id}")
+        row = self._connection.execute(
+            f"""
+            SELECT {PROJECTION_COLUMNS}
+            FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE m.session_id = ? AND m.internal_message_id = ?
+            """,
+            (session_id, locator[0]),
+        ).fetchone()
+        if row is None:
+            raise RetrievalError(f"Forward root not found: {session_id}/{locator[0]}")
+        tree = _row_to_forward_tree(row)
+        anchor = next(
+            (message for message in tree.messages if message.internal_message_id == internal_message_id), None
+        )
+        if anchor is None:
+            raise RetrievalError(f"Forward occurrence not found: {session_id}/{internal_message_id}")
+        return tree, anchor
+
+    @staticmethod
+    def _projection_in_scope(message: MessageProjection, scope: ScopeFilters | None) -> bool:
+        """forward scope 只比较恢复后的可信字段，时间明确使用外层转发时间。"""
+
+        if scope is None:
+            return True
+        return (
+            (scope.session_ids is None or message.session_id in scope.session_ids)
+            and (scope.start_timestamp is None or message.timestamp >= scope.start_timestamp)
+            and (scope.end_timestamp is None or message.timestamp < scope.end_timestamp)
+            and (scope.sender_user_ids is None or message.sender_user_id in scope.sender_user_ids)
+            and (scope.message_types is None or message.message_type in scope.message_types)
+            and (scope.source_message_id is None or message.source_message_id == scope.source_message_id)
+            and (
+                scope.reply_to_source_message_id is None
+                or message.reply_to_source_message_id == scope.reply_to_source_message_id
+            )
+        )
 
     def _read_message_by_id(self, session_id: str, internal_message_id: str) -> MessageProjection:
         """读取 context anchor 的限定 projection。"""

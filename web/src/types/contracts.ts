@@ -23,6 +23,17 @@ export interface ReadinessDTO {
   provider: { status: string; provider?: string | null; model?: string | null }
 }
 
+/** 子消息在当前群转发记录中的位置；original_timestamp 与外层转发时间分开。 */
+export interface ForwardProvenanceDTO {
+  root_message_id: string
+  parent_message_id: string
+  path: string
+  original_timestamp: number | null
+  root_source_message_id: string | null
+  source_file: string | null
+  source_record_index: number | null
+}
+
 export interface SourceSnapshot {
   session_display: string
   author_display: string | null
@@ -32,6 +43,10 @@ export interface SourceSnapshot {
   excerpt_truncated: boolean
   source_message_id: string | null
   urls: string[]
+  forward?: ForwardProvenanceDTO
+  unexpanded_forward_paths?: string[]
+  sender_platform_id?: string | null
+  sender_uin?: string | null
 }
 
 export interface SourceItem {
@@ -56,6 +71,13 @@ export interface ContextMessageDTO {
   timestamp: number
   content: string
   is_target: boolean
+  forward?: ForwardProvenanceDTO
+  timestamp_semantics?: 'forwarded_at'
+  original_timestamp_utc?: string | null
+  source_message_id?: string | null
+  sender_platform_id?: string | null
+  sender_uin?: string | null
+  unexpanded_forward_paths?: string[]
 }
 
 export interface ToolResultItem {

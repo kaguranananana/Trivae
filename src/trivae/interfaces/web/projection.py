@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from trivae.bootstrap.status import ApplicationReadiness
-from trivae.capabilities.contracts import ExecutionScope
+from trivae.capabilities.contracts import ExecutionScope, format_timestamp_utc
 from trivae.conversation.contracts import Conversation, ConversationMessage, ConversationSummary
 from trivae.data.model import ChatSession
 from trivae.query.evidence import (
@@ -74,7 +74,7 @@ def project_conversation_summary(summary: ConversationSummary) -> dict[str, obje
 def project_source_snapshot(snapshot: MessageDisplaySnapshot) -> dict[str, object]:
     """message citation 的可信展示快照。"""
 
-    return {
+    payload: dict[str, object] = {
         "session_display": snapshot.session_display,
         "author_display": snapshot.author_display,
         "timestamp_ms": snapshot.timestamp_ms,
@@ -84,6 +84,15 @@ def project_source_snapshot(snapshot: MessageDisplaySnapshot) -> dict[str, objec
         "source_message_id": snapshot.source_message_id,
         "urls": list(snapshot.urls),
     }
+    if snapshot.forward is not None:
+        # 来源面板只显示 Finalizer 固定下来的 occurrence，不从回答正文推断转发位置。
+        payload["forward"] = snapshot.forward.to_dict()
+    if snapshot.sender_platform_id is not None or snapshot.sender_uin is not None:
+        payload["sender_platform_id"] = snapshot.sender_platform_id
+        payload["sender_uin"] = snapshot.sender_uin
+    if snapshot.unexpanded_forward_paths:
+        payload["unexpanded_forward_paths"] = list(snapshot.unexpanded_forward_paths)
+    return payload
 
 
 def project_source_summary(summary: AnswerSourceSummary) -> dict[str, object]:
@@ -156,20 +165,33 @@ def project_context_messages(
 ) -> dict[str, object]:
     """来源上下文 drill-down；目标消息与邻居都来自 canonical read。"""
 
-    return {
-        "messages": [
-            {
-                "internal_message_id": message.internal_message_id,
-                "session_id": message.session_id,
-                "session_display": message.session_display,
-                "sender": message.sender_name or message.sender_user_id or message.sender_platform_id,
-                "timestamp": message.timestamp,
-                "content": message.normalized_content,
-                "is_target": message.internal_message_id == target_internal_message_id,
-            }
-            for message in messages[:MAX_SOURCE_CONTEXT_MESSAGES]
-        ]
-    }
+    projected: list[dict[str, object]] = []
+    for message in messages[:MAX_SOURCE_CONTEXT_MESSAGES]:
+        entry: dict[str, object] = {
+            "internal_message_id": message.internal_message_id,
+            "session_id": message.session_id,
+            "session_display": message.session_display,
+            "sender": message.sender_name or message.sender_user_id or message.sender_platform_id,
+            "timestamp": message.timestamp,
+            "content": message.normalized_content,
+            "is_target": message.internal_message_id == target_internal_message_id,
+        }
+        if message.forward is not None:
+            # drill-down 与回答来源保留相同的父子链；timestamp 仍按外层转发时间解释。
+            entry["forward"] = message.forward.to_dict()
+            entry["timestamp_semantics"] = "forwarded_at"
+            entry["original_timestamp_utc"] = (
+                None
+                if message.forward.original_timestamp is None
+                else format_timestamp_utc(message.forward.original_timestamp)
+            )
+            entry["source_message_id"] = message.source_message_id
+            entry["sender_platform_id"] = message.sender_platform_id
+            entry["sender_uin"] = message.sender_uin
+        if message.unexpanded_forward_paths:
+            entry["unexpanded_forward_paths"] = list(message.unexpanded_forward_paths)
+        projected.append(entry)
+    return {"messages": projected}
 
 
 def _json_safe(value: Any) -> Any:

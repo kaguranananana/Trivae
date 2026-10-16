@@ -12,7 +12,13 @@ from dataclasses import dataclass
 from typing import Literal, Mapping, Protocol, Sequence
 
 from trivae.config.limits import MAX_SEMANTIC_RESULT_LIMIT
-from trivae.retrieval.structured import Coverage, MessageProjection, RetrievalMetadata, ScopeFilters
+from trivae.retrieval.structured import (
+    Coverage,
+    ForwardProvenance,
+    MessageProjection,
+    RetrievalMetadata,
+    ScopeFilters,
+)
 
 
 class SemanticError(Exception):
@@ -240,6 +246,8 @@ class SemanticMessage:
     normalized_content: str
     system: bool
     recalled: bool
+    # 转发 occurrence 沿用同一个 chunker，但不能与当前群原生消息拼成对话。
+    forward: ForwardProvenance | None = None
 
     @classmethod
     def from_projection(cls, message: MessageProjection) -> SemanticMessage:
@@ -256,6 +264,7 @@ class SemanticMessage:
             normalized_content=message.normalized_content,
             system=message.system,
             recalled=message.recalled,
+            forward=message.forward,
         )
 
 
@@ -299,6 +308,10 @@ class SemanticIndexState:
     chunk_count: int
     last_error: str | None
     updated_at: int
+    # revision 检测消息数不变的正文修改；子消息进度独立于 canonical 消息数。
+    canonical_revision: int = 0
+    forwarded_message_count: int = 0
+    indexed_forwarded_message_count: int = 0
 
     def to_dict(self) -> dict[str, object]:
         """投影持久化 state，供 status CLI/Trace 使用，不暴露向量正文。"""
@@ -311,6 +324,9 @@ class SemanticIndexState:
             "chunk_count": self.chunk_count,
             "last_error": self.last_error,
             "updated_at": self.updated_at,
+            "canonical_revision": self.canonical_revision,
+            "forwarded_message_count": self.forwarded_message_count,
+            "indexed_forwarded_message_count": self.indexed_forwarded_message_count,
         }
 
 
@@ -326,6 +342,10 @@ class SemanticIndexStatusReport:
     chunk_count: int | None
     last_error: str | None
     updated_at: int | None
+    canonical_revision: int = 0
+    indexed_canonical_revision: int | None = None
+    forwarded_message_count: int | None = None
+    indexed_forwarded_message_count: int | None = None
 
     @classmethod
     def from_state(
@@ -333,6 +353,7 @@ class SemanticIndexStatusReport:
         configured_identity: SemanticIndexIdentity,
         state: SemanticIndexState | None,
         canonical_message_count: int,
+        canonical_revision: int = 0,
     ) -> SemanticIndexStatusReport:
         """由 Application 同时比较 provider identity 与 canonical watermark。"""
 
@@ -346,11 +367,14 @@ class SemanticIndexStatusReport:
                 chunk_count=None,
                 last_error=None,
                 updated_at=None,
+                canonical_revision=canonical_revision,
             )
         status: SemanticIndexAvailability = state.status
         if state.identity.serialized != configured_identity.serialized:
             status = "stale"
         elif state.canonical_message_count != canonical_message_count:
+            status = "stale"
+        elif state.canonical_revision != canonical_revision:
             status = "stale"
         return cls(
             status=status,
@@ -361,6 +385,10 @@ class SemanticIndexStatusReport:
             chunk_count=state.chunk_count,
             last_error=state.last_error,
             updated_at=state.updated_at,
+            canonical_revision=canonical_revision,
+            indexed_canonical_revision=state.canonical_revision,
+            forwarded_message_count=state.forwarded_message_count,
+            indexed_forwarded_message_count=state.indexed_forwarded_message_count,
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -377,6 +405,10 @@ class SemanticIndexStatusReport:
             "chunk_count": self.chunk_count,
             "last_error": self.last_error,
             "updated_at": self.updated_at,
+            "canonical_revision": self.canonical_revision,
+            "indexed_canonical_revision": self.indexed_canonical_revision,
+            "forwarded_message_count": self.forwarded_message_count,
+            "indexed_forwarded_message_count": self.indexed_forwarded_message_count,
         }
 
 
@@ -401,6 +433,13 @@ class SemanticBuildStats:
     elapsed_ms: float
     index_size_bytes: int
     identity: SemanticIndexIdentity
+    # 内部消息只进入派生索引；这些计数不会改变 canonical coverage 的含义。
+    forwarded_message_count: int = 0
+    indexed_forwarded_message_count: int = 0
+    eligible_forwarded_message_count: int = 0
+    semantic_void_forwarded_message_count: int = 0
+    # 续建时只复用同一 identity/revision 中逐字段匹配的已持久块。
+    reused_chunk_count: int = 0
 
     def to_dict(self) -> dict[str, object]:
         """返回 rebuild 结果的 bounded JSON projection。"""
@@ -415,6 +454,7 @@ class SemanticBuildStats:
             "chunk_count": self.chunk_count,
             "skipped_void_chunks": self.skipped_void_chunks,
             "embedding_count": self.embedding_count,
+            "reused_chunk_count": self.reused_chunk_count,
             "embedding_batch_size": self.embedding_batch_size,
             "embedding_batch_count": self.embedding_batch_count,
             "model_load_elapsed_ms": self.model_load_elapsed_ms,
@@ -429,6 +469,10 @@ class SemanticBuildStats:
             ),
             "index_size_bytes": self.index_size_bytes,
             "identity": self.identity.to_dict(),
+            "forwarded_message_count": self.forwarded_message_count,
+            "indexed_forwarded_message_count": self.indexed_forwarded_message_count,
+            "eligible_forwarded_message_count": self.eligible_forwarded_message_count,
+            "semantic_void_forwarded_message_count": self.semantic_void_forwarded_message_count,
         }
 
 
@@ -610,13 +654,33 @@ class EmbeddingProvider(Protocol):
 class SemanticIndexStore(Protocol):
     """Builder/Retrieval 依赖的 derived store 端口。"""
 
-    def start_rebuild(self, identity: SemanticIndexIdentity, canonical_message_count: int) -> None:
+    def start_rebuild(
+        self,
+        identity: SemanticIndexIdentity,
+        canonical_message_count: int,
+        *,
+        canonical_revision: int = 0,
+        forwarded_message_count: int = 0,
+    ) -> None:
         """清理旧 derived rows 并进入 building 状态。"""
 
     def insert_chunks(self, chunks: Sequence[tuple[SemanticChunk, Sequence[float]]]) -> None:
         """原子写入 chunk metadata 与向量。"""
 
-    def update_progress(self, indexed_message_count: int) -> None:
+    def begin_resume(
+        self,
+        identity: SemanticIndexIdentity,
+        canonical_message_count: int,
+        *,
+        canonical_revision: int = 0,
+        forwarded_message_count: int = 0,
+    ) -> int:
+        """严格验证未完成索引并进入 building，返回保留的实际 chunk 数。"""
+
+    def reusable_chunk_ids(self, chunks: Sequence[SemanticChunk]) -> frozenset[str]:
+        """仅返回 metadata 与重放结果完全一致、且存在对应向量的已存 chunk ID。"""
+
+    def update_progress(self, indexed_message_count: int, *, indexed_forwarded_message_count: int = 0) -> None:
         """保存已完成 canonical message 范围。"""
 
     def finish(self, status: SemanticIndexStatus, error: str | None = None) -> None:

@@ -106,7 +106,7 @@ write_variant_when_projection_differs(incoming)
 
 - `SQLiteCanonicalReadRepository` 使用独立 `mode=ro` connection 和 `PRAGMA query_only=ON`；Retrieval 不持有 Store connection，不返回 `sqlite3.Row`。
 - SQL、列选择、scope predicates、aggregate expressions、ordering 和 FTS query 全部集中在 `data/storage`；值使用 parameter binding。
-- Retrieval projection 只包含 internal/source ID、session、sender identity snapshot、timestamp、optional seq、message type、normalized content、reply locator、recalled/system；raw payload、`content_json`、`canonical_projection_json` 不出边界。
+- Retrieval projection 包含 internal/source ID、session、sender identity snapshot、timestamp、optional seq、message type、normalized content、reply locator、recalled/system，以及可选的 `forward` occurrence 来源和 `unexpanded_forward_paths`；raw payload、`content_json`、`canonical_projection_json` 不出边界。
 - source/reply message ID 必须与显式 `session_ids` 同时出现；session predicate 不能省略。时间范围为 `[start_timestamp, end_timestamp)`。
 - 消息排序显式为 timestamp、present seq、missing seq、internal ID；missing seq 的稳定顺序不代表恢复平台真实顺序。
 - `total_hits`/`returned_count`、`coverage`/`partial`/`truncated` 分别表达匹配总数、返回数、数据覆盖、内部部分完成和 bounded 截断。
@@ -115,8 +115,8 @@ write_variant_when_projection_differs(incoming)
 ### FTS5 derived index
 
 - `messages_fts` 是 SQLite FTS5 virtual table，字段为 `internal_message_id UNINDEXED`、`session_id UNINDEXED`、`source_message_id UNINDEXED` 和 `content_text`；它只服务 lexical retrieval，不是 canonical/evidence source of truth。
-- `SQLiteLexicalIndex.rebuild()` 在显式调用时从 `messages` 全量重建，失败回滚 derived transaction；删除 FTS table 不影响 canonical messages。
-- Read adapter 在 lexical 查询前比较 FTS row count 与 canonical message count；缺失或 stale index 显式返回 `RETRIEVAL_LEXICAL_INDEX`，不静默 LIKE 降级。
+- `SQLiteLexicalIndex.rebuild()` 从 `messages` 及其完整 JSON 生成 `forwarded_messages`，在同一事务替换该投影和唯一 `messages_fts`，失败回滚并保留旧索引；删除派生表不影响 canonical messages。
+- Read adapter 比较 tokenizer / forward projection 版本、canonical revision 和普通/子消息计数；FTS row count 必须等于普通消息加子消息 occurrence。缺失或 stale 显式返回 `RETRIEVAL_LEXICAL_INDEX`，不静默 LIKE 降级。
 - FTS5 当前使用 `unicode61` literal AND query；它与 LIKE 的 substring 语义不同，尤其中文命中数必须按 lexical contract 和真实校准解释，不能把两个数字当成同一集合。
 - 当前不加入自动异步同步；canonical import 后通过 `rebuild_lexical_index()` 明确重建。若后续出现 stale-index 运维 Failure Case，再由证据驱动增量同步/版本标记设计。
 
@@ -125,7 +125,7 @@ write_variant_when_projection_differs(incoming)
 - `search_messages` 是本轮最小 Tool registry 名称；Capability 继承 trusted session/time scope、验证 bound，再调用 Retrieval Core 的 lexical + automatic context expansion。
 - Tool envelope 只投影 `ok`/`partial`/`error`、`meta.truncated`、typed error 和 Retrieval Result；Tool 不执行 SQL、构造 FTS expression 或实现 context merge/order/trim。
 
-## Semantic v1 Derived Index 与 Canonical Range Contract
+## Semantic Derived Index 与 Canonical Range Contract
 
 ### 1. Scope / Trigger
 
@@ -144,8 +144,10 @@ write_variant_when_projection_differs(incoming)
 - Derived identity 必须包含 `database_identity`、provider/model、dimension、pooling、normalization、query instruction、chunker version/config；不得保存或序列化 API key、Authorization、cache path 等 secret。
 - Canonical range 的排序 tuple 固定为 `timestamp ASC`、present/missing `seq`、`internal_message_id`；range 两端 inclusive，`limit` 必须为正整数。
 - 生成 lexicographic SQL boundary 时，只有最后的 `internal_message_id` 使用调用方的 `<`/`<=`/`>`/`>=`；更高优先级字段永远使用严格方向，避免同 timestamp/seq 的前序消息越界进入 range。
-- Semantic index 缺失、identity mismatch、canonical count drift、building/failed/empty 状态必须显式返回 unavailable/stale；检索不得改写成 lexical success。
+- Semantic index 缺失、identity mismatch、canonical count / revision drift、building/failed/empty 状态必须显式返回 unavailable/stale；检索不得改写成 lexical success。v2-forward 在同一索引中分开读取普通和转发 occurrence 流，普通/子消息覆盖计数分别保存。
 - Chunk/vector row 只保存 bounded acquisition metadata；最终结果和 citation 必须从 canonical repository 恢复 `MessageProjection`。
+
+合并转发的来源身份、容器范围、双时间语义和已知缺失契约见 [Forwarded Message Guidelines](./forwarded-message-guidelines.md)。
 
 ### 4. Validation & Error Matrix
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Sequence
@@ -14,7 +15,8 @@ from trivae.retrieval.semantic.contracts import (
     SemanticQueryError,
 )
 
-SEMANTIC_CHUNKER_VERSION = "trivae-semantic-chunker-v1"
+# 新版索引加入转发 occurrence 与容器边界，旧索引必须显式重建。
+SEMANTIC_CHUNKER_VERSION = "trivae-semantic-chunker-v2-forward"
 
 
 @dataclass(frozen=True)
@@ -126,20 +128,33 @@ _VOID_CONTENT_MARKERS = frozenset(
 )
 _VOID_CONTENT_PREFIXES = ("[图片", "[语音", "[视频", "[文件", "[表情", "[动画表情", "[位置", "[名片", "[红包", "[转账")
 _VOID_MESSAGE_TYPES = frozenset({"image", "voice", "video", "file", "emoji", "location", "system", "recall"})
+# 仅去掉 QCE 已知资源占位符；图片等类型仍可携带需要检索的实际文字。
+_FORWARD_MEDIA_MARKER = re.compile(r"\[(?:图片|语音|视频|文件|表情|动画表情|位置|名片|红包|转账)(?::[^\]\n]*)?\]")
+
+
+def _semantic_content(message: SemanticMessage) -> str:
+    """转发正文按实际剩余文字判定，不让 QQ 的图片优先类型覆盖 caption。"""
+
+    content = message.normalized_content.strip()
+    if message.forward is not None:
+        return _FORWARD_MEDIA_MARKER.sub("", content).strip()
+    return content
 
 
 def is_semantic_void(message: SemanticMessage) -> bool:
     """判断消息是否应该从 embedding input 排除，但不从 canonical range 删除。"""
 
-    content = message.normalized_content.strip()
+    content = _semantic_content(message)
     if message.system or message.recalled or not content:
         return True
-    if message.message_type.lower() in _VOID_MESSAGE_TYPES:
-        return True
-    if content in _VOID_CONTENT_MARKERS:
-        return True
-    if any(content.startswith(prefix) for prefix in _VOID_CONTENT_PREFIXES):
-        return True
+    # 原生消息规则保持不变；转发只跳过纯资源占位符，不丢弃混合消息里的实际正文。
+    if message.forward is None:
+        if message.message_type.lower() in _VOID_MESSAGE_TYPES:
+            return True
+        if content in _VOID_CONTENT_MARKERS:
+            return True
+        if any(content.startswith(prefix) for prefix in _VOID_CONTENT_PREFIXES):
+            return True
     normalized = content.lower().rstrip("。.!！?？、,，~～ \t\n")
     return normalized in _VOID_FILLERS
 
@@ -147,7 +162,7 @@ def is_semantic_void(message: SemanticMessage) -> bool:
 def _effective_text(message: SemanticMessage) -> str:
     """只在派生 embedding 文本中保留有效正文。"""
 
-    return "" if is_semantic_void(message) else message.normalized_content.strip()
+    return "" if is_semantic_void(message) else _semantic_content(message)
 
 
 def _effective_chars(messages: Sequence[SemanticMessage]) -> int:
@@ -179,18 +194,28 @@ def _build_embedding_input(
         name = message.sender_name.strip() or message.sender_user_id or "unknown"
         if name not in participants:
             participants.append(name)
-    header = "\n".join(
-        (
-            f"[来源] {source}",
-            f"[时间范围] {_format_timestamp(messages[0].timestamp)} - {_format_timestamp(messages[-1].timestamp)}",
-            f"[参与者] {'、'.join(participants)}",
-        )
-    )[: config.header_max_chars]
+    # scope 时间始终来自当前群；内部原始时间只作为转发记录的独立事实。
+    forwarded = messages[0].forward is not None
+    time_label = "转发时间范围" if forwarded else "时间范围"
+    header_lines = [
+        f"[来源] {source}",
+        f"[{time_label}] {_format_timestamp(messages[0].timestamp)} - {_format_timestamp(messages[-1].timestamp)}",
+        f"[参与者] {'、'.join(participants)}",
+    ]
+    if forwarded:
+        header_lines.append("[记录类型] 合并转发内部消息；原始群聊未知")
+    header = "\n".join(header_lines)[: config.header_max_chars]
 
-    body = "\n".join(
-        f"{message.sender_name.strip() or message.sender_user_id or 'unknown'}: {_effective_text(message)}"
-        for message in effective
-    )
+    body_lines: list[str] = []
+    for message in effective:
+        sender = message.sender_name.strip() or message.sender_user_id or "unknown"
+        # 原始时间未知时明确保留缺失，不拿外层转发时间冒充内部发送时间。
+        if message.forward is not None:
+            original = message.forward.original_timestamp
+            original_time = "未知" if original is None else _format_timestamp(original)
+            sender = f"{sender}（内部原始时间 {original_time}）"
+        body_lines.append(f"{sender}: {_effective_text(message)}")
+    body = "\n".join(body_lines)
     # 先给 header，再用总长度护栏截断，保证输入一定有界。
     remaining = max(0, config.embedding_max_chars - len(header) - 2)
     return f"{header}\n\n{body[:remaining]}"[: config.embedding_max_chars]
@@ -217,6 +242,9 @@ class SemanticChunker:
 
         if previous.session_id != current.session_id:
             return True
+        # 不同转发树、不同直接父容器和原生群消息必须形成独立语义段。
+        if self._container(previous) != self._container(current):
+            return True
         if current.timestamp - previous.timestamp > self.config.parent_gap_seconds * 1000:
             return True
         if len(parent) >= self.config.parent_max_messages:
@@ -230,6 +258,8 @@ class SemanticChunker:
             return SemanticChunkResult(self.version, self.config.to_dict(), (), 0, 0)
         if any(message.session_id != parent[0].session_id for message in parent):
             raise SemanticQueryError("one parent must contain one session")
+        if any(self._container(message) != self._container(parent[0]) for message in parent):
+            raise SemanticQueryError("one parent must contain one forward container")
 
         chunks: list[SemanticChunk] = []
         skipped = 0
@@ -242,7 +272,11 @@ class SemanticChunker:
                 return
             effective_chars = _effective_chars(current)
             # 即使 threshold 配成 0，纯 void child 也不能流入 provider；canonical range 仍保留在源库。
-            if effective_chars == 0 or effective_chars < self.config.semantic_void_skip_threshold:
+            # 转发容器可能只有一条短正文；仍需索引「情感锚点」这样的真实内部内容。
+            below_native_threshold = (
+                parent[0].forward is None and effective_chars < self.config.semantic_void_skip_threshold
+            )
+            if effective_chars == 0 or below_native_threshold:
                 skipped += 1
             else:
                 parent_id = self._parent_id(parent)
@@ -320,6 +354,18 @@ class SemanticChunker:
         return (
             f"parent:{parent[0].session_id}:{parent[0].internal_message_id}:"
             f"{parent[-1].internal_message_id}:v={self.version}:config={self.config.serialized}"
+        )
+
+    @staticmethod
+    def _container(message: SemanticMessage) -> tuple[str, str, str] | None:
+        """只比较来源 occurrence，禁止把重复转发误合并成原生会话。"""
+
+        if message.forward is None:
+            return None
+        return (
+            message.forward.root_message_id,
+            message.forward.parent_message_id,
+            message.forward.container_path,
         )
 
     @staticmethod

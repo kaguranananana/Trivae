@@ -87,6 +87,34 @@ TRIVAE_MODEL_API_KEY=<你的DeepSeek_API_key>
 
 ## Evaluation 与验证
 
+QQ 合并转发支持递归检索内部正文，引用来源保留具体子消息、外层父消息、嵌套路径、内部发送者及导出记录位置。群聊和时间范围按转发到当前群的时间过滤，来源面板另外显示内部原始时间。未展开的 `messages=[]` 明确报告内容缺失，预览不能替代原文。子消息是独立检索投影，普通群消息数量及 SQL 统计口径保持不变。
+
+已有数据库升级后需显式重建 FTS5 和语义索引；无需重新导出或重新导入 QQ 文件。FTS5 使用 Application 的现有重建入口：
+
+```python
+from pathlib import Path
+from trivae.bootstrap.application import create_application
+
+# 只重建派生投影与 FTS5，保留 Canonical 消息和原始来源。
+with create_application(Path("data/trivae.sqlite3")) as application:
+    print(application.rebuild_lexical_index())
+```
+
+语义索引使用 `uv run trivae semantic rebuild --database data/trivae.sqlite3`。新旧版本或正文 revision 不匹配时显式报告 stale，不自动绕过。
+
+长跑被中断且来源和索引版本均未改变时，可显式执行 `uv run trivae semantic rebuild --resume --database data/trivae.sqlite3`，复用这次构建已完整保存的块；若使用独立构建文件，同时指定原来的 `--semantic-index`。版本或来源水位变化会拒绝续建，完成的索引也不重复续建。
+
+真实合并转发核验可使用：
+
+```sh
+uv run python scripts/verify_forward_retrieval.py \
+  --session-id qq:831907794 --keyword 远程连接 --keyword 情感锚点 \
+  --run-agent --output data/evaluation/forward-new-run
+```
+
+该命令检查 FTS5、真实 embedding、实际 Agent 工具调用、子消息引用和 Canonical 来源回读；`--run-agent` 会使用当前配置模型。输出目录必须是新目录。
+增加 `--agent-query-mode natural` 可验证未指定工具和转发类型的日常问法；默认模式明确要求实际调用 FTS5 与语义检索。
+
 生产 Evaluation Query 使用同一个 Runtime，实际配置从 `runtime.configuration` Trace 派生；历史 frozen Variant / DeepSeek Baseline 不改写。切换 Provider 必须建立新的 Variant 和结果目录，不能把模型差异解释为检索改善。独立 retrieval annotator 和 claim judge 当前使用 Chat Completions，明确拒绝 `chatgpt-plan`；运行它们时显式选用 DeepSeek 或 OpenCode Go 的配置文件，不借用 OAuth、不自动改变计费。
 
 自动化验证：

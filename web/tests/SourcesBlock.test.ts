@@ -63,6 +63,59 @@ describe('SourcesBlock', () => {
     expect(wrapper.find('ol').exists()).toBe(false)
   })
 
+  it('shows internal sender, original time, forwarded time and the precise export location', async () => {
+    // 同一个 child snapshot 同时保存两种时间，界面必须明确它们分别代表什么。
+    const forwarded: SourceItem = {
+      ...messageSource,
+      snapshot: {
+        ...messageSource.snapshot!,
+        source_message_id: 'inside-1',
+        sender_platform_id: 'u-original',
+        sender_uin: '12345',
+        forward: {
+          root_message_id: 'qq:100:outer',
+          parent_message_id: 'qq:100:outer#forward:0.1',
+          path: 'content.elements[0].data.messages[1].content.elements[0].data.messages[2]',
+          original_timestamp: 1_720_000_000_000,
+          root_source_message_id: 'outer',
+          source_file: 'raw/group(100).json',
+          source_record_index: 6235,
+        },
+      },
+    }
+    const wrapper = mount(SourcesBlock, { props: { sources: [forwarded] } })
+    await wrapper.get('button').trigger('click')
+    const text = wrapper.get('ol').text()
+
+    expect(text).toContain('转发到本群：')
+    expect(text).toContain('原始发送：')
+    expect(text).toContain(new Date(1_720_000_000_000).toLocaleString('zh-CN', { hour12: false }))
+    expect(text).toContain(new Date(messageSource.snapshot!.timestamp_ms).toLocaleString('zh-CN', { hour12: false }))
+    expect(text).toContain('内部消息 ID：inside-1')
+    expect(text).toContain('发送者 ID：u-original')
+    expect(text).toContain('QQ：12345')
+    expect(text).toContain('外层消息：qq:100:outer')
+    expect(text).toContain('直接父消息：qq:100:outer#forward:0.1')
+    expect(text).toContain('来源文件：group(100).json · messages[6235].content.elements[0]')
+    expect(text).not.toContain('raw/group(100).json')
+  })
+
+  it('states that empty exported nodes are missing without presenting the preview as content', async () => {
+    const missing: SourceItem = {
+      ...messageSource,
+      snapshot: {
+        ...messageSource.snapshot!,
+        unexpanded_forward_paths: ['content.elements[0].data.messages[2].content.elements[0]'],
+      },
+    }
+    const wrapper = mount(SourcesBlock, { props: { sources: [missing] } })
+    await wrapper.get('button').trigger('click')
+
+    expect(wrapper.get('ol').text()).toContain('导出 messages=[]；预览不能代表缺失正文')
+    expect(wrapper.get('ol').text()).toContain('content.elements[0].data.messages[2].content.elements[0]')
+    expect(wrapper.get('ol').text()).not.toContain('转发到本群：')
+  })
+
   it('keeps expansion state independent across turns and resets on replay mount', async () => {
     const firstTurn = mount(SourcesBlock, { props: { sources: [messageSource] } })
     const secondTurn = mount(SourcesBlock, { props: { sources: [structuredSource] } })

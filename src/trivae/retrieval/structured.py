@@ -367,6 +367,38 @@ class LexicalQuery(ScopeFilters):
 
 
 @dataclass(frozen=True)
+class ForwardProvenance:
+    """子消息在当前群的转发 occurrence；原始时间不替代外层 scope 时间。"""
+
+    root_message_id: str
+    parent_message_id: str
+    path: str
+    original_timestamp: int | None
+    root_source_message_id: str | None
+    source_file: str | None = None
+    source_record_index: int | None = None
+
+    @property
+    def container_path(self) -> str:
+        """同一父消息的不同 forward elements 也属于不同内部讨论窗口。"""
+
+        return self.path.rpartition(".data.messages[")[0]
+
+    def to_dict(self) -> dict[str, object]:
+        """统一跨 Tool、Evidence 和历史记录的来源字段。"""
+
+        return {
+            "root_message_id": self.root_message_id,
+            "parent_message_id": self.parent_message_id,
+            "path": self.path,
+            "original_timestamp": self.original_timestamp,
+            "root_source_message_id": self.root_source_message_id,
+            "source_file": self.source_file,
+            "source_record_index": self.source_record_index,
+        }
+
+
+@dataclass(frozen=True)
 class MessageProjection:
     """Retrieval-facing message，不暴露 SQLite row 或 raw/canonical JSON。"""
 
@@ -386,6 +418,10 @@ class MessageProjection:
     system: bool
     # session display 是可信 canonical projection 的一部分，供 Citation finalizer hydrate 快照。
     session_display: str = ""
+    # 转发 occurrence 不进入 canonical messages，证据仍由 root + path 恢复。
+    forward: ForwardProvenance | None = None
+    # 保留未展开节点的完整 JSON 路径，明确说明导出内容缺失。
+    unexpanded_forward_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -565,6 +601,18 @@ class CanonicalReadRepository(Protocol):
 
     def iter_semantic_messages(self, batch_size: int) -> "Iterator[MessageProjection]":
         """按 canonical ordering 流式读取 semantic builder 所需的最小 projection。"""
+
+    def iter_forwarded_messages(self, batch_size: int) -> "Iterator[MessageProjection]":
+        """从 canonical JSON 流式恢复转发 occurrence，独立于 FTS 是否已构建。"""
+
+    def count_forwarded_messages(self) -> int:
+        """统计可恢复子消息，不改变普通群消息统计口径。"""
+
+    def canonical_revision(self) -> int:
+        """读取持久化的 canonical 变更版本，索引不得缓存该事实。"""
+
+    def forward_content_gaps(self, scope: ScopeFilters) -> tuple[str, ...]:
+        """返回当前群聊/转发时间范围内已知缺失节点的 root + path。"""
 
     def read_message_range(
         self,

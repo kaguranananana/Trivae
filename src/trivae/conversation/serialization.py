@@ -23,6 +23,7 @@ from trivae.query.evidence import (
     SourceReference,
     StructuredSource,
 )
+from trivae.retrieval.structured import ForwardProvenance
 
 from .contracts import ConversationCodecError
 
@@ -82,7 +83,7 @@ def _snapshot_to_dict(snapshot: MessageDisplaySnapshot | None) -> dict[str, obje
 
     if snapshot is None:
         return None
-    return {
+    payload: dict[str, object] = {
         "session_display": snapshot.session_display,
         "author_display": snapshot.author_display,
         "timestamp_ms": snapshot.timestamp_ms,
@@ -92,6 +93,15 @@ def _snapshot_to_dict(snapshot: MessageDisplaySnapshot | None) -> dict[str, obje
         "source_message_id": snapshot.source_message_id,
         "urls": list(snapshot.urls),
     }
+    if snapshot.forward is not None:
+        # 完整保存回答时的父子定位与双时间，历史回放不依赖索引仍然存在。
+        payload["forward"] = snapshot.forward.to_dict()
+    if snapshot.sender_platform_id is not None or snapshot.sender_uin is not None:
+        payload["sender_platform_id"] = snapshot.sender_platform_id
+        payload["sender_uin"] = snapshot.sender_uin
+    if snapshot.unexpanded_forward_paths:
+        payload["unexpanded_forward_paths"] = list(snapshot.unexpanded_forward_paths)
+    return payload
 
 
 def _reference_to_dict(reference: SourceReference) -> dict[str, object]:
@@ -190,6 +200,35 @@ def serialize_answer_artifact(artifact: AnswerArtifact) -> str:
         raise ConversationCodecError("answer artifact cannot be serialized") from exc
 
 
+def _optional_integer(name: str, value: object) -> int | None:
+    """原始时间允许未知；已保存的数值必须保持整数语义。"""
+
+    if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+        raise ConversationCodecError(f"{name} must be an integer or null")
+    return value
+
+
+def _parse_forward(value: object, path: str) -> ForwardProvenance | None:
+    """仅恢复持久化的可信转发位置，旧普通消息没有这个可选字段。"""
+
+    if value is None:
+        return None
+    raw = _mapping(path, value)
+    return ForwardProvenance(
+        root_message_id=_text(f"{path}.root_message_id", _required(raw, "root_message_id")),
+        parent_message_id=_text(f"{path}.parent_message_id", _required(raw, "parent_message_id")),
+        path=_text(f"{path}.path", _required(raw, "path")),
+        original_timestamp=_optional_integer(f"{path}.original_timestamp", _required(raw, "original_timestamp")),
+        root_source_message_id=(
+            None
+            if raw.get("root_source_message_id") is None
+            else _text(f"{path}.root_source_message_id", raw["root_source_message_id"])
+        ),
+        source_file=None if raw.get("source_file") is None else _text(f"{path}.source_file", raw["source_file"]),
+        source_record_index=_optional_integer(f"{path}.source_record_index", raw.get("source_record_index")),
+    )
+
+
 def _parse_snapshot(value: object, path: str) -> MessageDisplaySnapshot | None:
     """恢复可信展示 snapshot；历史回放不重新查询 canonical source。"""
 
@@ -222,6 +261,19 @@ def _parse_snapshot(value: object, path: str) -> MessageDisplaySnapshot | None:
             else _text(f"{path}.source_message_id", raw["source_message_id"])
         ),
         urls=tuple(_text(f"{path}.urls[{index}]", url) for index, url in enumerate(raw_urls)),
+        forward=_parse_forward(raw.get("forward"), f"{path}.forward"),
+        unexpanded_forward_paths=tuple(
+            _text(f"{path}.unexpanded_forward_paths[{index}]", nested_path)
+            for index, nested_path in enumerate(
+                _sequence(f"{path}.unexpanded_forward_paths", raw.get("unexpanded_forward_paths", []))
+            )
+        ),
+        sender_platform_id=(
+            None
+            if raw.get("sender_platform_id") is None
+            else _text(f"{path}.sender_platform_id", raw["sender_platform_id"])
+        ),
+        sender_uin=None if raw.get("sender_uin") is None else _text(f"{path}.sender_uin", raw["sender_uin"]),
     )
 
 

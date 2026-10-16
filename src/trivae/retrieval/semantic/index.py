@@ -75,6 +75,9 @@ class SQLiteSemanticIndex:
                     status TEXT NOT NULL CHECK (status IN ('building', 'completed', 'partial', 'failed')),
                     canonical_message_count INTEGER NOT NULL,
                     indexed_message_count INTEGER NOT NULL,
+                    canonical_revision INTEGER NOT NULL DEFAULT 0,
+                    forwarded_message_count INTEGER NOT NULL DEFAULT 0,
+                    indexed_forwarded_message_count INTEGER NOT NULL DEFAULT 0,
                     chunk_count INTEGER NOT NULL,
                     last_error TEXT,
                     updated_at INTEGER NOT NULL
@@ -97,10 +100,25 @@ class SQLiteSemanticIndex:
                     ON semantic_chunks(session_id, start_timestamp, end_timestamp);
                 """
             )
+            # 既有派生文件只迁移 metadata 列；旧 identity 仍由查询主链路明确判为 stale。
+            columns = {str(row["name"]) for row in self._connection.execute("PRAGMA table_info(semantic_index_state)")}
+            for name in ("canonical_revision", "forwarded_message_count", "indexed_forwarded_message_count"):
+                if name not in columns:
+                    self._connection.execute(
+                        f"ALTER TABLE semantic_index_state ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0"
+                    )
+            self._connection.commit()
         except sqlite3.Error as exc:
-            raise SemanticIndexStorageError(f"failed to create semantic index schema: {type(exc).__name__}") from exc
+            raise SemanticIndexStorageError(f"failed to create semantic index schema: {type(exc).__name__}: {exc}") from exc
 
-    def start_rebuild(self, identity: SemanticIndexIdentity, canonical_message_count: int) -> None:
+    def start_rebuild(
+        self,
+        identity: SemanticIndexIdentity,
+        canonical_message_count: int,
+        *,
+        canonical_revision: int = 0,
+        forwarded_message_count: int = 0,
+    ) -> None:
         """原子清空旧 vectors，写入新 identity，并进入 building。"""
 
         if canonical_message_count < 0:
@@ -113,8 +131,9 @@ class SQLiteSemanticIndex:
                     """
                     INSERT INTO semantic_index_state(
                         state_id, identity_json, status, canonical_message_count,
-                        indexed_message_count, chunk_count, last_error, updated_at
-                    ) VALUES (1, ?, 'building', ?, 0, 0, NULL, ?)
+                        indexed_message_count, chunk_count, last_error, updated_at,
+                        canonical_revision, forwarded_message_count, indexed_forwarded_message_count
+                    ) VALUES (1, ?, 'building', ?, 0, 0, NULL, ?, ?, ?, 0)
                     ON CONFLICT(state_id) DO UPDATE SET
                         identity_json = excluded.identity_json,
                         status = excluded.status,
@@ -122,12 +141,15 @@ class SQLiteSemanticIndex:
                         indexed_message_count = excluded.indexed_message_count,
                         chunk_count = excluded.chunk_count,
                         last_error = excluded.last_error,
-                        updated_at = excluded.updated_at
+                        updated_at = excluded.updated_at,
+                        canonical_revision = excluded.canonical_revision,
+                        forwarded_message_count = excluded.forwarded_message_count,
+                        indexed_forwarded_message_count = excluded.indexed_forwarded_message_count
                     """,
-                    (identity.serialized, canonical_message_count, _now_ms()),
+                    (identity.serialized, canonical_message_count, _now_ms(), canonical_revision, forwarded_message_count),
                 )
         except sqlite3.Error as exc:
-            raise SemanticIndexStorageError(f"failed to start semantic rebuild: {type(exc).__name__}") from exc
+            raise SemanticIndexStorageError(f"failed to start semantic rebuild: {type(exc).__name__}: {exc}") from exc
 
     def insert_chunks(self, chunks: Sequence[tuple[SemanticChunk, Sequence[float]]]) -> None:
         """在同一事务写入 chunk metadata 与对应 vec0 row。"""
@@ -176,7 +198,107 @@ class SQLiteSemanticIndex:
         except sqlite3.Error as exc:
             raise SemanticIndexStorageError(f"failed to insert semantic chunks: {type(exc).__name__}") from exc
 
-    def update_progress(self, indexed_message_count: int) -> None:
+    def begin_resume(
+        self,
+        identity: SemanticIndexIdentity,
+        canonical_message_count: int,
+        *,
+        canonical_revision: int = 0,
+        forwarded_message_count: int = 0,
+    ) -> int:
+        """只续建相同源快照的未完成索引，任何校验失败都保留原 rows/state。"""
+
+        state = self.state()
+        if state is None:
+            raise SemanticIndexUnavailable("semantic index is missing; cannot resume it")
+        if state.identity.serialized != identity.serialized:
+            raise SemanticIndexStale("semantic index identity changed; cannot resume it")
+        if (
+            state.canonical_message_count != canonical_message_count
+            or state.canonical_revision != canonical_revision
+            or state.forwarded_message_count != forwarded_message_count
+        ):
+            raise SemanticIndexStale("semantic index source snapshot changed; cannot resume it")
+        if state.status == "completed":
+            raise SemanticIndexUnavailable("semantic index is completed; there is no unfinished build to resume")
+        try:
+            # 同批 metadata 与 vector 必须完整配对；不把真实损坏当作可复用缓存。
+            metadata_count, vector_count, missing, orphan = self._vector_row_counts(identity.embedding.dimension)
+            if metadata_count != vector_count or missing or orphan:
+                raise SemanticIndexStorageError(
+                    "semantic resume metadata/vector mismatch: "
+                    f"metadata={metadata_count}, vectors={vector_count}, missing={missing}, orphan={orphan}"
+                )
+            # insert 与 progress 分属两个事务，强停允许 state 水位落后已经原子提交的 rows。
+            if metadata_count < state.chunk_count:
+                raise SemanticIndexStorageError(
+                    "semantic resume chunk count is below saved progress: "
+                    f"state={state.chunk_count}, metadata={metadata_count}"
+                )
+            with self._connection:
+                # 进度由确定性重放恢复；此处只校正 chunk 事实并显式开启新一次执行。
+                self._connection.execute(
+                    """
+                    UPDATE semantic_index_state
+                    SET status = 'building', chunk_count = ?, last_error = NULL, updated_at = ?
+                    WHERE state_id = 1
+                    """,
+                    (metadata_count, _now_ms()),
+                )
+            return metadata_count
+        except sqlite3.Error as exc:
+            raise SemanticIndexStorageError(
+                f"failed to begin semantic resume: {type(exc).__name__}: {exc}"
+            ) from exc
+
+    def reusable_chunk_ids(self, chunks: Sequence[SemanticChunk]) -> frozenset[str]:
+        """有界检查重放 chunk 的全部持久 metadata，返回可以直接复用的 ID。"""
+
+        if not chunks:
+            return frozenset()
+        state = self.state()
+        if state is None or state.status != "building":
+            raise SemanticIndexStorageError("semantic chunks can only be reused during a resumed build")
+        placeholders = ", ".join("?" for _ in chunks)
+        fields = (
+            "chunk_id", "parent_id", "session_id", "parent_start_message_id", "parent_end_message_id",
+            "start_message_id", "end_message_id", "start_timestamp", "end_timestamp", "message_count", "effective_chars",
+        )
+        try:
+            rows = self._connection.execute(
+                f"SELECT vector_id, {', '.join(fields)} FROM semantic_chunks WHERE chunk_id IN ({placeholders})",
+                tuple(chunk.chunk_id for chunk in chunks),
+            ).fetchall()
+            # 首批尚未产生 vec 表时没有旧块，因此可以直接计算本批。
+            if not rows:
+                return frozenset()
+            table = self._vector_table(state.identity.embedding.dimension)
+            vector_ids = {
+                int(row[0])
+                for row in self._connection.execute(
+                    f"SELECT vector_id FROM {table} WHERE vector_id IN ({', '.join('?' for _ in rows)})",
+                    tuple(int(row["vector_id"]) for row in rows),
+                )
+            }
+        except sqlite3.Error as exc:
+            raise SemanticIndexStorageError(
+                f"semantic resume chunk lookup failed: {type(exc).__name__}: {exc}"
+            ) from exc
+
+        replayed = {chunk.chunk_id: chunk for chunk in chunks}
+        for row in rows:
+            chunk = replayed[str(row["chunk_id"])]
+            # embedding_input 不重复落库；相同 canonical revision/identity 固定其生成来源。
+            for field in fields:
+                if row[field] != getattr(chunk, field):
+                    raise SemanticIndexStorageError(
+                        f"semantic resume chunk metadata mismatch: {chunk.chunk_id}, field={field}"
+                    )
+            if int(row["vector_id"]) not in vector_ids:
+                raise SemanticIndexStorageError(f"semantic resume chunk is missing its vector: {chunk.chunk_id}")
+        return frozenset(str(row["chunk_id"]) for row in rows)
+
+    def update_progress(self, indexed_message_count: int, *, indexed_forwarded_message_count: int = 0) -> None:
         """更新 canonical processed watermark，不把 chunk 数冒充 coverage。"""
 
         if indexed_message_count < 0:
@@ -186,19 +308,19 @@ class SQLiteSemanticIndex:
                 cursor = self._connection.execute(
                     """
                     UPDATE semantic_index_state
-                    SET indexed_message_count = ?, chunk_count = (
+                    SET indexed_message_count = ?, indexed_forwarded_message_count = ?, chunk_count = (
                         SELECT COUNT(*) FROM semantic_chunks
                     ), updated_at = ?
                     WHERE state_id = 1 AND status = 'building'
                     """,
-                    (indexed_message_count, _now_ms()),
+                    (indexed_message_count, indexed_forwarded_message_count, _now_ms()),
                 )
                 if cursor.rowcount != 1:
                     raise SemanticIndexStorageError("semantic rebuild state is not writable")
         except sqlite3.Error as exc:
             if isinstance(exc, SemanticIndexStorageError):
                 raise
-            raise SemanticIndexStorageError(f"failed to update semantic progress: {type(exc).__name__}") from exc
+            raise SemanticIndexStorageError(f"failed to update semantic progress: {type(exc).__name__}: {exc}") from exc
 
     def finish(self, status: SemanticIndexStatus, error: str | None = None) -> None:
         """写入显式终态；failed 也保留错误信息，不伪装成 completed。"""
@@ -229,7 +351,8 @@ class SQLiteSemanticIndex:
         row = self._connection.execute(
             """
             SELECT identity_json, status, canonical_message_count, indexed_message_count,
-                   chunk_count, last_error, updated_at
+                   chunk_count, last_error, updated_at, canonical_revision,
+                   forwarded_message_count, indexed_forwarded_message_count
             FROM semantic_index_state
             WHERE state_id = 1
             """
@@ -250,11 +373,14 @@ class SQLiteSemanticIndex:
                 chunk_count=int(row["chunk_count"]),
                 last_error=None if row["last_error"] is None else str(row["last_error"]),
                 updated_at=int(row["updated_at"]),
+                canonical_revision=int(row["canonical_revision"]),
+                forwarded_message_count=int(row["forwarded_message_count"]),
+                indexed_forwarded_message_count=int(row["indexed_forwarded_message_count"]),
             )
         except Exception as exc:
             if isinstance(exc, SemanticIndexStorageError):
                 raise
-            raise SemanticIndexStorageError("semantic index state metadata is invalid") from exc
+            raise SemanticIndexStorageError(f"semantic index state metadata is invalid: {type(exc).__name__}: {exc}") from exc
 
     def size_bytes(self) -> int:
         """返回 derived database 主文件大小，供 rebuild report 记录。"""
@@ -278,33 +404,10 @@ class SQLiteSemanticIndex:
         dimension = identity.embedding.dimension
         table = self._vector_table(dimension)
         try:
-            metadata_count = int(
-                self._connection.execute("SELECT COUNT(*) FROM semantic_chunks").fetchone()[0]
-            )
+            metadata_count, vector_count, missing_vector_count, orphan_vector_count = self._vector_row_counts(dimension)
             parent_count = int(
                 self._connection.execute(
                     "SELECT COUNT(DISTINCT parent_id) FROM semantic_chunks"
-                ).fetchone()[0]
-            )
-            vector_count = int(self._connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
-            missing_vector_count = int(
-                self._connection.execute(
-                    f"""
-                    SELECT COUNT(*)
-                    FROM semantic_chunks AS c
-                    LEFT JOIN {table} AS v ON v.vector_id = c.vector_id
-                    WHERE v.vector_id IS NULL
-                    """
-                ).fetchone()[0]
-            )
-            orphan_vector_count = int(
-                self._connection.execute(
-                    f"""
-                    SELECT COUNT(*)
-                    FROM {table} AS v
-                    LEFT JOIN semantic_chunks AS c ON c.vector_id = v.vector_id
-                    WHERE c.vector_id IS NULL
-                    """
                 ).fetchone()[0]
             )
             vector_rows = self._connection.execute(
@@ -416,18 +519,24 @@ class SQLiteSemanticIndex:
         table = self._vector_table(dimension)
         clauses = ["v.embedding MATCH ?", "v.k = ?"]
         parameters: list[object] = [self._pack_vector(vector), limit]
+        # vec0 必须先限制合法 vector_id 再取 Top-K，否则其他群会挤掉目标群的候选。
+        scope_clauses: list[str] = []
         if session_ids is not None:
             if not session_ids:
                 return ()
             placeholders = ", ".join("?" for _ in session_ids)
-            clauses.append(f"c.session_id IN ({placeholders})")
+            scope_clauses.append(f"session_id IN ({placeholders})")
             parameters.extend(session_ids)
         if start_timestamp is not None:
-            clauses.append("c.end_timestamp >= ?")
+            scope_clauses.append("end_timestamp >= ?")
             parameters.append(start_timestamp)
         if end_timestamp is not None:
-            clauses.append("c.start_timestamp < ?")
+            scope_clauses.append("start_timestamp < ?")
             parameters.append(end_timestamp)
+        if scope_clauses:
+            clauses.append(
+                "v.vector_id IN (SELECT vector_id FROM semantic_chunks WHERE " + " AND ".join(scope_clauses) + ")"
+            )
         try:
             rows = self._connection.execute(
                 f"""
@@ -445,8 +554,8 @@ class SQLiteSemanticIndex:
                 parameters,
             ).fetchall()
         except sqlite3.Error as exc:
-            raise SemanticIndexStorageError(f"semantic dense search failed: {type(exc).__name__}") from exc
-        # sqlite-vec applies k before relational filters; return a deterministic bounded result to caller.
+            raise SemanticIndexStorageError(f"semantic dense search failed: {type(exc).__name__}: {exc}") from exc
+        # 所有返回候选已在当前群与外层时间范围内参与 KNN，再执行确定性并列排序。
         candidates = []
         for rank, row in enumerate(rows[:limit], start=1):
             candidates.append(
@@ -489,6 +598,38 @@ class SQLiteSemanticIndex:
         if state.chunk_count <= 0:
             raise SemanticIndexUnavailable("semantic index has no vector chunks")
         return state
+
+    def _vector_row_counts(self, dimension: int) -> tuple[int, int, int, int]:
+        """续建与完整性检查共享 metadata/vector 一一对应检查，不读取向量正文。"""
+
+        metadata_count = int(self._connection.execute("SELECT COUNT(*) FROM semantic_chunks").fetchone()[0])
+        table = self._vector_table(dimension)
+        exists = self._connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+        ).fetchone()
+        if exists is None and metadata_count == 0:
+            # 模型首次调用前失败时，vec 表尚未创建，零块是合法未完成状态。
+            return 0, 0, 0, 0
+        vector_count = int(self._connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+        missing = int(
+            self._connection.execute(
+                f"""
+                SELECT COUNT(*) FROM semantic_chunks AS c
+                LEFT JOIN {table} AS v ON v.vector_id = c.vector_id
+                WHERE v.vector_id IS NULL
+                """
+            ).fetchone()[0]
+        )
+        orphan = int(
+            self._connection.execute(
+                f"""
+                SELECT COUNT(*) FROM {table} AS v
+                LEFT JOIN semantic_chunks AS c ON c.vector_id = v.vector_id
+                WHERE c.vector_id IS NULL
+                """
+            ).fetchone()[0]
+        )
+        return metadata_count, vector_count, missing, orphan
 
     def _create_vector_table(self, dimension: int) -> None:
         table = self._vector_table(dimension)

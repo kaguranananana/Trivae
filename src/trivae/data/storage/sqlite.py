@@ -21,6 +21,7 @@ from trivae.data.model import (
     IngestionError,
     SourceDescriptor,
 )
+from trivae.data.storage.sqlite_forward import ensure_canonical_revision
 
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
@@ -196,6 +197,8 @@ class SQLiteCanonicalStore:
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
         self.connection.executescript(SCHEMA_SQL)
+        # 单调派生版本与消息写入同事务推进，不修改 canonical payload 或身份语义。
+        ensure_canonical_revision(self.connection)
         self.connection.commit()
 
     def __enter__(self) -> SQLiteCanonicalStore:

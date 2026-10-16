@@ -239,6 +239,8 @@ class ContextExpander:
         before: int,
         after: int,
         limit: int,
+        *,
+        scope: ScopeFilters | None = None,
     ) -> ContextExpansionResult:
         """恢复 semantic child ranges，再复用同一 bounded context 合并规则。"""
 
@@ -276,16 +278,27 @@ class ContextExpander:
             first = core[0]
             last = core[-1]
             if before:
-                for message in self.repository.read_message_context(
-                    item.session_id, first.internal_message_id, before, 0
-                ):
+                # semantic 邻居和 direct hit 共享群聊/转发时间 scope，不能越界读取。
+                before_messages = (
+                    self.repository.read_message_context(item.session_id, first.internal_message_id, before, 0)
+                    if scope is None
+                    else self.repository.read_message_context_scoped(
+                        item.session_id, first.internal_message_id, before, 0, scope
+                    )
+                )
+                for message in before_messages:
                     if message.session_id != item.session_id:
                         raise RetrievalError(f"Semantic context crossed session boundary: {item.session_id}")
                     messages_by_id[message.internal_message_id] = message
             if after:
-                for message in self.repository.read_message_context(
-                    item.session_id, last.internal_message_id, 0, after
-                ):
+                after_messages = (
+                    self.repository.read_message_context(item.session_id, last.internal_message_id, 0, after)
+                    if scope is None
+                    else self.repository.read_message_context_scoped(
+                        item.session_id, last.internal_message_id, 0, after, scope
+                    )
+                )
+                for message in after_messages:
                     if message.session_id != item.session_id:
                         raise RetrievalError(f"Semantic context crossed session boundary: {item.session_id}")
                     messages_by_id[message.internal_message_id] = message
