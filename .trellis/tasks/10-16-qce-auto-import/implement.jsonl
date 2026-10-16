@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Canonical 事务、去重、provenance 和 derived index 现有契约"}
+{"file":".trellis/spec/project/workflow.md","reason":"隔离实施、验证和自动提交推送"}

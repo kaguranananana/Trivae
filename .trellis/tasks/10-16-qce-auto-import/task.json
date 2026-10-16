@@ -1,0 +1,30 @@
+{
+  "id": "qce-auto-import",
+  "name": "qce-auto-import",
+  "title": "QCE 本地增量导入与 macOS 调度",
+  "description": "隔离实现 QCE 文件发现、稳定快照、持久化增量导入、失败恢复和 launchd 日历调度；索引实际更新与生产验收等待合并转发任务集成。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "anontokyo",
+  "assignee": "anontokyo",
+  "createdAt": "2026-10-16",
+  "completedAt": null,
+  "branch": "codex/qce-auto-import",
+  "base_branch": "main",
+  "worktree_path": "/Users/anontokyo/.codex/worktrees/qce-auto-import/Trivae",
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "独立实现与隔离验证完成；1047 passed, 1 skipped；真实 launchd opt-in 14 passed。正式 plist 仅 prepare，未安装/加载。待合并转发检索完成后对接最终增量索引与历史内部投影完整性，再做生产 Agent 验收和归档。",
+  "meta": {
+    "independent_development": "verified",
+    "integration_status": "pending_forward_retrieval",
+    "production_scheduler": "prepared_not_enabled"
+  }
+}
