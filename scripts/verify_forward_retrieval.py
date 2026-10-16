@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 from time import perf_counter
@@ -16,7 +17,13 @@ from trivae.config.dotenv import load_environment_file
 from trivae.conversation.sqlite import SQLiteConversationStore
 from trivae.observability.sqlite import SQLiteTraceStore
 from trivae.query.contracts import QueryRequest
-from trivae.query.evidence import AnswerArtifact, MessageSource
+from trivae.query.evidence import (
+    AnswerArtifact,
+    MessageSource,
+    ToolResultRecord,
+    build_tool_result_record,
+    project_tool_result_for_model,
+)
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
 from trivae.retrieval.structured import RetrievalResult
 
@@ -39,6 +46,33 @@ def cited_message_sources(artifact: AnswerArtifact) -> tuple[tuple[str, str, Mes
                 if isinstance(source.reference, MessageSource):
                     references.append((binding.content_block_id, evidence_id, source.reference))
     return tuple(references)
+
+
+def visible_matching_sources(
+    payload: Mapping[str, object],
+    record: ToolResultRecord,
+    message_ids: set[str],
+    keyword: str,
+) -> tuple[str, ...]:
+    """同时核验正确子消息的 handle 和模型可见正文，不能只看索引或 Host 候选。"""
+
+    expected_sources = {
+        f"m{record.model_scope_id}-{index + 1}"
+        for index, item in enumerate(record.message_items)
+        if item.message.internal_message_id in message_ids
+    }
+    data = payload["data"]
+    assert isinstance(data, Mapping), "model projection data must be an object"
+    messages = data["expanded_messages"]
+    assert isinstance(messages, list), "semantic model messages must be an array"
+    visible: list[str] = []
+    for message in messages:
+        assert isinstance(message, Mapping), "model message must be an object"
+        source_id, content = message["source_id"], message["content"]
+        assert isinstance(source_id, str) and isinstance(content, str)
+        if source_id in expected_sources and keyword.casefold() in content.casefold():
+            visible.append(source_id)
+    return tuple(visible)
 
 
 async def verify(args: argparse.Namespace) -> None:
@@ -101,11 +135,24 @@ async def verify(args: argparse.Namespace) -> None:
             matched_ids = sorted(expected_ids & semantic_ids)
             if not matched_ids:
                 raise RuntimeError(f"semantic candidates did not recover the actual forwarded child for {keyword}")
+            # 经过生产 Host 的默认预算投影后，模型也必须能读到对应子消息里的查询词。
+            call_id = f"forward-verification/tool-call/{index}"
+            semantic_record = build_tool_result_record(
+                run_id="forward-verification", tool_call_id=call_id,
+                tool_result_id=f"{call_id}/result", tool_name="semantic_search",
+                envelope=semantic, scope=scope,
+            )
+            semantic_model = project_tool_result_for_model(semantic, semantic_record)
+            _save(args.output / f"{index}-semantic-model.json", semantic_model)
+            model_sources = visible_matching_sources(semantic_model, semantic_record, set(matched_ids), keyword)
+            if not model_sources:
+                raise RuntimeError(f"model projection omitted the matching child body for {keyword}")
             report: dict[str, object] = {
                 "keyword": keyword,
                 "lexical_total_hits": lexical_result.total_hits,
                 "lexical_children": [asdict(message) for message in lexical_children],
                 "semantic_matching_child_ids": matched_ids,
+                "semantic_model_visible_sources": model_sources,
                 "retrieval_elapsed_ms": (perf_counter() - started) * 1000,
             }
             if args.run_agent:

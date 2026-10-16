@@ -1340,6 +1340,15 @@ def _message_items(
     return tuple(items)
 
 
+def _semantic_literal_ids(data: SemanticRetrievalResult) -> set[str]:
+    """只使用 Retrieval 已核验且实际返回的字面命中，统一来源与正文的保留优先级。"""
+
+    literal_ids = data.metadata.details.get("literal_message_ids", ())
+    if not isinstance(literal_ids, (tuple, list)):
+        raise ToolResultProjectionError("semantic literal message identities must be a sequence")
+    return set(literal_ids) & set(data.primary_message_ids)
+
+
 def _retrieval_limitations(status: ToolResultStatus, data: object | None, error_code: str | None) -> tuple[str, ...]:
     """把 Tool/execution completeness 保留为限制，不折叠为 Evidence sufficiency。"""
 
@@ -1613,7 +1622,19 @@ def build_tool_result_record(
         query_snapshot = data.query.to_dict()
     elif isinstance(data, SemanticRetrievalResult):
         # semantic chunk 只作为 candidate provenance；可引用内容必须是恢复后的 canonical messages。
-        message_items = _message_items(data.expanded_messages, hit_ids=set(data.primary_message_ids))
+        # 只前置已被 Retrieval 确认的实际命中，其他正文保持原有时间顺序。
+        preferred_ids = _semantic_literal_ids(data)
+        messages_by_id = {message.internal_message_id: message for message in data.expanded_messages}
+        preferred_messages = tuple(
+            messages_by_id[message_id]
+            for message_id in data.primary_message_ids
+            if message_id in preferred_ids
+        )
+        # 短 source handle 的优先序随真实命中传递，后续预算不能重新按时间挤掉它。
+        message_items = _message_items(
+            preferred_messages + data.expanded_messages,
+            hit_ids=set(data.primary_message_ids),
+        )
         query_snapshot = data.query.to_dict()
     elif isinstance(data, StructuredMessageResult):
         message_items = _message_items(data.messages)
@@ -1825,6 +1846,8 @@ def _project_model_data(
                     "dense_candidate_pool",
                     "dense_candidates_returned",
                     "accepted_candidates",
+                    "ranking_strategy",
+                    "literal_candidate_count",
                     "candidate_scores",
                     "score_type",
                     "context_before",
@@ -1878,6 +1901,7 @@ def _project_model_data(
         if not isinstance(raw_messages, list):
             return
         projected_messages: list[dict[str, object]] = []
+        indexed_messages: list[tuple[int, ToolMessageItem]] = []
         for index, raw_message in enumerate(raw_messages):
             if not isinstance(raw_message, Mapping):
                 raise ToolResultProjectionError(f"canonical {name}[{index}] is not an object")
@@ -1889,7 +1913,11 @@ def _project_model_data(
             indexed_item = message_items_by_internal_id.get(internal_id)
             if indexed_item is None:
                 raise ToolResultProjectionError("message projection is missing from the canonical tool record")
-            message_index, item = indexed_item
+            indexed_messages.append(indexed_item)
+        if name == "expanded_messages" and projected.get("strategy") == "semantic":
+            # Host record 已保留真实命中优先序；模型正文与 trimming slots 必须使用同一顺序。
+            indexed_messages.sort(key=lambda indexed: indexed[0])
+        for message_index, item in indexed_messages:
             entry, slot = _model_message_projection(
                 record,
                 item,
@@ -2020,6 +2048,13 @@ def project_tool_result_for_model(
         raise ToolResultProjectionError("tool result token budget must be positive")
     canonical_payload = envelope.to_dict()
     projected_data, slots = _project_model_data(canonical_payload.get("data"), record)
+    literal_ids = _semantic_literal_ids(envelope.data) if isinstance(envelope.data, SemanticRetrievalResult) else set()
+    # 已核验命中保留最初的有界原文；否则先缩到 32 字再省略其他来源会丢掉正文中段的查询词。
+    protected_source_ids = {
+        f"m{record.model_scope_id}-{index + 1}"
+        for index, item in enumerate(record.message_items)
+        if item.message.internal_message_id in literal_ids
+    }
     raw_meta = canonical_payload.get("meta")
     projected_meta = dict(raw_meta) if isinstance(raw_meta, Mapping) else raw_meta
     payload: dict[str, object] = {
@@ -2070,6 +2105,9 @@ def project_tool_result_for_model(
         # 第二阶段只缩短正文；source、canonical/UTC timestamp、author、URL 和 hit identity 不被删除。
         for maximum in (512, 384, 256, 192, 128, 96, 64, 32):
             for _container, entry, _remove_entry, _is_hit, full_content, canonical_truncated in slots:
+                # 优先来源已受既有 excerpt 上限约束；预算不足时继续省略后面的其他 hit。
+                if entry["source_id"] in protected_source_ids:
+                    continue
                 content, content_truncated = _model_content(full_content, maximum)
                 entry["content"] = content
                 entry["content_truncated"] = canonical_truncated or content_truncated

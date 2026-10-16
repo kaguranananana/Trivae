@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from time import perf_counter
 
 from trivae.config.limits import MAX_AUTOMATIC_CONTEXT_SOURCE_HITS
@@ -37,6 +38,16 @@ from trivae.retrieval.structured import (
     RetrievalError,
     RetrievalMetadata,
 )
+
+
+@dataclass(frozen=True)
+class _RecoveredCandidate:
+    """保留既有 dense 候选与已通过硬过滤的正文，不引入额外召回来源。"""
+
+    candidate: SemanticIndexCandidate
+    messages: tuple[MessageProjection, ...]
+    matching_messages: tuple[MessageProjection, ...]
+    literal_message_ids: tuple[str, ...]
 
 
 class SemanticRetrieval:
@@ -110,9 +121,9 @@ class SemanticRetrieval:
             end_timestamp=query.end_timestamp,
         )
 
-        accepted: list[tuple[SemanticHit, int]] = []
-        recovered_ranges: list[ContextRange] = []
-        accepted_message_ids: set[str] = set()
+        recovered_candidates: list[_RecoveredCandidate] = []
+        # 完整查询串只在真实正文里匹配；不使用预览、群名、昵称或 embedding header。
+        literal_query = query.query.casefold()
         for candidate in candidates:
             messages = self._read_candidate_messages(candidate)
             # chunk 只要求与时间范围相交；真正交给回答模型的正文必须逐条满足外层 scope。
@@ -120,11 +131,35 @@ class SemanticRetrieval:
             matching_messages = self._matching_query_messages(messages, query)
             if not matching_messages:
                 continue
+            literal_message_ids = tuple(
+                message.internal_message_id
+                for message in matching_messages
+                if literal_query in message.normalized_content.casefold()
+            )
+            recovered_candidates.append(
+                _RecoveredCandidate(candidate, messages, matching_messages, literal_message_ids)
+            )
+
+        # 先完成现有有界池的硬过滤，再排序和取 limit，避免池内真实短语证据被提前截掉。
+        ranked_candidates = sorted(
+            recovered_candidates,
+            key=lambda item: (not bool(item.literal_message_ids), item.candidate.dense_rank),
+        )
+        accepted: list[tuple[SemanticHit, int]] = []
+        recovered_ranges: list[ContextRange] = []
+        accepted_message_ids: set[str] = set()
+        preferred_message_ids: dict[str, None] = {}
+        for recovered in ranked_candidates:
+            candidate = recovered.candidate
+            messages = recovered.messages
+            matching_messages = recovered.matching_messages
             # 仅按 occurrence ID 消除 overlap 重复；不同父消息/群的同文转发仍各自保留。
             message_ids = {message.internal_message_id for message in matching_messages}
             if message_ids <= accepted_message_ids:
                 continue
             accepted_message_ids.update(message_ids)
+            # 按重排后的候选和 occurrence 顺序保存真实字面证据，后续容量裁剪优先保留它们。
+            preferred_message_ids.update(dict.fromkeys(recovered.literal_message_ids))
             # 邻居窗口的两端必须是真实命中，避免拿其他发送者作为受限 context 的 anchor。
             first_match = messages.index(matching_messages[0])
             last_match = messages.index(matching_messages[-1])
@@ -162,12 +197,21 @@ class SemanticRetrieval:
             # 保留 semantic 的 bounded context 语义，同时不越过 ToolResultRecord 的 item bound。
             limit=min(max(limit, limit * 32), MAX_CONTEXT_EXPANSION_MESSAGES),
             scope=query,
+            preferred_primary_message_ids=tuple(preferred_message_ids),
         )
         # 邻居同样只能来自请求 scope；内部原始时间不参与当前群的时间过滤。
         expanded_messages = tuple(
             message for message in expansion.messages if self._within_scope(message, query)
         )
         expanded_ids = {message.internal_message_id for message in expanded_messages}
+        # 只将实际返回的字面 occurrence 交给 Host；未通过过滤或已被容量省略的 ID 不形成来源。
+        literal_message_ids = tuple(message_id for message_id in preferred_message_ids if message_id in expanded_ids)
+        literal_ids = set(literal_message_ids)
+        primary_message_ids = tuple(
+            message_id
+            for message_id in expansion.primary_message_ids
+            if message_id in expanded_ids and message_id in accepted_message_ids
+        )
         # 空 messages 是源文件的信息缺口，不能因本次没有命中就宣称检索覆盖完整。
         missing_forward_nodes = self.repository.forward_content_gaps(query)
         pool_exhausted = len(candidates) >= candidate_pool
@@ -196,7 +240,7 @@ class SemanticRetrieval:
             truncated=truncated,
             metadata=RetrievalMetadata(
                 filters=query.to_dict(),
-                ordering="cosine distance ASC, " + ORDERING_DESCRIPTION,
+                ordering="literal query match DESC, dense rank ASC; expanded messages: " + ORDERING_DESCRIPTION,
                 latency_ms=latency_ms,
                 details={
                     "index_identity": identity.to_dict(),
@@ -210,6 +254,9 @@ class SemanticRetrieval:
                     "dense_candidate_pool": candidate_pool,
                     "dense_candidates_returned": len(candidates),
                     "accepted_candidates": len(accepted),
+                    "ranking_strategy": "literal_then_dense_v1",
+                    "literal_candidate_count": sum(bool(item.literal_message_ids) for item in recovered_candidates),
+                    "literal_message_ids": literal_message_ids,
                     "candidate_chunk_ids": [hit.chunk_id for hit, _ in accepted],
                     "candidate_parent_ids": [hit.parent_id for hit, _ in accepted],
                     "candidate_scores": [hit.score for hit, _ in accepted],
@@ -227,10 +274,10 @@ class SemanticRetrieval:
                     "unexpanded_forward_nodes": missing_forward_nodes[:20],
                 },
             ),
-            primary_message_ids=tuple(
+            primary_message_ids=literal_message_ids + tuple(
                 message_id
-                for message_id in expansion.primary_message_ids
-                if message_id in expanded_ids and message_id in accepted_message_ids
+                for message_id in primary_message_ids
+                if message_id not in literal_ids
             ),
         )
 

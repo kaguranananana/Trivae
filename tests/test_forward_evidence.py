@@ -118,6 +118,54 @@ def _record(envelope, scope):
     )
 
 
+@pytest.mark.parametrize("token_budget", [1500, 16000])
+def test_semantic_literal_source_survives_model_budget_after_late_timestamp(token_budget: int) -> None:
+    """重排后的真实子消息必须穿过 Host handle 与模型预算，不能再次按时间被裁掉。"""
+
+    earlier = tuple(
+        replace(
+            _child(root_id=f"qq:100:earlier-{index}"),
+            timestamp=index + 1,
+            normalized_content="其他讨论内容" * 100,
+        )
+        for index in range(99)
+    )
+    # 复现真实 52 字正文、查询词位于 offset 40 的形态，不把私人聊天正文写入测试。
+    child = replace(_child(), normalized_content="背景" * 20 + "情感锚点" + "补充说明" * 2)
+    original = _envelope((*earlier, child), semantic=True)
+    result = replace(
+        original.data,
+        query=SemanticQuery(query="情感锚点", limit=20),
+        primary_message_ids=(child.internal_message_id, *(message.internal_message_id for message in earlier)),
+        metadata=RetrievalMetadata(
+            filters={}, ordering="literal then dense", latency_ms=0.0,
+            details={
+                "ranking_strategy": "literal_then_dense_v1",
+                "literal_candidate_count": 1,
+                "literal_message_ids": (child.internal_message_id,),
+            },
+        ),
+    )
+    envelope = replace(original, data=result)
+    record = _record(envelope, ExecutionScope(allowed_session_ids=(child.session_id,)))
+    # canonical 返回仍按时间排列；只有模型 acquisition 的优先序按实际命中调整。
+    assert result.expanded_messages[-1] == child
+    assert record.message_items[0].message.internal_message_id == child.internal_message_id
+    projected = project_tool_result_for_model(envelope, record, token_budget=token_budget)
+    # 容量真实触发 hit 省略后，具体子消息及双时间来源仍在可引用正文中。
+    assert projected["model_projection"]["omitted_hit_messages"] > 0
+    first = projected["data"]["expanded_messages"][0]
+    assert first["content"] == child.normalized_content
+    assert "情感锚点" in first["content"]
+    assert first["forward"]["path"] == child.forward.path
+    assert first["timestamp"] == child.timestamp
+    assert first["forward"]["original_timestamp"] == child.forward.original_timestamp
+    details = projected["data"]["metadata"]["details"]
+    assert details["ranking_strategy"] == "literal_then_dense_v1"
+    assert details["literal_candidate_count"] == 1
+    assert "literal_message_ids" not in details
+
+
 def _answer(*sources):
     """模型只提交当前 Tool Result 的短 handle，不构造父子来源。"""
 

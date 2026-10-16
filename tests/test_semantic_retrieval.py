@@ -116,7 +116,9 @@ class SemanticRetrievalTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.limit: int | None = None
 
-            def expand_ranges(self, ranges, before, after, limit, *, scope=None):
+            def expand_ranges(
+                self, ranges, before, after, limit, *, scope=None, preferred_primary_message_ids=()
+            ):
                 # 只记录 Retrieval 传入的 transport bound，不重新实现 context merge。
                 self.limit = limit
                 return ContextExpansionResult((), False, False, 0)

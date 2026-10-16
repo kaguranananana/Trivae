@@ -15,10 +15,10 @@
 
 ## Acceptance Criteria
 
-- [ ] 两个真实 Failure Case「远程连接」「情感锚点」的 FTS5、实际 embedding semantic 与 production Agent 查询命中并提供准确子消息引用。
-- [ ] 回归覆盖多层、空节点、重复转发、跨群、时间范围、context、历史 Citation round trip、普通消息不变与 stale。
-- [ ] 本地必要索引重建；记录实际耗时、数量与查找时延；不修改原始文件、冻结 Evaluation/GT/实验。
-- [ ] lint、type-check、相关与全仓测试通过，自动提交并推送本任务改动。
+- [x] 两个真实 Failure Case「远程连接」「情感锚点」的 FTS5、实际 embedding semantic 与 production Agent 查询命中并提供准确子消息引用。
+- [x] 回归覆盖多层、空节点、重复转发、跨群、时间范围、context、历史 Citation round trip、普通消息不变与 stale。
+- [x] 本地必要索引重建；记录实际耗时、数量与查找时延；不修改原始文件、冻结 Evaluation/GT/实验。
+- [x] lint、type-check、相关与全仓测试通过，按长期授权自动提交、归档、记录 journal 后统一推送。
 
 ## Notes
 

@@ -37,6 +37,12 @@ TrivaeApplication.rebuild_semantic_index(*, resume: bool = False) -> SemanticBui
 
 Semantic 沿用既有 builder/chunker/sqlite-vec。普通与转发双流分别分块，在同一个向量库查询；v2-forward identity 明确拒绝旧版本。覆盖进度分别记录 Canonical 和 forwarded 数量，构建中 revision 改变须失败。群/时间过滤进入 KNN 候选选择前，恢复后仍逐条核对 scope。
 
+全库实际短语查询证明，正确子消息可能已在 dense pool 内（本次 rank 28 / pool 80），却在 `limit=20` 截断时落选。因此在既有有界候选池内，先恢复正文并执行群/时间/发送者/类型等硬过滤，再按完整 query 的 casefold 字面串是否出现在合格消息中重排，随后保持原 dense rank。`ranking_strategy=literal_then_dense_v1`、`literal_candidate_count` 与 Host-only `literal_message_ids` 记录该规则；cosine score 和原始 dense rank 不改写。没有字面匹配时仍保持原 dense 顺序，不增加候选池、不调用 FTS、不引入新模型或 fallback。
+
+实际字面命中的 occurrence 通过 `ContextExpander.expand_ranges(..., preferred_primary_message_ids=...)` 优先保留，canonical 结果仍按时间展示。Evidence 的短 handle、模型正文和 token trimming 使用同一命中优先序，防止较晚的真实命中被早期无关 core 或预算裁掉。该规则只在已召回候选内排序；候选池外的字面全文召回仍由既有 FTS 原语承担，不能将 ANN 结果声称为穷举。
+
+Host 对已确认 literal 的初始有界原文不再统一缩至 32 字，再沿既有优先序省略其他 hit。必须区分“来源 handle 还在”与“查询正文仍可见”：真实 52 字、offset 40 的情感消息曾在默认 16000 预算下丢词。初始 600 字模型 excerpt 和 1000 字 Host excerpt 上限保持既有契约，不声称无界传输；所有裁剪仍显式标记。真实核验同时保存 semantic-model 投影，核对正确来源中的词面与实际正文 Citation binding。
+
 内部有效短正文不受原生 24 字符 skip threshold 限制。QCE 将图片加文字优先分类为 image，转发分支须去掉已知媒体占位符后检查真实文字，不能按 image 类型丢弃 caption；原生规则保持既有行为。语义输入仍受已确认 `embedding_max_chars=6000` 上限约束，超过上限的正文需要新的真实 case 再决定分段策略，不能声称无界覆盖。
 
 源文件缺失与索引状态分开表达：完成索引仍可能具有 `coverage.status=partial`、`known_gaps=unexpanded_forward_content`。范围内空节点的数量及有界位置摘要进入工具结果，即使没有命中也不能声称完整穷举。错误不静默降级或改用 LIKE。

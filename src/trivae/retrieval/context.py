@@ -241,6 +241,7 @@ class ContextExpander:
         limit: int,
         *,
         scope: ScopeFilters | None = None,
+        preferred_primary_message_ids: Sequence[str] = (),
     ) -> ContextExpansionResult:
         """恢复 semantic child ranges，再复用同一 bounded context 合并规则。"""
 
@@ -317,7 +318,18 @@ class ContextExpander:
         # 优先保留每个 range 的核心消息，context 超出预算时显式标记截断。
         core_messages = tuple(message for message in ordered if message.internal_message_id in core_ids)
         if len(core_messages) >= limit:
-            selected = core_messages[:limit]
+            # 真实字面子消息可能时间较晚；容量不足时按调用方给出的证据优先序保留。
+            preferred_ids = dict.fromkeys(preferred_primary_message_ids)
+            preferred_messages = tuple(
+                messages_by_id[message_id] for message_id in preferred_ids if message_id in core_ids
+            )
+            other_core_messages = tuple(
+                message for message in core_messages if message.internal_message_id not in preferred_ids
+            )
+            # 优先级只决定保留哪些消息；对外仍使用既有时间顺序展示。
+            selected = tuple(
+                sorted((*preferred_messages, *other_core_messages)[:limit], key=message_sort_key)
+            )
         else:
             context_messages = tuple(message for message in ordered if message.internal_message_id not in core_ids)
             selected = tuple(sorted((*core_messages, *context_messages[: limit - len(core_messages)]), key=message_sort_key))

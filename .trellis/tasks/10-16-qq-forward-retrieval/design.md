@@ -27,3 +27,9 @@ FTS rebuild 单事务更新子消息投影、FTS 和版本/Canonical watermark�
 5. Decision：独立 derived occurrence、单检索入口，避免 Canonical 污染；无额外模型或基础设施。
 6. Verification：回归、真实 embedding、production query、Citation/source inspection 与性能测量。
 7. Regression：保存两项真实 case 的定位摘要和可复用合成回归；不把私人聊天正文提交 Git。
+
+## 全库竞争候选的实际重排修复
+
+全量索引通过后，真实短语「远程连接」的目标子消息已被 dense pool 召回，rank=28 / pool=80，却因结果 limit=20 被截掉；「情感锚点」rank=19。该 failure 是排序和后续容量保留问题，不是正文或向量缺失。只在原有 pool 内，对硬过滤合格的完整 query 字面命中优先排序，再使用原 dense rank；原 score/dense_rank 保留，策略进入 metadata/Trace。没有新增 FTS 依赖、扩大 K 或关键字特例，不改索引生成或 identity。
+
+Context 和 Evidence 同时保护实际字面命中：范围超出 100 条时优先保留其 occurrence；canonical 结果继续按时间显示；模型 handle/正文/预算 slots 使用同一优先序。没有字面匹配时保留既有排序。候选池外仍明确属于 ANN 有界召回限制，由 Agent 自主组合既有 lexical 原语完成精确查找。
