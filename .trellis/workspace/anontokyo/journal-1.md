@@ -1726,3 +1726,36 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Next Steps
 
 - 等待转发检索任务完成；核对内部投影完整性和实际变更信号，接入最终幂等增量索引，完成生产Agent/Citation验收后再启用正式任务与归档。
+
+
+## Session 66: QCE 自动导入合并 main 与转发检索兼容验证
+
+**Date**: 2026-10-17
+**Task**: QCE 自动导入合并 main 与转发检索兼容验证
+**Branch**: `codex/qce-auto-import`
+
+### Summary
+
+在独立 worktree 将 QCE 分支与已完成的转发检索 main 合并；保留双方指南和完整 journal，源码无冲突。
+
+### Main Changes
+
+- 修复规范/会话索引合并冲突，恢复两段原始会话并重编号，更新自动索引仍待接入的状态。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `23f3bcb` | (see git log) |
+
+### Testing
+
+- [OK] 合并后全量1098 passed,1 skipped；Ruff/mypy127文件通过；真实CLI help、Trellis validate和独立转发兼容smoke通过。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 自动导入索引updater和生产Agent验收仍待完成；真实launchd未启用。

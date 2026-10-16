@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 65
+- **Total Sessions**: 66
 - **Last Active**: 2026-10-17
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1728 | Active |
+| `journal-1.md` | ~1761 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 66 | 2026-10-17 | QCE 自动导入合并 main 与转发检索兼容验证 | `23f3bcb` | `codex/qce-auto-import` |
 | 65 | 2026-10-16 | QCE 增量导入与 macOS 日历调度独立实现 | `fc79813` | `codex/qce-auto-import` |
 | 64 | 2026-10-17 | QQ 合并转发全量检索与证据追溯验收 | `d29f3f3`, `10e73b9` | `main` |
 | 63 | 2026-10-13 | ChatGPT plan OAuth and real Agent verification | `e3b1963` | `main` |
