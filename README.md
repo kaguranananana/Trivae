@@ -64,6 +64,10 @@ uv run trivae web --database data/trivae.sqlite3 --host 127.0.0.1 --port 8710
 uv run trivae import --raw-dir data/raw --database data/trivae.sqlite3
 ```
 
+无人值守增量导入使用 `uv run trivae import-once`；处理状态通过 `import-once --status` 只读查看。
+每天 10:30 / 22:30 的 macOS 调度、失败补偿和安装脚本见 [QCE 自动导入说明](docs/qce-auto-import.md)。
+导入编排已与合并转发检索代码集成；自动导入的增量索引 updater 仍待接入和验收，真实调度默认只准备、不启用。
+
 Jev 仍使用独立 `OPENROUTER_API_KEY`，默认 enabled/shadow 行为不随主模型变化。OAuth token 不会发送给 Jev；如需调整 Jev 模式，显式编辑其专属变量。
 
 ## 额度、失败与退出

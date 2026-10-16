@@ -23,6 +23,7 @@
 | [Temporal Overview Guidelines](./temporal-overview-guidelines.md) | `get_recent_messages` 容量、keyset continuation、coverage、projection 与 Host 时间事实 | 已填 2026-08-28 |
 | [Database Guidelines](./database-guidelines.md) | 数据库相关规范 | 已填 M1 SQLite、M2 Retrieval/FTS5 与 M5b Conversation Store contract；Semantic/Vector 与 migration/deployment 仍 Pending |
 | [Forwarded Message Guidelines](./forwarded-message-guidelines.md) | QQ 合并转发的派生检索、容器范围、双时间与 Citation 来源 | 已实现；真实验证见合并转发任务 |
+| [QCE Auto Import](./auto-import-guidelines.md) | 稳定快照、持久增量、失败补偿、CLI 与 launchd 日历调度 | 代码已集成；增量索引 updater 与生产启用待验收 |
 | [Product Experience Guidelines](./product-experience-guidelines.md) | CLI/Application source、scope、readiness、feedback、history 与 renderer contract | 已填 2026-08-25 |
 
 ---

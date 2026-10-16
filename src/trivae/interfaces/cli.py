@@ -75,6 +75,10 @@ def build_parser() -> argparse.ArgumentParser:
     from trivae.interfaces.auth_cli import configure_auth_parser
 
     configure_auth_parser(subparsers)
+    # 无人值守导入入口保持独立适配，避免影响交互式 Query 或原 import 命令。
+    from trivae.interfaces.import_once_cli import configure_import_once_parser
+
+    configure_import_once_parser(subparsers)
     import_parser = subparsers.add_parser("import", help="Import QQ chat exports into the Canonical Store")
     import_parser.add_argument(
         "--raw-dir",
@@ -2186,6 +2190,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "import-once":
+        # 轻量 Composition Root 仍使用 SharedImporter，不初始化 Evaluation 或模型。
+        from trivae.interfaces.import_once_cli import run_import_once_command
+
+        return run_import_once_command(args)
     if args.command == "auth":
         # OAuth 生命周期由独立认证模块拥有，CLI 不接触或打印 Token。
         from trivae.interfaces.auth_cli import run_auth_command

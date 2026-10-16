@@ -1692,3 +1692,37 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Status
 
 [OK] **Completed**
+
+
+## Session 65: QCE 增量导入与 macOS 日历调度独立实现
+
+**Date**: 2026-10-16
+**Task**: QCE 增量导入与 macOS 日历调度独立实现
+**Branch**: `codex/qce-auto-import`
+
+### Summary
+
+独立 worktree 完成稳定快照、共享 import_paths、持久状态与提交中断恢复、索引补偿队列和 CLI；真实调度仅准备，待合并转发索引集成。
+
+### Main Changes
+
+- 新 import-once 复用原 SharedImporter；历史接管使用一次 JSON/provenance 核验，修复 parse 到 batch 之间的漏导竞争。
+- launchd 每天10:30/22:30，登录补查、失败节流重试、互斥锁，提供 prepare/status/uninstall。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fc79813` | (see git log) |
+
+### Testing
+
+- [OK] 全量1047 passed,1 skipped；专项28 passed；真实隔离launchd opt-in14 passed；Ruff/mypy/Trellis/plutil/diff通过。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 等待转发检索任务完成；核对内部投影完整性和实际变更信号，接入最终幂等增量索引，完成生产Agent/Citation验收后再启用正式任务与归档。
