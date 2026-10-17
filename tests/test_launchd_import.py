@@ -106,27 +106,41 @@ def test_calendar_invokes_virtual_environment_without_polling(manager: ModuleTyp
     assert "StartInterval" not in loaded and "WatchPaths" not in loaded
     arguments = loaded["ProgramArguments"]
     assert arguments[:4] == [str(virtual_python), "-m", "trivae", "import-once"]
+    assert "--update-indexes" in arguments
     assert arguments[arguments.index("--raw-dir") + 1] == str(tmp_path / "raw exports")
     assert arguments[arguments.index("--database") + 1] == str(tmp_path / "db/canonical.sqlite3")
     assert loaded["WorkingDirectory"] == str(tmp_path / "project with spaces")
     assert Path(loaded["StandardOutPath"]).is_absolute()
     assert Path(loaded["StandardErrorPath"]).is_absolute()
     assert loaded["EnvironmentVariables"]["PYTHONUNBUFFERED"] == "1"
+    assert loaded["EnvironmentVariables"]["HF_HUB_OFFLINE"] == "1"
 
 
+@pytest.mark.parametrize("update_indexes", [True, False])
 def test_prepare_does_not_register_launchd_or_touch_database(
-    manager: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    manager: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    update_indexes: bool,
 ) -> None:
-    """默认安装必须在下次登录时仍不会自动导入，且预检只执行 --help。"""
+    """准备不自启、不碰数据库；索引默认开启，也允许显式选择只导入。"""
 
     preflight = _preflight(monkeypatch, manager)
     launchctl = Mock(side_effect=AssertionError("prepare must not call launchctl"))
     monkeypatch.setattr(manager, "_launchctl", launchctl)
-    assert manager.main(_options(manager, tmp_path, "install")) == 0
+    # 同时验证安装参数能传到 plist，而不只验证 build_plist 的默认值。
+    extra = [] if update_indexes else ["--no-update-indexes"]
+    assert manager.main(_options(manager, tmp_path, "install", *extra)) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["status"] == "prepared" and result["enabled"] is False
-    assert result["integration_required"] is True
-    assert (tmp_path / "prepared/com.trivae.test-import.plist").is_file()
+    assert result["update_indexes"] is update_indexes
+    assert result["integration_required"] is not update_indexes
+    prepared = tmp_path / "prepared/com.trivae.test-import.plist"
+    assert prepared.is_file()
+    document = plistlib.loads(prepared.read_bytes())
+    assert ("--update-indexes" in document["ProgramArguments"]) is update_indexes
+    assert (document["EnvironmentVariables"].get("HF_HUB_OFFLINE") == "1") is update_indexes
     assert not (tmp_path / "LaunchAgents").exists()
     assert not (tmp_path / "canonical.sqlite3").exists()
     assert not (tmp_path / "raw").exists()
@@ -316,6 +330,8 @@ def test_real_launchd_isolated_backlog_and_index_pending(tmp_path: Path) -> None
         "0",
         "--min-age-seconds",
         "0",
+        # smoke 只验证调度和持久补偿，不加载真实 embedding 模型。
+        "--no-update-indexes",
     ]
     (tmp_path / "raw").mkdir()
 

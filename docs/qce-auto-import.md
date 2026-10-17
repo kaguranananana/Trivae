@@ -1,19 +1,20 @@
 # QCE 本地增量导入与 macOS 调度
 
-已实现文件发现、状态持久化、失败恢复、独立 CLI 和调度管理，并与「合并转发内部消息检索」代码完成合并。默认尚未连接自动导入的增量索引 updater；新增消息可以已经提交 Canonical Store，但 FTS5、语义索引以及 Agent 检索仍可能未就绪。必须完成该 updater 对接和生产整链路验收后，才能启用真实自动任务。开发与合并验证均使用隔离数据库，不修改 QCE、原始 JSON 或冻结 Evaluation。
+已实现文件发现、状态持久化、失败恢复、独立 CLI 和调度管理，并与「合并转发内部消息检索」代码完成合并。用户在合并后明确授权启动真实调度；本轮为正式调度接入既有索引构建器，默认携带 `--update-indexes`。实际安装、首轮运行和生产检索验收结果需以任务验证记录及下述状态命令为准，不能只凭配置已生成就视为启用成功。开发测试使用隔离数据库，不修改 QCE、原始 JSON 或冻结 Evaluation。
 
 ## 单次执行与处理状态
 
 在项目目录执行：
 
 ```sh
-uv sync --extra dev
+uv sync --extra dev --extra semantic
 .venv/bin/python -m trivae import-once \
   --raw-dir /Users/anontokyo/Downloads/Project/Learn/Trivae/data/raw \
-  --database /Users/anontokyo/Downloads/Project/Learn/Trivae/data/trivae.sqlite3
+  --database /Users/anontokyo/Downloads/Project/Learn/Trivae/data/trivae.sqlite3 \
+  --update-indexes
 ```
 
-以上真实路径命令只供后续集成验收使用；本分支开发和测试必须改成独立测试目录与数据库。`import-once` 不需要 Web UI、QQ 接口或模型服务；底层复用 `SharedImporter.import_paths()`，不调用全量索引重建。
+以上命令会写真实数据库，手工执行前应确认没有其他导入进程；开发测试改成独立目录与数据库。`import-once` 不需要 Web UI 或 QQ 接口，底层复用 `SharedImporter.import_paths()`。终端命令不带 `--update-indexes` 时只做 Canonical 导入，不加载模型，新增数据的索引工作明确保留为 pending；正式调度默认开启索引更新。
 
 默认先间隔 5 秒检查大小、修改时间等文件属性，再要求最近至少 60 秒未修改。尚在写入的文件记为 `deferred`，不会作为已完成文件跳过；下次执行仍会检查。稳定文件复制到临时快照后由现有 QQ parser 校验 JSON 并导入，原文件保持不变。每次检查目录内全部 JSON，不以“上次运行时间”截断，因此导出延迟或错过调度不会永久遗漏旧文件。
 
@@ -27,10 +28,14 @@ uv sync --extra dev
 | --- | --- | --- |
 | `0` | 本次文件处理完成，包括空目录；不代表 Agent 全链路已验收 | 查看数据库和索引状态 |
 | `1` | 文件、记录或索引更新失败 | 查看错误、原批次和 stderr；修复后补偿 |
-| `2` | 文件已处理，仍有索引工作等待集成或补偿 | 连接并验证 updater，再运行补偿 |
+| `2` | 文件已处理，仍有索引工作等待集成或补偿 | 带 `--update-indexes` 再运行补偿 |
 | `75` | 文件仍在写入，或同一数据库已有导入进程 | 保留状态，等待后续执行 |
 
 实际新增消息的已提交批次才产生 lexical / semantic 索引工作；重复导出没有新增消息时不产生新的索引更新。索引失败保留 pending/failed 工作及错误，后续可单独补偿而不重新解析成功文件。队列为空只说明这些工作处理完毕；全库 readiness 与 Agent 检索仍需后续验收确认。
+
+`--update-indexes` 将持久化待办交给现有 FTS5 和语义构建器；一轮内每种索引至多构建一次，没有新增数据且没有待办时不构建。现有底层只有全量构建和同源水位续建，因此这是**数据变更触发的全量索引更新，不是向量局部增量算法**。它保留现有合并转发和语义 parent 重切行为，避免对迟到消息只做错误的时间追加。相同快照失败或中断后按既有 resume 恢复；已完成且身份、消息计数及 revision 相同则确认复用，不重复计算向量。
+
+全量成本可能很高：[合并转发验证记录](../.trellis/tasks/archive/2026-10/10-16-qq-forward-retrieval/validation.md) 中，本机对 765,780 条 Canonical、12,484 条转发内部记录续建时，复用 20,104 个块，新计算 72,184 个向量仍耗时约 **5 小时 13 分**。这不是从零重建耗时，也不是本次调度的预计完成时间。首次新增触发后可能长时间处于 `building`；期间不能声称最新消息已经通过语义检索验收。
 
 ## 准备调度配置
 
@@ -42,7 +47,9 @@ uv sync --extra dev
 
 默认仅准备 plist，输出 `status: prepared`、`enabled: false`。准备文件放在 `~/Library/Application Support/Trivae/launchd/`，没有写入 `~/Library/LaunchAgents/`，因此下次登录也不会提前启动真实导入。准备时只用项目 `.venv/bin/python -m trivae import-once --help` 校验入口，不打开数据库。脚本可从其他工作目录执行。
 
-plist 固定使用绝对 Python 路径、`-m trivae import-once`、raw/database 路径和项目工作目录，不依赖交互 shell 的 PATH、uv 别名或激活虚拟环境。可用 `--project-dir` 指向最终集成工作目录；默认 Python 是该目录的 `.venv/bin/python`，也可用 `--python` 显式指定。虚拟环境被移动或删除后必须重新准备并安装配置。
+plist 固定使用绝对 Python 路径、`-m trivae import-once --update-indexes`、raw/database 路径和项目工作目录，不依赖交互 shell 的 PATH、uv 别名或激活虚拟环境。可用 `--project-dir` 指向最终集成工作目录；默认 Python 是该目录的 `.venv/bin/python`，也可用 `--python` 显式指定。虚拟环境被移动或删除后必须重新准备并安装配置。安装输出的 `update_indexes` 及 plist 参数说明是否启用索引更新，`integration_required` 仅表示是否尚未装配 updater，不代表生产检索已经验收。
+
+正式调度的环境显式设置 `HF_HUB_OFFLINE=1`，复用已验证的本机 Qwen 模型缓存，避免既有 Hub HEAD SSL EOF 导致启动失败；缓存缺失仍明确报错，不换模型或降级。需要 `semantic` extra 和正确模型缓存。隔离的只入库测试可给安装脚本传 `--no-update-indexes`；生成的命令不请求索引更新，也不设置该离线模型环境项。
 
 调度为机器本地时区每天 **10:30 和 22:30**：
 
@@ -60,9 +67,9 @@ plist 固定使用绝对 Python 路径、`-m trivae import-once`、raw/database 
 
 真实 macOS 验证发现，刚执行完就调用 `launchctl kickstart` 也会受 300 秒节流，命令可能一直等待到允许启动。不要把它误判成导入卡死；`launchctl print` 中 `state=spawn scheduled`、`minimum runtime=300` 能说明原因。需要立即验证新安装参数时可重新执行显式安装命令，让管理器 bootout/bootstrap；常规补偿应等待系统调度。
 
-## 集成验收后启用
+## 启用调度
 
-先接入并验证增量 updater，再使用最终集成目录执行与 prepare 相同的命令并增加 `--enable`：
+使用最终集成目录及已安装 semantic 依赖的 Python 环境，在 prepare 命令上增加 `--enable`：
 
 ```sh
 ./scripts/macos/install-import.sh \
@@ -71,7 +78,7 @@ plist 固定使用绝对 Python 路径、`-m trivae import-once`、raw/database 
   --enable
 ```
 
-`--enable` 会创建日志目录、写入用户 LaunchAgents、bootstrap 并立即运行一次积压补查。更新已加载的同 label 服务时先 bootout，再加载新配置。不要在本分支未集成 updater 时执行真实启用命令：新增消息会停留在索引 pending，并触发明确的失败补偿。
+`--enable` 会创建日志目录、写入用户 LaunchAgents、bootstrap 并立即运行一次积压补查。更新已加载的同 label 服务时先 bootout，再加载新配置。默认索引更新失败会保留错误和待办，在后续调度中恢复；不要把 launchd 装载成功或 Canonical 入库成功当成索引已经就绪。
 
 macOS 如果拒绝 launchd 访问 Downloads，stderr 会保留对应 `PermissionError`；需在系统设置中解决实际执行环境的文件访问权限后再执行。不要把权限失败解释为“目录内没有新记录”。
 
@@ -107,7 +114,7 @@ sqlite3 -readonly data/trivae.sqlite3 \
   'SELECT session_id, source_message_id, timestamp, content_text FROM messages ORDER BY timestamp DESC LIMIT 5;'
 ```
 
-确认“Agent 已可检索”必须在集成完成后再验证：索引补偿没有 pending/failed；FTS5 与语义检索都能按真实 scope 命中新批次消息；Agent 查询使用唯一测试短语能返回新消息，并产生正确来源与 citation。还应包含合并转发内部消息、迟到消息和 session 时间边界，不能仅靠普通消息关键词命中就宣布端到端通过。本分支未完成这些生产检索验收。
+确认“Agent 已可检索”必须验证：索引补偿没有 pending/failed；FTS5 与语义检索都能按真实 scope 命中新批次消息；Agent 查询使用唯一短语能返回新消息，并产生正确来源与 citation。还应包含合并转发内部消息、迟到消息和 session 时间边界，不能仅靠普通消息关键词命中就宣布端到端通过。实际生产结论由本次启用阶段的验证记录报告。
 
 ## 停止与卸载
 
@@ -119,7 +126,7 @@ sqlite3 -readonly data/trivae.sqlite3 \
 
 ## 隔离验证与集成依赖
 
-脚本支持 `--label`、`--plist-dir`、`--launch-agents-dir`、`--log-dir`、`--raw-dir` 和 `--database`。独立 smoke 必须使用临时目录与单独 label，例如 `com.trivae.import-once-test.<pid>`；显式启用测试任务后务必用相同 label/目录参数卸载。默认 label 的真实任务在本次开发中保持未启用。
+脚本支持 `--label`、`--plist-dir`、`--launch-agents-dir`、`--log-dir`、`--raw-dir`、`--database` 和 `--no-update-indexes`。独立 smoke 必须使用临时目录与单独 label，例如 `com.trivae.import-once-test.<pid>`；显式启用测试任务后务必用相同 label/目录参数卸载。真实任务是否已启用，由安装结果与 `status-import.sh` 核实。
 
 自动化验证：
 
@@ -127,7 +134,7 @@ sqlite3 -readonly data/trivae.sqlite3 \
 .venv/bin/pytest -q tests/test_launchd_import.py
 ```
 
-该测试覆盖日历与重试配置、保留虚拟环境路径、带空格的绝对参数、默认 prepare 不自启动、不读写数据库、入口失败、显式启用/更新/卸载流程、系统错误透明和 wrapper 从任意目录执行。
+该测试覆盖日历与重试配置、保留虚拟环境路径、带空格的绝对参数、默认索引参数和离线环境、显式只入库配置、默认 prepare 不自启动、不读写数据库、入口失败、显式启用/更新/卸载流程、系统错误透明和 wrapper 从任意目录执行。
 
 真实 macOS smoke 为显式选择的隔离测试：
 
@@ -136,6 +143,6 @@ TRIVAE_RUN_LAUNCHD_SMOKE=1 .venv/bin/pytest -q \
   tests/test_launchd_import.py -k real_launchd
 ```
 
-它只注册唯一测试 label，用临时 SQLite/raw/日志验证 RunAtLoad、重新 bootstrap 后的状态恢复、新文件入库、默认索引 pending 的非零退出和重试调度，最后在 `finally` 中卸载。真实 launchd smoke 与 CLI/持久状态验证结果保存在本任务验证记录中。物理重启和休眠为待用户使用机器时验证的场景，不宣称已经强制实测。
+它只注册唯一测试 label，用临时 SQLite/raw/日志验证 RunAtLoad、重新 bootstrap 后的状态恢复、新文件入库，显式传 `--no-update-indexes` 验证 pending 的非零退出和重试调度，不加载真实模型，最后在 `finally` 中卸载。真实 launchd smoke 与 CLI/持久状态验证结果保存在本任务验证记录中。物理重启和休眠为待用户使用机器时验证的场景，不宣称已经强制实测。
 
-共享接口保持窄边界：自动导入只新增状态表并交接已提交批次；lexical / semantic updater 必须幂等，返回成功必须表示交接数据可检索。转发检索任务负责最终 message/index identity、索引版本、forwarded children、语义 parent 重切与检索 readiness。迟到消息可能改变既有 parent，不能简单追加 timestamp 水位以后消息。生产集成时必须重新审查新增消息对所有派生索引的影响，再完成整链路验收。
+共享接口保持窄边界：自动导入只新增状态表并交接已提交批次；lexical / semantic updater 必须幂等，返回成功必须表示交接数据可检索。当前装配器复用既有转发检索的索引身份、forwarded children 与 parent 重切行为，没有改写底层算法。真正的局部增量维护仍需另行验证迟到消息和语义 parent 边界，不能简单追加 timestamp 水位以后消息。生产整链路结论以实际消息、索引和 Agent 验收为准。

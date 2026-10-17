@@ -1,5 +1,12 @@
 # 设计
 
+## 2026-10-17 启用阶段
+用户在代码合并后明确要求启动真实调度，授权覆盖初期暂不启用约束。最小缺口是默认 updater 未装配，而不是 launchd 本身。新增轻量索引装配器，直接复用既有 SQLiteLexicalIndex / SemanticIndexBuilder；CLI 增加 --update-indexes，正式 launchd 默认携带此参数并指向 main 的 Python 环境。持久队列仍仅在实际新增消息时产生工作，无变更/纯重复不构建索引。
+
+现有底层只提供全量构建和同源水位续建，没有已验证增量 API。为遵守不自行改写转发/FTS/semantic 底层的边界，本次采用有新增才构建的既有主链路，批量待办每种索引只调用一次；不是每次日历运行都全量构建。真正的局部 FTS 更新和语义 parent 重切仍需要独立性能演进。必须明确全量语义构建的耗时，不能把本方案称为向量增量算法。
+
+语义索引若已完成且 identity/count/revision 相同，恢复确认直接复用；相同快照的 building/failed/partial 使用既有 resume，水位变化则按新快照从头构建。失败仍保留待办、原始错误与下一次调度补偿。测试先使用独立数据库/确定性 embedding，再安装正式任务并检查首轮结果。
+
 ## 最小行为差距与所有权
 现有 import 每次解析全部文件，缺少持久文件状态和无人值守入口。新增 ingestion 编排、storage 状态及 bootstrap 服务，CLI 只配置和投影。新增轻量 bootstrap/ingestion 装配入口，复用同一个 SharedImporter；不修改 TrivaeApplication、现有 importer/parser/检索算法，避免初始化 Evaluation/模型资源。
 
@@ -15,7 +22,7 @@
 ## 索引集成依赖
 - 每个实际新增的 committed batch，为 lexical / semantic 分别入持久队列；空导入不触发更新。
 - updater 是窄接口：按 index kind 和持久 batch 工作更新；成功必须表示这些工作已可检索，且重放幂等。索引成功而状态未提交时，下次可重放。
-- 本分支默认没有 updater，报告 integration_required 与待办，不调用全量 rebuild，不声称已检索就绪。
+- 初始隔离开发未装配 updater，只报告 integration_required 与待办；启用阶段已接既有构建器，CLI 显式 --update-indexes、正式调度默认打开。检索就绪仍由实际状态与工具验证。
 - 后续 lexical 应按新增/变更外层及转发内部记录维护 FTS；semantic 需重切受影响 session 的时间 parent（含迟到消息/边界），不能仅按最后 timestamp 追加。索引 identity/version、水位和失败可读性由转发任务最终设计决定。
 - 不修改 semantic stale / lexical count 校验。Agent 端到端检索断言留在集成阶段。
 - 当前批次 inserted_count 是外层消息计数；若最终转发实现会在外层 duplicate 时新增/回填内部记录，必须在集成时接入实际变更信号，不能仅沿用此计数宣称内部索引同步。

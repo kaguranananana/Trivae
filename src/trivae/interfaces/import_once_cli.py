@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 
+from trivae.bootstrap.import_indexes import create_import_index_updater
 from trivae.bootstrap.ingestion import read_import_status, run_import_once
 from trivae.data.ingestion.auto_import_contracts import ImportAlreadyRunning
 from trivae.data.model import IngestionError
@@ -26,6 +27,11 @@ def configure_import_once_parser(subparsers: argparse._SubParsersAction) -> None
         "--min-age-seconds", type=float, default=60, help="Required quiet period since last file change"
     )
     parser.add_argument("--status", action="store_true", help="Read persisted import/index status without writing")
+    parser.add_argument(
+        "--update-indexes",
+        action="store_true",
+        help="Process committed new-data index work using the existing FTS/semantic builders",
+    )
 
 
 def run_import_once_command(args: argparse.Namespace) -> int:
@@ -34,12 +40,18 @@ def run_import_once_command(args: argparse.Namespace) -> int:
     if args.status:
         print(json.dumps(read_import_status(args.database), ensure_ascii=False, indent=2))
         return 0
+    # 正式调度显式打开索引处理；只读状态和手工 Canonical-only 入口不加载模型。
+    updater = create_import_index_updater(args.database) if args.update_indexes else None
+    if args.update_indexes:
+        # 无人值守时将构建开始/完成事实写入 stderr 日志，长构建期间仍可定位阶段。
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     try:
         report = run_import_once(
             args.database,
             args.raw_dir,
             settle_seconds=args.settle_seconds,
             min_age_seconds=args.min_age_seconds,
+            index_updater=updater,
         )
     except (IngestionError, ValueError) as exc:
         print(

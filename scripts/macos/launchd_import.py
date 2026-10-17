@@ -34,6 +34,7 @@ def build_plist(
     label: str = DEFAULT_LABEL,
     settle_seconds: float = 5,
     min_age_seconds: float = 60,
+    update_indexes: bool = True,
 ) -> dict[str, object]:
     """构造只调用正式 import-once 入口的日历调度配置。"""
 
@@ -54,6 +55,12 @@ def build_plist(
         "--min-age-seconds",
         str(min_age_seconds),
     ]
+    environment = {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
+    # 正式调度同时补偿已提交批次的索引工作，避免只入库却持续无法检索。
+    if update_indexes:
+        arguments.append("--update-indexes")
+        # 本机模型缓存已验证可用，调度显式离线读取；缓存缺失仍由构建器报告失败。
+        environment["HF_HUB_OFFLINE"] = "1"
     # 两个日历事件采用机器本地时区，与用户设置的每天导出时间保持一致。
     calendar = [{"Hour": 10, "Minute": 30}, {"Hour": 22, "Minute": 30}]
     return {
@@ -70,7 +77,7 @@ def build_plist(
         # 直接追加两份日志，使无 Web UI 的执行结果和 traceback 均可检查。
         "StandardOutPath": str(_absolute(log_dir) / f"{label}.stdout.log"),
         "StandardErrorPath": str(_absolute(log_dir) / f"{label}.stderr.log"),
-        "EnvironmentVariables": {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"},
+        "EnvironmentVariables": environment,
     }
 
 
@@ -163,6 +170,7 @@ def install(args: argparse.Namespace) -> dict[str, object]:
         label=args.label,
         settle_seconds=args.settle_seconds,
         min_age_seconds=args.min_age_seconds,
+        update_indexes=args.update_indexes,
     )
     _write_plist(prepared, document)
     result: dict[str, object] = {
@@ -174,7 +182,9 @@ def install(args: argparse.Namespace) -> dict[str, object]:
         "database": str(database),
         "raw_dir": str(raw_dir),
         "log_dir": str(log_dir),
-        "integration_required": True,
+        "update_indexes": args.update_indexes,
+        # 这里只说明是否装配索引 updater，不代表生产检索已经验收完成。
+        "integration_required": not args.update_indexes,
     }
     if not args.enable:
         return result
@@ -187,7 +197,7 @@ def install(args: argparse.Namespace) -> dict[str, object]:
     _write_plist(installed, document)
     # enable 清除该用户之前手动 disable 同一 label 的状态。
     _require_success(_launchctl("enable", target))
-    # RunAtLoad 会立即补查全部输入，因此这个分支只能在集成验收后执行。
+    # RunAtLoad 会立即补查全部输入，因此只有显式 --enable 才执行此系统操作。
     _require_success(_launchctl("bootstrap", f"gui/{os.getuid()}", str(installed)))
     result.update(status="enabled", enabled=True)
     return result
@@ -243,7 +253,13 @@ def _parser() -> argparse.ArgumentParser:
             subparser.add_argument("--settle-seconds", type=float, default=5)
             subparser.add_argument("--min-age-seconds", type=float, default=60)
             subparser.add_argument(
-                "--enable", action="store_true", help="enable only after index integration acceptance"
+                "--update-indexes",
+                action=argparse.BooleanOptionalAction,
+                default=True,
+                help="update pending indexes by default; use --no-update-indexes for isolated import-only runs",
+            )
+            subparser.add_argument(
+                "--enable", action="store_true", help="register and immediately run the prepared LaunchAgent"
             )
     return parser
 
