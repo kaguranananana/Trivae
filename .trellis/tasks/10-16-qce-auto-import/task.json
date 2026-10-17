@@ -2,7 +2,7 @@
   "id": "qce-auto-import",
   "name": "qce-auto-import",
   "title": "QCE 本地增量导入与 macOS 调度",
-  "description": "隔离实现 QCE 文件发现、稳定快照、持久化增量导入、失败恢复和 launchd 日历调度；索引实际更新与生产验收等待合并转发任务集成。",
+  "description": "QCE 文件发现、稳定快照、持久化增量导入、失败恢复和 launchd 日历调度；已集成转发与既有索引构建器，正式调度已按用户授权启动，生产检索验收进行中。",
   "status": "in_progress",
   "dev_type": null,
   "scope": null,
@@ -12,7 +12,7 @@
   "assignee": "anontokyo",
   "createdAt": "2026-10-16",
   "completedAt": null,
-  "branch": "codex/qce-auto-import",
+  "branch": "codex/qce-enable-schedule",
   "base_branch": "main",
   "worktree_path": "/Users/anontokyo/.codex/worktrees/qce-auto-import/Trivae",
   "commit": null,
@@ -21,10 +21,10 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "已与完成的合并转发检索代码集成；合并回归1098 passed,1 skipped，Ruff/mypy通过。正式plist仍仅prepare，未安装/加载。最终增量索引updater及生产Agent验收待完成，任务暂不归档。",
+  "notes": "索引装配与调度启用代码已合入 main@9f5d207；1104 passed,1 skipped，Ruff/mypy128通过。正式 LaunchAgent 于2026-10-17 11:06 +08安装/加载；首轮40文件completed，新增23087/duplicate448949/error0，FTS及Agent lexical/recent工具已实测。语义788867条/水位23087正在building，待semantic及Query/Citation生产验收，任务不提前归档。当前仅新增数据触发现有全量构建，局部向量增量为独立演进项。",
   "meta": {
     "independent_development": "verified",
-    "integration_status": "code_integrated_index_updater_pending",
-    "production_scheduler": "prepared_not_enabled"
+    "integration_status": "production_lexical_verified_semantic_building",
+    "production_scheduler": "enabled_first_run_running"
   }
 }
