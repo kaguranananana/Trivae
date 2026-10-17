@@ -76,3 +76,5 @@ Storage 拥有 SQL/事务与位置事实；Repository 输出范围/投影；Buil
 ## Final Diff Review
 
 已检查任务相关源码、测试、脚本、规范与运维文档。未暂存 .opencode/package.json、生产 lock 和用户未命名 base；未改 frozen Evaluation 或原始数据。工作提交后按约定独立归档与 journal，最后统一推送。
+
+工作提交：`43343eae8c8cf4058cf2b0434b4be77a15c0db69`。

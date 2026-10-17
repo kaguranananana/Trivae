@@ -3,7 +3,7 @@
   "name": "semantic-incremental",
   "title": "Semantic 向量索引按受影响范围增量更新",
   "description": "按 Canonical 位置日志局部重切并复用未变 Embedding，单事务发布并完成 Fake/真实 Qwen 全量对照。",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "backend",
   "scope": "semantic",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "anontokyo",
   "assignee": "anontokyo",
   "createdAt": "2026-10-17",
-  "completedAt": null,
+  "completedAt": "2026-10-17",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "43343eae8c8cf4058cf2b0434b4be77a15c0db69",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -26,6 +26,6 @@
     "src/trivae/data/storage/sqlite_forward.py",
     "docs/semantic-incremental-index.md"
   ],
-  "notes": "",
+  "notes": "全部验收通过：pytest 1152 passed/1 skipped；ruff/mypy；Fake 360→7，真实 Qwen 18→7，精确结果一致。工作提交已完成，按工作流归档与 journal 后统一推送。",
   "meta": {}
 }
