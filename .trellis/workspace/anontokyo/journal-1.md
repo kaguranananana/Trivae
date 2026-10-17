@@ -1759,3 +1759,37 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Next Steps
 
 - 自动导入索引updater和生产Agent验收仍待完成；真实launchd未启用。
+
+
+## Session 67: 启用 QCE 日历调度并验证生产导入
+
+**Date**: 2026-10-17
+**Task**: 启用 QCE 日历调度并验证生产导入
+**Branch**: `codex/qce-enable-schedule`
+
+### Summary
+
+按用户明确授权启用10:30/22:30 LaunchAgent，立即补查40文件，新增23087条且error0；FTS和Agent lexical/recent已验证，语义全库building，保留任务未归档。
+
+### Main Changes
+
+- 薄CLI显式装配既有索引builder，正式launchd默认更新并离线读本机Qwen缓存；仅新增持久待办触发构建。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9f5d207` | (see git log) |
+| `849aa99` | (see git log) |
+
+### Testing
+
+- [OK] 1104 passed,1 skipped；Ruff通过；mypy128通过；独立review无新增阻塞。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 等待生产semantic构建完成后验证真实semantic与Query/Citation；不得把loaded或FTS完成称为整链路完成。
