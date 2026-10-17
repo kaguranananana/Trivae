@@ -599,10 +599,14 @@ class CanonicalReadRepository(Protocol):
     ) -> tuple[MessageProjection, ...]:
         """读取 trusted Scope 内的同 session surrounding context。"""
 
-    def iter_semantic_messages(self, batch_size: int) -> "Iterator[MessageProjection]":
+    def iter_semantic_messages(
+        self, batch_size: int, *, scope: ScopeFilters | None = None
+    ) -> "Iterator[MessageProjection]":
         """按 canonical ordering 流式读取 semantic builder 所需的最小 projection。"""
 
-    def iter_forwarded_messages(self, batch_size: int) -> "Iterator[MessageProjection]":
+    def iter_forwarded_messages(
+        self, batch_size: int, *, scope: ScopeFilters | None = None
+    ) -> "Iterator[MessageProjection]":
         """从 canonical JSON 流式恢复转发 occurrence，独立于 FTS 是否已构建。"""
 
     def count_forwarded_messages(self) -> int:
@@ -610,6 +614,11 @@ class CanonicalReadRepository(Protocol):
 
     def canonical_revision(self) -> int:
         """读取持久化的 canonical 变更版本，索引不得缓存该事实。"""
+
+    def semantic_change_ranges(
+        self, since_revision: int, gap_seconds: int
+    ) -> tuple[tuple[str, int | None, int | None], ...]:
+        """读取旧、新位置连接的闭区间；会话改名以双空时间表示整个会话。"""
 
     def forward_content_gaps(self, scope: ScopeFilters) -> tuple[str, ...]:
         """返回当前群聊/转发时间范围内已知缺失节点的 root + path。"""

@@ -139,3 +139,53 @@ def test_cli_update_indexes_is_explicit_and_status_does_not_construct_updater(tm
     report = json.loads(capsys.readouterr().out)
     assert report["indexes"]["updater"] == "connected"
     assert report["indexes"]["pending"] == []
+
+
+def test_daily_append_and_late_import_use_incremental_builder_and_ack_once(tmp_path: Path) -> None:
+    """持久队列合并多个文件，通过正式装配器局部更新并保留绝大多数历史向量。"""
+
+    database, raw = tmp_path / "store.sqlite3", tmp_path / "raw"
+    write_fixture(raw, "chat.json", count=30)
+    provider = _ResumeProvider()
+    updater = LocalImportIndexUpdater(database, semantic_provider=provider)
+    assert run(database, raw, updater).exit_code == 0
+    with closing(SQLiteSemanticIndex(tmp_path / "store.semantic.sqlite3")) as index:
+        old_ids = {row[0] for row in index._connection.execute("SELECT vector_id FROM semantic_chunks")}
+        assert len(old_ids) == 30
+    write_fixture(raw, "chat.json", count=31)
+    write_export(
+        raw, "late.json",
+        [make_message("late", 99, 1_790_000_001_000, "远程连接补录历史工程记录 " + "detail " * 20)],
+        chat_name="测试群", peer_uid="12345", version="5",
+    )
+    provider.documents.clear()
+    original_update = SemanticIndexBuilder.update
+    with (
+        patch.object(SemanticIndexBuilder, "rebuild", side_effect=AssertionError("历史不应全量重建")),
+        patch.object(SemanticIndexBuilder, "update", autospec=True, side_effect=original_update) as update,
+    ):
+        report = run(database, raw, updater)
+    assert report.exit_code == 0
+    assert report.pending_indexes == ()
+    assert sum(batch.inserted_count for batch in report.batches) == 2
+    assert update.call_count == 1
+    assert len(provider.documents) == 2
+    with closing(SQLiteSemanticIndex(tmp_path / "store.semantic.sqlite3")) as index:
+        new_ids = {row[0] for row in index._connection.execute("SELECT vector_id FROM semantic_chunks")}
+        assert len(old_ids & new_ids) == 29
+    with create_application(database, semantic_provider=provider) as application:
+        scope = ExecutionScope(allowed_session_ids=("qq:12345",), max_results=5)
+        semantic = application.invoke_tool("semantic_search", SemanticSearchInput(query="远程连接", limit=1), scope)
+        assert semantic.status == "ok"
+        assert "qq:12345:late" in {message.internal_message_id for message in semantic.data.expanded_messages}
+        lexical = application.invoke_tool("lexical_search", SearchMessagesInput(keyword="远程连接", limit=1), scope)
+        assert lexical.status == "ok"
+        assert lexical.data.hits[0].message.source_message_id == "late"
+    # 发布后 ack 前中断的重放不再调用 preload 或 embed。
+    with sqlite3.connect(database) as connection:
+        connection.execute("UPDATE auto_import_index_work SET status='running' WHERE index_kind='semantic'")
+    with (
+        patch.object(provider, "preload", side_effect=AssertionError("已发布不加载模型")),
+        patch.object(provider, "embed_documents", side_effect=AssertionError("已发布不计算向量")),
+    ):
+        assert run(database, raw, updater).exit_code == 0

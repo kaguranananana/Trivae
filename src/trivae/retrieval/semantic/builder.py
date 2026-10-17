@@ -25,7 +25,7 @@ from trivae.retrieval.semantic.contracts import (
     SemanticIndexStore,
     SemanticMessage,
 )
-from trivae.retrieval.structured import CanonicalReadRepository, MessageQuery
+from trivae.retrieval.structured import CanonicalReadRepository, MessageQuery, ScopeFilters
 
 _LONG_INPUT_ISOLATION_CHARS = 2048
 
@@ -73,6 +73,9 @@ class SemanticIndexBuilder:
         self.database_identity = database_identity
         self.chunker = chunker or SemanticChunker(DEFAULT_SEMANTIC_CHUNK_CONFIG, SEMANTIC_CHUNKER_VERSION)
         self.read_batch_size = read_batch_size
+        # 增量路径只在首次真正缺少向量时加载模型，空变更不触发加载。
+        self._incremental_model_loaded = False
+        self._incremental_model_load_ms = 0.0
 
     @property
     def identity(self) -> SemanticIndexIdentity:
@@ -83,6 +86,152 @@ class SemanticIndexBuilder:
             embedding=self.provider.identity,
             chunker_version=self.chunker.version,
             chunker_config=self.chunker.config.to_dict(),
+        )
+
+    def update(self) -> SemanticBuildStats:
+        """按持久变更位置重放安全段，并原子发布与全量同语义的新索引。"""
+
+        started = perf_counter()
+        state = self.store.state()
+        revision = self.repository.canonical_revision()
+        identity = self.identity
+        canonical_count = self.repository.count_messages(MessageQuery(limit=1))
+        same_identity = state is not None and state.identity.serialized == identity.serialized
+        same_snapshot = same_identity and state is not None and state.canonical_revision == revision
+        if same_snapshot and state is not None and state.status == "completed":
+            # 提交成功但队列未确认时，直接报告既有发布事实，不解析转发树或加载模型。
+            if state.canonical_message_count != canonical_count:
+                raise SemanticIndexStale("canonical count changed without its revision")
+            return self._unchanged_stats(started)
+        if not same_identity or not self.store.supports_incremental():
+            # 首建、模型/config 变更、旧输入凭据迁移和未完成全量构建保留原有入口。
+            return self.rebuild(resume=bool(
+                same_snapshot and state is not None and state.status != "completed" and self.store.has_replay_inputs()
+            ))
+        assert state is not None
+        # 变更日志缺失不能靠猜测重用旧向量；由 repository 明确拒绝不受追踪的水位。
+        ranges = self.repository.semantic_change_ranges(state.canonical_revision, self.chunker.config.parent_gap_seconds)
+        forwarded_count = self.repository.count_forwarded_messages()
+        self._incremental_model_loaded = False
+        self._incremental_model_load_ms = 0.0
+        processed = processed_forwarded = eligible = void = eligible_forwarded = void_forwarded = 0
+        parent_count = affected_chunks = skipped = embeddings = batches = 0
+        embedding_ms = write_ms = 0.0
+        pending_chunks: list[SemanticChunk] = []
+        pending_parents: deque[_PendingParent] = deque()
+        # 旧向量先进入事务内临时复用池；任何异常或强停均回滚所有正式 rows。
+        with self.store.incremental_transaction(
+            identity, canonical_count, base_revision=state.canonical_revision,
+            canonical_revision=revision, forwarded_message_count=forwarded_count,
+        ):
+            write_started = perf_counter()
+            removed = self.store.prepare_incremental_ranges(ranges)
+            write_ms += (perf_counter() - write_started) * 1000
+            for session_id, first, last in ranges:
+                # 范围端点由时间连通段定义且 inclusive；公共 scope 保持半开时间语义。
+                scope = ScopeFilters(
+                    session_ids=(session_id,), start_timestamp=first,
+                    end_timestamp=None if last is None else last + 1,
+                )
+                # 每个范围单独关闭 Parent；段外时间 gap 保证不会与相邻范围拼接。
+                parent: list[SemanticMessage] = []
+                projections = chain(
+                    self.repository.iter_semantic_messages(self.read_batch_size, scope=scope),
+                    self.repository.iter_forwarded_messages(self.read_batch_size, scope=scope),
+                )
+                for projection in projections:
+                    message = SemanticMessage.from_projection(projection)
+                    is_void = is_semantic_void(message)
+                    if message.forward is None:
+                        eligible += int(not is_void)
+                        void += int(is_void)
+                    else:
+                        eligible_forwarded += int(not is_void)
+                        void_forwarded += int(is_void)
+                    if parent and self.chunker.starts_new_parent(parent[-1], message, parent):
+                        result = self.chunker.chunk_parent(parent)
+                        parent_count += 1
+                        affected_chunks += len(result.chunks)
+                        skipped += result.skipped_void_chunks
+                        pending_chunks.extend(result.chunks)
+                        pending_parents.append(_PendingParent(len(parent), len(result.chunks), parent[0].forward is not None))
+                        flushed = self._flush_pending(
+                            pending_chunks, pending_parents, flush_all=False, resume=False, incremental=True,
+                        )
+                        processed += flushed.processed_message_count
+                        processed_forwarded += flushed.processed_forwarded_message_count
+                        embeddings += flushed.embedding_count
+                        batches += flushed.embedding_batch_count
+                        embedding_ms += flushed.embedding_elapsed_ms
+                        write_ms += flushed.index_write_elapsed_ms
+                        parent = []
+                    parent.append(message)
+                if parent:
+                    result = self.chunker.chunk_parent(parent)
+                    parent_count += 1
+                    affected_chunks += len(result.chunks)
+                    skipped += result.skipped_void_chunks
+                    pending_chunks.extend(result.chunks)
+                    pending_parents.append(_PendingParent(len(parent), len(result.chunks), parent[0].forward is not None))
+                # 多个彼此隔离的变更段也共享有界批次，不能把每段尾 Parent 一直累积到全轮结束。
+                flushed = self._flush_pending(
+                    pending_chunks, pending_parents, flush_all=False, resume=False, incremental=True,
+                )
+                processed += flushed.processed_message_count
+                processed_forwarded += flushed.processed_forwarded_message_count
+                embeddings += flushed.embedding_count
+                batches += flushed.embedding_batch_count
+                embedding_ms += flushed.embedding_elapsed_ms
+                write_ms += flushed.index_write_elapsed_ms
+            flushed = self._flush_pending(
+                pending_chunks, pending_parents, flush_all=True, resume=False, incremental=True,
+            )
+            processed += flushed.processed_message_count
+            processed_forwarded += flushed.processed_forwarded_message_count
+            embeddings += flushed.embedding_count
+            batches += flushed.embedding_batch_count
+            embedding_ms += flushed.embedding_elapsed_ms
+            write_ms += flushed.index_write_elapsed_ms
+            # 计数与完成状态和 vec0 rows 同事务提交，未处理的段沿用旧版已完成覆盖。
+            if self.repository.canonical_revision() != revision:
+                raise SemanticIndexStale("canonical messages changed during semantic incremental update")
+            # 把最终落盘提交也计入写入耗时，避免仅记录事务内 SQL 而漏掉发布成本。
+            publish_started = perf_counter()
+            self.store.update_progress(canonical_count, indexed_forwarded_message_count=forwarded_count)
+            self.store.finish("completed")
+        write_ms += (perf_counter() - publish_started) * 1000
+        published = self.store.state()
+        assert published is not None
+        return SemanticBuildStats(
+            status="completed", canonical_message_count=canonical_count, indexed_message_count=canonical_count,
+            eligible_message_count=eligible, semantic_void_message_count=void,
+            parent_count=parent_count, chunk_count=published.chunk_count, skipped_void_chunks=skipped,
+            embedding_count=embeddings, embedding_batch_size=self.provider.document_batch_size,
+            embedding_batch_count=batches, model_load_elapsed_ms=self._incremental_model_load_ms,
+            embedding_elapsed_ms=embedding_ms, index_write_elapsed_ms=write_ms,
+            elapsed_ms=(perf_counter() - started) * 1000, index_size_bytes=self.store.size_bytes(), identity=identity,
+            forwarded_message_count=forwarded_count, indexed_forwarded_message_count=forwarded_count,
+            eligible_forwarded_message_count=eligible_forwarded, semantic_void_forwarded_message_count=void_forwarded,
+            reused_chunk_count=published.chunk_count - embeddings, build_mode="incremental",
+            affected_message_count=processed + processed_forwarded, affected_chunk_count=affected_chunks,
+            removed_chunk_count=removed,
+        )
+
+    def _unchanged_stats(self, started: float) -> SemanticBuildStats:
+        """空更新报告直接使用已提交覆盖水位，不扫描消息正文。"""
+
+        state = self.store.state()
+        assert state is not None
+        return SemanticBuildStats(
+            status="completed", canonical_message_count=state.canonical_message_count,
+            indexed_message_count=state.indexed_message_count, eligible_message_count=0,
+            semantic_void_message_count=0, parent_count=0, chunk_count=state.chunk_count,
+            skipped_void_chunks=0, embedding_count=0, embedding_batch_size=self.provider.document_batch_size,
+            embedding_batch_count=0, model_load_elapsed_ms=0, embedding_elapsed_ms=0, index_write_elapsed_ms=0,
+            elapsed_ms=(perf_counter() - started) * 1000, index_size_bytes=self.store.size_bytes(), identity=self.identity,
+            forwarded_message_count=state.forwarded_message_count,
+            indexed_forwarded_message_count=state.indexed_forwarded_message_count,
+            reused_chunk_count=state.chunk_count, build_mode="unchanged",
         )
 
     def rebuild(self, *, resume: bool = False) -> SemanticBuildStats:
@@ -257,6 +406,7 @@ class SemanticIndexBuilder:
             eligible_forwarded_message_count=eligible_forwarded_messages,
             semantic_void_forwarded_message_count=semantic_void_forwarded_messages,
             reused_chunk_count=reused_chunk_count,
+            build_mode="resume" if resume else "full",
         )
 
     def _flush_pending(
@@ -266,6 +416,7 @@ class SemanticIndexBuilder:
         *,
         flush_all: bool,
         resume: bool,
+        incremental: bool = False,
     ) -> _PendingBuildStats:
         """按 provider batch 上限写入跨 Parent chunks，并只提交已完整覆盖的 Parent 进度。"""
 
@@ -299,8 +450,18 @@ class SemanticIndexBuilder:
             # 相同消息流重放出原有 Parent/Child 边界，不依赖可能滞后的 processed 水位。
             reused_ids = self.store.reusable_chunk_ids(batch) if resume else frozenset()
             # 逐字段验证后的旧块不再次调用模型，也不重复写入 metadata/vector。
-            missing = tuple(chunk for chunk in batch if chunk.chunk_id not in reused_ids)
+            reused_vectors = self.store.reusable_vectors(batch) if incremental else {}
+            missing = tuple(
+                chunk for chunk in batch if chunk.chunk_id not in reused_ids and chunk.chunk_id not in reused_vectors
+            )
+            vectors: tuple[tuple[float, ...], ...] = ()
             if missing:
+                if incremental and not self._incremental_model_loaded:
+                    # 全文比较证明需要新向量后才加载 provider，void-only 变更无需加载。
+                    load_started = perf_counter()
+                    self.provider.preload()
+                    self._incremental_model_load_ms = (perf_counter() - load_started) * 1000
+                    self._incremental_model_loaded = True
                 embedding_started = perf_counter()
                 vectors = self.provider.embed_documents(tuple(chunk.embedding_input for chunk in missing))
                 embedding_elapsed_ms += (perf_counter() - embedding_started) * 1000
@@ -310,10 +471,17 @@ class SemanticIndexBuilder:
                     raise SemanticEmbeddingError(
                         f"embedding output count mismatch: expected {len(missing)}, got {len(vectors)}"
                     )
+            # 增量重切后的 metadata 必须写入；输入不变时搬用旧 float32 vector，不调用模型。
+            computed = {chunk.chunk_id: vector for chunk, vector in zip(missing, vectors, strict=True)}
+            writable = tuple(
+                (chunk, reused_vectors[chunk.chunk_id] if chunk.chunk_id in reused_vectors else computed[chunk.chunk_id])
+                for chunk in batch if chunk.chunk_id not in reused_ids
+            )
+            if writable:
                 write_started = perf_counter()
-                self.store.insert_chunks(tuple(zip(missing, vectors, strict=True)))
+                self.store.insert_chunks(writable)
                 index_write_elapsed_ms += (perf_counter() - write_started) * 1000
-            reused_chunk_count += len(reused_ids)
+            reused_chunk_count += len(reused_ids) + len(reused_vectors)
             # 只有向量和 metadata 同事务成功后，才从 pending 队列消费对应范围。
             del chunks[:current_size]
             remaining = current_size

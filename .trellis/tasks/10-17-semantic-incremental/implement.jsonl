@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Canonical 与 semantic 持久化契约"}
+{"file": ".trellis/spec/backend/semantic-incremental-guidelines.md", "reason": "增量位置日志、输入复用、原子发布及回归契约"}

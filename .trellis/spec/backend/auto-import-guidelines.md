@@ -7,17 +7,17 @@
 - `trivae import-once [--raw-dir PATH] [--database PATH] [--settle-seconds 5] [--min-age-seconds 60] [--update-indexes] [--status]`
 - `run_import_once(database_path, raw_directory, *, settle_seconds=5, min_age_seconds=60, index_updater=None) -> AutoImportReport`
 - `IncrementalIndexUpdater.update(index_kind, work: tuple[IndexWork, ...]) -> None`
-- additive 表：`auto_import_files`（path/version/status/batch_id/baseline_rowid/attempts/error）、`auto_import_index_work`（batch_id + index_kind/status/attempts/error）、`auto_import_runs`（开始/结束/摘要/错误）。
+- additive 表：`auto_import_files`（path/version/status/batch_id/baseline_rowid/baseline_revision/attempts/error）、`auto_import_index_work`（batch_id + index_kind/status/attempts/error）、`auto_import_runs`（开始/结束/摘要/错误）。
 - `scripts/macos/{install,status,uninstall}-import.sh`；安装默认 prepare，只有显式 `--enable` 才注册 LaunchAgent；正式参数默认含 `--update-indexes`，可用安装参数 `--no-update-indexes` 显式选择只导入。
 
 ## 3. Contracts
 - 仍调用 `SharedImporter.import_paths()`，不复制 QQ parser、dedup、transaction 或 conflict/provenance 语义。
 - 版本用 device/inode/size/mtime_ns/ctime_ns；未变成功文件不解析。历史时间仅筛选候选：旧 importer 在 parse 后才 create_batch，故 mtime/ctime < started_at 也可能含未读记录。首次需原 Parser 解码稳定快照，逐条用 source_record_index 核对已有 Canonical/variant raw，并检查来源 identity；完整覆盖才接管，不重做规范化和重复写入。无法证明的历史交回 import_paths；委托 Parser 缓存该快照结果/已分类错误，避免二次解码。
 - 一轮双采样共用等待；过新/变化文件 deferred。稳定二进制快照保留 basename，复制前后核对路径与打开 fd 的版本；JSON 只由既有 parser 校验解析一次。
-- importer 调用前提交 importing 意图和当前 batch rowid。文件状态在 Canonical 提交后更新；重启先据水位后的已提交 batch 恢复状态和索引义务。未提交则重试。
+- importer 调用前提交 importing 意图、当前 batch rowid 与 canonical revision。文件状态在 Canonical 提交后更新；重启先据水位后的已提交 batch 恢复状态和索引义务。未提交则重试。
 - 状态与 Canonical 使用同一连接/数据库，只添加运维表，不修改原表。轻量入口不创建 Query/Evaluation；只在显式更新语义索引且存在待办时加载模型。
-- 仅 inserted_count > 0 的已提交批次创建 lexical/semantic 索引工作。索引提交后才能确认；running/failed 重放要求 updater 幂等。
-- 终端默认只入库，未传 `--update-indexes` 时明确 integration_required / pending。正式调度默认传入该参数，装配既有 FTS/语义构建器；一轮每种索引合并所有持久待办为一次构建，无新增且无待办时不构建。现有底层是全量构建/同源续建，不得称为向量局部增量；同 identity/count/revision 的 completed 索引只补确认，building/failed/partial 按既有 resume 续建。队列为空仅表示本工作队列无欠账，retrieval_readiness 仍是 not_verified，Agent 是否可检索须另行实测。
+- 已提交批次实际 revision 改变或 inserted_count > 0 时创建 lexical/semantic 索引工作；零新增的群名修改同样排队，first-wins conflict 没有有效变化则不排队。索引提交后才能确认；running/failed 重放要求 updater 幂等。
+- 终端默认只入库，未传 `--update-indexes` 时明确 integration_required / pending。正式调度默认传入该参数，装配既有 FTS/语义构建器；一轮每种索引合并所有持久待办为一次构建，无新增且无待办时不构建。FTS 保留全量；SemanticIndexBuilder.update() 按变更位置局部重切、精确输入复用并单事务发布。同 identity/count/revision 的 completed 索引只补确认；完整新格式基线允许跨 revision 增量，同快照未完成的新格式全量构建 resume；旧输入格式、模型/config 变化或不完整跨快照基线完整重建。具体契约见 semantic-incremental-guidelines.md。队列为空仅表示本工作队列无欠账，retrieval_readiness 仍是 not_verified，Agent 是否可检索须另行实测。
 - 进程锁按 resolve 后数据库路径派生；持锁范围涵盖恢复/导入/索引。锁文件不删除，进程退出由内核释放。普通 import 尚不使用此锁，集成前须约定唯一写入窗口。
 - StartCalendarInterval 每天本地 10:30/22:30；RunAtLoad 补登录积压；KeepAlive.SuccessfulExit=false + ThrottleInterval300 仅失败重试。不使用 StartInterval/WatchPaths。LaunchAgent 需用户登录。
 - 更新索引的正式调度设置 `HF_HUB_OFFLINE=1`，复用已验证本机模型缓存，避免已发生的 Hub HEAD SSL EOF；缺缓存明确失败，不更换模型或降级。显式关闭索引更新的隔离任务不设置此项。

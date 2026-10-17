@@ -1,0 +1,31 @@
+{
+  "id": "semantic-incremental",
+  "name": "semantic-incremental",
+  "title": "Semantic 向量索引按受影响范围增量更新",
+  "description": "按 Canonical 位置日志局部重切并复用未变 Embedding，单事务发布并完成 Fake/真实 Qwen 全量对照。",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "semantic",
+  "package": null,
+  "priority": "P2",
+  "creator": "anontokyo",
+  "assignee": "anontokyo",
+  "createdAt": "2026-10-17",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/trivae/retrieval/semantic/builder.py",
+    "src/trivae/retrieval/semantic/index.py",
+    "src/trivae/data/storage/sqlite_forward.py",
+    "docs/semantic-incremental-index.md"
+  ],
+  "notes": "",
+  "meta": {}
+}

@@ -8,7 +8,8 @@ import math
 import sqlite3
 import struct
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 
 from trivae.retrieval.semantic.contracts import (
@@ -29,6 +30,7 @@ class SQLiteSemanticIndex:
     """把 semantic vectors 放在 canonical store 之外，并用 state 表作为可用性事实来源。"""
 
     def __init__(self, database_path: Path) -> None:
+        self._incremental_active = False
         self.database_path = database_path
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -78,6 +80,7 @@ class SQLiteSemanticIndex:
                     canonical_revision INTEGER NOT NULL DEFAULT 0,
                     forwarded_message_count INTEGER NOT NULL DEFAULT 0,
                     indexed_forwarded_message_count INTEGER NOT NULL DEFAULT 0,
+                    embedding_input_format INTEGER NOT NULL DEFAULT 0,
                     chunk_count INTEGER NOT NULL,
                     last_error TEXT,
                     updated_at INTEGER NOT NULL
@@ -94,7 +97,8 @@ class SQLiteSemanticIndex:
                     start_timestamp INTEGER NOT NULL,
                     end_timestamp INTEGER NOT NULL,
                     message_count INTEGER NOT NULL,
-                    effective_chars INTEGER NOT NULL
+                    effective_chars INTEGER NOT NULL,
+                    embedding_input TEXT
                 );
                 CREATE INDEX IF NOT EXISTS semantic_chunks_session_time
                     ON semantic_chunks(session_id, start_timestamp, end_timestamp);
@@ -107,9 +111,204 @@ class SQLiteSemanticIndex:
                     self._connection.execute(
                         f"ALTER TABLE semantic_index_state ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0"
                     )
+            # 旧行没有输入凭据，保持 NULL；仅显式重建可以声明新格式完成。
+            if "embedding_input_format" not in columns:
+                self._connection.execute(
+                    "ALTER TABLE semantic_index_state ADD COLUMN embedding_input_format INTEGER NOT NULL DEFAULT 0"
+                )
+            chunk_columns = {
+                str(row["name"]) for row in self._connection.execute("PRAGMA table_info(semantic_chunks)")
+            }
+            if "embedding_input" not in chunk_columns:
+                self._connection.execute("ALTER TABLE semantic_chunks ADD COLUMN embedding_input TEXT")
             self._connection.commit()
         except sqlite3.Error as exc:
             raise SemanticIndexStorageError(f"failed to create semantic index schema: {type(exc).__name__}: {exc}") from exc
+
+    @contextmanager
+    def _write_transaction(self) -> Iterator[None]:
+        """全量批次独立提交；增量的所有写操作由外层发布事务统一提交。"""
+
+        if self._incremental_active:
+            # connection 上下文会提交已有事务，因此增量期间只能复用当前事务。
+            yield
+        else:
+            with self._connection:
+                yield
+
+    def supports_incremental(self) -> bool:
+        """仅完整的新格式快照可作增量基线，打开旧文件不会伪造输入凭据。"""
+
+        state = self.state()
+        if (
+            state is None
+            or state.status != "completed"
+            or state.indexed_message_count != state.canonical_message_count
+            or state.indexed_forwarded_message_count != state.forwarded_message_count
+        ):
+            return False
+        return self.has_replay_inputs()
+
+    def has_replay_inputs(self) -> bool:
+        """空旧索引与失败旧构建同样必须先迁移，不能伪造输入比较事实。"""
+
+        row = self._connection.execute(
+            "SELECT embedding_input_format FROM semantic_index_state WHERE state_id = 1"
+        ).fetchone()
+        # 独立格式标记区分“新版空索引”和“没有任何旧行可检查的旧版空索引”。
+        return bool(
+            row is not None
+            and row[0] == 1
+            and self._connection.execute(
+                "SELECT 1 FROM semantic_chunks WHERE embedding_input IS NULL LIMIT 1"
+            ).fetchone() is None
+        )
+
+    @contextmanager
+    def incremental_transaction(
+        self,
+        identity: SemanticIndexIdentity,
+        canonical_message_count: int,
+        *,
+        base_revision: int,
+        canonical_revision: int,
+        forwarded_message_count: int,
+    ) -> Iterator[None]:
+        """持有写锁后校验旧快照，原子发布新快照；异常与强停均回滚。"""
+
+        if self._incremental_active:
+            raise SemanticIndexStorageError("semantic incremental transaction is already active")
+        entered = False
+        try:
+            # 写锁必须先于基线读取，第二个 builder 等待后不能提交已经过期的计划。
+            self._connection.execute("BEGIN IMMEDIATE")
+            state = self.state()
+            if state is None or not self.supports_incremental():
+                raise SemanticIndexUnavailable("semantic index requires a full rebuild before incremental updates")
+            if state.identity.serialized != identity.serialized or state.canonical_revision != base_revision:
+                raise SemanticIndexStale("semantic incremental base identity or revision changed")
+            metadata, vectors, missing, orphan = self._vector_row_counts(identity.embedding.dimension)
+            if metadata != state.chunk_count or metadata != vectors or missing or orphan:
+                raise SemanticIndexStorageError(
+                    "semantic incremental metadata/vector mismatch: "
+                    f"state={state.chunk_count}, metadata={metadata}, vectors={vectors}, "
+                    f"missing={missing}, orphan={orphan}"
+                )
+            # 临时表属于本次事务；旧输入与 float32 blob 留在 SQLite，避免 Python 持有整段向量。
+            self._connection.execute(
+                "CREATE TEMP TABLE semantic_incremental_reuse (embedding_input TEXT PRIMARY KEY, embedding BLOB NOT NULL)"
+            )
+            self._connection.execute(
+                """
+                UPDATE semantic_index_state
+                SET status = 'building', canonical_message_count = ?, canonical_revision = ?,
+                    forwarded_message_count = ?, last_error = NULL, updated_at = ?
+                WHERE state_id = 1
+                """,
+                (canonical_message_count, canonical_revision, forwarded_message_count, _now_ms()),
+            )
+            self._incremental_active = True
+            entered = True
+            yield
+            # 调用方须明确完成 coverage，再允许事务发布，避免遗漏 finish 时半成品被提交。
+            completed = self.state()
+            if (
+                completed is None
+                or completed.status != "completed"
+                or completed.indexed_message_count != canonical_message_count
+                or completed.indexed_forwarded_message_count != forwarded_message_count
+            ):
+                raise SemanticIndexStorageError("semantic incremental transaction did not complete its source coverage")
+            self._connection.execute("DROP TABLE semantic_incremental_reuse")
+            self._connection.commit()
+        except BaseException as exc:
+            # KeyboardInterrupt/SystemExit 同样回滚 vec0 和 metadata，旧版 revision 仍是可追踪事实。
+            self._connection.rollback()
+            self._incremental_active = False
+            if entered:
+                with self._connection:
+                    # 只记录错误，不把未提交的新 revision 标成 completed 或破坏旧 coverage。
+                    self._connection.execute(
+                        "UPDATE semantic_index_state SET last_error = ?, updated_at = ? WHERE state_id = 1",
+                        (f"{type(exc).__name__}: {exc}".rstrip(": "), _now_ms()),
+                    )
+            if isinstance(exc, sqlite3.Error):
+                raise SemanticIndexStorageError(
+                    f"semantic incremental transaction failed: {type(exc).__name__}: {exc}"
+                ) from exc
+            raise
+        finally:
+            self._incremental_active = False
+
+    def prepare_incremental_ranges(
+        self, ranges: Sequence[tuple[str, int | None, int | None]],
+    ) -> int:
+        """先保存受影响旧块的精确输入与向量，再删除对应 metadata/vector。"""
+
+        if not self._incremental_active:
+            raise SemanticIndexStorageError("semantic incremental ranges require an active transaction")
+        state = self.state()
+        assert state is not None
+        table = self._vector_table(state.identity.embedding.dimension)
+        removed = 0
+        try:
+            for session_id, start_timestamp, end_timestamp in ranges:
+                clauses = ["session_id = ?"]
+                parameters: list[object] = [session_id]
+                if start_timestamp is not None:
+                    # 范围是 inclusive，任何与安全时间段相交的旧块都须重切。
+                    clauses.append("end_timestamp >= ?")
+                    parameters.append(start_timestamp)
+                if end_timestamp is not None:
+                    clauses.append("start_timestamp <= ?")
+                    parameters.append(end_timestamp)
+                predicate = " AND ".join(clauses)
+                ids = f"SELECT vector_id FROM semantic_chunks WHERE {predicate}"
+                count = int(self._connection.execute(
+                    f"SELECT COUNT(*) FROM semantic_chunks WHERE {predicate}", parameters,
+                ).fetchone()[0])
+                if count == 0:
+                    # 新 session 或新版空基线没有旧向量表，也没有可删除的派生行。
+                    continue
+                self._connection.execute(
+                    f"""
+                    INSERT OR IGNORE INTO semantic_incremental_reuse(embedding_input, embedding)
+                    SELECT c.embedding_input, v.embedding FROM semantic_chunks AS c
+                    JOIN {table} AS v ON c.vector_id = v.vector_id
+                    WHERE c.vector_id IN ({ids})
+                    """,
+                    parameters,
+                )
+                self._connection.execute(f"DELETE FROM {table} WHERE vector_id IN ({ids})", parameters)
+                self._connection.execute(f"DELETE FROM semantic_chunks WHERE {predicate}", parameters)
+                removed += count
+        except sqlite3.Error as exc:
+            raise SemanticIndexStorageError(
+                f"failed to prepare semantic incremental ranges: {type(exc).__name__}: {exc}"
+            ) from exc
+        return removed
+
+    def reusable_vectors(self, chunks: Sequence[SemanticChunk]) -> dict[str, tuple[float, ...]]:
+        """按输入全文等值查询本次旧向量池；chunk ID 不参与向量正确性判定。"""
+
+        if not self._incremental_active:
+            raise SemanticIndexStorageError("semantic vector reuse requires an active transaction")
+        state = self.state()
+        assert state is not None
+        reusable: dict[str, tuple[float, ...]] = {}
+        try:
+            for chunk in chunks:
+                row = self._connection.execute(
+                    "SELECT embedding FROM semantic_incremental_reuse WHERE embedding_input = ?",
+                    (chunk.embedding_input,),
+                ).fetchone()
+                if row is not None:
+                    reusable[chunk.chunk_id] = self._unpack_vector(row[0], state.identity.embedding.dimension)
+        except sqlite3.Error as exc:
+            raise SemanticIndexStorageError(
+                f"semantic vector reuse query failed: {type(exc).__name__}: {exc}"
+            ) from exc
+        return reusable
 
     def start_rebuild(
         self,
@@ -124,7 +323,7 @@ class SQLiteSemanticIndex:
         if canonical_message_count < 0:
             raise ValueError("canonical_message_count must be non-negative")
         try:
-            with self._connection:
+            with self._write_transaction():
                 self._drop_vector_tables()
                 self._connection.execute("DELETE FROM semantic_chunks")
                 self._connection.execute(
@@ -132,8 +331,9 @@ class SQLiteSemanticIndex:
                     INSERT INTO semantic_index_state(
                         state_id, identity_json, status, canonical_message_count,
                         indexed_message_count, chunk_count, last_error, updated_at,
-                        canonical_revision, forwarded_message_count, indexed_forwarded_message_count
-                    ) VALUES (1, ?, 'building', ?, 0, 0, NULL, ?, ?, ?, 0)
+                        canonical_revision, forwarded_message_count, indexed_forwarded_message_count,
+                        embedding_input_format
+                    ) VALUES (1, ?, 'building', ?, 0, 0, NULL, ?, ?, ?, 0, 1)
                     ON CONFLICT(state_id) DO UPDATE SET
                         identity_json = excluded.identity_json,
                         status = excluded.status,
@@ -144,7 +344,8 @@ class SQLiteSemanticIndex:
                         updated_at = excluded.updated_at,
                         canonical_revision = excluded.canonical_revision,
                         forwarded_message_count = excluded.forwarded_message_count,
-                        indexed_forwarded_message_count = excluded.indexed_forwarded_message_count
+                        indexed_forwarded_message_count = excluded.indexed_forwarded_message_count,
+                        embedding_input_format = excluded.embedding_input_format
                     """,
                     (identity.serialized, canonical_message_count, _now_ms(), canonical_revision, forwarded_message_count),
                 )
@@ -162,7 +363,7 @@ class SQLiteSemanticIndex:
         dimension = state.identity.embedding.dimension
         table = self._vector_table(dimension)
         try:
-            with self._connection:
+            with self._write_transaction():
                 self._create_vector_table(dimension)
                 for chunk, vector_values in chunks:
                     vector = self._validate_vector(vector_values, dimension)
@@ -171,8 +372,8 @@ class SQLiteSemanticIndex:
                         INSERT INTO semantic_chunks(
                             chunk_id, parent_id, session_id, parent_start_message_id,
                             parent_end_message_id, start_message_id, end_message_id,
-                            start_timestamp, end_timestamp, message_count, effective_chars
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            start_timestamp, end_timestamp, message_count, effective_chars, embedding_input
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             chunk.chunk_id,
@@ -186,6 +387,7 @@ class SQLiteSemanticIndex:
                             chunk.end_timestamp,
                             chunk.message_count,
                             chunk.effective_chars,
+                            chunk.embedding_input,
                         ),
                     )
                     if row.lastrowid is None:
@@ -235,7 +437,7 @@ class SQLiteSemanticIndex:
                     "semantic resume chunk count is below saved progress: "
                     f"state={state.chunk_count}, metadata={metadata_count}"
                 )
-            with self._connection:
+            with self._write_transaction():
                 # 进度由确定性重放恢复；此处只校正 chunk 事实并显式开启新一次执行。
                 self._connection.execute(
                     """
@@ -263,6 +465,7 @@ class SQLiteSemanticIndex:
         fields = (
             "chunk_id", "parent_id", "session_id", "parent_start_message_id", "parent_end_message_id",
             "start_message_id", "end_message_id", "start_timestamp", "end_timestamp", "message_count", "effective_chars",
+            "embedding_input",
         )
         try:
             rows = self._connection.execute(
@@ -288,7 +491,7 @@ class SQLiteSemanticIndex:
         replayed = {chunk.chunk_id: chunk for chunk in chunks}
         for row in rows:
             chunk = replayed[str(row["chunk_id"])]
-            # embedding_input 不重复落库；相同 canonical revision/identity 固定其生成来源。
+            # 重放同时比较精确输入，避免同边界但正文改变的旧向量被复用。
             for field in fields:
                 if row[field] != getattr(chunk, field):
                     raise SemanticIndexStorageError(
@@ -304,7 +507,7 @@ class SQLiteSemanticIndex:
         if indexed_message_count < 0:
             raise ValueError("indexed_message_count must be non-negative")
         try:
-            with self._connection:
+            with self._write_transaction():
                 cursor = self._connection.execute(
                     """
                     UPDATE semantic_index_state
@@ -328,7 +531,7 @@ class SQLiteSemanticIndex:
         if status == "building":
             raise ValueError("finish status must be a terminal status")
         try:
-            with self._connection:
+            with self._write_transaction():
                 cursor = self._connection.execute(
                     """
                     UPDATE semantic_index_state

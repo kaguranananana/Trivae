@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Literal, Mapping, Protocol, Sequence
 
@@ -440,6 +441,11 @@ class SemanticBuildStats:
     semantic_void_forwarded_message_count: int = 0
     # 续建时只复用同一 identity/revision 中逐字段匹配的已持久块。
     reused_chunk_count: int = 0
+    # 增量计数只描述实际重切范围；总 chunk_count 仍表示最终有效索引。
+    build_mode: Literal["full", "resume", "incremental", "unchanged"] = "full"
+    affected_message_count: int = 0
+    affected_chunk_count: int = 0
+    removed_chunk_count: int = 0
 
     def to_dict(self) -> dict[str, object]:
         """返回 rebuild 结果的 bounded JSON projection。"""
@@ -455,6 +461,10 @@ class SemanticBuildStats:
             "skipped_void_chunks": self.skipped_void_chunks,
             "embedding_count": self.embedding_count,
             "reused_chunk_count": self.reused_chunk_count,
+            "build_mode": self.build_mode,
+            "affected_message_count": self.affected_message_count,
+            "affected_chunk_count": self.affected_chunk_count,
+            "removed_chunk_count": self.removed_chunk_count,
             "embedding_batch_size": self.embedding_batch_size,
             "embedding_batch_count": self.embedding_batch_count,
             "model_load_elapsed_ms": self.model_load_elapsed_ms,
@@ -653,6 +663,31 @@ class EmbeddingProvider(Protocol):
 
 class SemanticIndexStore(Protocol):
     """Builder/Retrieval 依赖的 derived store 端口。"""
+
+    def has_replay_inputs(self) -> bool:
+        """确认持久块具备同快照续建所需的精确输入凭据。"""
+
+    def supports_incremental(self) -> bool:
+        """确认索引保存了精确输入凭据，旧格式须先完整迁移。"""
+
+    def incremental_transaction(
+        self,
+        identity: SemanticIndexIdentity,
+        canonical_message_count: int,
+        *,
+        base_revision: int,
+        canonical_revision: int,
+        forwarded_message_count: int,
+    ) -> AbstractContextManager[None]:
+        """以单事务发布受影响范围；失败保留旧版 rows 与 revision。"""
+
+    def prepare_incremental_ranges(
+        self, ranges: Sequence[tuple[str, int | None, int | None]],
+    ) -> int:
+        """暂存旧输入及向量，并删除安全范围内旧块，返回删除数。"""
+
+    def reusable_vectors(self, chunks: Sequence[SemanticChunk]) -> dict[str, tuple[float, ...]]:
+        """精确比较相同 identity 的输入全文，返回受影响范围内可复用向量。"""
 
     def start_rebuild(
         self,

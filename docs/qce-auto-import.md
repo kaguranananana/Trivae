@@ -33,9 +33,9 @@ uv sync --extra dev --extra semantic
 | `2` | 文件已处理，仍有索引工作等待集成或补偿 | 带 `--update-indexes` 再运行补偿 |
 | `75` | 文件仍在写入，或同一数据库已有导入进程 | 保留状态，等待后续执行 |
 
-实际新增消息的已提交批次才产生 lexical / semantic 索引工作；重复导出没有新增消息时不产生新的索引更新。索引失败保留 pending/failed 工作及错误，后续可单独补偿而不重新解析成功文件。队列为空只说明这些工作处理完毕；全库 readiness 与 Agent 检索仍需后续验收确认。
+实际 Canonical revision 变化或新增消息的已提交批次产生 lexical / semantic 索引工作；重复／冲突导出没有有效 Canonical 变化时不产生新的索引更新。零新增但群名变化也会排队，prepare 保存的 revision 支持提交后中断恢复。索引失败保留 pending/failed 工作及错误，后续可单独补偿而不重新解析成功文件。队列为空只说明这些工作处理完毕；全库 readiness 与 Agent 检索仍需后续验收确认。
 
-`--update-indexes` 将持久化待办交给现有 FTS5 和语义构建器；一轮内每种索引至多构建一次，没有新增数据且没有待办时不构建。现有底层只有全量构建和同源水位续建，因此这是**数据变更触发的全量索引更新，不是向量局部增量算法**。它保留现有合并转发和语义 parent 重切行为，避免对迟到消息只做错误的时间追加。相同快照失败或中断后按既有 resume 恢复；已完成且身份、消息计数及 revision 相同则确认复用，不重复计算向量。
+`--update-indexes` 一轮内每种索引合并全部持久待办。FTS5 保留既有全量重建；Semantic 现在按持久 Canonical 变更位置寻找安全时间段，沿原 Chunker 局部重切，只为实际输入变化的 Child 计算新向量。未受影响范围保留原始向量，范围内输入相同也复用。增量在单个 SQLite-vec 事务发布，失败回滚，确认相同 completed revision 时不重复加载模型。首次构建、模型／配置变化或旧输入格式迁移使用全量；同快照未完成的新格式全量构建仍可 resume。详见[增量机制、实测与边界](semantic-incremental-index.md)。
 
 全量成本可能很高：[合并转发验证记录](../.trellis/tasks/archive/2026-10/10-16-qq-forward-retrieval/validation.md) 中，本机对 765,780 条 Canonical、12,484 条转发内部记录续建时，复用 20,104 个块，新计算 72,184 个向量仍耗时约 **5 小时 13 分**。这不是从零重建耗时，也不是本次调度的预计完成时间。首次新增触发后可能长时间处于 `building`；期间不能声称最新消息已经通过语义检索验收。
 
@@ -147,4 +147,4 @@ TRIVAE_RUN_LAUNCHD_SMOKE=1 .venv/bin/pytest -q \
 
 它只注册唯一测试 label，用临时 SQLite/raw/日志验证 RunAtLoad、重新 bootstrap 后的状态恢复、新文件入库，显式传 `--no-update-indexes` 验证 pending 的非零退出和重试调度，不加载真实模型，最后在 `finally` 中卸载。真实 launchd smoke 与 CLI/持久状态验证结果保存在本任务验证记录中。物理重启和休眠为待用户使用机器时验证的场景，不宣称已经强制实测。
 
-共享接口保持窄边界：自动导入只新增状态表并交接已提交批次；lexical / semantic updater 必须幂等，返回成功必须表示交接数据可检索。当前装配器复用既有转发检索的索引身份、forwarded children 与 parent 重切行为，没有改写底层算法。真正的局部增量维护仍需另行验证迟到消息和语义 parent 边界，不能简单追加 timestamp 水位以后消息。生产整链路结论以实际消息、索引和 Agent 验收为准。
+共享接口保持窄边界：自动导入只新增状态表并交接已提交批次；lexical / semantic updater 必须幂等，返回成功必须表示交接数据可检索。当前装配器调用 Semantic Builder.update()，保留既有转发来源与 Chunker 语义，已通过新增、迟到、边界传播及转发修改的全量对照。人工 SQL／普通 import 不自动形成扫描文件批次，位置日志可追踪，但需显式构建入口；队列为空不能替代 revision freshness 检查。生产整链路结论以实际消息、索引和 Agent 验收为准。

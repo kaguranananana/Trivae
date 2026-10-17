@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from bisect import bisect_left, bisect_right
 from collections.abc import Iterator
+from heapq import merge
 from pathlib import Path
 from time import perf_counter
 from typing import Literal
@@ -871,6 +873,94 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             raise RetrievalError("Canonical revision is unavailable; initialize the canonical store first")
         return int(row["value"])
 
+    def semantic_change_ranges(
+        self, since_revision: int, gap_seconds: int
+    ) -> tuple[tuple[str, int | None, int | None], ...]:
+        """用持久旧、新位置与当前消息合并连通段，只扫描受影响时间邻域。"""
+
+        if isinstance(since_revision, bool) or not isinstance(since_revision, int) or since_revision < 0:
+            raise ValueError("since_revision must be non-negative")
+        if isinstance(gap_seconds, bool) or not isinstance(gap_seconds, int) or gap_seconds < 0:
+            raise ValueError("gap_seconds must be non-negative")
+        revision = self.canonical_revision()
+        try:
+            baseline = self._connection.execute(
+                "SELECT value FROM trivae_derived_meta WHERE key = 'semantic_changes_baseline_revision'"
+            ).fetchone()
+            rows = self._connection.execute(
+                "SELECT * FROM canonical_message_changes WHERE revision > ? AND revision <= ? ORDER BY revision",
+                (since_revision, revision),
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            raise RetrievalError(f"Semantic mutation history is unavailable; rebuild the index: {exc}") from exc
+        # 修订必须逐条连续覆盖，旧库迁移水位之前的变更不能作为安全增量输入。
+        if (
+            baseline is None
+            or since_revision < int(baseline["value"])
+            or since_revision > revision
+            or len(rows) != revision - since_revision
+        ):
+            raise RetrievalError("Semantic mutation history does not cover the indexed revision; rebuild the index")
+        dirty: dict[str, set[int]] = {}
+        whole_sessions: set[str] = set()
+        for row in rows:
+            for prefix in ("old", "new"):
+                session = row[f"{prefix}_session_id"]
+                timestamp = row[f"{prefix}_timestamp"]
+                if session is None:
+                    continue
+                if timestamp is None:
+                    whole_sessions.add(str(session))
+                else:
+                    dirty.setdefault(str(session), set()).add(int(timestamp))
+        ranges: list[tuple[str, int | None, int | None]] = []
+        for session in sorted(dirty.keys() | whole_sessions):
+            if session in whole_sessions:
+                ranges.append((session, None, None))
+                continue
+            timestamps = sorted(dirty[session])
+            covered_end: int | None = None
+            for timestamp in timestamps:
+                # 前一连通段已包含此 mutation 时不重复扫描，也不生成重叠发布范围。
+                if covered_end is not None and timestamp <= covered_end:
+                    continue
+                start = self._semantic_connected_boundary(session, timestamp, timestamps, gap_seconds, reverse=True)
+                end = self._semantic_connected_boundary(session, timestamp, timestamps, gap_seconds, reverse=False)
+                ranges.append((session, start, end))
+                covered_end = end
+        # 多条只读语句期间发生写入时，范围不再属于同一个 canonical snapshot。
+        if self.canonical_revision() != revision:
+            raise RetrievalError("Canonical messages changed while reading semantic mutation ranges")
+        return tuple(ranges)
+
+    def _semantic_connected_boundary(
+        self, session_id: str, anchor: int, mutations: list[int], gap_seconds: int, *, reverse: bool
+    ) -> int:
+        """将已删除的旧时间戳作为虚拟连接点，避免删除桥接消息后漏掉原 parent 的另一半。"""
+
+        operator, ordering = ("<=", "DESC") if reverse else (">=", "ASC")
+        cursor = self._connection.execute(
+            f"""SELECT DISTINCT timestamp FROM messages
+                WHERE session_id = ? AND timestamp {operator} ? ORDER BY timestamp {ordering}""",
+            (session_id, anchor),
+        )
+        # 两个有序流共同决定连通性；只读取时间，不读取正文或遍历其他会话。
+        virtual = (
+            reversed(mutations[:bisect_right(mutations, anchor)])
+            if reverse else iter(mutations[bisect_left(mutations, anchor):])
+        )
+        boundary = anchor
+        try:
+            for timestamp in merge((int(row[0]) for row in cursor), virtual, reverse=reverse):
+                # canonical timestamp 使用毫秒；与 chunker 的 gap_seconds × 1000 保持一致。
+                if abs(timestamp - boundary) > gap_seconds * 1000:
+                    break
+                boundary = timestamp
+        finally:
+            # 在连通段边界提前停止后立即释放 SQLite statement。
+            cursor.close()
+        return boundary
+
     def _iter_forward_trees(
         self,
         batch_size: int,
@@ -895,10 +985,12 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             for row in rows:
                 yield _row_to_forward_tree(row)
 
-    def iter_forwarded_messages(self, batch_size: int) -> Iterator[MessageProjection]:
+    def iter_forwarded_messages(
+        self, batch_size: int, *, scope: ScopeFilters | None = None
+    ) -> Iterator[MessageProjection]:
         """semantic 使用独立 DFS 流；无需先建立 FTS 或信任派生正文。"""
 
-        for tree in self._iter_forward_trees(batch_size):
+        for tree in self._iter_forward_trees(batch_size, scope):
             yield from tree.messages
 
     def count_forwarded_messages(self) -> int:
@@ -938,18 +1030,23 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             and (scope.end_timestamp is None or timestamp < scope.end_timestamp)
         )
 
-    def iter_semantic_messages(self, batch_size: int) -> Iterator[MessageProjection]:
+    def iter_semantic_messages(
+        self, batch_size: int, *, scope: ScopeFilters | None = None
+    ) -> Iterator[MessageProjection]:
         """以 cursor/fetchmany 流式读取全量 canonical projection，避免 build 一次性载入消息。"""
 
         if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("semantic batch_size must be positive")
+        where_sql, parameters = _where_clause(scope or ScopeFilters())
         cursor = self._connection.execute(
             f"""
             SELECT {PROJECTION_COLUMNS}
             FROM messages AS m
             INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE {where_sql}
             ORDER BY m.session_id ASC, {ORDER_BY_SQL}
-            """
+            """,
+            parameters,
         )
         while True:
             rows = cursor.fetchmany(batch_size)

@@ -145,7 +145,7 @@ write_variant_when_projection_differs(incoming)
 - Canonical range 的排序 tuple 固定为 `timestamp ASC`、present/missing `seq`、`internal_message_id`；range 两端 inclusive，`limit` 必须为正整数。
 - 生成 lexicographic SQL boundary 时，只有最后的 `internal_message_id` 使用调用方的 `<`/`<=`/`>`/`>=`；更高优先级字段永远使用严格方向，避免同 timestamp/seq 的前序消息越界进入 range。
 - Semantic index 缺失、identity mismatch、canonical count / revision drift、building/failed/empty 状态必须显式返回 unavailable/stale；检索不得改写成 lexical success。v2-forward 在同一索引中分开读取普通和转发 occurrence 流，普通/子消息覆盖计数分别保存。
-- Chunk/vector row 只保存 bounded acquisition metadata；最终结果和 citation 必须从 canonical repository 恢复 `MessageProjection`。
+- Chunk/vector row 保存 bounded acquisition metadata 与受 Chunker 长度上限约束的精确 embedding_input 凭据；后者只用于无内容指纹的向量复用比较，不能用作 evidence。最终结果和 citation 必须从 canonical repository 恢复 `MessageProjection`。增量发布与位置日志详见 [Semantic Incremental](./semantic-incremental-guidelines.md)。
 
 合并转发的来源身份、容器范围、双时间语义和已知缺失契约见 [Forwarded Message Guidelines](./forwarded-message-guidelines.md)。
 

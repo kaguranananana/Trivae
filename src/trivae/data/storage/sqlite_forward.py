@@ -42,15 +42,58 @@ def ensure_canonical_revision(connection: sqlite3.Connection) -> None:
     )
     # 只在首次初始化写 0；删除派生索引、重新打开数据库或 rebuild 都不能重置版本。
     connection.execute("INSERT OR IGNORE INTO trivae_derived_meta(key, value) VALUES ('canonical_revision', '0')")
-    for operation in ("INSERT", "UPDATE", "DELETE"):
-        # operation 是固定内部枚举；版本和实际 canonical mutation 在同一 SQLite 事务提交。
+    # 首次安装记录当前水位；旧索引若早于此水位，必须显式重建，不能猜测缺失历史。
+    connection.execute(
+        """INSERT OR IGNORE INTO trivae_derived_meta(key, value)
+           SELECT 'semantic_changes_baseline_revision', value FROM trivae_derived_meta
+           WHERE key = 'canonical_revision'"""
+    )
+    connection.execute(
+        """CREATE TABLE IF NOT EXISTS canonical_message_changes (
+            revision INTEGER PRIMARY KEY,
+            old_session_id TEXT,
+            old_timestamp INTEGER,
+            new_session_id TEXT,
+            new_timestamp INTEGER
+        )"""
+    )
+    # UPDATE 只有字段真实变化才推进版本，避免幂等写入制造无用索引义务。
+    columns = [str(row[1]) for row in connection.execute("PRAGMA table_info(messages)")]
+    changed = " OR ".join(f'OLD."{column}" IS NOT NEW."{column}"' for column in columns)
+    locations = {
+        "INSERT": "NULL, NULL, NEW.session_id, NEW.timestamp",
+        "UPDATE": "OLD.session_id, OLD.timestamp, NEW.session_id, NEW.timestamp",
+        "DELETE": "OLD.session_id, OLD.timestamp, NULL, NULL",
+    }
+    for operation, location in locations.items():
+        # 替换旧版仅计数 trigger；修订与位置记录始终由同一个 trigger 原子推进。
+        trigger = f"trivae_canonical_revision_{operation.lower()}"
+        connection.execute(f"DROP TRIGGER IF EXISTS {trigger}")
+        condition = f"WHEN {changed}" if operation == "UPDATE" else ""
         connection.execute(
             f"""
-            CREATE TRIGGER IF NOT EXISTS trivae_canonical_revision_{operation.lower()}
+            CREATE TRIGGER {trigger}
             AFTER {operation} ON messages
+            {condition}
             BEGIN
                 UPDATE trivae_derived_meta SET value = CAST(value AS INTEGER) + 1
                 WHERE key = 'canonical_revision';
+                INSERT INTO canonical_message_changes
+                SELECT CAST(value AS INTEGER), {location}
+                FROM trivae_derived_meta WHERE key = 'canonical_revision';
             END
             """
         )
+    # 群名进入 embedding header；时间摘要或相同群名的重复 upsert 不属于语义变更。
+    connection.execute(
+        """CREATE TRIGGER IF NOT EXISTS trivae_canonical_session_name
+        AFTER UPDATE OF name ON chat_sessions
+        WHEN OLD.name IS NOT NEW.name
+        BEGIN
+            UPDATE trivae_derived_meta SET value = CAST(value AS INTEGER) + 1
+            WHERE key = 'canonical_revision';
+            INSERT INTO canonical_message_changes
+            SELECT CAST(value AS INTEGER), OLD.session_id, NULL, NEW.session_id, NULL
+            FROM trivae_derived_meta WHERE key = 'canonical_revision';
+        END"""
+    )

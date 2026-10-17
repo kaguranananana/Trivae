@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "验证要求"}
+{"file": ".trellis/spec/backend/semantic-incremental-guidelines.md", "reason": "增量位置日志、输入复用、原子发布及回归契约"}

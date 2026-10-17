@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS auto_import_files (
     status TEXT NOT NULL,
     batch_id TEXT,
     baseline_rowid INTEGER NOT NULL DEFAULT 0,
+    baseline_revision INTEGER,
     attempts INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL,
     last_error TEXT
@@ -58,6 +59,10 @@ class SQLiteAutoImportState:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self.connection = connection
         self.connection.executescript(AUTO_IMPORT_SCHEMA)
+        # 旧队列表继续使用；新字段保存导入前修订，覆盖零新增但群名变化的真实批次。
+        columns = {str(row[1]) for row in self.connection.execute("PRAGMA table_info(auto_import_files)")}
+        if "baseline_revision" not in columns:
+            self.connection.execute("ALTER TABLE auto_import_files ADD COLUMN baseline_revision INTEGER")
         self.connection.commit()
 
     def start_run(self) -> str:
@@ -118,20 +123,34 @@ class SQLiteAutoImportState:
         ).fetchone()
         # 此时尚未调用 importer，水位后的首个批次才可能是本次提交。
         baseline = int(row[0])
+        revision = int(self.connection.execute(
+            "SELECT value FROM trivae_derived_meta WHERE key = 'canonical_revision'"
+        ).fetchone()[0])
         with self.connection:
             self.connection.execute(
                 """INSERT INTO auto_import_files(
-                       path, version, status, baseline_rowid, attempts, updated_at
-                   ) VALUES (?, ?, 'importing', ?, 1, ?)
+                       path, version, status, baseline_rowid, baseline_revision, attempts, updated_at
+                   ) VALUES (?, ?, 'importing', ?, ?, 1, ?)
                    ON CONFLICT(path) DO UPDATE SET version = excluded.version, status = 'importing',
                    batch_id = NULL, baseline_rowid = excluded.baseline_rowid,
+                   baseline_revision = excluded.baseline_revision,
                    attempts = auto_import_files.attempts + 1, updated_at = excluded.updated_at, last_error = NULL""",
-                (str(path), version.serialized(), baseline, utc_now()),
+                (str(path), version.serialized(), baseline, revision, utc_now()),
             )
 
     def finish_file(self, path: Path, version: str, batch: ImportBatchSummary, *, enqueue: bool = True) -> None:
         """仅消费 importer 已提交的批次；状态与索引义务在同一事务中保存。"""
 
+        # 在修改文件状态前读取 durable prepare 水位；恢复路径也经过同一判断。
+        previous = self.file(path)
+        revision = int(self.connection.execute(
+            "SELECT value FROM trivae_derived_meta WHERE key = 'canonical_revision'"
+        ).fetchone()[0])
+        canonical_changed = (
+            previous is not None
+            and previous["baseline_revision"] is not None
+            and revision != int(previous["baseline_revision"])
+        )
         with self.connection:
             # importer 返回之前已经完成文件级 commit，此处不会提前宣称成功。
             self.connection.execute(
@@ -141,8 +160,9 @@ class SQLiteAutoImportState:
                    batch_id = excluded.batch_id, updated_at = excluded.updated_at, last_error = excluded.last_error""",
                 (str(path), version, batch.status, batch.batch_id, utc_now(), batch.error_message),
             )
-            # 历史接管不是本次新增；duplicate-only 批次也不会制造索引工作。
-            if enqueue and batch.inserted_count > 0:
+            # 新增计数只用于旧 prepare 记录；实际修订变化也必须创建索引义务。
+            # 重复与 conflict 未修改 canonical 时修订不变，不制造无用工作。
+            if enqueue and (canonical_changed or batch.inserted_count > 0):
                 source_id = self.connection.execute(
                     "SELECT source_id FROM import_batches WHERE batch_id = ?", (batch.batch_id,)
                 ).fetchone()[0]

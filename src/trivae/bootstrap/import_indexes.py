@@ -13,7 +13,6 @@ from trivae.retrieval.semantic.builder import SemanticIndexBuilder
 from trivae.retrieval.semantic.contracts import EmbeddingProvider
 from trivae.retrieval.semantic.embedding import SentenceTransformerEmbeddingProvider
 from trivae.retrieval.semantic.index import SQLiteSemanticIndex
-from trivae.retrieval.structured import MessageQuery
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +45,8 @@ class LocalImportIndexUpdater:
             builder = SemanticIndexBuilder(
                 repository, semantic, provider, database_identity=self.database_path.name
             )
-            state = semantic.state()
-            # identity、数量和 revision 必须都一致，才属于既有续建契约允许的同一源快照。
-            same_snapshot = (
-                state is not None
-                and state.identity.serialized == builder.identity.serialized
-                and state.canonical_message_count == repository.count_messages(MessageQuery(limit=1))
-                and state.canonical_revision == repository.canonical_revision()
-            )
-            if same_snapshot and state is not None and state.status == "completed":
-                # 索引已提交、队列确认前中断时，补确认即可，不重复计算整库向量。
-                logger.info("Import semantic index already committed for current snapshot")
-                return
-            # 只对同源未完成构建续建；新数据改变源水位时，使用现有正式重建路径。
-            resume = same_snapshot and state is not None and state.status in {"building", "failed", "partial"}
-            stats_semantic = builder.rebuild(resume=resume)
+            # Builder 同时处理首次/config 迁移、同快照续建和跨 revision 局部更新。
+            stats_semantic = builder.update()
             logger.info("Import semantic index completed: %s", stats_semantic.to_dict())
 
 
