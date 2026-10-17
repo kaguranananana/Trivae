@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 67
+- **Total Sessions**: 68
 - **Last Active**: 2026-10-17
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1795 | Active |
+| `journal-1.md` | ~1816 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 68 | 2026-10-17 | Semantic 局部增量索引与真实 Qwen 对照验收 | `43343ea` | `main` |
 | 67 | 2026-10-17 | 启用 QCE 日历调度并验证生产导入 | `9f5d207`, `849aa99` | `codex/qce-enable-schedule` |
 | 66 | 2026-10-17 | QCE 自动导入合并 main 与转发检索兼容验证 | `23f3bcb` | `codex/qce-auto-import` |
 | 65 | 2026-10-16 | QCE 增量导入与 macOS 日历调度独立实现 | `fc79813` | `codex/qce-auto-import` |

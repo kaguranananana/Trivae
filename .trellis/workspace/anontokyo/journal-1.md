@@ -1793,3 +1793,24 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Next Steps
 
 - 等待生产semantic构建完成后验证真实semantic与Query/Citation；不得把loaded或FTS完成称为整链路完成。
+
+
+## Session 68: Semantic 局部增量索引与真实 Qwen 对照验收
+
+**Date**: 2026-10-17
+**Task**: Semantic 局部增量索引与真实 Qwen 对照验收
+**Branch**: `main`
+
+### Summary
+
+完成 Canonical mutation 位置日志、安全段 Parent/Child 重切、精确输入向量复用、sqlite-vec 原子发布及自动导入集成。pytest 1152 passed/1 skipped，Ruff/mypy 通过。合成 3002 消息：360→7 次 Embedding；真实 Qwen 152 消息：18→7，元数据/向量/检索来源一致。生产库未用于写入验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `43343ea` | (see git log) |
+
+### Status
+
+[OK] **Completed**
