@@ -1849,3 +1849,25 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Next Steps
 
 - 先核实metadata协议兼容并准备当前chunker独立索引快照，再以原总ledger继续4条Baseline与B/C逐组实验。
+
+
+## Session 70: GPT High SSE修复、独立快照与受阻消融
+
+**Date**: 2026-10-19
+**Task**: GPT High SSE修复、独立快照与受阻消融
+**Branch**: `main`
+
+### Summary
+
+严格typed response.metadata修复通过真实High与1171 passed/1 skipped；独立v2-forward索引54651块completed/integrity valid，原GT与历史快照不变。新快照8 Case/23 run中11 completed，3个有效Agent复核pair为2改善1持平；当前外部TLS在代理和核验直连均失败，原账本52/120余68，累计/UI/最后4条未完成，生产Prompt保持20450字符。任务保持in_progress待续，不归档全部完成。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b669bcc` | (see git log) |
+| `2ae7e79` | (see git log) |
+
+### Status
+
+[OK] **Completed**
