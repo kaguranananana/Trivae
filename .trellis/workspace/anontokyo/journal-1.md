@@ -1814,3 +1814,38 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Status
 
 [OK] **Completed**
+
+
+## Session 69: GPT High Prompt 实验：适配验证与协议阻塞收口
+
+**Date**: 2026-10-18
+**Task**: GPT High Prompt 实验：适配验证与协议阻塞收口
+**Branch**: `main`
+
+### Summary
+
+实现显式High和GPT HTTP预算，真实Baseline首条1/120在response.metadata失败；旧semantic chunker身份stale。保留生产20450字符，B草稿未执行，C/质量发布门禁未完成。
+
+### Main Changes
+
+- 同源High payload/projection覆盖Runtime/Router/Planner；发送前统一计数，过滤隐藏replay，冻结effort/index身份并拒绝失败Baseline。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d093512` | (see git log) |
+| `e951680` | (see git log) |
+| `365308b` | (see git log) |
+
+### Testing
+
+- [OK] 最终static 404 passed、Ruff和mypy128通过；全量1160 passed/1 skipped。真实请求High已发送、HTTP200但无completed，9534ms、0工具、Usage未知。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 先核实metadata协议兼容并准备当前chunker独立索引快照，再以原总ledger继续4条Baseline与B/C逐组实验。
