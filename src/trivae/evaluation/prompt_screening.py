@@ -163,6 +163,9 @@ def verify_frozen_baseline(
         raise EvaluationContractError("frozen prompt does not match the production baseline")
     if not artifact.get("commit") or not artifact.get("run") or not artifact.get("trace"):
         raise EvaluationContractError("frozen baseline requires commit, evaluation run and trace")
+    # 失败也会留下完整 artifact；该事实不能因为 frozen 标签而成为有效对照。
+    if artifact["run"].get("query_result", {}).get("is_successful") is False:
+        raise EvaluationContractError("candidate-only requires a successful baseline")
     frozen_conditions = artifact.get("conditions")
     # 冻结记录必须保留实际条件对象，缺失时显式指出契约错误。
     if not isinstance(frozen_conditions, Mapping):

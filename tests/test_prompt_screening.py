@@ -494,3 +494,22 @@ def test_frozen_gpt_effort_drift_is_rejected():
     for projection in ({"reasoning": {"summary": "auto"}}, {"reasoning": {"effort": "medium"}}):
         with pytest.raises(EvaluationContractError, match="provider_request"):
             verify_frozen_baseline(frozen, {**baseline, "provider_request": projection}, SYSTEM_PROMPT)
+
+
+def test_failed_baseline_cannot_be_reused_for_candidate_screening():
+    """真实 smoke 失败仍留下 frozen_baseline 标记，复用必须看实际 Query 终态。"""
+    frozen = {"kind": "frozen_baseline", "prompt": SYSTEM_PROMPT, "commit": "baseline",
+              "conditions": conditions(), "run": {"run_id": "failed", "query_result": {"is_successful": False}},
+              "trace": {"trace_id": "failed-trace"}}
+    with pytest.raises(EvaluationContractError, match="successful baseline"):
+        verify_frozen_baseline(frozen, conditions(), SYSTEM_PROMPT)
+
+
+def test_frozen_semantic_index_identity_drift_is_rejected():
+    """canonical 数据相同仍不能复用不同 chunker 的 semantic 对照。"""
+    baseline = {**conditions(), "semantic_index": {"status": "completed", "chunker_version": "v1"}}
+    frozen = {"kind": "frozen_baseline", "prompt": SYSTEM_PROMPT, "commit": "baseline",
+              "conditions": baseline, "run": {"run_id": "frozen"}, "trace": {"trace_id": "trace"}}
+    with pytest.raises(EvaluationContractError, match="semantic_index"):
+        verify_frozen_baseline(frozen, {**baseline, "semantic_index": {
+            "status": "stale", "chunker_version": "v2"}}, SYSTEM_PROMPT)

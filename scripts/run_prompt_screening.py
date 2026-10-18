@@ -72,6 +72,8 @@ def static_checks() -> None:
         ["uv", "run", "--all-extras", "pytest", "-q", "tests/test_prompt_screening.py",
          "tests/test_prompt_fixtures.py", "tests/test_prompt_limit_contract.py",
          "tests/test_prompt_parameter_contracts.py",
+         "tests/test_chatgpt_settings.py", "tests/test_chatgpt_responses.py",
+         "tests/test_chatgpt_query.py", "tests/test_chatgpt_auth.py", "tests/test_completion_transport.py",
          "tests/test_stage_c_tools.py",
          "tests/test_agent_tool_surface.py", "tests/test_context_source_contract.py",
          "tests/test_evaluation.py", "tests/test_no_result_finalization.py"],
@@ -138,6 +140,8 @@ async def execute(args: argparse.Namespace) -> None:
                               store=application.evaluation_store, database_path=args.database)
     try:
         # 先验证所有 frozen conditions 和 snapshot，再允许第一笔付费请求。
+        # canonical snapshot 不包含派生索引身份；独立冻结实际 embedding/chunker 与状态。
+        semantic_conditions = application.semantic_index_status().to_dict()
         prepared = []
         for case in cases:
             variant = ControlledVariant(
@@ -162,6 +166,7 @@ async def execute(args: argparse.Namespace) -> None:
             conditions["model_settings"] = initial.model_settings.to_json_dict()
             # SDK 设置不足以表达自有 Responses payload，冻结实际非敏感请求身份。
             conditions["provider_request"] = runtime.completion_request_projection()
+            conditions["semantic_index"] = semantic_conditions
             frozen = None
             if args.mode in {"candidate-only", "targeted"}:
                 frozen = read_artifact(args.baseline_dir / f"{case.case_id}.json")
@@ -191,7 +196,8 @@ async def execute(args: argparse.Namespace) -> None:
                     result = captured[-1]
                     artifact = {
                         "kind": "first_tool_probe" if runtime.first_tool else
-                            "frozen_baseline" if label == "baseline" else "candidate_screen",
+                            ("frozen_baseline" if result.is_successful and not run.has_hard_failure
+                             else "failed_baseline") if label == "baseline" else "candidate_screen",
                         "commit": commit, "prompt": prompt, "conditions": conditions,
                         "variant": current_variant.to_dict(),
                         "run": run.to_dict(), "answer": result.final_answer,

@@ -708,3 +708,29 @@ def test_high_serialization_is_shared_by_runtime_router_and_planner():
         finally:
             await runtime.aclose()
     asyncio.run(run())
+
+
+def test_real_metadata_event_failure_remains_explicit_without_protocol_bypass():
+    """保存本轮真实不兼容事件名；不跳过未知事件、不放宽 SDK 判别联合。"""
+    from dataclasses import replace
+
+    async def run():
+        runtime = OpenAIAgentsRuntimeAdapter(
+            settings=replace(settings(), model_name="gpt-6.1-sol", chatgpt_reasoning_effort="high"),
+            chatgpt_auth=FakeAuth(models=[{"slug": "gpt-6.1-sol"}]),
+        )
+        await runtime._model._client.aclose()
+        runtime._model._client = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            text=sse({"type": "response.metadata", "sequence_number": 1}),
+        )))
+        try:
+            with pytest.raises(ChatGPTResponsesError, match="response.metadata") as error:
+                await runtime.complete_text_with_observation("Return JSON.")
+            assert error.value.code == "MALFORMED_STREAM"
+            assert error.value.safe_observation["stream_completed"] is False
+            assert error.value.safe_observation["validation_errors"][0]["type"] == "union_tag_invalid"
+            assert error.value.safe_observation["request"]["reasoning"]["effort"] == "high"
+        finally:
+            await runtime.aclose()
+    asyncio.run(run())

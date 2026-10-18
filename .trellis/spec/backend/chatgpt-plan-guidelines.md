@@ -40,3 +40,63 @@
 `test_chatgpt_auth.py` 覆盖首次/重登、OIDC/state/nonce/scope、刷新轮换与终态错误、账号隔离、锁、撤销、目录与脱敏。`test_chatgpt_responses.py` 覆盖真实 SDK namespace 工具循环、完整输入重放、SSE 终态/错误/取消/超时。`test_chatgpt_query.py` 覆盖 SQLite 工具、Finalizer、Session、Trace 和额度提前终止。配置与阶段观测分别见 `test_chatgpt_settings.py`、`test_completion_transport.py`。
 
 真实验证使用 `scripts/verify_chatgpt_plan.py`，证据落在新的 ignored `data/evaluation/chatgpt-plan/` 目录；不能将 Mock 测试或 HTTP 200 宣称为真实 Agent 成功。具体运行事实记录在 task 验证文件中。
+
+## GPT High 与 Prompt Screening（2026-10-18）
+
+### 1. Scope / Trigger
+
+显式设置 GPT reasoning effort、执行 Prompt frozen/candidate/paired 实验时适用。当前真实请求在
+`response.metadata` 遇到 `MALFORMED_STREAM`；不能把本节的 Mock 适配验证写成真实完整服务成功。
+本轮报告见 `10-18-gpt-high-prompt-ablation/report.md`（任务归档后位于 archive）。
+
+### 2. Signatures
+
+- `ModelSettings.chatgpt_reasoning_effort: str | None`；环境键 `TRIVAE_CHATGPT_REASONING_EFFORT`。
+- `ChatGPTResponsesModel(..., reasoning_effort=None)`；`_reasoning_parameters()` 同源构造 payload/projection。
+- `ScreeningRuntime.install_provider_budget(budget)`；`ProviderCallBudget.before_request(request)`。
+- `verify_frozen_baseline(artifact, conditions, baseline_prompt)`。
+
+### 3. Contracts
+
+- 只允许精确 `chatgpt-plan / gpt-6.1-sol / high`；不猜其它模型能力或 context，未知档位显式失败。
+  未设置时保留既有 Provider 默认语义。此白名单只控制请求参数，不代表账号授权/完整实测通过。
+- Runtime/Router/Planner 的 GPT 请求共用同一个 Model 的 `reasoning={effort:high,summary:auto}`；
+  completion 的 SDK ModelSettings 不覆盖该配置；safe settings/Trace/projection 保留公开 effort。
+- GPT 模型没有传统 `_provider_client`；实验门禁安装于 Responses 自有 httpx client，传统路径
+  安装于 OpenAI client 的 HTTP 层；保留已有 hooks，不替换 OAuth/SSE/工具/Finalizer 语义。
+- 每次 inference HTTP 发送前占用本轮与总量计数，含失败及后续工具轮次；总 ledger 顺序复用，
+  不支持多进程并发计数。目录读取/认证不冒充推理次数，真实实验不得绕过安装门禁的 client。
+- 请求 artifact 保留公开 effort/summary、instructions、tools 和可见 input；过滤 replay 中
+  type=reasoning item（包括 encrypted_content），不保存鉴权 header/隐藏推理。
+- Frozen conditions 保存实际 Provider projection、SDK contract/settings、canonical snapshot 和
+  semantic_index_status 的实际身份/状态；不同 effort/chunker/状态拒绝复用。canonical count
+  相同不等于派生索引相同。失败文件保留但标记 failed_baseline；旧 frozen 标签下实际失败也拒绝。
+
+### 4. Validation & Error Matrix
+
+| 输入/状态 | 行为 |
+|---|---|
+| 该精确 GPT 组合 + high | payload 和 projection 一致；真实终态仍需单独验证 |
+| medium/low/未知模型或其它 Provider 搭配该配置 | SettingsError，不静默忽略或改档 |
+| 预算用尽 | request hook 在 transport 前拒绝；失败仍留 ledger |
+| Provider 返回未知 response.metadata | 当前 SDK 明确 MALFORMED_STREAM，不自动忽略/升级 |
+| 失败 Baseline / effort / semantic identity 漂移 | candidate-only 在新推理前拒绝 |
+
+### 5. Good / Base / Bad Cases
+
+Good：先静态、真实4条 smoke、同条件逐组候选；工程失败即停。Base：未配置 effort 的历史账号
+路径保留原请求。Bad：HTTP200就宣布 High 完整验证；将 stale v1 index 冒充当前 v2；重置 ledger
+或将失败 frozen artifact 用作有效语义对照。
+
+### 6. Tests Required
+
+`test_chatgpt_settings.py` 覆盖精确配置与错误组合；`test_chatgpt_responses.py` 覆盖三条路径实际
+HTTP序列化、失败计数和未知 metadata 明确失败；`test_prompt_screening.py` 覆盖真实 SDK 两轮、
+发送前拒绝、跨实例总量、隐藏 replay 排除、失败 baseline/effort/index 漂移。static 入口包括这些
+相关 Provider/OAuth/query/completion 回归。Mock 不代表真实模型质量。
+
+### 7. Wrong vs Correct
+
+Wrong：只在 Python settings 写 high、只给传统 `_provider_client` 装 hook、忽略 reasoning 配置
+身份、为继续实验跳过未知 SSE。Correct：统一 Model payload/projection + 实际 HTTP 边界计数，
+完整保存失败并保留生产 Prompt，独立解决协议条件后再做真实质量对照。

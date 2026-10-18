@@ -2,7 +2,7 @@
   "id": "gpt-high-prompt-ablation",
   "name": "gpt-high-prompt-ablation",
   "title": "GPT High Prompt 精简与受控消融实验",
-  "description": "",
+  "description": "GPT High 配置/预算适配已验证；本轮真实实验1/120请求在response.metadata协议不兼容停止，保留生产Prompt，质量门禁未通过。",
   "status": "in_progress",
   "dev_type": null,
   "scope": null,
@@ -22,5 +22,7 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "",
-  "meta": {}
+  "meta": {
+    "experiment_outcome": "blocked_provider_protocol"
+  }
 }
