@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/chatgpt-plan-guidelines.md","reason":"OAuth Responses strict SSE and evaluation boundary"}
+{"file":".trellis/spec/backend/semantic-incremental-guidelines.md","reason":"independent current identity snapshot"}

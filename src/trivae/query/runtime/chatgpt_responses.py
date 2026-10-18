@@ -6,7 +6,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Mapping
 from contextlib import aclosing
-from typing import Annotated, Any, Protocol, cast
+from typing import Annotated, Any, Literal, Protocol, cast
 
 import httpx
 from agents.agent_output import AgentOutputSchemaBase
@@ -19,7 +19,7 @@ from agents.tool import Tool
 from agents.usage import Usage
 from openai.types.responses import Response, ResponseStreamEvent
 from openai.types.responses.response_prompt_param import ResponsePromptParam
-from pydantic import Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError
 
 from trivae.auth import ChatGPTAuthError
 from trivae.auth.chatgpt import TERMINAL_REFRESH_ERRORS
@@ -28,6 +28,18 @@ from trivae.query.completion import CompletionProviderError
 
 RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses"
 _EVENT_ADAPTER: TypeAdapter[Any] = TypeAdapter(Annotated[ResponseStreamEvent, Field(discriminator="type")])
+
+
+class _ResponseMetadataEvent(BaseModel):
+    """订阅服务已实测的旁路事件；官方 Codex 支持，Python SDK 联合类型尚未包含。"""
+
+    # 仅扩展已证实的 envelope，不放宽其它事件或接受未知顶层业务字段。
+    model_config = ConfigDict(strict=True, extra="forbid")
+    type: Literal["response.metadata"]
+    response_id: Annotated[str, Field(min_length=1)]
+    sequence_number: Annotated[int, Field(ge=0)]
+    # Provider 自有元数据保留 JSON 形状，不能当 assistant 内容、Usage 或成功终态。
+    metadata: dict[str, JsonValue]
 
 # 真实 HTTP 400 证明 JSON mode 的关键字必须在 input 内，instructions 不满足服务端校验。
 JSON_MODE_DEVELOPER_INSTRUCTION = "JSON output is required. Follow the instructions for the required schema."
@@ -226,6 +238,7 @@ class ChatGPTResponsesModel(Model):
 
         # 名称只来自本次流已验证的 added item，不能按工具列表或字符串规则猜测。
         function_names: dict[str, str] = {}
+        metadata_response_id: str | None = None
         normalizations = {"function_call_arguments_done_name": 0}
         observation: dict[str, object] = {
             "event_normalizations": normalizations,
@@ -239,6 +252,7 @@ class ChatGPTResponsesModel(Model):
             "stream_completed": False,
             "chunk_count": 0,
             "request": self.request_projection(),
+            "metadata_events": [],
         }
         try:
             await self._validate_model()
@@ -282,6 +296,20 @@ class ChatGPTResponsesModel(Model):
                     try:
                         raw = json.loads(data)
                         event_type = raw.get("type")
+                        if event_type == "response.metadata":
+                            # 显式验证订阅扩展；其它未知类型仍进入原 SDK 严格判别联合。
+                            metadata = _ResponseMetadataEvent.model_validate(raw)
+                            if metadata_response_id is not None and metadata.response_id != metadata_response_id:
+                                raise self._error("METADATA_RESPONSE_MISMATCH", "metadata response identity changed", observation)
+                            metadata_response_id = metadata.response_id
+                            # 只投影旁路事件身份与键，审核正文不进入 Trace 或模型 replay。
+                            cast(list[dict[str, object]], observation["metadata_events"]).append({
+                                "response_id": metadata.response_id,
+                                "sequence_number": metadata.sequence_number,
+                                "keys": sorted(metadata.metadata),
+                            })
+                            # 此事件由传输层消费；SDK Runner 继续接收原工具、输出及终态事件。
+                            continue
                         observation["terminal_event"] = (
                             event_type
                             if event_type
@@ -348,6 +376,9 @@ class ChatGPTResponsesModel(Model):
                         ) from None
                     if event_type == "response.completed":
                         final = event.response
+                        # 旁路元数据必须归属同一 Response，不能与另一请求终态拼接。
+                        if metadata_response_id is not None and final.id != metadata_response_id:
+                            raise self._error("METADATA_RESPONSE_MISMATCH", "metadata and completed response differ", observation)
                         # SDK Runner 从 terminal Response 读取 request ID，与 transport 使用同一事实。
                         object.__setattr__(final, "_request_id", observation["request_id"])
                         if final.status != "completed":

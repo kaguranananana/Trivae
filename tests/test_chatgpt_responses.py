@@ -710,8 +710,8 @@ def test_high_serialization_is_shared_by_runtime_router_and_planner():
     asyncio.run(run())
 
 
-def test_real_metadata_event_failure_remains_explicit_without_protocol_bypass():
-    """保存本轮真实不兼容事件名；不跳过未知事件、不放宽 SDK 判别联合。"""
+def test_incomplete_metadata_event_remains_explicit_without_protocol_bypass():
+    """旧最小反例缺响应身份/metadata，新增已知类型后仍必须拒绝。"""
     from dataclasses import replace
 
     async def run():
@@ -729,8 +729,133 @@ def test_real_metadata_event_failure_remains_explicit_without_protocol_bypass():
                 await runtime.complete_text_with_observation("Return JSON.")
             assert error.value.code == "MALFORMED_STREAM"
             assert error.value.safe_observation["stream_completed"] is False
-            assert error.value.safe_observation["validation_errors"][0]["type"] == "union_tag_invalid"
+            assert error.value.safe_observation["validation_errors"][0]["type"] == "missing"
             assert error.value.safe_observation["request"]["reasoning"]["effort"] == "high"
         finally:
             await runtime.aclose()
+    asyncio.run(run())
+
+
+def metadata_event(**updates):
+    """脱敏复现实际 envelope：审核旁路元数据，不是模型输出或终态。"""
+    event = {"type": "response.metadata", "response_id": "resp-test", "sequence_number": 28,
+             "metadata": {"openai_chatgpt_moderation_metadata": {
+                 "prompt": {"omnimod": {"protection_type": "omnimod", "outputs": [{
+                     "results": [{"category_flags": {"A1": False}}], "is_blocked": False}]}},
+                 "generation": {}, "tool_call": {}, "tool_response": {}}}}
+    return {**event, **updates}
+
+
+def test_metadata_is_validated_and_observed_without_replacing_completion_or_usage():
+    """接受已知扩展但仍等待SDK终态，元数据不进入模型内容/隐藏推理/Usage。"""
+    async def run():
+        terminal = completed([message('{"ok":true}')])
+        terminal['sequence_number'] = 29
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), client=httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200,
+                headers={"content-type": "text/event-stream"}, text=sse(metadata_event(), terminal)))))
+        try:
+            response, observation = await model.collect_response(model._payload(
+                "Return JSON.", "test", SDKModelSettings(), [], None, []))
+            assert response.output_text == '{"ok":true}'
+            assert observation['stream_completed'] is True
+            assert observation['usage']['input_tokens'] == 12
+            assert observation['usage']['reasoning_tokens'] == 1
+            assert observation['metadata_events'] == [{"response_id": "resp-test", "sequence_number": 28,
+                "keys": ["openai_chatgpt_moderation_metadata"]}]
+            assert "category_flags" not in json.dumps(observation)
+        finally:
+            await model.close()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('event,code', [
+    (metadata_event(metadata=[]), 'MALFORMED_STREAM'),
+    (metadata_event(sequence_number='28'), 'MALFORMED_STREAM'),
+    (metadata_event(response_id=5), 'MALFORMED_STREAM'),
+    (metadata_event(extra_output='not allowed'), 'MALFORMED_STREAM'),
+    (metadata_event(type='response.unknown_metadata'), 'MALFORMED_STREAM'),
+    (metadata_event(), 'STREAM_INTERRUPTED'),
+])
+def test_metadata_invalid_unknown_and_without_terminal_remain_explicit(event, code):
+    """新增已知类型不放宽未知类型、字段形状或终态要求。"""
+    async def run():
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), client=httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200,
+                headers={"content-type": "text/event-stream"}, text=sse(event)))))
+        try:
+            with pytest.raises(ChatGPTResponsesError) as error:
+                await model.get_response(**sdk_args())
+            assert error.value.code == code
+            assert error.value.safe_observation['stream_completed'] is False
+        finally:
+            await model.close()
+    asyncio.run(run())
+
+
+def test_metadata_sdk_tool_loop_keeps_reasoning_replay_and_each_turn_usage():
+    """真实SDK两轮工具调用，每轮均有metadata，隐藏replay和Usage仍来自原终态。"""
+    requests = []
+    observations = []
+    invocations = []
+
+    @function_tool
+    def evidence(query: str) -> str:
+        """只提供无私有内容的测试证据。"""
+        invocations.append(query)
+        return "canonical evidence"
+
+    def handler(request):
+        payload = json.loads(request.content)
+        requests.append(payload)
+        output = ([{"id": "rs-1", "type": "reasoning", "summary": [],
+                    "encrypted_content": "opaque-replay"}, function('evidence', {'query': 'alpha'})]
+                  if len(requests) == 1 else [message('{"answer":"alpha"}')])
+        terminal = completed(output)
+        terminal['sequence_number'] = 29
+        return httpx.Response(200, headers={'content-type': 'text/event-stream'},
+                              text=sse(metadata_event(), terminal))
+
+    async def run():
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), observer=observations.append,
+            client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        agent = Agent(name='test', model=model, instructions='Return JSON.',
+                      tools=tool_namespace(name='trivae', description='test', tools=[evidence]))
+        try:
+            result = await Runner.run(agent, 'alpha', run_config=RunConfig(tracing_disabled=True))
+            assert invocations == ['alpha']
+            assert len(requests) == 2
+            assert any(item.get('encrypted_content') == 'opaque-replay' for item in requests[1]['input'])
+            assert any(item.get('type') == 'function_call_output' for item in requests[1]['input'])
+            assert not any(item.get('type') == 'response.metadata' for item in requests[1]['input'])
+            assert result.final_output == '{"answer":"alpha"}'
+            assert result.context_wrapper.usage.input_tokens == 24
+            assert result.context_wrapper.usage.output_tokens == 10
+            assert len(observations) == 2
+            assert all(o['metadata_events'][0]['response_id'] == 'resp-test' for o in observations)
+        finally:
+            await model.close()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('terminal,expected', [
+    (completed([], status='incomplete', event_type='response.incomplete'), 'response.incomplete'),
+    (completed([], status='failed', event_type='response.failed'), 'response.failed'),
+    ({**completed([]), 'response': {**completed([])['response'], 'id': 'resp-other'}},
+     'METADATA_RESPONSE_MISMATCH'),
+])
+def test_metadata_does_not_hide_failure_or_wrong_response_identity(terminal, expected):
+    """metadata不是成功信号，之后的失败/关联错误继续显式上报。"""
+    async def run():
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), client=httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200,
+                headers={'content-type': 'text/event-stream'}, text=sse(metadata_event(), terminal)))))
+        try:
+            with pytest.raises(ChatGPTResponsesError) as error:
+                await model.get_response(**sdk_args())
+            assert error.value.code == expected
+            assert error.value.safe_observation['stream_completed'] is False
+            assert len(error.value.safe_observation['metadata_events']) == 1
+        finally:
+            await model.close()
     asyncio.run(run())
