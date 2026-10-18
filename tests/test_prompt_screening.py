@@ -419,3 +419,78 @@ def test_shared_provider_budget_survives_rounds_and_blocks_before_send(tmp_path)
         with pytest.raises(EvaluationContractError, match="maximum changed"):
             ProviderCallBudget(2, total_ledger=ledger, total_maximum=4)
     asyncio.run(check())
+
+
+@pytest.mark.parametrize("total_maximum", [1, 2])
+def test_gpt_http_budget_counts_tool_rounds_and_redacts_hidden_replay(tmp_path, total_maximum):
+    """真实 SDK 工具循环到 Mock HTTP；第二轮在发送前耗尽，新实例也不能重置总量。"""
+    import httpx
+    from agents import Agent, RunConfig, Runner, function_tool, tool_namespace
+
+    from tests.test_chatgpt_responses import FakeAuth, completed, function, message, settings, sse
+    from trivae.query.runtime.chatgpt_responses import ChatGPTResponsesError, ChatGPTResponsesModel
+
+    sent = []
+
+    @function_tool
+    def read_evidence(query: str) -> str:
+        """读取无私有数据的测试证据。"""
+        return query
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        output = [{"id": "rs-test", "type": "reasoning", "summary": [],
+                   "encrypted_content": "private-replay"}, function("read_evidence", {"query": "alpha"})]
+        return httpx.Response(200, headers={"content-type": "text/event-stream"},
+                              text=sse(completed(output if len(sent) == 1 else [message('{}')])))
+
+    async def check():
+        auth = FakeAuth(models=[{"slug": "gpt-6.1-sol"}])
+        runtime = ScreeningRuntime(settings=replace(settings(), model_name="gpt-6.1-sol",
+                                                    chatgpt_reasoning_effort="high"), chatgpt_auth=auth)
+        # 注入真实 httpx transport，仍由同一个生产 Responses Model 序列化和 SDK 驱动。
+        await runtime._model._client.aclose()
+        runtime._model._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        budget = ProviderCallBudget(3, total_ledger=tmp_path / "total.json", total_maximum=total_maximum)
+        runtime.install_provider_budget(budget)
+        assert isinstance(runtime._model, ChatGPTResponsesModel)
+        agent = Agent(name="test", model=runtime._model, instructions="Return JSON.",
+                      tools=tool_namespace(name="trivae", description="test", tools=[read_evidence]))
+        try:
+            if total_maximum == 1:
+                with pytest.raises(ChatGPTResponsesError, match="EvaluationContractError: total provider calls exhausted"):
+                    await Runner.run(agent, "test", run_config=RunConfig(tracing_disabled=True))
+            else:
+                await Runner.run(agent, "test", run_config=RunConfig(tracing_disabled=True))
+            assert len(sent) == len(budget.requests) == total_maximum
+            assert "private-replay" not in json.dumps(budget.requests)
+            assert sent[0]["reasoning"] == {"effort": "high", "summary": "auto"}
+            # 手工重放真实第一轮结果，单独证明历史隐藏内容不会进入实验请求 artifact。
+            capture = ProviderCallBudget(1)
+            await capture.before_request(httpx.Request("POST", "https://api.openai.com/v1/responses", json={
+                "reasoning": {"effort": "high", "summary": "auto"}, "input": [
+                    {"type": "reasoning", "encrypted_content": "private-replay", "summary": []},
+                    {"type": "function_call_output", "output": "visible evidence", "call_id": "c"}]}))
+            assert "private-replay" not in json.dumps(capture.requests)
+            assert capture.requests[0]["input"] == [
+                {"type": "function_call_output", "output": "visible evidence", "call_id": "c"}]
+            assert capture.requests[0]["reasoning"]["effort"] == "high"
+            next_budget = ProviderCallBudget(2, total_ledger=tmp_path / "total.json", total_maximum=total_maximum)
+            runtime._model._client.event_hooks["request"].clear()
+            runtime.install_provider_budget(next_budget)
+            with pytest.raises(ChatGPTResponsesError, match="EvaluationContractError: total provider calls exhausted"):
+                await runtime.complete_text_with_observation("Return JSON.")
+            assert len(sent) == total_maximum
+        finally:
+            await runtime.aclose()
+    asyncio.run(check())
+
+
+def test_frozen_gpt_effort_drift_is_rejected():
+    """冻结模型设置与实际 Responses 参数，禁止复用默认档位或旧协议记录。"""
+    baseline = {**conditions(), "provider_request": {"reasoning": {"effort": "high", "summary": "auto"}}}
+    frozen = {"kind": "frozen_baseline", "prompt": SYSTEM_PROMPT, "commit": "baseline",
+              "conditions": baseline, "run": {"run_id": "frozen"}, "trace": {"trace_id": "trace"}}
+    for projection in ({"reasoning": {"summary": "auto"}}, {"reasoning": {"effort": "medium"}}):
+        with pytest.raises(EvaluationContractError, match="provider_request"):
+            verify_frozen_baseline(frozen, {**baseline, "provider_request": projection}, SYSTEM_PROMPT)

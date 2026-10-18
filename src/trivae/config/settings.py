@@ -14,6 +14,7 @@ from trivae.config.limits import (
     DEFAULT_RUN_TOOL_EVIDENCE_PERCENT,
     ToolResultBudgetMode,
 )
+from trivae.config.model_capabilities import CHATGPT_REASONING_EFFORTS
 
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 CHATGPT_PLAN_BASE_URL = "https://api.openai.com/v1"
@@ -52,10 +53,16 @@ class ModelSettings:
     run_tool_evidence_percent: int = DEFAULT_RUN_TOOL_EVIDENCE_PERCENT
     run_tool_evidence_cap: int = DEFAULT_RUN_TOOL_EVIDENCE_CAP
     run_tool_evidence_budget: int | None = None
+    chatgpt_reasoning_effort: str | None = None
 
     def __post_init__(self) -> None:
         """ChatGPT 订阅模式固定公开端点，直接构造也不能混入 API key。"""
 
+        # 环境加载与直接构造共用精确能力边界；不支持时显式失败，禁止静默改档。
+        if self.chatgpt_reasoning_effort is not None:
+            supported = CHATGPT_REASONING_EFFORTS.get((self.provider, self.model_name), frozenset())
+            if self.chatgpt_reasoning_effort not in supported:
+                raise SettingsError("unsupported chatgpt reasoning effort for the configured provider/model")
         # Runtime 和测试可直接构造 settings，不能只在环境变量入口约束凭证边界。
         if self.provider == "chatgpt-plan":
             # OAuth token 仅能由独立 Auth Store 读取；普通 API key 不参与订阅调用。
@@ -76,6 +83,7 @@ class ModelSettings:
             f"max_tool_rounds={self.max_tool_rounds!r}, "
             f"max_output_tokens={self.max_output_tokens!r}, "
             f"completion_max_tokens={self.completion_max_tokens!r}, "
+            f"chatgpt_reasoning_effort={self.chatgpt_reasoning_effort!r}, "
             f"tool_result_budget_mode={self.tool_result_budget_mode!r}, "
             f"model_context_window_tokens={self.model_context_window_tokens!r}, "
             f"per_call_tool_result_percent={self.per_call_tool_result_percent!r}, "
@@ -111,6 +119,7 @@ class ModelSettings:
                 auth_mode="chatgpt_oauth",
                 protocol="responses",
                 server_max_tokens_allowed=False,
+                reasoning_effort=self.chatgpt_reasoning_effort,
             )
         return result
 
@@ -271,6 +280,8 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
         run_tool_evidence_percent=run_tool_evidence_percent,
         run_tool_evidence_cap=run_tool_evidence_cap,
         run_tool_evidence_budget=run_tool_evidence_budget,
+        # 未配置时保留 Provider 历史默认；实验必须显式指定 high。
+        chatgpt_reasoning_effort=values.get("TRIVAE_CHATGPT_REASONING_EFFORT"),
     )
 
 

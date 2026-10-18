@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 from agents.exceptions import ModelBehaviorError
 
 from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationContractError
+from trivae.query.runtime.chatgpt_responses import ChatGPTResponsesModel
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter, _project_usage_mapping
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
 
@@ -27,6 +28,17 @@ class ScreeningRuntime(OpenAIAgentsRuntimeAdapter):
         self.first_tool = first_tool
         self.probe_calls: list[dict[str, object]] = []
         self.probe_usage: dict[str, int | float] | None = None
+
+    def install_provider_budget(self, budget: ProviderCallBudget) -> None:
+        """在实际 HTTP 发送边界安装统一门禁，覆盖多轮与 completion。"""
+
+        # GPT 使用独立 httpx client，传统 Provider 使用 OpenAI SDK 内部 client。
+        if isinstance(self._model, ChatGPTResponsesModel):
+            self._model._client.event_hooks.setdefault("request", []).append(budget.before_request)
+        elif self._provider_client is not None:
+            self._provider_client._client.event_hooks.setdefault("request", []).append(budget.before_request)
+        else:
+            raise EvaluationContractError("screening requires an HTTP provider client")
 
     def _build_agent(self, request: Any, context: Any, state: Any) -> Any:
         if self.first_tool:
@@ -92,8 +104,15 @@ class ProviderCallBudget:
         if len(self.requests) >= self.maximum:
             raise EvaluationContractError("maximum provider calls exhausted before sending request")
         body = json.loads(request.content)
-        # 不保存鉴权头或隐藏 reasoning；完整可见请求用于检查首轮非策略字段一致性。
-        body = {key: value for key, value in body.items() if key not in {"reasoning", "reasoning_content"}}
+        # reasoning 参数是公开配置身份；隐藏历史 item 仅用于 Provider replay，不能保存。
+        body = {key: value for key, value in body.items() if key != "reasoning_content"}
+        if "input" in body:
+            # 保留实际可见输入及 function_call_output，不复制 encrypted reasoning/summary。
+            body["input"] = [item for item in body["input"] if item.get("type") != "reasoning"]
+        if "messages" in body:
+            # 传统 Chat Completions 历史也可能含私有推理字段，只排除这些字段。
+            body["messages"] = [{key: value for key, value in item.items()
+                                 if key != "reasoning_content"} for item in body["messages"]]
         if self.total_ledger is not None:
             # 每次发送前重新读取总量，跨脚本的实际attempt共同计数；格式错误显式暴露。
             total = read_artifact(self.total_ledger)

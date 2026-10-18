@@ -220,3 +220,21 @@ class ChatGPTSettingsTests(unittest.TestCase):
             store.close()
         self.assertNotIn("credential fixture", run.exception_message)
         self.assertIsNone(run.operational_measurements["provider"])
+
+
+def test_high_is_explicit_and_rejects_unverified_provider_model_combinations():
+    """只为本轮精确身份启用 High，不把其它 Provider 的配置悄悄改档。"""
+    import pytest
+
+    values = {"TRIVAE_MODEL_PROVIDER": "chatgpt-plan", "TRIVAE_MODEL_NAME": "gpt-6.1-sol",
+              "TRIVAE_CHATGPT_REASONING_EFFORT": "high"}
+    settings = load_settings(values)
+    assert settings.chatgpt_reasoning_effort == "high"
+    assert settings.to_safe_dict()["reasoning_effort"] == "high"
+    for override in ({"TRIVAE_MODEL_NAME": "unknown"}, {"TRIVAE_CHATGPT_REASONING_EFFORT": "medium"},
+                     {"TRIVAE_MODEL_PROVIDER": "deepseek", "TRIVAE_MODEL_API_KEY": "test",
+                      "TRIVAE_MODEL_BASE_URL": "https://api.deepseek.com"}):
+        with pytest.raises(SettingsError, match="reasoning effort"):
+            load_settings({**values, **override})
+    with pytest.raises(SettingsError, match="reasoning effort"):
+        replace(settings, model_name="unknown")

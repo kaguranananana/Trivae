@@ -1161,6 +1161,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
 
             chatgpt_model = ChatGPTResponsesModel(
                 model=settings.model_name, auth=self._chatgpt_auth, observer=observe,
+                reasoning_effort=settings.chatgpt_reasoning_effort,
             )
             return chatgpt_model, None
         # OpenCode Go 要求每个客户端声明稳定 session 和自有 User-Agent，否则请求不会进入 Go 通道。
@@ -1209,6 +1210,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             configuration["protocol"] = {
                 "auth_mode": "chatgpt_oauth", "name": "responses", "store": False, "stream": True,
                 "server_max_tokens_allowed": False,
+                "reasoning_effort": settings.chatgpt_reasoning_effort if settings is not None else None,
             }
         else:
             configuration["protocol"] = {"name": "chat_completions"}

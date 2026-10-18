@@ -125,7 +125,7 @@ async def execute(args: argparse.Namespace) -> None:
         feedback_database_path=args.output / "feedback.sqlite3",
     )
     runtime.capability_registry = application.capability_registry
-    runtime._provider_client._client.event_hooks["request"] = [budget.before_request]
+    runtime.install_provider_budget(budget)
     captured: list[Any] = []
 
     async def query(request: Any) -> Any:
@@ -160,6 +160,8 @@ async def execute(args: argparse.Namespace) -> None:
             conditions["tool_contract"] = [{"name": tool.name, "description": tool.description,
                 "schema": tool.params_json_schema, "strict": tool.strict_json_schema} for tool in initial.tools]
             conditions["model_settings"] = initial.model_settings.to_json_dict()
+            # SDK 设置不足以表达自有 Responses payload，冻结实际非敏感请求身份。
+            conditions["provider_request"] = runtime.completion_request_projection()
             frozen = None
             if args.mode in {"candidate-only", "targeted"}:
                 frozen = read_artifact(args.baseline_dir / f"{case.case_id}.json")

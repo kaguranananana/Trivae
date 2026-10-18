@@ -23,6 +23,7 @@ from pydantic import Field, TypeAdapter, ValidationError
 
 from trivae.auth import ChatGPTAuthError
 from trivae.auth.chatgpt import TERMINAL_REFRESH_ERRORS
+from trivae.config.model_capabilities import CHATGPT_REASONING_EFFORTS
 from trivae.query.completion import CompletionProviderError
 
 RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses"
@@ -109,8 +110,15 @@ class ChatGPTResponsesModel(Model):
         *,
         client: httpx.AsyncClient | None = None,
         observer: Callable[[Mapping[str, object]], None] | None = None,
+        reasoning_effort: str | None = None,
     ) -> None:
+        # Model 也可直接注入 SDK；同一能力表保证该入口不会绕过配置校验。
+        if reasoning_effort is not None and reasoning_effort not in CHATGPT_REASONING_EFFORTS.get(
+            ("chatgpt-plan", model), frozenset(),
+        ):
+            raise ValueError("unsupported chatgpt reasoning effort for the configured model")
         self.model = model
+        self.reasoning_effort = reasoning_effort
         self.auth = auth
         # HTTP client 无隐式重试；取消、超时和额度不足都显式交给上层。
         self._client = client or httpx.AsyncClient(timeout=60.0)
@@ -144,9 +152,18 @@ class ChatGPTResponsesModel(Model):
             "store": False,
             "stream": True,
             "text": {"format": {"type": "json_object"}},
-            "reasoning": {"summary": "auto"},
+            "reasoning": self._reasoning_parameters(),
             "include": ["reasoning.encrypted_content"],
         }
+
+    def _reasoning_parameters(self) -> dict[str, str]:
+        """实际 payload 与安全投影同源，Runtime/Router/Planner 不各自设档。"""
+
+        parameters = {"summary": "auto"}
+        # 只在显式配置时发送 effort，不更改未配置账号的历史请求。
+        if self.reasoning_effort is not None:
+            parameters["effort"] = self.reasoning_effort
+        return parameters
 
     def _payload(
         self,
@@ -171,7 +188,7 @@ class ChatGPTResponsesModel(Model):
             "store": False,
             "stream": True,
             "include": ["reasoning.encrypted_content"],
-            "reasoning": {"summary": "auto"},
+            "reasoning": self._reasoning_parameters(),
             "text": {"format": {"type": "json_object"}},
         }
         if system_instructions:

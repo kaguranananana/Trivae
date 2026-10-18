@@ -669,3 +669,42 @@ def test_arguments_done_without_associated_added_function_is_explicit_failure():
         await model.close()
 
     asyncio.run(run())
+
+
+def test_high_serialization_is_shared_by_runtime_router_and_planner():
+    """真实 HTTP body 证明三条路径同为 High，失败请求也计入同一预算。"""
+    from dataclasses import replace
+
+    from trivae.evaluation.prompt_screening import ProviderCallBudget, ScreeningRuntime
+
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        if len(sent) == 3:
+            return httpx.Response(400, json={"error": {"code": "test_failure", "message": "explicit failure"}})
+        return httpx.Response(200, headers={"content-type": "text/event-stream"},
+                              text=sse(completed([message('{"ok":true}')])))
+
+    async def run():
+        runtime = ScreeningRuntime(settings=replace(settings(), model_name="gpt-6.1-sol",
+                                                    chatgpt_reasoning_effort="high"),
+                                   chatgpt_auth=FakeAuth(models=[{"slug": "gpt-6.1-sol"}]))
+        await runtime._model._client.aclose()
+        runtime._model._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        budget = ProviderCallBudget(3)
+        runtime.install_provider_budget(budget)
+        try:
+            # Runtime SDK Model 与 completion 共用同一序列化入口。
+            await runtime._model.get_response(**sdk_args())
+            await runtime.complete_text_with_observation("Return JSON.")
+            with pytest.raises(ChatGPTResponsesError, match="test_failure"):
+                await runtime.complete_planner_text_with_observation("Return JSON.")
+            assert len(sent) == len(budget.requests) == 3
+            assert all(body["reasoning"] == {"effort": "high", "summary": "auto"} for body in sent)
+            assert runtime.safe_configuration()["protocol"]["reasoning_effort"] == "high"
+            assert runtime.completion_request_projection()["reasoning"] == sent[0]["reasoning"]
+            assert runtime.planner_completion_request_projection()["reasoning"] == sent[0]["reasoning"]
+        finally:
+            await runtime.aclose()
+    asyncio.run(run())
