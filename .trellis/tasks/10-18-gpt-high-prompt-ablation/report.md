@@ -26,7 +26,7 @@
 | dev-lexical-chatlog-alpha@v2 | 精确事实与已人工裁决引用 | 是 | 1 | MALFORMED_STREAM，失败，无答案 |
 | dev-para-ts-learning@v1 | 语义/学习路径查找 | 否 | 0 | 前条工程失败后阻止后续请求 |
 | dev-context-mattpocock-1@v2 | 推荐、使用与后续反馈 | 否 | 0 | 未运行 |
-| dev-zero-empty-1@v1 | UTC 空窗口与强否定边界 | 否 | 0 | 未运行 |
+| dev-zero-empty-1@v2 | UTC 空窗口与强否定边界 | 否 | 0 | 未运行 |
 
 计划4条 smoke，实际尝试1条、成功0条、失败1条，另外3条未运行；没有扩展至约16条。没有形成有效 GPT 质量 Baseline，不能计算准确率或召回改善。
 
@@ -71,13 +71,13 @@ A/B/C 没有任何已执行配对，因而没有事实改善/持平/退化对照
 
 ## 6. 工程验证与交付
 
-工程 checkpoint：`d093512 feat(eval): configure GPT High and meter Responses screening requests`。该提交是唯一真实请求执行版本；后续收尾修复未重新发送请求。
+工程 checkpoint：`d093512 feat(eval): configure GPT High and meter Responses screening requests`。该提交是唯一真实请求执行版本；收尾修复与阻塞报告提交为 `e951680`，未重新发送请求。
 
 回归过程：配置/HTTP新增测试先2 failed再通过；mypy 曾暴露 httpx/httpx2 具体客户端赋值类型冲突，已改为各具体分支安装同一 hook，无类型绕过。多轮HTTP、失败计数、跨实例总预算、effort drift、隐私捕获已验证。
 
 真实失败另暴露 `frozen_baseline` 标签不足以证明成功：新增测试先红，随后修复候选复用检查；未来失败文件标记 failed_baseline，本次原件不改。strict response.metadata 失败与 semantic identity drift 均有回归。
 
-最终验证数字、收尾提交和 push 结果见 `validation.md`；工程验收不等同 Prompt 质量验收。
+最终验证数字见 `validation.md`，提交可由 Git 记录复核，统一 push 结果见本会话最终答复；工程验收不等同 Prompt 质量验收。
 
 完整私有证据只在 ignored `data/evaluation/gpt-high-ablation-20261018/`：experiment、A首条原始 artifact、provider-ledger、total-budget、trace/conversation/evaluation SQLite、完整可见请求、stop-summary、semantic-status、post-stop-audit、B草稿和日志。没有提交私有聊天正文、数据库、完整 Trace、OAuth Token 或密钥。
 
