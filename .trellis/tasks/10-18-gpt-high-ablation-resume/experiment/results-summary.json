@@ -1,0 +1,741 @@
+{
+  "status": "blocked_by_external_tls; production prompt unchanged",
+  "configuration": {
+    "provider": "chatgpt-plan",
+    "model": "gpt-6.1-sol",
+    "reasoning": {
+      "effort": "high",
+      "summary": "auto"
+    },
+    "route": "standard_execution"
+  },
+  "snapshot": {
+    "native_messages": 473236,
+    "sources": 14,
+    "lexical_rows": 476736,
+    "forward_occurrences": 3500,
+    "semantic_chunks": 54651,
+    "chunker": "trivae-semantic-chunker-v2-forward",
+    "integrity": "valid; global metadata/vector cardinality; 32 vector/range samples"
+  },
+  "budget": {
+    "maximum": 120,
+    "provider_calls": 52,
+    "remaining": 68,
+    "ledger_sum": 52
+  },
+  "known_usage_lower_bound": {
+    "requests_with_returned_usage": 40,
+    "input_tokens": 479227,
+    "output_tokens": 7155,
+    "total_tokens": 486382,
+    "cached_input_tokens": 14720,
+    "reasoning_tokens": 913,
+    "currency_cost": null,
+    "unknown_request_usage_count": 12
+  },
+  "quality_scope": {
+    "new_snapshot_runs": 23,
+    "completed_runs": 11,
+    "distinct_cases_attempted": 8,
+    "complete_reviewed_pairs": 3,
+    "agent_review_improved": 2,
+    "agent_review_tied": 1,
+    "agent_review_regressed": 0,
+    "remaining_fresh_development_cases_executed": 0,
+    "human_release_review": "pending"
+  },
+  "phase_ledgers": [
+    {
+      "phase": "a-smoke",
+      "provider_calls": 1
+    },
+    {
+      "phase": "completion-paths",
+      "provider_calls": 1
+    },
+    {
+      "phase": "completion-paths-recheck",
+      "provider_calls": 1
+    },
+    {
+      "phase": "planner-path",
+      "provider_calls": 1
+    },
+    {
+      "phase": "protocol-e2e",
+      "provider_calls": 3
+    },
+    {
+      "phase": "resume-a-direct-exact",
+      "provider_calls": 0
+    },
+    {
+      "phase": "resume-a-observed",
+      "provider_calls": 1
+    },
+    {
+      "phase": "resume-a-risk",
+      "provider_calls": 4
+    },
+    {
+      "phase": "resume-a-smoke-20261019",
+      "provider_calls": 0
+    },
+    {
+      "phase": "resume-a-smoke-direct",
+      "provider_calls": 6
+    },
+    {
+      "phase": "resume-a-smoke-network-recheck",
+      "provider_calls": 1
+    },
+    {
+      "phase": "resume-a-zero-sql",
+      "provider_calls": 5
+    },
+    {
+      "phase": "resume-b01",
+      "provider_calls": 3
+    },
+    {
+      "phase": "resume-b02",
+      "provider_calls": 2
+    },
+    {
+      "phase": "resume-b02-direct-pair",
+      "provider_calls": 2
+    },
+    {
+      "phase": "resume-c01-direct-pair",
+      "provider_calls": 8
+    },
+    {
+      "phase": "resume-c01-parent-reply",
+      "provider_calls": 1
+    },
+    {
+      "phase": "resume-c02-risk",
+      "provider_calls": 10
+    },
+    {
+      "phase": "resume-core-gate",
+      "provider_calls": 1
+    },
+    {
+      "phase": "resume-diagnostics/strict-reproduction",
+      "provider_calls": 1
+    }
+  ],
+  "runs": [
+    {
+      "phase": "a-smoke",
+      "case_id": "dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:dev-lexical-chatlog-alpha:v2:prompt-screen:baseline:d093512773335803174643e20135737c9cf79220:fea42ee4b94d454d98f83a17346a510f",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 9534.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "MALFORMED_STREAM",
+      "code_version": "d093512773335803174643e20135737c9cf79220"
+    },
+    {
+      "phase": "protocol-e2e",
+      "case_id": "dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:dev-lexical-chatlog-alpha:v2:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:af2529a8de204d0993223ce18be067b6",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 22546,
+        "output_tokens": 286,
+        "total_tokens": 22832,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 42,
+      "reasoning_tokens": 42,
+      "observed_completed_streams": 3,
+      "latency_ms": 27124.0,
+      "tool_sequence": [
+        "lexical_search",
+        "semantic_search"
+      ],
+      "finalization": "degraded",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-direct-exact",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:fd5ca8f3532649bb9eb35320f75ed642",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 0,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 420.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "AUTH_NETWORK",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-observed",
+      "case_id": "gpt-high-dev-context-mattpocock-1",
+      "run_id": "eval-run:gpt-high-dev-context-mattpocock-1:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:00a4aae094bd4ac28992d373a96e3387",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 1640.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-risk",
+      "case_id": "gpt-high-dev-context-mattpocock-1",
+      "run_id": "eval-run:gpt-high-dev-context-mattpocock-1:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:c8b63d19f85242449304181d082a49c7",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 2,
+      "usage": {
+        "requests": 1,
+        "input_tokens": 7281,
+        "output_tokens": 39,
+        "total_tokens": 7320,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 1,
+      "latency_ms": 14185.0,
+      "tool_sequence": [
+        "lexical_search",
+        "get_message_context",
+        "get_message_context"
+      ],
+      "finalization": "skipped",
+      "error_code": "RUNTIME_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-risk",
+      "case_id": "gpt-high-frozen-github",
+      "run_id": "eval-run:gpt-high-frozen-github:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:e953c63930bb463582010eeb2e04fd4b",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16965,
+        "output_tokens": 1389,
+        "total_tokens": 18354,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 184,
+      "reasoning_tokens": 184,
+      "observed_completed_streams": 2,
+      "latency_ms": 38808.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-smoke-20261019",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:c29385a3a7674c9fac42d851a6d0db10",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 0,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 5437.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "AUTH_NETWORK",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-smoke-direct",
+      "case_id": "gpt-high-dev-context-mattpocock-1",
+      "run_id": "eval-run:gpt-high-dev-context-mattpocock-1:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:efb7a96da50c448ea78c7c4222a969a5",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 180.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-smoke-direct",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:f3e808069e5147c3b573ec4a81c27c85",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16741,
+        "output_tokens": 222,
+        "total_tokens": 16963,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 18330.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-smoke-direct",
+      "case_id": "gpt-high-dev-para-ts-learning",
+      "run_id": "eval-run:gpt-high-dev-para-ts-learning:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:7dfdaffa98824f96a44222fc23739a68",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 54611,
+        "output_tokens": 629,
+        "total_tokens": 55240,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 49,
+      "reasoning_tokens": 49,
+      "observed_completed_streams": 3,
+      "latency_ms": 32958.0,
+      "tool_sequence": [
+        "semantic_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-smoke-network-recheck",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:e88c6f7a011a4cdb8840c6f0e57eacb1",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 2335.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-zero-sql",
+      "case_id": "gpt-high-dev-zero-empty-1",
+      "run_id": "eval-run:gpt-high-dev-zero-empty-1:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:c19072a16d7b4b34b4fa91145c245e1b",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15391,
+        "output_tokens": 168,
+        "total_tokens": 15559,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 11394.0,
+      "tool_sequence": [
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-a-zero-sql",
+      "case_id": "gpt-high-pu-count-utc-day",
+      "run_id": "eval-run:gpt-high-pu-count-utc-day:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:021ee46df6944fa1a3921527185c926e",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 26013,
+        "output_tokens": 251,
+        "total_tokens": 26264,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 3,
+      "latency_ms": 14148.0,
+      "tool_sequence": [
+        "get_schema",
+        "execute_sql"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-b01",
+      "case_id": "gpt-high-pu-count-utc-day",
+      "run_id": "eval-run:gpt-high-pu-count-utc-day:v1:prompt-screen:candidate:b669bcc2f992e9819f9823bb761e46de37263073:12c5116e1bd44043b157c4dd583bbf27",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 25986,
+        "output_tokens": 221,
+        "total_tokens": 26207,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 3,
+      "latency_ms": 18747.0,
+      "tool_sequence": [
+        "get_schema",
+        "execute_sql"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-b02",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:candidate:b669bcc2f992e9819f9823bb761e46de37263073:8b4c0b5e14ce4298a4e04f5533f0749a",
+      "kind": "candidate_screen",
+      "prompt_chars": 20251,
+      "terminal": "failed",
+      "http": 2,
+      "usage": {
+        "requests": 1,
+        "input_tokens": 7238,
+        "output_tokens": 41,
+        "total_tokens": 7279,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 1,
+      "latency_ms": 15658.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-b02-direct-pair",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:27448bcf3f9248569c0aec6b062eebd6",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 2,
+      "usage": {
+        "requests": 1,
+        "input_tokens": 7278,
+        "output_tokens": 41,
+        "total_tokens": 7319,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 1,
+      "latency_ms": 6748.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c01-direct-pair",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:ca1c2f992a9e4af697a35ab4092ba6e1",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 0,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 13.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c01-direct-pair",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:candidate:b669bcc2f992e9819f9823bb761e46de37263073:2b485aad92b143d7afaa393562edd9ef",
+      "kind": "candidate_screen",
+      "prompt_chars": 19854,
+      "terminal": "completed",
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16483,
+        "output_tokens": 212,
+        "total_tokens": 16695,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 10751.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c01-direct-pair",
+      "case_id": "gpt-high-dev-para-ts-learning",
+      "run_id": "eval-run:gpt-high-dev-para-ts-learning:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:f56e5d620de14a14b3c162dd8c166c65",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 52454,
+        "output_tokens": 845,
+        "total_tokens": 53299,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 266,
+      "reasoning_tokens": 266,
+      "observed_completed_streams": 3,
+      "latency_ms": 27810.0,
+      "tool_sequence": [
+        "semantic_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c01-direct-pair",
+      "case_id": "gpt-high-dev-para-ts-learning",
+      "run_id": "eval-run:gpt-high-dev-para-ts-learning:v1:prompt-screen:candidate:b669bcc2f992e9819f9823bb761e46de37263073:c87ed3ac6c7e46b482cc500f7b60d676",
+      "kind": "candidate_screen",
+      "prompt_chars": 19854,
+      "terminal": "completed",
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 52386,
+        "output_tokens": 852,
+        "total_tokens": 53238,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 30,
+      "reasoning_tokens": 30,
+      "observed_completed_streams": 3,
+      "latency_ms": 33245.0,
+      "tool_sequence": [
+        "semantic_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c01-parent-reply",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:candidate:b669bcc2f992e9819f9823bb761e46de37263073:5b974e6e47ae4d8fadd5f04bb118dd35",
+      "kind": "candidate_screen",
+      "prompt_chars": 19854,
+      "terminal": "failed",
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 7925.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c02-risk",
+      "case_id": "gpt-high-cal-context-ui-skill",
+      "run_id": "eval-run:gpt-high-cal-context-ui-skill:v1:prompt-screen:candidate:b669bcc2f992e9819f9823bb761e46de37263073:875128bc0ae741a98208e075510269e3",
+      "kind": "candidate_screen",
+      "prompt_chars": 19764,
+      "terminal": "failed",
+      "http": 2,
+      "usage": {
+        "requests": 1,
+        "input_tokens": 7129,
+        "output_tokens": 46,
+        "total_tokens": 7175,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 1,
+      "latency_ms": 16600.0,
+      "tool_sequence": [
+        "semantic_search"
+      ],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c02-risk",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:f0a7047c77004a07aeb4531119a0a4ce",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "http": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 73626,
+        "output_tokens": 774,
+        "total_tokens": 74400,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 141,
+      "reasoning_tokens": 141,
+      "observed_completed_streams": 4,
+      "latency_ms": 39467.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-c02-risk",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:candidate:b669bcc2f992e9819f9823bb761e46de37263073:74129b07e6c14faea8cfd87d806fdbfb",
+      "kind": "candidate_screen",
+      "prompt_chars": 19764,
+      "terminal": "completed",
+      "http": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 69677,
+        "output_tokens": 992,
+        "total_tokens": 70669,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 159,
+      "reasoning_tokens": 159,
+      "observed_completed_streams": 4,
+      "latency_ms": 53815.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "resume-core-gate",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:baseline:b669bcc2f992e9819f9823bb761e46de37263073:d188170a82fc42ba8a4585916103f6e4",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 2732.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+    },
+    {
+      "phase": "strict-reproduction",
+      "case_id": "dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:dev-lexical-chatlog-alpha:v2:prompt-screen:baseline:2282ab36aa15fef89233a891e146d65e73c2771d:0dd8c48939584da0bf082ce1bbf08797",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 6413.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "MALFORMED_STREAM",
+      "code_version": "2282ab36aa15fef89233a891e146d65e73c2771d"
+    }
+  ],
+  "quality_runtime_code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+}

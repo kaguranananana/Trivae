@@ -35,8 +35,11 @@ class _ResponseMetadataEvent(BaseModel):
 
     # 仅扩展已证实的 envelope，不放宽其它事件或接受未知顶层业务字段。
     model_config = ConfigDict(strict=True, extra="forbid")
+    # 只接受这个已验证的扩展名称，不能把其它未知 tag 一并放行。
     type: Literal["response.metadata"]
+    # 响应身份必须非空，后续用它关联同流元数据与完成终态。
     response_id: Annotated[str, Field(min_length=1)]
+    # 严格整数约束同时拒绝字符串、布尔值和负序号。
     sequence_number: Annotated[int, Field(ge=0)]
     # Provider 自有元数据保留 JSON 形状，不能当 assistant 内容、Usage 或成功终态。
     metadata: dict[str, JsonValue]
@@ -238,6 +241,7 @@ class ChatGPTResponsesModel(Model):
 
         # 名称只来自本次流已验证的 added item，不能按工具列表或字符串规则猜测。
         function_names: dict[str, str] = {}
+        # 每次流独立保存旁路响应身份，不能跨请求复用。
         metadata_response_id: str | None = None
         normalizations = {"function_call_arguments_done_name": 0}
         observation: dict[str, object] = {
@@ -296,16 +300,23 @@ class ChatGPTResponsesModel(Model):
                     try:
                         raw = json.loads(data)
                         event_type = raw.get("type")
+                        # 只有确证的订阅旁路事件进入专用合同，标准事件继续 SDK 路径。
                         if event_type == "response.metadata":
                             # 显式验证订阅扩展；其它未知类型仍进入原 SDK 严格判别联合。
                             metadata = _ResponseMetadataEvent.model_validate(raw)
+                            # 同一流中再次出现 metadata 时，响应身份不得发生变化。
                             if metadata_response_id is not None and metadata.response_id != metadata_response_id:
+                                # 显式终止错误流，保留独立分类与此前已采集的安全观测。
                                 raise self._error("METADATA_RESPONSE_MISMATCH", "metadata response identity changed", observation)
+                            # 保存已验证身份，供后续 metadata 和 completed 两处核对。
                             metadata_response_id = metadata.response_id
                             # 只投影旁路事件身份与键，审核正文不进入 Trace 或模型 replay。
                             cast(list[dict[str, object]], observation["metadata_events"]).append({
+                                # 只保留关联身份，便于将旁路观测定位到本次响应。
                                 "response_id": metadata.response_id,
+                                # 保留 Provider 序号用于定位，不推断终态或工具调用顺序。
                                 "sequence_number": metadata.sequence_number,
+                                # 只记录已排序的根键，绝不复制审核元数据的具体值。
                                 "keys": sorted(metadata.metadata),
                             })
                             # 此事件由传输层消费；SDK Runner 继续接收原工具、输出及终态事件。

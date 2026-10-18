@@ -21,6 +21,12 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
-  "meta": {}
+  "notes": "SSE严格已知metadata修复+真实High成功；独立v2-forward索引完成，16派生Case GT不变。真实A/B/C受TLS外部阻塞，原账本52/120保留68；有效质量pair3（Agent复核2改善1持平），11个新快照运行completed，门禁/人工review未完成，生产20450字符不变。任务保留待续，禁止重置/扩预算。",
+  "meta": {
+    "external_blocker": "TLS start_tls ConnectError reproduced via system proxy and verified direct",
+    "provider_calls": 52,
+    "provider_call_limit": 120,
+    "remaining_provider_calls": 68,
+    "production_prompt_replaced": false
+  }
 }

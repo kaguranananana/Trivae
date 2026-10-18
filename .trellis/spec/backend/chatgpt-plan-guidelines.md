@@ -45,8 +45,11 @@
 
 ### 1. Scope / Trigger
 
-显式设置 GPT reasoning effort、执行 Prompt frozen/candidate/paired 实验时适用。当前真实请求在
-`response.metadata` 遇到 `MALFORMED_STREAM`；不能把本节的 Mock 适配验证写成真实完整服务成功。
+显式设置 GPT reasoning effort、执行 Prompt frozen/candidate/paired 实验时适用。历史首条请求在
+`response.metadata` 遇到 `MALFORMED_STREAM`；后续已按真实wire和官方Codex源码扩展严格类型。
+真实High三轮completed已验证协议，工具索引不就绪的该次结果不能当作质量Baseline。
+独立索引就绪后的真实答案验证见[续跑报告](../../tasks/10-18-gpt-high-ablation-resume/experiment-report.md)；
+后续TLS连接失败与未完成门禁不能记作metadata修复失败或Prompt质量通过。
 本轮报告见 `10-18-gpt-high-prompt-ablation/report.md`（任务归档后位于 archive）。
 
 ### 2. Signatures
@@ -79,7 +82,9 @@
 | 该精确 GPT 组合 + high | payload 和 projection 一致；真实终态仍需单独验证 |
 | medium/low/未知模型或其它 Provider 搭配该配置 | SettingsError，不静默忽略或改档 |
 | 预算用尽 | request hook 在 transport 前拒绝；失败仍留 ledger |
-| Provider 返回未知 response.metadata | 当前 SDK 明确 MALFORMED_STREAM，不自动忽略/升级 |
+| response.metadata | 严格要求type/response_id/非负int sequence_number/JSON object metadata，禁止额外顶层字段；记录安全旁路身份并继续等待终态 |
+| 未知事件类型、畸形metadata、缺必需字段 | MALFORMED_STREAM，绝不泛化跳过未知事件 |
+| metadata响应身份变化或与completed不符 | METADATA_RESPONSE_MISMATCH，禁止将旁路与另一响应拼接 |
 | 失败 Baseline / effort / semantic identity 漂移 | candidate-only 在新推理前拒绝 |
 
 ### 5. Good / Base / Bad Cases
@@ -91,12 +96,17 @@ Good：先静态、真实4条 smoke、同条件逐组候选；工程失败即停
 ### 6. Tests Required
 
 `test_chatgpt_settings.py` 覆盖精确配置与错误组合；`test_chatgpt_responses.py` 覆盖三条路径实际
-HTTP序列化、失败计数和未知 metadata 明确失败；`test_prompt_screening.py` 覆盖真实 SDK 两轮、
+HTTP序列化、失败计数、已知metadata校验/观测及未知或畸形metadata明确失败；`test_prompt_screening.py` 覆盖真实 SDK 两轮、
 发送前拒绝、跨实例总量、隐藏 replay 排除、失败 baseline/effort/index 漂移。static 入口包括这些
 相关 Provider/OAuth/query/completion 回归。Mock 不代表真实模型质量。
 
 ### 7. Wrong vs Correct
 
 Wrong：只在 Python settings 写 high、只给传统 `_provider_client` 装 hook、忽略 reasoning 配置
-身份、为继续实验跳过未知 SSE。Correct：统一 Model payload/projection + 实际 HTTP 边界计数，
-完整保存失败并保留生产 Prompt，独立解决协议条件后再做真实质量对照。
+身份、为继续实验跳过未知 SSE。Correct：仅对实测且有官方源码依据的订阅旁路事件增加显式typed
+envelope和安全观测，SDK标准事件/终态/工具/Usage/Reasoning继续原链路，再以真实High验证。
+
+订阅扩展依据：[官方Codex SSE实现](https://github.com/openai/codex/blob/8c076942cb70fba8e5c4732c23f1faabc4aed484/codex-rs/codex-api/src/sse/responses.rs)。
+Python SDK的ResponseStreamEvent（已安装3.5.0与核对的新版main）没有该tag，盲升依赖不解决
+联合类型缺失；因此保留已验证SDK版本。metadata只投影response_id、sequence_number、顶层metadata
+键，不保存审核正文，不作为assistant输出、隐藏reasoning、Usage或完成信号。

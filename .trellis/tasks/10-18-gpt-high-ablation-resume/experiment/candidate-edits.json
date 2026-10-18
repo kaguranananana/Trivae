@@ -1,0 +1,72 @@
+{
+  "production_characters": 20450,
+  "production_changed": false,
+  "frozen_cumulative_candidate": "c01-retain-params",
+  "candidates": [
+    {
+      "name": "b01-p64",
+      "parent": "production",
+      "policy_ids": [
+        "P64"
+      ],
+      "removed": [
+        "For\nget_schema, send no arguments. "
+      ],
+      "chars": 20415,
+      "delta_chars": 35,
+      "status": "one SQL pair passed targeted; cumulative/human release pending"
+    },
+    {
+      "name": "b02-lexical-shape",
+      "parent": "b01-p64",
+      "policy_ids": [
+        "P56",
+        "P57"
+      ],
+      "removed": [
+        "limit must be a positive integer no greater than the trusted result limit\nshown by the tool schema, and ",
+        "context_before/context_after must be non-negative integers. "
+      ],
+      "chars": 20251,
+      "delta_chars": 164,
+      "status": "inconclusive: TLS interrupted; retained in cumulative candidate"
+    },
+    {
+      "name": "c01-retain-params",
+      "parent": "b01-p64",
+      "policy_ids": [
+        "P13",
+        "P14",
+        "P16-first-call-only"
+      ],
+      "removed": [
+        "Use lexical_search when the question contains a precise lexical target: exact names, URLs, repository\nnames, code identifiers, error messages, nicknames, or exact phrases (for example \"最近有人提到 matt skill 吗\").\n",
+        "Use semantic_search when the user describes a concept without precise wording: paraphrases, conceptual\ndescriptions, or vague memories of the discussion (for example \"我记得有个解决上下文压缩的工具\").\n",
+        "Normally make lexical_search the first retrieval call for a precise term, and normally make\nsemantic_search the first retrieval call when no precise term is supplied. "
+      ],
+      "chars": 19854,
+      "retained_unvalidated": [
+        "P56",
+        "P57"
+      ],
+      "reason": "B02 network failures produced no valid paired answer; do not adopt unvalidated deletion",
+      "status": "TS pair improved; exact one-sided pass; cumulative gate incomplete"
+    },
+    {
+      "name": "c02-retain-params",
+      "parent": "c01-retain-params",
+      "policy_ids": [
+        "P33-example-only"
+      ],
+      "removed": [
+        "Values such as 20 or 40 are examples for\nthat choice, not a fixed trigger or new default. "
+      ],
+      "chars": 19764,
+      "retained_unvalidated": [
+        "P56",
+        "P57"
+      ],
+      "status": "cumulative book pair improved; parent/UI TLS failures prevent incremental acceptance; P33 retained"
+    }
+  ]
+}

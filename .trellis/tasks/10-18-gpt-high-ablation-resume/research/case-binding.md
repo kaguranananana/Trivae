@@ -1,0 +1,15 @@
+# 新派生快照与GT继承
+
+旧snapshot的原生canonical数据保留，但旧lexical合同在当前main不可用。当前生产rebuild会索引转发occurrence，FTS计数改变，DatasetSnapshot必须如实变化；不回写历史Case/Frozen Baseline，不伪造旧snapshot ID。
+
+独立副本已证明：473236 messages全部24字段、14 sources全部8字段与原冻结源逐行相等，差异/新增/删除均0；完整证据在ignored canonical-equality.json。新Case采用 `gpt-high-<parent-id>@v1`，CaseProvenance明确父ID、数据派生、没有新人工标注。
+
+CaseBundle要求Finding provenance绑定同一snapshot，所以新派生Finding/Evidence provenance显式引用新snapshot，并追加确定性重核方法；原版reference_findings及provenance完整保留在binding-manifest parent_truth，不改任何原件。expected_semantics、criterion、annotation_completeness、critical、known_limitations、证据locator和why_relevant逐字保持；query/scope/critical_requirements/negative/uncertainty/review_policy全文保持。
+
+应用正式Host回读全部引用locator；对精确exhaustive URL枚举比较全部hit集合与原GT，对空UTC窗口及显式excalidraw负例重跑确定性检索。出现新增forward反证则排除该Case并记录，绝不改GT、放宽完整性或降低约束。语义partial目标的有效性来自canonical全字段相等，不把相关新内容判错。当前derived索引ready后才执行绑定脚本。
+
+计划核心12条（4smoke+8扩展）覆盖精确、概念、推荐/反馈、UTC空窗、时间overview、SQL计数、UI skill高风险、跨作者/时序、书籍后续、资源inventory。另4条已暴露Development不参与候选调参，用于最终fresh配对；不是独立新Holdout，不作盲测或泛化声明。
+
+本轮语义复核由主Agent和独立审查Agent基于既有人工GT/真实证据执行，不能伪称新人工review。原review_policy保留human与blind字段，ReviewPacket保持pending而不伪造human身份；若最终human release条件未满足，生产Prompt保持原文。
+
+运行器复用原run_prompt_screening CLI/EvaluationRunner/Application.query。ignored run_phase.py仅用现有semantic_provider.preload在查询前统一预热，预热模式/模型身份写入frozen conditions，耗时单列encoder-warmup.json；A/B/C同一运行器/快照/工具/预算/High，Prompt是唯一语义变量。
