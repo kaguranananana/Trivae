@@ -433,6 +433,16 @@ class ChatGPTResponsesModel(Model):
         except Exception as exc:
             # 某些 transport 异常正文为空，仍保留真实类型供主链路定位，不能变成空错误。
             observation["exception_type"] = type(exc).__name__
+            # 仅传输错误增加底层诊断，不展开 SDK、工具或业务异常的上下文。
+            if isinstance(exc, httpx.TransportError):
+                chain: list[dict[str, str]] = []
+                current: BaseException | None = exc
+                while current is not None:
+                    # 只保存类型与经认证边界脱敏的短消息，不复制 Request、header、body 或 traceback。
+                    chain.append({"type": type(current).__name__, "message": self.auth.redact(str(current))[:500]})
+                    # AnyIO 用 from None 隐藏 SSLEOF；无显式 cause 时仍读取其真实 context。
+                    current = current.__cause__ if current.__cause__ is not None else current.__context__
+                observation["transport_exception_chain"] = chain
             code = "REQUEST_TIMEOUT" if isinstance(exc, httpx.TimeoutException) else "PROVIDER_ERROR"
             raise self._error(code, f"{type(exc).__name__}: {exc}", observation) from None
         finally:

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import ssl
 
+import anyio
+import httpcore
 import httpx
 import pytest
 from agents import Agent, RunConfig, Runner, function_tool, tool_namespace
@@ -380,6 +383,8 @@ def test_read_timeout_has_explicit_safe_diagnostics():
         assert failure.value.code == "REQUEST_TIMEOUT"
         assert TOKEN not in str(failure.value)
         assert failure.value.safe_observation["stream_completed"] is False
+        assert failure.value.safe_observation["transport_exception_chain"] == [
+            {"type": "ReadTimeout", "message": "upstream stalled [REDACTED]"}]
         await model.close()
 
     asyncio.run(run())
@@ -491,6 +496,59 @@ def test_real_failure_case_missing_content_type_is_validated_by_sse_terminal():
     asyncio.run(run())
 
 
+def test_tls_eof_context_is_visible_redacted_and_keeps_original_http_budget(tmp_path):
+    """复现 AnyIO 隐藏 EOF 上下文的实际异常形状；不能只遍历显式 cause。"""
+    from trivae.evaluation.prompt_screening import ProviderCallBudget, read_artifact
+
+    sent = []
+
+    async def handler(request):
+        sent.append(request)
+        try:
+            raise ssl.SSLEOFError(8, f"UNEXPECTED_EOF_WHILE_READING {TOKEN}")
+        except ssl.SSLEOFError:
+            try:
+                # 对应 AnyIO standard_compatible=False，故意隐藏 traceback 上下文。
+                raise anyio.EndOfStream from None
+            except anyio.EndOfStream as stream_error:
+                try:
+                    raise httpcore.ConnectError from stream_error
+                except httpcore.ConnectError as core_error:
+                    raise httpx.ConnectError("", request=request) from core_error
+
+    async def run():
+        budget = ProviderCallBudget(1, total_ledger=tmp_path / "total.json", total_maximum=1)
+        observations = []
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), observer=observations.append,
+            client=httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                event_hooks={"request": [budget.before_request]}))
+        try:
+            with pytest.raises(ChatGPTResponsesError) as failure:
+                await model.get_response(**sdk_args())
+            observation = failure.value.safe_observation
+            assert failure.value.code == "PROVIDER_ERROR"
+            assert observation["exception_type"] == "ConnectError"
+            assert observation["status_code"] is None and observation["stream_completed"] is False
+            chain = observation["transport_exception_chain"]
+            assert [item["type"] for item in chain] == ["ConnectError", "ConnectError", "EndOfStream", "SSLEOFError"]
+            assert "UNEXPECTED_EOF_WHILE_READING" in chain[-1]["message"]
+            assert "[REDACTED]" in chain[-1]["message"]
+            assert TOKEN not in json.dumps(observation)
+            assert "Authorization" not in json.dumps(chain)
+            assert observations[0]["transport_exception_chain"] == chain
+            assert len(sent) == len(budget.requests) == 1
+            assert read_artifact(tmp_path / "total.json") == {"maximum": 1, "provider_calls": 1}
+            # 诊断记录不得引入重试；预算耗尽仍在下一次实际发送前拒绝。
+            with pytest.raises(ChatGPTResponsesError, match="maximum provider calls exhausted"):
+                await model.get_response(**sdk_args())
+            assert len(sent) == len(budget.requests) == 1
+            assert "transport_exception_chain" not in observations[-1]
+        finally:
+            await model.close()
+
+    asyncio.run(run())
+
+
 def test_empty_transport_exception_keeps_original_type_in_safe_diagnostics():
     async def handler(_):
         raise AssertionError()
@@ -504,6 +562,7 @@ def test_empty_transport_exception_keeps_original_type_in_safe_diagnostics():
         assert failure.value.code == "PROVIDER_ERROR"
         assert "AssertionError" in str(failure.value)
         assert failure.value.safe_observation["exception_type"] == "AssertionError"
+        assert "transport_exception_chain" not in failure.value.safe_observation
         await model.close()
 
     asyncio.run(run())

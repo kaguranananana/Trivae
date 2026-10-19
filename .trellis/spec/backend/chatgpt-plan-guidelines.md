@@ -110,3 +110,47 @@ envelope和安全观测，SDK标准事件/终态/工具/Usage/Reasoning继续原
 Python SDK的ResponseStreamEvent（已安装3.5.0与核对的新版main）没有该tag，盲升依赖不解决
 联合类型缺失；因此保留已验证SDK版本。metadata只投影response_id、sequence_number、顶层metadata
 键，不保存审核正文，不作为assistant输出、隐藏reasoning、Usage或完成信号。
+
+## TLS 空异常诊断（2026-10-19）
+
+### 1. Scope / Trigger
+
+真实失败在收到 HTTP 状态前表现为空 `ConnectError`。AnyIO 的 `raise EndOfStream from None`
+会隐藏底层 `SSLEOFError`；仅看 message 或 `__cause__` 会丢失握手 EOF。
+
+### 2. Signatures
+
+已有 `ChatGPTResponsesError.safe_observation` 在 `httpx.TransportError` 时增加
+`transport_exception_chain: list[dict[str, str]]`，每项仅 `type` 和 `message`。
+
+### 3. Contracts
+
+优先遍历显式 cause，否则读取 context（包括 suppressed context）；每项 message 先经过
+`auth.redact()`，再限制为500字符。不保存 Request、header、body、traceback 或隐藏 Reasoning。
+此字段只补诊断，不新增连接策略、重试、降级或请求，不代表外部 TLS 已修复。
+
+### 4. Validation & Error Matrix
+
+|输入|行为|
+|---|---|
+|ConnectError → EndOfStream → suppressed SSL EOF|原 `PROVIDER_ERROR`，安全链保留 EOF 类型和脱敏消息|
+|ReadTimeout|原 `REQUEST_TIMEOUT`，增加同形安全链|
+|预算发送前拒绝、普通 SDK/业务错误|不展开传输链，保留原处理|
+
+### 5. Good / Base / Bad Cases
+
+Good：用真实失败形状复现，记录可见原因，并单独验证真实网络恢复。
+Base：成功 SSE、Usage、终态、工具和取消语义不变。
+Bad：将空 ConnectError 猜成证书错误，关闭 TLS 校验，或把一次401探测成功称为多轮稳定。
+
+### 6. Tests Required
+
+`test_tls_eof_context_is_visible_redacted_and_keeps_original_http_budget` 断言隐藏 EOF、底层秘密脱敏、
+observer 同源观测、一次失败占账和下一次发送前阻止；timeout 与普通业务错误分类回归保持。
+真实网络诊断须区分 HTTP CONNECT 与 TUN：macOS 的 `NO_PROXY`/`AsyncConnectionPool` 不能证明绕过系统 TUN。
+
+### 7. Wrong vs Correct
+
+Wrong：仅输出 `str(exc)` 或只查显式 cause；用强制 IPv4 掩盖已经在两地址族复现的 EOF。
+Correct：保留可验证的 cause/context 安全事实，冻结实际连接条件；网络变化后新建同条件 A/B，
+不复用失败 Baseline，也不重置120次推理账本。
