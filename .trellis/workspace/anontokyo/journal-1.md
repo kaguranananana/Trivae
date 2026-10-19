@@ -1871,3 +1871,41 @@ H08修复run观测污染；A05澄清混合规则owner；A06验证现有真实cas
 ### Status
 
 [OK] **Completed**
+
+
+## Session 71: GPT High TLS续修与消融否决结论
+
+**Date**: 2026-10-19
+**Task**: GPT High TLS续修与消融否决结论
+**Branch**: `main`
+
+### Summary
+
+TLS路径恢复后完成真实High消融；139/140请求，最终B01关键target退化而拒绝，生产Prompt保持20450字符。
+
+### Main Changes
+
+- 修复AnyIO隐藏SSL EOF的脱敏异常链，以及HTTP200嵌套SSE共享额度错误分类；Runtime/Router/Planner保持额度硬停。
+- 16原Case均实际尝试；最终B01共13完整配对：改善1、合格持平10、共同不足1、退化1。C组另列，全部删文保留。
+- 用户一次授权上限120到140，累计不重置；31阶段139请求对账，剩1保留。同heartbeat不得自动再加预算或挑结果重跑。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `aa47c3f` | (see git log) |
+| `0f6d531` | (see git log) |
+| `5ff3357` | (see git log) |
+
+### Testing
+
+- [OK] 全量1180 passed/1 skipped；Ruff、mypy128、diff检查和独立终审通过。139实际body均为同模型High。
+- [OK] 用户切换节点后65推理HTTP无TLS失败；122次已知Usage总1667974，17次未知/不完整，金额未知。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 本轮以候选否决结论归档；生产Prompt不替换。人工盲审仍pending，预算投影/失败Usage/Router与Planner风险在报告中保留，不能补记为本轮通过。
