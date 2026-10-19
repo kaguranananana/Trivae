@@ -28,4 +28,4 @@
 
 ## 依赖与模型
 
-Python 依赖见 [pyproject.toml](../pyproject.toml) 和 `uv.lock`，前端依赖见 [package.json](../web/package.json) 和 `pnpm-lock.yaml`。依赖与模型各自沿用其许可证和使用条款，未被本页重新许可。默认语义索引使用 `Qwen/Qwen3-Embedding-0.6B`；下载和分发模型前应核对其模型卡。当前没有将第三方产品截图、品牌图片或真实聊天语料加入产品预览。
+Python 依赖见 [pyproject.toml](../pyproject.toml) 和 `uv.lock`，前端依赖见 [package.json](../web/package.json) 和 `pnpm-lock.yaml`。依赖与模型各自沿用其许可证和使用条款，未被本页重新许可。默认语义索引使用 `Qwen/Qwen3-Embedding-0.6B`；下载和分发模型前应核对其模型卡。当前未使用第三方产品截图或品牌图片；产品预览取自 Trivae 对真实群聊的查询，展示技术主题和公开资源链接，不展示成员身份或完整聊天原文。

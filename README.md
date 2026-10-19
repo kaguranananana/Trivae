@@ -12,22 +12,23 @@ Trivae 帮助你从持续积累的群聊历史中定位事实、找回资源、�
 
 ## 产品预览
 
-下面来自真实运行的 Web UI：在隔离数据库中导入 **5 条手工编写的合成消息**，使用实际配置的 DeepSeek 主模型发起查询。该次运行调用 `lexical_search`，返回回答及 **4 条来源**；没有使用私人群聊或模拟 API 回答。截图采用窄屏布局。
+在实际群聊数据上，直接用日常问法查找近期技术讨论与资源；也可以继续追问，把长回答整理成用途清单或方案表格。下面均为真实运行的 Web UI 截图。
 
-> 合成演示群聊中，大家为什么同时保留 FTS5 和语义检索？请用关键词检索原始讨论，简要说明并引用消息来源。
+**查找群里分享的 Skills**
 
-| 自然语言提问与回答 | 展开来源复核 |
-| --- | --- |
-| ![真实 Web UI：合成群聊问题、执行过程入口与回答](docs/assets/product-answer.png) | ![真实 Web UI：4 条合成消息来源、发送者与时间](docs/assets/product-sources.png) |
+> 最近群里有哪些好用的 Skills？挑三个，每个用一句话介绍用途，附上项目链接，不用写人名。
 
-<details>
-<summary>查看 Router 与实际工具调用</summary>
+![真实群聊查询：近期 Skills 的用途与项目链接](docs/assets/product-skills.jpg)
 
-![真实 Web UI：Standard 路由与 lexical_search 工具调用](docs/assets/product-process.png)
+**从近期讨论中整理技术方案**
 
-</details>
+> 最近两天群里都在讨论哪些技术？有没有值得试试的方案？
 
-截图展示该次词法检索链路，不代表语义检索、Planner 或全场景回答质量已经由此验证。[演示条件](docs/product-preview.md)记录了数据和运行方式。
+继续追问：挑三个最值得试的方案，用表格列出方案、用途和第一步，不用长篇介绍。
+
+![真实群聊多轮查询：三个技术方案、用途与尝试步骤](docs/assets/product-discussions.jpg)
+
+展示画面保留技术主题与公开项目链接，未展开成员身份和原始消息来源；回答保留本次检索的覆盖局限。运行条件与提问过程见[预览说明](docs/product-preview.md)。
 
 ## 核心功能
 
