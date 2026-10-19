@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import httpx
+import pytest
 
 from tests.test_chatgpt_responses import (
     TOKEN,
@@ -15,6 +16,8 @@ from tests.test_chatgpt_responses import (
     completed,
     function,
     message,
+    metadata_event,
+    nested_quota_event,
     settings,
     sse,
 )
@@ -23,7 +26,7 @@ from trivae.bootstrap.application import create_application
 from trivae.capabilities import ExecutionScope
 from trivae.query.contracts import ExecutionOverride, QueryRequest
 from trivae.query.evidence import MessageSource
-from trivae.query.runtime.chatgpt_responses import JSON_MODE_DEVELOPER_INSTRUCTION
+from trivae.query.runtime.chatgpt_responses import JSON_MODE_DEVELOPER_INSTRUCTION, ChatGPTResponsesError
 from trivae.query.runtime.contracts import AgentRunRequest
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
 
@@ -281,6 +284,58 @@ def test_runtime_quota_failure_keeps_provider_diagnostics_in_terminal_trace(tmp_
             assert TOKEN not in serialized
         finally:
             await runtime.aclose()
+            await application.aclose()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("stage", ["runtime", "planner", "router"])
+def test_nested_sse_quota_stops_query_before_any_followup_inference(tmp_path, stage):
+    """真实 Application 路径回放 SSE 额度错误，三阶段都只能发送最初的一次 HTTP。"""
+    from trivae.evaluation.prompt_screening import ProviderCallBudget, read_artifact
+    from trivae.query.router import RuleRouter
+
+    sent = []
+
+    def handler(request):
+        sent.append(request)
+        return httpx.Response(200, headers={"content-type": "text/event-stream", "x-request-id": "nested-quota"},
+            text=sse(metadata_event(sequence_number=1), nested_quota_event()))
+
+    async def run():
+        application = application_with_message(tmp_path)
+        runtime = await install_runtime(application, handler)
+        budget = ProviderCallBudget(8, total_ledger=tmp_path / "total.json", total_maximum=8)
+        runtime._model._client.event_hooks["request"].append(budget.before_request)
+        # 明确选用既有 LLM Router，避免测试受本机可选 Jev 配置影响。
+        application._router = RuleRouter(completion=runtime.complete_text_with_observation)
+        override = ExecutionOverride() if stage == "router" else ExecutionOverride(
+            forced_route="standard_execution" if stage == "runtime" else "planned_execution")
+        try:
+            request = QueryRequest("查找架构讨论", ExecutionScope(allowed_session_ids=("qq:100",)),
+                available_capabilities=("get_recent_messages",), trace_profile="debug", execution_override=override)
+            if stage == "runtime":
+                result = await application.query(request)
+                assert not result.is_successful
+                assert result.final_answer is None and result.answer_artifact is None
+                assert result.runtime_result.error.code == "subscription_sharing_usage_limit_exceeded"
+                assert result.runtime_result.tool_calls == ()
+                trace_id = result.trace_id
+            else:
+                # Router/Planner 不能把已分类额度错误降级为继续 Runtime。
+                with pytest.raises(ChatGPTResponsesError) as failure:
+                    await application.query(request)
+                assert failure.value.stops_inference is True
+                assert failure.value.origin_stage == stage
+                trace_id = failure.value.trace_id
+            trace = application.read_trace(trace_id)
+            serialized = str(trace)
+            assert "subscription_sharing_usage_limit_exceeded" in serialized
+            assert "nested-quota" in serialized
+            assert TOKEN not in serialized
+            assert len(sent) == len(budget.requests) == 1
+            assert read_artifact(tmp_path / "total.json")["provider_calls"] == 1
+        finally:
             await application.aclose()
 
     asyncio.run(run())

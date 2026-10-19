@@ -44,6 +44,34 @@ class _ResponseMetadataEvent(BaseModel):
     # Provider 自有元数据保留 JSON 形状，不能当 assistant 内容、Usage 或成功终态。
     metadata: dict[str, JsonValue]
 
+
+class _NestedResponseErrorDetail(BaseModel):
+    """订阅服务实测的错误叶子；不把外层 SSE 类型误当作错误代码。"""
+
+    # 仅接受已证实字段与严格 JSON 类型，拒绝夹带 output 或其它业务正文。
+    model_config = ConfigDict(strict=True, extra="forbid")
+    # 保留 Provider 的真实错误类别，不将内层类别与外层 SSE type 混淆。
+    type: Annotated[str, Field(min_length=1)]
+    # 实际叶子代码驱动既有 stops_inference，不能用外层 error 替代额度代码。
+    code: Annotated[str, Field(min_length=1)]
+    # 非空消息来自 Provider；进入公开异常和 Trace 前仍由认证边界脱敏。
+    message: Annotated[str, Field(min_length=1)]
+    # 真实额度响应的 param 为 null；字段必须存在，也允许明确的字符串参数名。
+    param: str | None
+
+
+class _NestedResponseErrorEvent(BaseModel):
+    """HTTP 200 SSE 中实测的嵌套 error envelope；独立于既有平铺 error。"""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+    # 仅扩展本次已证实的 error 事件，不泛化放行未知 SSE tag。
+    type: Literal["error"]
+    # 序号保持严格非负整数，不能用布尔值或字符串绕过协议合同。
+    sequence_number: Annotated[int, Field(ge=0)]
+    # 叶子独立严格校验后才允许分类，不直接信任外层嵌套字典。
+    error: _NestedResponseErrorDetail
+
+
 # 真实 HTTP 400 证明 JSON mode 的关键字必须在 input 内，instructions 不满足服务端校验。
 JSON_MODE_DEVELOPER_INSTRUCTION = "JSON output is required. Follow the instructions for the required schema."
 
@@ -335,12 +363,17 @@ class ChatGPTResponsesModel(Model):
                         )
                         if event_type in {"response.failed", "response.incomplete", "error", "response.error"}:
                             terminal = raw.get("response", raw)
-                            # failed Response 的 output 是模型内部 replay 数据，永远不能当作错误详情。
-                            raw_error = (
-                                terminal.get("error") or terminal.get("incomplete_details")
-                                if event_type in {"response.failed", "response.incomplete"}
-                                else raw
-                            )
+                            if event_type == "error" and "error" in raw:
+                                # 实测嵌套 envelope 先严格验证，再取实际叶子 code/message 进入原错误分类。
+                                nested_error = _NestedResponseErrorEvent.model_validate(raw)
+                                raw_error = nested_error.error.model_dump()
+                            else:
+                                # 保留原平铺 error 与 failed/incomplete 语义，不复制内部 replay output。
+                                raw_error = (
+                                    terminal.get("error") or terminal.get("incomplete_details")
+                                    if event_type in {"response.failed", "response.incomplete"}
+                                    else raw
+                                )
                             error = raw_error if isinstance(raw_error, Mapping) else {}
                             code = str(error.get("code") or error.get("reason") or event_type)
                             observation["response_id"] = terminal.get("id")

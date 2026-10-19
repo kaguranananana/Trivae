@@ -69,6 +69,8 @@
   安装于 OpenAI client 的 HTTP 层；保留已有 hooks，不替换 OAuth/SSE/工具/Finalizer 语义。
 - 每次 inference HTTP 发送前占用本轮与总量计数，含失败及后续工具轮次；总 ledger 顺序复用，
   不支持多进程并发计数。目录读取/认证不冒充推理次数，真实实验不得绕过安装门禁的 client。
+  只有用户新的明确授权才可调整总上限；单独记录旧/新上限与保留的累计次数，既有phase ledger不改写，
+  后续进程显式使用新上限，不能重开账本或降低每Query质量合同来伪装续跑。
 - 请求 artifact 保留公开 effort/summary、instructions、tools 和可见 input；过滤 replay 中
   type=reasoning item（包括 encrypted_content），不保存鉴权 header/隐藏推理。
 - Frozen conditions 保存实际 Provider projection、SDK contract/settings、canonical snapshot 和
@@ -154,3 +156,50 @@ observer 同源观测、一次失败占账和下一次发送前阻止；timeout 
 Wrong：仅输出 `str(exc)` 或只查显式 cause；用强制 IPv4 掩盖已经在两地址族复现的 EOF。
 Correct：保留可验证的 cause/context 安全事实，冻结实际连接条件；网络变化后新建同条件 A/B，
 不复用失败 Baseline，也不重置120次推理账本。
+
+## HTTP200 的嵌套 SSE 错误（2026-10-19）
+
+### 1. Scope / Trigger
+
+真实订阅额度故障在metadata之后返回嵌套`error`，旧适配取外层type导致`error: error`，
+遗漏真实`subscription_sharing_usage_limit_exceeded`，未触发既有推理硬停。
+
+### 2. Signatures
+
+已证实形状：`{type:'error', sequence_number:3, error:{type:'invalid_request_error',
+code:'subscription_sharing_usage_limit_exceeded', message:'…', param:null}}`。
+专用`_NestedResponseErrorEvent`和`_NestedResponseErrorDetail`由Provider边界拥有。
+
+### 3. Contracts
+
+只对`type=error`且存在`error`字段走严格嵌套合同。外层禁止额外字段，序号为严格非负整数；
+叶子仅type/code/message三个非空字符串与必需、可空的param，禁止其它字段。
+验证后从叶子code/message进入原`ChatGPTResponsesError`分类和脱敏边界，不保存Response replay output。
+平铺error、failed/incomplete及未知事件保持原路径。错误不产生completed、Usage或伪答案。
+
+### 4. Validation & Error Matrix
+
+|状态|结果|
+|---|---|
+|合法嵌套sharing额度错误|实际code及stops_inference=true，即使HTTP200也停止推理|
+|嵌套字段缺失、额外字段、类型不符|MALFORMED_STREAM，拒绝猜测额度或放行|
+|Runtime额度错误|失败终态、无工具/最终答案，不再发送后续HTTP|
+|Router/Planner额度错误|保留origin_stage向上抛出，不降级后再调用Runtime|
+
+### 5. Good / Base / Bad Cases
+
+Good：保留失败占账及真实叶子代码；仅在明确恢复条件后做有界真实验证。
+Base：原平铺额度错误和普通非额度错误分类不变。
+Bad：把所有error事件码写成外层`error`；将增加本地实验预算当作增加账号额度。
+
+### 6. Tests Required
+
+真实同形metadata→nested quota回放须验证脱敏、无Usage、一次HTTP和原ledger计数；
+畸形envelope继续拒绝；Application Runtime/Router/Planner分别只发送首次HTTP，不执行工具或后续推理。
+离线回放不代表当前额度仍不可用；额度恢复须另有真实请求证据。
+
+### 7. Wrong vs Correct
+
+Wrong：直接以整个SSE envelope读取code/message，或为继续实验忽略error事件。
+Correct：严格验证已证实的嵌套envelope，使用叶子code驱动既有硬停合同；
+若后续真实请求已恢复，按原累计账本和用户授权上限继续，不重写旧失败。

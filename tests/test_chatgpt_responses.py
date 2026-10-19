@@ -805,6 +805,82 @@ def metadata_event(**updates):
     return {**event, **updates}
 
 
+def nested_quota_event():
+    """回放真实 HTTP 200 SSE 的订阅额度错误 envelope，不含用户输出。"""
+    return {"type": "error", "sequence_number": 3, "error": {
+        "type": "invalid_request_error", "code": "subscription_sharing_usage_limit_exceeded",
+        "message": "The ChatGPT user has reached their Subscription Sharing usage limit. "
+                   "Ask the user to try again after their usage limit resets or use an API key instead.",
+        "param": None}}
+
+
+def test_metadata_then_nested_quota_preserves_leaf_code_and_stops_without_usage(tmp_path):
+    """HTTP 200 和 metadata 不是成功；嵌套叶子额度必须触发既有推理硬停。"""
+    from trivae.evaluation.prompt_screening import ProviderCallBudget, read_artifact
+
+    async def run():
+        event = nested_quota_event()
+        event["error"]["message"] += f" {TOKEN}"
+        sent = []
+        observed = []
+        budget = ProviderCallBudget(2, total_ledger=tmp_path / "total.json", total_maximum=2)
+
+        def handler(request):
+            sent.append(request)
+            return httpx.Response(200, headers={"content-type": "text/event-stream", "x-request-id": "nested-quota"},
+                text=sse(metadata_event(sequence_number=1), event))
+
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), observer=observed.append,
+            client=httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                event_hooks={"request": [budget.before_request]}))
+        try:
+            with pytest.raises(ChatGPTResponsesError) as failure:
+                await model.get_response(**sdk_args())
+            error = failure.value
+            assert error.code == "subscription_sharing_usage_limit_exceeded"
+            assert error.stops_inference is True
+            assert "Subscription Sharing usage limit" in str(error)
+            observation = error.safe_observation
+            assert observation["status_code"] == 200 and observation["terminal_event"] == "error"
+            assert observation["stream_completed"] is False and observation.get("usage") is None
+            assert len(observation["metadata_events"]) == 1
+            assert json.loads(observation["body"])["error"]["code"] == error.code
+            assert TOKEN not in str(error) and TOKEN not in json.dumps(observed)
+            assert len(sent) == len(budget.requests) == 1
+            assert read_artifact(tmp_path / "total.json")["provider_calls"] == 1
+        finally:
+            await model.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("override", [
+    {"error": "invalid nested error"},
+    {"error": {"type": "invalid_request_error", "message": "missing code", "param": None}},
+    {"sequence_number": True},
+    {"extra_output": "must not be accepted"},
+])
+def test_nested_error_malformed_envelope_is_rejected_instead_of_classifying_quota(override):
+    """严格验证已证实的嵌套 envelope，不能凭模糊字段猜额度或放行额外输出。"""
+    async def run():
+        event = {**nested_quota_event(), **override}
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), client=httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200,
+                headers={"content-type": "text/event-stream"}, text=sse(metadata_event(), event)))))
+        try:
+            with pytest.raises(ChatGPTResponsesError) as failure:
+                await model.get_response(**sdk_args())
+            assert failure.value.code == "MALFORMED_STREAM"
+            assert failure.value.safe_observation["event_type"] == "error"
+            assert failure.value.safe_observation["stream_completed"] is False
+            assert failure.value.safe_observation.get("usage") is None
+            assert "body" not in failure.value.safe_observation
+        finally:
+            await model.close()
+
+    asyncio.run(run())
+
+
 def test_metadata_is_validated_and_observed_without_replacing_completion_or_usage():
     """接受已知扩展但仍等待SDK终态，元数据不进入模型内容/隐藏推理/Usage。"""
     async def run():
