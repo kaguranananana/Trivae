@@ -1909,3 +1909,24 @@ TLS路径恢复后完成真实High消融；139/140请求，最终B01关键target
 ### Next Steps
 
 - 本轮以候选否决结论归档；生产Prompt不替换。人工盲审仍pending，预算投影/失败Usage/Router与Planner风险在报告中保留，不能补记为本轮通过。
+
+
+## Session 72: GitHub README 与 About 产品化改造
+
+**Date**: 2026-10-19
+**Task**: GitHub README 与 About 产品化改造
+**Branch**: `main`
+
+### Summary
+
+完成产品 README、配置/架构/评测文档与合成数据真实 Web 截图；更新 About 并回读确认 PRIVATE。179 项相关后端测试、69 项前端测试及 lint/type/build/文档链接验证通过。公开前聊天实验产物、第三方资料联系方式与 ChatLab 许可范围仍需维护者处理，详细只读审查在 ignored tmp/publication-audit.md。本轮按用户要求仅提交，不 Push。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `559e2e4` | (see git log) |
+
+### Status
+
+[OK] **Completed**
