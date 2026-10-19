@@ -1,7 +1,7 @@
 {
   "production_characters": 20450,
   "production_changed": false,
-  "frozen_cumulative_candidate": "c01-retain-params",
+  "frozen_cumulative_candidate": null,
   "candidates": [
     {
       "name": "b01-p64",
@@ -14,7 +14,7 @@
       ],
       "chars": 20415,
       "delta_chars": 35,
-      "status": "one SQL pair passed targeted; cumulative/human release pending"
+      "status": "rejected: cumulative TS critical target recalled/cited in A but absent in B01; preserve P64; natural sampling does not prove35-character causal necessity"
     },
     {
       "name": "b02-lexical-shape",
@@ -29,7 +29,7 @@
       ],
       "chars": 20251,
       "delta_chars": 164,
-      "status": "inconclusive: TLS interrupted; retained in cumulative candidate"
+      "status": "inconclusive: TLS interrupted; P56/P57 instruction text retained in cumulative candidate, deletion not adopted"
     },
     {
       "name": "c01-retain-params",
@@ -50,7 +50,7 @@
         "P57"
       ],
       "reason": "B02 network failures produced no valid paired answer; do not adopt unvalidated deletion",
-      "status": "TS pair improved; exact one-sided pass; cumulative gate incomplete"
+      "status": "not accepted: UI E2E projection failed with183tokens remaining; causal semantic regression not established; first-retrieval guidance restored"
     },
     {
       "name": "c02-retain-params",
@@ -68,5 +68,9 @@
       ],
       "status": "cumulative book pair improved; parent/UI TLS failures prevent incremental acceptance; P33 retained"
     }
-  ]
+  ],
+  "previous_cumulative_candidate": "c01-retain-params",
+  "last_evaluated_candidate": "b01-p64",
+  "final_selection": "production",
+  "published_deletions": []
 }

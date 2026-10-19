@@ -1,0 +1,12 @@
+[
+  {
+    "authorized_at_utc": "2026-10-19T04:58:22.603Z",
+    "instruction": "增大一点预算继续",
+    "previous_maximum": 120,
+    "new_maximum": 140,
+    "provider_calls_preserved": 108,
+    "reset": false,
+    "scope": "global inference HTTP ceiling only; per-query tool/evidence budget unchanged",
+    "provider_quota": "separate Subscription Sharing quota; no new real requests until it is available"
+  }
+]

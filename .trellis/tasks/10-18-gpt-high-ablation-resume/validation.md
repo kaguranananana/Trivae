@@ -31,3 +31,22 @@
 
 - 最终按项目约定补充metadata关键行的中文解释；与b669bcc解析AST完全相等，运行行为未变；该文件Ruff再次通过，git diff --check通过。
 - 独立终审核对26个总run逐项原件、新快照23/11/8、20阶段账52、Usage下界、候选父链及隐私，详见research/final-review.md；原代码身份与metadata终态说明已收窄。
+
+
+## TLS续修、额外真实实验与授权上限（2026-10-19）
+
+- aa47c3f：真实同形AnyIO suppressed SSLEOF回放红→绿；相关122 passed，全量1172 passed/1 skipped，Ruff/mypy128/diff-check通过。真实失败Trace已保留脱敏transport_exception_chain。
+- 用户切换节点后最后4条Development共8E2E/18HTTP，无TLS或SSE失败；Agent核对Canonical/完整输入/引用。3组固定目标持平、intern共同critical漏召回，不能把8completed当发布通过。
+- 新excalidraw A2HTTP模型完成但Query finalization失败；严格无网复现partial/forward gap不满足complete-empty证据，保留INVALID_FINAL_OUTPUT。新简历A2HTTP第三工具投影剩117，真实SDK/Runner本地复现，不扩池补过。
+- 0f6d531：真实HTTP200 nested sharing quota shape先8红→77相关绿，Application三入口证明只发送首次HTTP；全量1180 passed/1 skipped（26.07s）、Ruff/mypy128通过。平铺/未知/畸形/终态/Usage/Reasoning不变。
+- 用户明确授权140总上限，原108次数未重置；约4.5小时后的明确恢复验证A/B01各4/3完整成功，继续余下固定Case。最终逐phase求和、已知Usage下界、质量方向和真实剩余额度统一见报告/机器摘要。
+- 人工ReviewPolicy仍pending，所有新增审查为Agent证据复核；不替代blind human接受。生产原Prompt未改，原Snapshot/GT/Holdout未改。
+
+
+## 最终对账
+
+- 139/140，31phase之和139，全部139份actual body为gpt-6.1-sol/High；用户节点后65推理HTTP没有TLS失败，其中1历史sharing quota、随后明确恢复验证成功。
+- 最终B01 13组conditions整字典一致且仅P6435字符差：改善1、合格持平10、共同不足1、退化1(TS target A1/1/B0/1)，严格拒绝候选，禁止重跑挑好答案，生产删文0。
+- 全部版本16个完整复核配对：改善3、合格持平10、共同不足2、退化1；不是16独立问题或正式人工裁决。新快照16Case/57run，Runtime40完成、正式答案39。
+- 122次已知Usage下界1639148 input/28826 output/1667974 total/83584 cached/4027 reasoning；17次Usage未知或不完整，金额未知。
+- 全量1180 passed/1 skipped；源码最后0f6d531，之后只改报告和工作记录。原Snapshot/GT/Holdout、生产Prompt及无关dirty文件均保留。

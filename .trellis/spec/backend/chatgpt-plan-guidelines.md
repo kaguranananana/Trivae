@@ -48,7 +48,7 @@
 显式设置 GPT reasoning effort、执行 Prompt frozen/candidate/paired 实验时适用。历史首条请求在
 `response.metadata` 遇到 `MALFORMED_STREAM`；后续已按真实wire和官方Codex源码扩展严格类型。
 真实High三轮completed已验证协议，工具索引不就绪的该次结果不能当作质量Baseline。
-独立索引就绪后的真实答案验证见[续跑报告](../../tasks/10-18-gpt-high-ablation-resume/experiment-report.md)；
+独立索引就绪后的真实答案验证见[续跑报告](../../tasks/archive/2026-10/10-18-gpt-high-ablation-resume/experiment-report.md)；
 后续TLS连接失败与未完成门禁不能记作metadata修复失败或Prompt质量通过。
 本轮报告见 `10-18-gpt-high-prompt-ablation/report.md`（任务归档后位于 archive）。
 

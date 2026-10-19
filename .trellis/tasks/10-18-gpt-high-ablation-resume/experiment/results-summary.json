@@ -1,5 +1,5 @@
 {
-  "status": "blocked_by_external_tls; production prompt unchanged",
+  "status": "experiment_concluded_rejected; production prompt unchanged",
   "configuration": {
     "provider": "chatgpt-plan",
     "model": "gpt-6.1-sol",
@@ -19,31 +19,44 @@
     "integrity": "valid; global metadata/vector cardinality; 32 vector/range samples"
   },
   "budget": {
-    "maximum": 120,
-    "provider_calls": 52,
-    "remaining": 68,
-    "ledger_sum": 52
+    "maximum": 140,
+    "provider_calls": 139,
+    "remaining": 1,
+    "ledger_sum": 139
   },
   "known_usage_lower_bound": {
-    "requests_with_returned_usage": 40,
-    "input_tokens": 479227,
-    "output_tokens": 7155,
-    "total_tokens": 486382,
-    "cached_input_tokens": 14720,
-    "reasoning_tokens": 913,
+    "requests_with_returned_usage": 122,
+    "input_tokens": 1639148,
+    "output_tokens": 28826,
+    "total_tokens": 1667974,
+    "cached_input_tokens": 83584,
+    "reasoning_tokens": 4027,
     "currency_cost": null,
-    "unknown_request_usage_count": 12
+    "unknown_request_usage_count": 17
   },
   "quality_scope": {
-    "new_snapshot_runs": 23,
-    "completed_runs": 11,
-    "distinct_cases_attempted": 8,
-    "complete_reviewed_pairs": 3,
-    "agent_review_improved": 2,
-    "agent_review_tied": 1,
-    "agent_review_regressed": 0,
-    "remaining_fresh_development_cases_executed": 0,
-    "human_release_review": "pending"
+    "new_snapshot_runs": 57,
+    "completed_runs": 40,
+    "distinct_cases_attempted": 16,
+    "complete_reviewed_pairs": 16,
+    "agent_review_improved": 3,
+    "agent_review_tied": 10,
+    "agent_review_regressed": 1,
+    "remaining_fresh_development_cases_executed": 4,
+    "human_release_review": "pending; Agent evidence review is not human acceptance",
+    "successful_answers": 39,
+    "agent_review_shared_insufficient": 2,
+    "final_b01_complete_pairs": 13,
+    "final_b01_improved": 1,
+    "final_b01_tied": 10,
+    "final_b01_shared_insufficient": 1,
+    "final_b01_regressed": 1,
+    "final_user_node_pairs": 12,
+    "final_user_node_improved": 1,
+    "final_user_node_tied": 9,
+    "final_user_node_shared_insufficient": 1,
+    "final_user_node_regressed": 1,
+    "note": "pair units across variants/epochs, not 16 independent cases; shared-insufficient is not a passing tie"
   },
   "phase_ledgers": [
     {
@@ -125,6 +138,50 @@
     {
       "phase": "resume-diagnostics/strict-reproduction",
       "provider_calls": 1
+    },
+    {
+      "phase": "tls-core-validation",
+      "provider_calls": 15
+    },
+    {
+      "phase": "tls-time-zero-validation",
+      "provider_calls": 6
+    },
+    {
+      "phase": "proxy-final-b01",
+      "provider_calls": 1
+    },
+    {
+      "phase": "user-node-book-140-recovery",
+      "provider_calls": 7
+    },
+    {
+      "phase": "user-node-book-b01",
+      "provider_calls": 1
+    },
+    {
+      "phase": "user-node-core-rest",
+      "provider_calls": 6
+    },
+    {
+      "phase": "user-node-final-b01",
+      "provider_calls": 18
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "provider_calls": 14
+    },
+    {
+      "phase": "user-node-remaining-core",
+      "provider_calls": 2
+    },
+    {
+      "phase": "user-node-ui-b01",
+      "provider_calls": 7
+    },
+    {
+      "phase": "user-node-zero-time-140",
+      "provider_calls": 10
     }
   ],
   "runs": [
@@ -735,7 +792,1119 @@
       "finalization": "skipped",
       "error_code": "MALFORMED_STREAM",
       "code_version": "2282ab36aa15fef89233a891e146d65e73c2771d"
+    },
+    {
+      "phase": "tls-core-validation",
+      "case_id": "gpt-high-cal-context-ui-skill",
+      "run_id": "eval-run:gpt-high-cal-context-ui-skill:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:8bf13528cf914b4097315eee84e34521",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 74620,
+        "output_tokens": 648,
+        "total_tokens": 75268,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 113,
+      "reasoning_tokens": 113,
+      "observed_completed_streams": 4,
+      "latency_ms": 37474.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "tls-core-validation",
+      "case_id": "gpt-high-cal-context-ui-skill",
+      "run_id": "eval-run:gpt-high-cal-context-ui-skill:v1:prompt-screen:candidate:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:57877661b9da4146aa95a2896996c9c0",
+      "kind": "candidate_screen",
+      "prompt_chars": 19854,
+      "terminal": "failed",
+      "query_successful": false,
+      "http": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 28523,
+        "output_tokens": 125,
+        "total_tokens": 28648,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 42,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 2,
+      "latency_ms": 21434.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search"
+      ],
+      "finalization": "skipped",
+      "error_code": "RUNTIME_ERROR",
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "tls-core-validation",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:e3964d2a435c4b398c6a872a6524a066",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 75339,
+        "output_tokens": 780,
+        "total_tokens": 76119,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 275,
+      "reasoning_tokens": 275,
+      "observed_completed_streams": 4,
+      "latency_ms": 38798.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "tls-core-validation",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:candidate:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:6ad8e8f5c3f04e3f83948de6837ba495",
+      "kind": "candidate_screen",
+      "prompt_chars": 19854,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 74673,
+        "output_tokens": 655,
+        "total_tokens": 75328,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 291,
+      "reasoning_tokens": 291,
+      "observed_completed_streams": 4,
+      "latency_ms": 36167.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "tls-time-zero-validation",
+      "case_id": "gpt-high-dev-temporal-7d",
+      "run_id": "eval-run:gpt-high-dev-temporal-7d:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:1902c14e230645dabf798566d0ffa60c",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 53594,
+        "output_tokens": 1697,
+        "total_tokens": 55291,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 137,
+      "reasoning_tokens": 137,
+      "observed_completed_streams": 3,
+      "latency_ms": 55049.0,
+      "tool_sequence": [
+        "get_recent_messages",
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "tls-time-zero-validation",
+      "case_id": "gpt-high-dev-temporal-7d",
+      "run_id": "eval-run:gpt-high-dev-temporal-7d:v1:prompt-screen:candidate:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:09f2b508220a4b75a9fb64e8bf6ddcc8",
+      "kind": "candidate_screen",
+      "prompt_chars": 19854,
+      "terminal": "failed",
+      "query_successful": false,
+      "http": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 27471,
+        "output_tokens": 278,
+        "total_tokens": 27749,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 2,
+      "latency_ms": 13183.0,
+      "tool_sequence": [
+        "get_recent_messages",
+        "get_recent_messages"
+      ],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "proxy-final-b01",
+      "case_id": "gpt-high-dev-context-archify",
+      "run_id": "eval-run:gpt-high-dev-context-archify:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:16a3a642a9b5440bbcb8b054ee8441ed",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "query_successful": false,
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 2816.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "PROVIDER_ERROR",
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-book-140-recovery",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:baseline:aa47c3f741b006b5250e8808aa95011322b4ecea:9e9908658f79408682883d4aedf75eba",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 70234,
+        "output_tokens": 635,
+        "total_tokens": 70869,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 116,
+      "reasoning_tokens": 116,
+      "observed_completed_streams": 4,
+      "latency_ms": 42191.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-book-140-recovery",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:candidate:aa47c3f741b006b5250e8808aa95011322b4ecea:f6f112bdc2ac4d5189b11cbc15444dd4",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 50969,
+        "output_tokens": 882,
+        "total_tokens": 51851,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 127,
+      "reasoning_tokens": 127,
+      "observed_completed_streams": 3,
+      "latency_ms": 28573.0,
+      "tool_sequence": [
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-book-b01",
+      "case_id": "gpt-high-frozen-reply",
+      "run_id": "eval-run:gpt-high-frozen-reply:v1:prompt-screen:baseline:aa47c3f741b006b5250e8808aa95011322b4ecea:0847d992568e43d1a5f5d9ee98146c1c",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "query_successful": false,
+      "http": 1,
+      "usage": null,
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 0,
+      "latency_ms": 7875.0,
+      "tool_sequence": [],
+      "finalization": "skipped",
+      "error_code": "error",
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-core-rest",
+      "case_id": "gpt-high-dev-cite-archify",
+      "run_id": "eval-run:gpt-high-dev-cite-archify:v1:prompt-screen:baseline:aa47c3f741b006b5250e8808aa95011322b4ecea:e793382667494f9d90d5be054791ed8f",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 19712,
+        "output_tokens": 914,
+        "total_tokens": 20626,
+        "cached_input_tokens": 7168
+      },
+      "known_reasoning_tokens": 229,
+      "reasoning_tokens": 229,
+      "observed_completed_streams": 2,
+      "latency_ms": 41649.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-core-rest",
+      "case_id": "gpt-high-dev-cite-archify",
+      "run_id": "eval-run:gpt-high-dev-cite-archify:v1:prompt-screen:candidate:aa47c3f741b006b5250e8808aa95011322b4ecea:56b6383b1cc147ff8c2fdcb7572a41cb",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 19695,
+        "output_tokens": 979,
+        "total_tokens": 20674,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 269,
+      "reasoning_tokens": 269,
+      "observed_completed_streams": 2,
+      "latency_ms": 28195.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-core-rest",
+      "case_id": "gpt-high-dev-para-resume-advice",
+      "run_id": "eval-run:gpt-high-dev-para-resume-advice:v1:prompt-screen:baseline:aa47c3f741b006b5250e8808aa95011322b4ecea:4be363f14ffd4efe992e733dc6a7c6c6",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "failed",
+      "query_successful": false,
+      "http": 2,
+      "usage": {
+        "requests": 1,
+        "input_tokens": 7270,
+        "output_tokens": 48,
+        "total_tokens": 7318,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": null,
+      "observed_completed_streams": 1,
+      "latency_ms": 30127.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search"
+      ],
+      "finalization": "skipped",
+      "error_code": "RUNTIME_ERROR",
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-context-archify",
+      "run_id": "eval-run:gpt-high-dev-context-archify:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:cdd7530f5da84385b345a65432f5e3c3",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 38966,
+        "output_tokens": 651,
+        "total_tokens": 39617,
+        "cached_input_tokens": 9984
+      },
+      "known_reasoning_tokens": 87,
+      "reasoning_tokens": 87,
+      "observed_completed_streams": 3,
+      "latency_ms": 30554.0,
+      "tool_sequence": [
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-context-archify",
+      "run_id": "eval-run:gpt-high-dev-context-archify:v1:prompt-screen:candidate:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:47285c17354e4a27810f80284eda3e4f",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 37479,
+        "output_tokens": 642,
+        "total_tokens": 38121,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 87,
+      "reasoning_tokens": 87,
+      "observed_completed_streams": 3,
+      "latency_ms": 24545.0,
+      "tool_sequence": [
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-lexical-forge",
+      "run_id": "eval-run:gpt-high-dev-lexical-forge:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:f556b088937f403c864b61cd88ecf309",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 19102,
+        "output_tokens": 384,
+        "total_tokens": 19486,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 15638.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-lexical-forge",
+      "run_id": "eval-run:gpt-high-dev-lexical-forge:v1:prompt-screen:candidate:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:fb2e9296439a4c15b519bf3f2a1dfea7",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 19488,
+        "output_tokens": 372,
+        "total_tokens": 19860,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 14926.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-para-intern-hard-part",
+      "run_id": "eval-run:gpt-high-dev-para-intern-hard-part:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:3f6557ef77084454ad947677c1976053",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 28347,
+        "output_tokens": 680,
+        "total_tokens": 29027,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 48,
+      "reasoning_tokens": 48,
+      "observed_completed_streams": 2,
+      "latency_ms": 30793.0,
+      "tool_sequence": [
+        "semantic_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-para-intern-hard-part",
+      "run_id": "eval-run:gpt-high-dev-para-intern-hard-part:v1:prompt-screen:candidate:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:48931b1b8013435193bc9f14539bfbdb",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 27119,
+        "output_tokens": 636,
+        "total_tokens": 27755,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 75,
+      "reasoning_tokens": 75,
+      "observed_completed_streams": 2,
+      "latency_ms": 27886.0,
+      "tool_sequence": [
+        "semantic_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-zero-empty-2",
+      "run_id": "eval-run:gpt-high-dev-zero-empty-2:v1:prompt-screen:baseline:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:8fecd73f060e4c1bb5e139a7d82f63a0",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15391,
+        "output_tokens": 147,
+        "total_tokens": 15538,
+        "cached_input_tokens": 7040
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 12971.0,
+      "tool_sequence": [
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-zero-empty-2",
+      "run_id": "eval-run:gpt-high-dev-zero-empty-2:v1:prompt-screen:candidate:aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd:4f9b525a90cb48b1a23bb1eb15e0afbf",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15373,
+        "output_tokens": 148,
+        "total_tokens": 15521,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 14231.0,
+      "tool_sequence": [
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:baseline:0f6d53145203fc58b62f45d49fae36c42bd9868a:52b1ea2eaf6248b084681c44e22a761a",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16741,
+        "output_tokens": 217,
+        "total_tokens": 16958,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 19058.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "run_id": "eval-run:gpt-high-dev-lexical-chatlog-alpha:v1:prompt-screen:candidate:0f6d53145203fc58b62f45d49fae36c42bd9868a:c9a04eedd70b4d45a6680a65dc401b62",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16723,
+        "output_tokens": 206,
+        "total_tokens": 16929,
+        "cached_input_tokens": 7040
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 12758.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-dev-para-ts-learning",
+      "run_id": "eval-run:gpt-high-dev-para-ts-learning:v1:prompt-screen:baseline:0f6d53145203fc58b62f45d49fae36c42bd9868a:83d1cbc840cf4ed2aabbeebcc0d04793",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 54496,
+        "output_tokens": 727,
+        "total_tokens": 55223,
+        "cached_input_tokens": 9984
+      },
+      "known_reasoning_tokens": 67,
+      "reasoning_tokens": 67,
+      "observed_completed_streams": 3,
+      "latency_ms": 30271.0,
+      "tool_sequence": [
+        "semantic_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-dev-para-ts-learning",
+      "run_id": "eval-run:gpt-high-dev-para-ts-learning:v1:prompt-screen:candidate:0f6d53145203fc58b62f45d49fae36c42bd9868a:bb555530d98a40288ed9ea99ffd7fb56",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 52452,
+        "output_tokens": 847,
+        "total_tokens": 53299,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 162,
+      "reasoning_tokens": 162,
+      "observed_completed_streams": 3,
+      "latency_ms": 31592.0,
+      "tool_sequence": [
+        "semantic_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-frozen-github",
+      "run_id": "eval-run:gpt-high-frozen-github:v1:prompt-screen:baseline:0f6d53145203fc58b62f45d49fae36c42bd9868a:9e296160fb4d4a72a5cac5099eb5955b",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16964,
+        "output_tokens": 1504,
+        "total_tokens": 18468,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 209,
+      "reasoning_tokens": 209,
+      "observed_completed_streams": 2,
+      "latency_ms": 41063.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-frozen-github",
+      "run_id": "eval-run:gpt-high-frozen-github:v1:prompt-screen:candidate:0f6d53145203fc58b62f45d49fae36c42bd9868a:fd7fd320ed46488682e58f8682336c34",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16946,
+        "output_tokens": 1522,
+        "total_tokens": 18468,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 238,
+      "reasoning_tokens": 238,
+      "observed_completed_streams": 2,
+      "latency_ms": 38436.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-remaining-core",
+      "case_id": "gpt-high-dev-zero-excalidraw",
+      "run_id": "eval-run:gpt-high-dev-zero-excalidraw:v1:prompt-screen:baseline:aa47c3f741b006b5250e8808aa95011322b4ecea:1c7a826d5ac242a8824fbaa914ca4ec6",
+      "kind": "failed_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": false,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15779,
+        "output_tokens": 139,
+        "total_tokens": 15918,
+        "cached_input_tokens": 7040
+      },
+      "known_reasoning_tokens": 25,
+      "reasoning_tokens": 25,
+      "observed_completed_streams": 2,
+      "latency_ms": 19741.0,
+      "tool_sequence": [
+        "lexical_search"
+      ],
+      "finalization": "failed",
+      "error_code": null,
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-ui-b01",
+      "case_id": "gpt-high-cal-context-ui-skill",
+      "run_id": "eval-run:gpt-high-cal-context-ui-skill:v1:prompt-screen:baseline:aa47c3f741b006b5250e8808aa95011322b4ecea:11aca5a959234b359be1a75537486484",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 4,
+      "usage": {
+        "requests": 4,
+        "input_tokens": 74109,
+        "output_tokens": 712,
+        "total_tokens": 74821,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 4,
+      "latency_ms": 60475.0,
+      "tool_sequence": [
+        "semantic_search",
+        "lexical_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-ui-b01",
+      "case_id": "gpt-high-cal-context-ui-skill",
+      "run_id": "eval-run:gpt-high-cal-context-ui-skill:v1:prompt-screen:candidate:aa47c3f741b006b5250e8808aa95011322b4ecea:45ee90fff9ad4268b2069b65b052eaeb",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 54421,
+        "output_tokens": 638,
+        "total_tokens": 55059,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 143,
+      "reasoning_tokens": 143,
+      "observed_completed_streams": 3,
+      "latency_ms": 57720.0,
+      "tool_sequence": [
+        "semantic_search",
+        "get_message_context"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "aa47c3f741b006b5250e8808aa95011322b4ecea"
+    },
+    {
+      "phase": "user-node-zero-time-140",
+      "case_id": "gpt-high-dev-temporal-7d",
+      "run_id": "eval-run:gpt-high-dev-temporal-7d:v1:prompt-screen:baseline:0f6d53145203fc58b62f45d49fae36c42bd9868a:3cc20cc8dc05496187054ffa2f521685",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 53594,
+        "output_tokens": 1820,
+        "total_tokens": 55414,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 209,
+      "reasoning_tokens": 209,
+      "observed_completed_streams": 3,
+      "latency_ms": 48253.0,
+      "tool_sequence": [
+        "get_recent_messages",
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-zero-time-140",
+      "case_id": "gpt-high-dev-temporal-7d",
+      "run_id": "eval-run:gpt-high-dev-temporal-7d:v1:prompt-screen:candidate:0f6d53145203fc58b62f45d49fae36c42bd9868a:0ef37a292f944ce98de0e1bd4b1ac9de",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 53567,
+        "output_tokens": 1736,
+        "total_tokens": 55303,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 165,
+      "reasoning_tokens": 165,
+      "observed_completed_streams": 3,
+      "latency_ms": 50267.0,
+      "tool_sequence": [
+        "get_recent_messages",
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-zero-time-140",
+      "case_id": "gpt-high-dev-zero-empty-1",
+      "run_id": "eval-run:gpt-high-dev-zero-empty-1:v1:prompt-screen:baseline:0f6d53145203fc58b62f45d49fae36c42bd9868a:9a0a772308024fb3b6768df25390cbb3",
+      "kind": "frozen_baseline",
+      "prompt_chars": 20450,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15391,
+        "output_tokens": 149,
+        "total_tokens": 15540,
+        "cached_input_tokens": 0
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 14184.0,
+      "tool_sequence": [
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
+    },
+    {
+      "phase": "user-node-zero-time-140",
+      "case_id": "gpt-high-dev-zero-empty-1",
+      "run_id": "eval-run:gpt-high-dev-zero-empty-1:v1:prompt-screen:candidate:0f6d53145203fc58b62f45d49fae36c42bd9868a:565b805ed77d43b3a67d0f4f7beb7a3e",
+      "kind": "candidate_screen",
+      "prompt_chars": 20415,
+      "terminal": "completed",
+      "query_successful": true,
+      "http": 2,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15373,
+        "output_tokens": 153,
+        "total_tokens": 15526,
+        "cached_input_tokens": 2944
+      },
+      "known_reasoning_tokens": 0,
+      "reasoning_tokens": 0,
+      "observed_completed_streams": 2,
+      "latency_ms": 10622.0,
+      "tool_sequence": [
+        "get_recent_messages"
+      ],
+      "finalization": "valid",
+      "error_code": null,
+      "code_version": "0f6d53145203fc58b62f45d49fae36c42bd9868a"
     }
   ],
-  "quality_runtime_code_version": "b669bcc2f992e9819f9823bb761e46de37263073"
+  "current_candidate": {
+    "name": "production",
+    "characters": 20450,
+    "release_approved": false,
+    "last_evaluated": "b01-p64",
+    "last_evaluated_characters": 20415,
+    "production_deletions": [],
+    "reason": "B01 cumulative TS critical target recall/citation regressed; keep P64 and all other removed rules; no rerun to select favorable output"
+  },
+  "tls": {
+    "root_observed": "SSL EOF during handshake before HTTP, through local TUN and HTTP proxy",
+    "ipv4_fix_rejected": true,
+    "source_change": "redacted cause/context diagnostics only; no transport/retry change",
+    "network_change": "user switched existing node; fresh paired baselines, no old failed baseline reuse",
+    "post_user_switch_inference_http": 65,
+    "post_user_switch_start_tls_failures": 0,
+    "quota": "one historical sharing limit response among65; explicit later recovery succeeded",
+    "source_changes": [
+      "redacted cause/context diagnostics",
+      "strict nested error classification with original quota hard-stop"
+    ]
+  },
+  "budget_amendments": [
+    {
+      "authorized_at_utc": "2026-10-19T04:58:22.603Z",
+      "instruction": "增大一点预算继续",
+      "previous_maximum": 120,
+      "new_maximum": 140,
+      "provider_calls_preserved": 108,
+      "reset": false,
+      "scope": "global inference HTTP ceiling only; per-query tool/evidence budget unchanged",
+      "provider_quota": "separate Subscription Sharing quota; no new real requests until it is available"
+    }
+  ],
+  "paired_b01_reviews": [
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-lexical-forge",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-zero-empty-2",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-para-intern-hard-part",
+      "comparison": "A/B01",
+      "direction": "shared_insufficient",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-final-b01",
+      "case_id": "gpt-high-dev-context-archify",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-core-rest",
+      "case_id": "gpt-high-dev-cite-archify",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-ui-b01",
+      "case_id": "gpt-high-cal-context-ui-skill",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-book-140-recovery",
+      "case_id": "gpt-high-frozen-reply",
+      "comparison": "A/B01",
+      "direction": "improved",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-zero-time-140",
+      "case_id": "gpt-high-dev-zero-empty-1",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-zero-time-140",
+      "case_id": "gpt-high-dev-temporal-7d",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-dev-lexical-chatlog-alpha",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-dev-para-ts-learning",
+      "comparison": "A/B01",
+      "direction": "regressed",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "user-node-other-core-140",
+      "case_id": "gpt-high-frozen-github",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    },
+    {
+      "phase": "resume-b01",
+      "case_id": "gpt-high-pu-count-utc-day",
+      "comparison": "A/B01",
+      "direction": "tied",
+      "reviewer": "Codex Agent evidence audit; human blind review pending"
+    }
+  ],
+  "paired_b01_efficiency_observed": {
+    "A": {
+      "http": 34,
+      "input_tokens": 449060,
+      "output_tokens": 8791,
+      "total_tokens": 457851,
+      "cached_input_tokens": 37120,
+      "latency_ms": 401248.0
+    },
+    "B01": {
+      "http": 32,
+      "input_tokens": 405591,
+      "output_tokens": 8982,
+      "total_tokens": 414573,
+      "cached_input_tokens": 27648,
+      "latency_ms": 358498.0
+    }
+  },
+  "tests": {
+    "full_pytest_passed": 1180,
+    "full_pytest_skipped": 1,
+    "full_pytest_seconds": 26.07,
+    "ruff": "passed",
+    "mypy_source_files": 128,
+    "mypy": "passed"
+  },
+  "audit": {
+    "all_phase_ledgers_reconciled": true,
+    "inference_requests_verified_model_high": 139,
+    "paired_b01_conditions_equal": 13,
+    "production_prompt_characters": 20450,
+    "actual_production_prompt_change": false,
+    "hidden_reasoning_in_saved_request_input": false,
+    "unspent_calls": 1,
+    "no_further_paid_repeats": "B01 rejected on critical target regression; retain all outcomes"
+  },
+  "historical_quality_runtime_code_version": "b669bcc2f992e9819f9823bb761e46de37263073",
+  "historical_code_version_scope": "historical successful quality runs through provider call52; later per-run code_version and phase_source_deltas apply",
+  "quality_runtime_code_versions": [
+    "0f6d53145203fc58b62f45d49fae36c42bd9868a",
+    "aa47c3f741b006b5250e8808aa95011322b4ecea",
+    "aaf97bbd8964c3fe60fe937bb9f8b249c87c24fd",
+    "b669bcc2f992e9819f9823bb761e46de37263073"
+  ],
+  "phase_source_deltas": [
+    {
+      "phases": [
+        "proxy-final-b01",
+        "user-node-final-b01"
+      ],
+      "recorded_commit": "aaf97bb",
+      "loaded_source_delta": "TLS cause/context diagnostic patch later committed as aa47c3f; paired sides used same loaded code"
+    },
+    {
+      "phases": [
+        "user-node-book-140-recovery"
+      ],
+      "recorded_commit": "aa47c3f",
+      "loaded_source_delta": "strict nested SSE error patch later committed as0f6d531; paired sides used same loaded code"
+    }
+  ],
+  "latest_runtime_code_version": "0f6d531"
 }
