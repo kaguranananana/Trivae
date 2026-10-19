@@ -1,140 +1,173 @@
 # Trivae
 
-Trivae 是基于群聊数据的分析 Agent。主模型驱动 Router、Planner 和工具执行，答案经过现有 Evidence、Citation 与 Provenance 校验。Web UI、会话和 Evaluation 共用生产 Query 链路。
+**面向高噪声群聊数据的智能检索与分析系统**
 
-## 安装与启动
+AI-powered Group Conversation Intelligence
 
-在仓库根目录执行，需 Python 3.12+、uv，以及构建前端所需的 Node.js 和 pnpm：
+Trivae 帮助你从持续积累的群聊历史中定位事实、找回资源、梳理讨论，并用自然语言完成跨消息的信息调查。针对短消息密集、话题切换快、多人交错讨论的特点，系统将数据规范化、多路检索、Agent 工具调用和来源核验接成完整链路，让回答能够回到原始消息复核。
 
-```sh
-uv sync --extra dev
-pnpm -C web install --frozen-lockfile
-pnpm -C web build
+`Python 3.12+` · `FastAPI` · `Vue 3` · `OpenAI Agents SDK` · `SQLite FTS5` · `sqlite-vec`
+
+[快速开始](#快速开始) · [系统架构](#系统架构) · [配置指南](docs/configuration.md) · [Evaluation](docs/evaluation.md)
+
+## 产品预览
+
+下面来自真实运行的 Web UI：在隔离数据库中导入 **5 条手工编写的合成消息**，使用实际配置的 DeepSeek 主模型发起查询。该次运行调用 `lexical_search`，返回回答及 **4 条来源**；没有使用私人群聊或模拟 API 回答。截图采用窄屏布局。
+
+> 合成演示群聊中，大家为什么同时保留 FTS5 和语义检索？请用关键词检索原始讨论，简要说明并引用消息来源。
+
+| 自然语言提问与回答 | 展开来源复核 |
+| --- | --- |
+| ![真实 Web UI：合成群聊问题、执行过程入口与回答](docs/assets/product-answer.png) | ![真实 Web UI：4 条合成消息来源、发送者与时间](docs/assets/product-sources.png) |
+
+<details>
+<summary>查看 Router 与实际工具调用</summary>
+
+![真实 Web UI：Standard 路由与 lexical_search 工具调用](docs/assets/product-process.png)
+
+</details>
+
+截图展示该次词法检索链路，不代表语义检索、Planner 或全场景回答质量已经由此验证。[演示条件](docs/product-preview.md)记录了数据和运行方式。
+
+## 核心功能
+
+- **群聊历史入库与增量管理**：支持 QQChatExporter 的 V5 / 0.1.0 JSON 形态，将不同群聊、导出批次归入统一数据模型，识别重复与内容冲突，保留来源位置；可通过一次性任务更新检索索引。
+- **自然语言调查与多路检索**：Agent 按问题选择全文、语义、近期消息、上下文或只读 SQL 工具，分别处理精确术语、近义表达、讨论脉络和统计问题。
+- **复杂问题的规划与工具调用**：Router 判断是否需要预先规划，Planner 为复杂调查提供指导，两条路径共用同一个有回合、工具轮和内容预算的 Runtime。
+- **可回溯的证据与引用**：回答关联本轮实际取得的消息或结构化结果，可复核作者、时间与上下文；支持合并转发内部消息来源，显式保留覆盖不全、截断和引用降级诊断。
+- **Web UI 与多轮会话**：选择聊天范围、持续追问、查看路由与工具过程、展开 Sources；会话持久化，支持终止生成，也提供 CLI / TUI 入口。
+- **生产链路评测与诊断**：通过固定 Snapshot、Case、Variant 和配对 Review 比较方案，沿 Trace 定位路由、检索、工具、证据与提交阶段的问题。
+
+当前数据接入面向 QQ 导出；不表示已支持任意聊天平台。图片、文件等元素保留结构与来源，不提供 OCR 或语音转写。
+
+## 典型场景
+
+以下都是公开的示例问法，需在自己的数据中存在相应讨论：
+
+| 场景 | 可以怎样问 | 系统如何帮助 |
+| --- | --- | --- |
+| 找回事实与资源 | “群里讨论过 sqlite-vec 吗？找出相关资源和原始说法。” | 用关键词或语义查找消息，再回看相邻上下文与来源。 |
+| 梳理一段时间的讨论 | “整理 10 月 1 日至 7 日的部署讨论，按主题列出结论与分歧。” | 按时间浏览、检索并聚合证据；数据过多时报告已覆盖范围与局限。 |
+| 跨消息调查 | “大家为何从方案 A 转向方案 B？区分建议、实际尝试和后续反馈。” | 必要时先规划，再多步检索与上下文调查，为结论保留证据和不确定性。 |
+
+## 系统架构
+
+```mermaid
+flowchart TB
+    Export[QQ 导出 JSON] --> Import[导入与规范化]
+    Import --> Store[(SQLite Canonical Store)]
+    Store --> Index[FTS5 / sqlite-vec 派生索引]
+
+    Client[Web UI / HTTP API / CLI] --> App[统一 Application]
+    Eval[Evaluation] -->|生产 Query| App
+    App --> Query[QueryOrchestrator]
+    Query --> Router[Router]
+    Router -->|Standard| Runtime[统一 Agent Runtime]
+    Router -->|Planned| Planner[Planner]
+    Planner -->|软执行指导| Runtime
+    Runtime --> Tools[检索与只读查询工具]
+    Tools --> Store
+    Tools --> Index
+    Query -->|校验 Runtime 最终候选| Finalizer[Evidence / Citation 校验]
+    Finalizer --> Answer[AnswerArtifact]
+    Answer -->|Application 原子提交| History[(会话持久化)]
+    History -->|经 Application 投影| UI[回答与引用展示]
+    Query -.-> Trace[Trace：执行事实与失败归因]
+    Tools -.-> Trace
+    Trace -.-> Eval
 ```
 
-没有 `.env` 时复制示例；已有文件直接编辑，不要覆盖旧凭据：
+Router 决定是否先调用 Planner，不选择检索策略；Planner 不执行工具。工具由共享 Runtime 调用，Finalizer 由 QueryOrchestrator 执行，客户端和评测使用同一条应用链路。[详细架构](docs/architecture.md)说明各层职责、工具与提交边界。
+
+## 技术设计亮点
+
+### 1. 原始事实与检索投影分离
+
+Canonical Store 保存规范化消息、导出记录位置与来源关系，FTS5 和向量库可以重建。重复导入、冲突和批次错误都有记录；语义索引跟踪模型、切块身份和来源状态，通过变更位置日志更新受影响范围，并在输入一致时复用向量。这样既能追查“这条消息从哪里来”，也能判断“当前索引是否还能用”。
+
+### 2. 让群聊问题选择合适的工具
+
+精确资源名适合 FTS5，近义讨论适合向量召回，计数与排名适合有界只读 SQL。语义索引使用时间感知的 Parent / Child 对话块，命中后回读 Canonical 消息；上下文扩展补充短消息的来龙去脉。多路检索通过 Agent 选择与组合工具实现，不承诺每次固定执行全文与向量融合。
+
+### 3. 规划、执行与预算各有边界
+
+Standard 与 Planned 共用 Runtime，便于在相同条件下单独评价 Planner 的作用。计划是执行指导；工具轮、结果内容预算和绝对回合上限约束调查范围。流式输出、取消和异常保留阶段诊断，Trace 记录实际过程，避免只根据最终文本判断执行成功。
+
+### 4. 来源校验与答案质量分开判断
+
+来源绑定到本轮工具结果与允许访问的数据范围，模型不能自行生成可信作者、时间或来源身份。局部无效引用可按现有合同移除并标记 `degraded`；范围或来源归属等可信边界冲突会阻止交付。程序验证来源有效性与覆盖事实，结论是否被证据充分支持仍需质量评审。
+
+### 5. 评测覆盖完整生产 Query
+
+Evaluation 固定数据 Snapshot、Case 与受控 Variant，复用 Application 查询并读取答案、引用和 Trace；工程检查、质量轴和运行成本分别记录。Reference 标明 `exhaustive / partial / unknown`，机器辅助标注保留 provisional 身份。最近的 Prompt 精简实验因质量退化被拒绝，未作为性能优化发布；这里不把开发样本、测试通过率或 Token 减少写成产品准确率。[评测方法与当前边界](docs/evaluation.md)
+
+## 快速开始
+
+需要 **Python 3.12+、uv、Node.js 22.12+（22 系列）或 24+、pnpm**，以及支持 FTS5 的 Python SQLite。以下命令在仓库根目录执行：
 
 ```sh
+# 安装完整检索链路与开发工具。
+uv sync --extra dev --extra semantic
+# 安装并构建 Web UI。
+pnpm -C web install --frozen-lockfile
+pnpm -C web build
+# 仅首次配置时复制；已有 .env 直接编辑。
 cp .env.example .env
 ```
 
-主模型变量是 `TRIVAE_MODEL_PROVIDER` / `TRIVAE_MODEL_NAME`，任务示例中的 `TRIVIAE_MODEL_*` 不是现有配置入口。独立 Jev 的历史变量仍拼写为 `TRIVIAE_ROUTER_JEV_*`。
-
-## Sign in with ChatGPT
-
-```sh
-uv run trivae auth login --provider chatgpt
-uv run trivae auth status --provider chatgpt
-uv run trivae auth models --provider chatgpt
-```
-
-登录命令打开系统浏览器，由本人完成 ChatGPT 登录和授权。Trivae 使用官方动态客户端注册、PKCE 和 OIDC 验证；授权必须包含订阅调用所需 scopes。凭证只存于本机受保护 Auth Store，不写入 `.env`、Trace、Evaluation 或前端。到期 access token 在实际调用时刷新；刷新失败显式提示重新登录。
-
-从 `auth models` 返回的账号模型目录复制实际 slug，然后编辑 `.env`：
-
-```dotenv
-TRIVAE_MODEL_PROVIDER=chatgpt-plan
-TRIVAE_MODEL_NAME=<实际返回的模型slug>
-```
-
-此模式使用 OAuth Bearer 与官方公开 `https://api.openai.com/v1` Responses API。已有 `TRIVAE_MODEL_API_KEY`、`DEEPSEEK_API_KEY` 和 base URL 不参与订阅调用；不会切换到 API key 计费。服务端请求始终 `store=false`、`stream=true`，只发送允许的字段，不发送 `max_output_tokens`、`max_tokens` 或 `temperature`。`TRIVAE_MAX_TURNS`、`TRIVAE_MAX_TOOL_ROUNDS` 与本地 Tool Result 预算继续生效。没有经过验证的 GPT context 元数据时沿用未知模型的 dynamic 预算，不根据模型名称推测能力。
-
-再次登录默认复用所选注册身份。需要添加另一个账号或 workspace 时，执行 `uv run trivae auth login --provider chatgpt --new-account`。多个本机注册会话可用 `auth status` 检查；用返回的已签发 client ID 选择会话：
-
-```sh
-uv run trivae auth select --provider chatgpt --account <已签发client_id>
-uv run trivae auth models --provider chatgpt
-```
-
-运行中的 Runtime 绑定首次选定的注册会话。执行 `auth select` 或添加新账号后，重新启动 Web / CLI，再核对该账号目录和模型 slug，保证模型目录与 OAuth 会话一致。配置 readiness 只检查本地授权与 scope，不保证网络、额度或模型调用成功。
-
-## 在 Web UI 提问
-
-已有 Canonical 数据库时启动：
-
-```sh
-uv run trivae web --database data/trivae.sqlite3 --host 127.0.0.1 --port 8710
-```
-
-浏览器自动打开 `http://127.0.0.1:8710`。先选择来源范围，再提问；模型使用现有工具检索并生成带引用的答案。修改 `.env` 后重启进程；Shell 已导出的同名环境变量优先于 `.env`。`trivae web` 是准确命令，仓库没有 `webui` 子命令。
-
-新数据库先放入 QQChatExporter JSON 并导入：
-
-```sh
-uv run trivae import --raw-dir data/raw --database data/trivae.sqlite3
-```
-
-无人值守增量导入使用 `uv run trivae import-once`；处理状态通过 `import-once --status` 只读查看。
-每天 10:30 / 22:30 的 macOS 调度、失败补偿和安装脚本见 [QCE 自动导入说明](docs/qce-auto-import.md)。
-导入编排已与合并转发检索代码集成；自动导入的增量索引 updater 仍待接入和验收，真实调度默认只准备、不启用。
-
-Jev 仍使用独立 `OPENROUTER_API_KEY`，默认 enabled/shadow 行为不随主模型变化。OAuth token 不会发送给 Jev；如需调整 Jev 模式，显式编辑其专属变量。
-
-## 额度、失败与退出
-
-在 ChatGPT 的 **Settings → Usage** 查看订阅使用量和应用管理。Plus 的五小时总用量由所有接入应用共享，各应用不会获得独立额度；不从一次错误推断整个订阅已耗尽或重置时间。具体授权和限制以官方 [会话与额度说明](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions) 为准。
-
-额度限制、授权撤销、scope 不足、流中断或协议错误会明确失败，不自动换到收费 API key 或其他 Provider。查看 `auth status` 和该次 Query 的 Trace；Web UI 可打开过程与引用。Trace 保留实际 provider/model、用量、配置和安全错误原因，不保存 OAuth token。
-
-```sh
-uv run trivae auth logout --provider chatgpt
-```
-
-退出会撤销 renewable session 并清除所选会话的本地 token，保留注册身份和主机标识以便重新登录；其他本机注册会话可通过 `--account` 明确选择。远端撤销失败会显式报告，本地 token 仍会清除；在 ChatGPT Settings → Usage 管理对应应用。切回 DeepSeek 时编辑 `.env` 并重启：
+在 `.env` 填写自己的模型配置；默认 API key 示例：
 
 ```dotenv
 TRIVAE_MODEL_PROVIDER=deepseek
 TRIVAE_MODEL_NAME=deepseek-flash
 TRIVAE_MODEL_BASE_URL=https://api.deepseek.com
 TRIVAE_MODEL_API_KEY=<你的DeepSeek_API_key>
+# 快速开始只使用主模型，显式关闭独立 Jev 实验。
+TRIVIAE_ROUTER_JEV_ENABLED=false
 ```
 
-## Evaluation 与验证
-
-QQ 合并转发支持递归检索内部正文，引用来源保留具体子消息、外层父消息、嵌套路径、内部发送者及导出记录位置。群聊和时间范围按转发到当前群的时间过滤，来源面板另外显示内部原始时间。未展开的 `messages=[]` 明确报告内容缺失，预览不能替代原文。子消息是独立检索投影，普通群消息数量及 SQL 统计口径保持不变。
-
-已有数据库升级后需显式重建 FTS5 和语义索引；无需重新导出或重新导入 QQ 文件。FTS5 使用 Application 的现有重建入口：
-
-```python
-from pathlib import Path
-from trivae.bootstrap.application import create_application
-
-# 只重建派生投影与 FTS5，保留 Canonical 消息和原始来源。
-with create_application(Path("data/trivae.sqlite3")) as application:
-    print(application.rebuild_lexical_index())
-```
-
-语义索引使用 `uv run trivae semantic rebuild --database data/trivae.sqlite3`。新旧版本或正文 revision 不匹配时显式报告 stale，不自动绕过。
-
-长跑被中断且来源和索引版本均未改变时，可显式执行 `uv run trivae semantic rebuild --resume --database data/trivae.sqlite3`，复用这次构建已完整保存的块；若使用独立构建文件，同时指定原来的 `--semantic-index`。版本或来源水位变化会拒绝续建，完成的索引也不重复续建。
-
-真实合并转发核验可使用：
+准备自己有权使用的 QQChatExporter JSON，复制到 `data/raw/`：
 
 ```sh
-uv run python scripts/verify_forward_retrieval.py \
-  --session-id qq:831907794 --keyword 远程连接 --keyword 情感锚点 \
-  --run-agent --output data/evaluation/forward-new-run
+mkdir -p data/raw
+# 放好已导出完成的 JSON，再导入并更新全文与语义索引。
+uv run trivae import-once --raw-dir data/raw \
+  --database data/trivae.sqlite3 --update-indexes
+# 确认批次与索引工作状态，查看是否存在 pending 或错误。
+uv run trivae import-once --database data/trivae.sqlite3 --status
+uv run trivae semantic status --database data/trivae.sqlite3
+# 启动 Web，默认自动打开浏览器。
+uv run trivae web --database data/trivae.sqlite3 --host 127.0.0.1 --port 8710
 ```
 
-该命令检查 FTS5、真实 embedding、实际 Agent 工具调用、子消息引用和 Canonical 来源回读；`--run-agent` 会使用当前配置模型。输出目录必须是新目录。
-增加 `--agent-query-mode natural` 可验证未指定工具和转发类型的日常问法；默认模式明确要求实际调用 FTS5 与语义检索。
+`import-once` 默认要求文件静默至少 60 秒，并间隔 5 秒确认稳定；刚导出的文件被推迟时，待稳定后重跑。首次索引构建会下载并加载本地 `Qwen/Qwen3-Embedding-0.6B`，需预留内存、磁盘与构建时间。普通 `trivae import` 只写 Canonical 数据，不自动建索引；手工导入后的重建方式见[完整上手指南](docs/getting-started.md)。
 
-生产 Evaluation Query 使用同一个 Runtime，实际配置从 `runtime.configuration` Trace 派生；历史 frozen Variant / DeepSeek Baseline 不改写。切换 Provider 必须建立新的 Variant 和结果目录，不能把模型差异解释为检索改善。独立 retrieval annotator 和 claim judge 当前使用 Chat Completions，明确拒绝 `chatgpt-plan`；运行它们时显式选用 DeepSeek 或 OpenCode Go 的配置文件，不借用 OAuth、不自动改变计费。
+打开 `http://127.0.0.1:8710`，选择聊天范围后提问；展开执行过程与 Sources 检查依据。修改 `.env` 后重启，Shell 已导出的同名变量优先。终端入口为 `uv run trivae chat --database data/trivae.sqlite3`。
 
-自动化验证：
+开发验证：
 
 ```sh
 uv run ruff check src tests
 uv run mypy src
 uv run pytest
+pnpm -C web test
+pnpm -C web build
 ```
 
-授权成功、目录确认和 `.env` 设置完成后，运行四类真实生产 Query 验证；每次使用一个新的结果目录：
+## 开发与扩展文档
 
-```sh
-uv run python scripts/verify_chatgpt_plan.py --database data/trivae.sqlite3 --topic Trellis --output data/evaluation/chatgpt-plan/new-run
-```
+| 文档 | 内容 |
+| --- | --- |
+| [本地安装与使用](docs/getting-started.md) | 环境、完整导入与索引流程、Web / CLI、测试 |
+| [配置与故障定位](docs/configuration.md) | Provider、ChatGPT OAuth、多账号、Jev、索引升级与续建、验证脚本 |
+| [系统架构](docs/architecture.md) | 应用边界、工具、数据与索引、Runtime、引用、Trace |
+| [Evaluation](docs/evaluation.md) | Snapshot / Case / Variant、对照评测、质量轴与结论边界 |
+| [语义增量索引](docs/semantic-incremental-index.md) | 变更日志、向量复用、版本与更新验证 |
+| [QCE 自动导入](docs/qce-auto-import.md) | 文件稳定检查、macOS 调度、索引待办与恢复 |
+| [第三方来源与许可](docs/third-party-notices.md) | 来源声明、上游许可及公开前待确认事项 |
 
-脚本检查事实检索、复杂工具分析、多轮追问和结构化引用答案，保存结果与 Trace 证据。Mock 通过与真实授权、刷新、模型调用成功是不同事实；没有完成本人浏览器授权时，真实账号调用仍未验证。
+## 隐私与许可证
 
-2026-10-13 本机实测：官方 OAuth 和账号模型目录查询成功，实际选择目录中的 `gpt-6.1-sol`。四类查询全部 `valid`，分别产生 1 / 5 / 4 / 2 个 Citation binding；另一次 Web 查询返回完整 NDJSON 终态与来源，Provider SSE 均确认 `response.completed`。原始本机证据在 ignored `data/evaluation/chatgpt-plan/20261013-sol-06/`，可核验事实摘要见 [ChatGPT 接入事实记录](interview-docs/事实核验-ChatGPT接入.md)。自然过期后的真实刷新未执行，刷新与轮换由 Mock 覆盖。该运行验证工程接入，不构成模型质量 Benchmark 或检索优化结论。
+原始聊天、数据库、索引、会话与 Trace 主要保存在本机。模型调用仍会把问题、会话上下文和相关工具结果发送给所配置的 Provider；启用 Jev 时还涉及 OpenRouter 路由请求。**本地存储不等于完全离线。** 请仅导入自己有权处理的数据，分享 Trace 或实验产物前检查聊天摘录与个人信息。
+
+当前 Web 服务面向本机使用，尚不提供公网多用户认证与租户隔离。Trivae 整体分发许可证尚未确定；部分前端过程逻辑来源于采用 AGPL-3.0 的 [ChatLab](https://github.com/ChatLab/ChatLab)。来源及许可副本见[第三方声明](docs/third-party-notices.md)，维护者应在公开或分发前完成适用范围与义务确认。
