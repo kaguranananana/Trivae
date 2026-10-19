@@ -170,4 +170,8 @@ pnpm -C web build
 
 原始聊天、数据库、索引、会话与 Trace 主要保存在本机。模型调用仍会把问题、会话上下文和相关工具结果发送给所配置的 Provider；启用 Jev 时还涉及 OpenRouter 路由请求。**本地存储不等于完全离线。** 请仅导入自己有权处理的数据，分享 Trace 或实验产物前检查聊天摘录与个人信息。
 
-当前 Web 服务面向本机使用，尚不提供公网多用户认证与租户隔离。Trivae 整体分发许可证尚未确定；部分前端过程逻辑来源于采用 AGPL-3.0 的 [ChatLab](https://github.com/ChatLab/ChatLab)。来源及许可副本见[第三方声明](docs/third-party-notices.md)，维护者应在公开或分发前完成适用范围与义务确认。
+当前 Web 服务面向本机使用，尚不提供公网多用户认证与租户隔离。第三方代码与依赖的来源、许可证及适用说明见[第三方声明](docs/third-party-notices.md)。
+
+## 致谢
+
+感谢 [QQ Chat Exporter](https://github.com/shuakami/qq-chat-exporter) 项目及其贡献者提供 QQ 聊天记录导出工具与结构化 JSON 格式，为 Trivae 的数据导入提供支持。

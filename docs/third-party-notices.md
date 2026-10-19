@@ -20,6 +20,12 @@
 
 **公开前待办**：维护者需核实实际引入时版本及覆盖范围，确认衍生部分及组合分发的许可要求，保留适用的上游版权、许可和修改声明；涉及 AGPL 覆盖的网络交互部署，还需核对对应源代码提供要求。单独列出致谢并不能替代这些义务。未确认这些条件前，不应把本仓库标为已完成开源许可审查。
 
+## QQ Chat Exporter
+
+感谢 [shuakami/qq-chat-exporter](https://github.com/shuakami/qq-chat-exporter) 项目及其贡献者提供 QQ 聊天记录导出工具与结构化 JSON 格式。Trivae 的 QQ 导入适配器读取该工具生成的导出文件，完成解析、规范化和入库；此处致谢不表示上游团队参与了 Trivae 的开发或提供官方背书。
+
+上游项目声明采用 [GPL-3.0](https://github.com/shuakami/qq-chat-exporter/blob/master/LICENSE)。当前此项集成为导出文件格式对接，不将导出工具作为 Trivae 内置组件分发；用户单独使用该工具时应遵守其许可和使用说明。
+
 ## 依赖与模型
 
 Python 依赖见 [pyproject.toml](../pyproject.toml) 和 `uv.lock`，前端依赖见 [package.json](../web/package.json) 和 `pnpm-lock.yaml`。依赖与模型各自沿用其许可证和使用条款，未被本页重新许可。默认语义索引使用 `Qwen/Qwen3-Embedding-0.6B`；下载和分发模型前应核对其模型卡。当前没有将第三方产品截图、品牌图片或真实聊天语料加入产品预览。
