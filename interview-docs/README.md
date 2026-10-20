@@ -13,6 +13,12 @@
 
 - `CJK检索实验-简历与面试.md`：64条真实查询的字面检索A/B证据、量化简历条目、实验公平性与指标/局限解释。
 
+- `Evaluation历史失败审计-20261020.md`：历史context、Evidence Recall、Gate 3人工审核与Trace的逐Case审计和测量纠偏。
+- `Evaluation端到端质量实验-20261020.md`：固定当前快照的8题A/B、候选否决、复测波动、成本与真实性边界。
+- `Evaluation独立验证-20261020.md`：12条本轮调参外旧Development对照，包含唯一Query交付失败，非fresh Holdout。
+- `Evaluation优化-证据账本与面试.md`：真实第五条简历Bullet、可公开分母与连续追问答案。
+- `Evaluation优化-证据账本.json`：本次实验的结构化Commit/GT审核状态/分子分母/证据位置，已同步主Claim账本。
+
 ## 归档约定
 
 - 后续生成的项目导学、项目面经、面试题库、STAR 口播、简历事实摘要和 Claim 核验材料均放在本目录。

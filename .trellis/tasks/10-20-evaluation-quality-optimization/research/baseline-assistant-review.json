@@ -1,0 +1,439 @@
+{
+  "review_status": "assistant_provisional",
+  "human_review": "pending",
+  "date": "2026-10-20",
+  "method": "Manual source-grounded review of actual attached artifact sources; all 161 message-source references recovered through read-only canonical repository and compared with persisted snapshot text prefix/time. No Provider calls.",
+  "scope": "Eight preregistered development cases; no new holdout, no target-equality substitution for answer correctness.",
+  "grounded_answer_rule": "Strict conjunction of protocol criteria; citation binding omissions can fail despite correct core answer. Pending remains pending.",
+  "privacy": "No chat quotations or personal display names retained. Source handles resolve within each private baseline artifact.",
+  "cases": [
+    {
+      "case_id": "quality-dev-context-archify",
+      "necessary_facts": [
+        {
+          "fact_id": "actual_use_not_invitation_only",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-5",
+            "m1-39",
+            "m1-47",
+            "m1-54"
+          ],
+          "reason": "实际自用与场景陈述附在e3，独立于历史target。"
+        },
+        {
+          "fact_id": "positive_feedback_exists",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-26",
+            "m1-58",
+            "m1-57"
+          ],
+          "reason": "e4附带用户对格式、交互与效果的实际评价。"
+        },
+        {
+          "fact_id": "avoid_no_feedback_conclusion",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-38",
+            "m1-61",
+            "m1-50",
+            "m1-65"
+          ],
+          "reason": "同时覆盖正负反馈，没有声称无人反馈。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "summary_binding_incomplete",
+          "status": "fail",
+          "evidence": [
+            "claim-1/e1",
+            "m1-56",
+            "m1-11",
+            "m1-41"
+          ],
+          "reason": "首block包含实际使用及整体倾向判断，但该block绑定来源仅支撑身份、链接与发布；实际使用证据位于其他block，不能冒充本绑定支持。",
+          "attribution": "claim_evidence_binding"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 32,
+      "canonical_snapshot_check": "pass"
+    },
+    {
+      "case_id": "quality-dev-context-mattpocock-1",
+      "necessary_facts": [
+        {
+          "fact_id": "repository_identified",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-6",
+            "m1-14"
+          ],
+          "reason": "实际附带仓库链接。"
+        },
+        {
+          "fact_id": "teach_usage_recovered",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-14",
+            "m1-19"
+          ],
+          "reason": "附带具体使用指导。"
+        },
+        {
+          "fact_id": "positive_firsthand_feedback",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-10",
+            "m1-42",
+            "m1-78",
+            "m1-88"
+          ],
+          "reason": "有独立有效正面评价；不依赖错误的m1-81。"
+        },
+        {
+          "fact_id": "recommendation_not_inferred_from_bare_link_only",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-14",
+            "m1-19",
+            "m1-1"
+          ],
+          "reason": "存在明确建议使用的陈述，不只裸链接。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "unrelated_positive_feedback",
+          "status": "fail",
+          "evidence": [
+            "claim-3/e3",
+            "m1-81"
+          ],
+          "reason": "该来源未指名目标且reply_to为空。canonical同session近邻在另一产品类别讨论；把该条作为目标工具使用评价缺乏依据。其他好评成立，不能据此把核心正面事实判假。",
+          "attribution": "evidence_selection_or_answer_synthesis_topic_conflation"
+        },
+        {
+          "issue_id": "author_alias_check",
+          "status": "pass",
+          "evidence": [
+            "claim-4/e4",
+            "m1-55",
+            "m1-56"
+          ],
+          "reason": "两个display name对应同一稳定sender_user_id；不判作者错绑。",
+          "attribution": "canonical_identity_verified"
+        }
+      ],
+      "reply_relation_loss_caused_error": "no_for_verified_issue_reply_field_is_null",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 29,
+      "canonical_snapshot_check": "pass"
+    },
+    {
+      "case_id": "quality-dev-context-mattpocock-2",
+      "necessary_facts": [
+        {
+          "fact_id": "repository_identified",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-6"
+          ],
+          "reason": "实际附带目标仓库来源。"
+        },
+        {
+          "fact_id": "positive_reply_feedback",
+          "status": "pass",
+          "attached_source_handles": [
+            "m3-4",
+            "m3-6",
+            "m3-7",
+            "m3-5"
+          ],
+          "reason": "显式context恢复正向回复与后续认可；canonical reply target对应仓库分享。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "pending",
+      "grounded_answer": "pending",
+      "issues": [
+        {
+          "issue_id": "majority_claim_scope",
+          "status": "pending",
+          "evidence": [
+            "claim-1/e1"
+          ],
+          "reason": "存在好评可确认；更广泛的多数/主流倾向未由代表性样本或统计证明，需人工裁定措辞强度，不把target覆盖当作充分证明。",
+          "attribution": "uncertainty_calibration"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated_reply_recovered_and_used",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 28,
+      "canonical_snapshot_check": "pass"
+    },
+    {
+      "case_id": "quality-dev-para-intern-owner",
+      "necessary_facts": [
+        {
+          "fact_id": "accepting_position",
+          "status": "pass",
+          "attached_source_handles": [
+            "m3-21",
+            "m3-22",
+            "m3-24"
+          ],
+          "reason": "实际附带对独立承担内部工作的认可及原因。"
+        },
+        {
+          "fact_id": "cautious_position",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-13",
+            "m1-15",
+            "m1-36",
+            "m1-37"
+          ],
+          "reason": "实际附带反对把重要或核心工作交给实习生的意见。"
+        },
+        {
+          "fact_id": "avoid_unanimous_single_side",
+          "status": "pass",
+          "attached_source_handles": [
+            "m3-24",
+            "m1-15",
+            "m1-36"
+          ],
+          "reason": "两种立场均呈现，声明不同讨论与个体观点范围。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "pending",
+      "grounded_answer": "pending",
+      "issues": [
+        {
+          "issue_id": "collective_preference_inference",
+          "status": "pending",
+          "evidence": [
+            "claim-4/e4",
+            "m1-41",
+            "m1-42",
+            "m1-43",
+            "m1-46",
+            "m1-47"
+          ],
+          "reason": "来源支持某种带教安排受到赞同；推广成群体更认可某种安排的比较结论，需要人工判断是否越过样本范围。",
+          "attribution": "uncertainty_calibration"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 24,
+      "canonical_snapshot_check": "pass"
+    },
+    {
+      "case_id": "quality-dev-lexical-resume-miner",
+      "necessary_facts": [
+        {
+          "fact_id": "named_resource_identified",
+          "status": "fail",
+          "attached_source_handles": [],
+          "reason": "答案未识别预注册具体项目，转而回答未找到具名资源；不是仅漏引用重复出现的target。"
+        },
+        {
+          "fact_id": "project_experience_resume_purpose",
+          "status": "fail",
+          "attached_source_handles": [],
+          "reason": "没有把实际具名项目与用户要求的用途连接；附带来源是一般方法与无名skill。"
+        }
+      ],
+      "core_requirements": "fail",
+      "citation_support": "pending",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "materially_insufficient_resource_discovery",
+          "status": "fail",
+          "evidence": [
+            "tool-call/1:semantic_search",
+            "tool-call/2:get_message_context"
+          ],
+          "reason": "首路返回partial候选；后续只深入无名skill，而没有为具名工具这一缺口使用现有另一检索路径。来源集在合成前已缺失所需具名资源；不能把无名skill当充分完成。",
+          "attribution": "retrieval_candidate_selection_and_followup_tool_choice"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 11,
+      "canonical_snapshot_check": "pass"
+    },
+    {
+      "case_id": "quality-dev-para-resume-advice",
+      "necessary_facts": [
+        {
+          "fact_id": "advice_specifically_without_metrics",
+          "status": "pending",
+          "attached_source_handles": [
+            "m1-23",
+            "m1-30",
+            "m1-32",
+            "m1-89",
+            "m1-91",
+            "m1-92",
+            "m1-95",
+            "m1-100"
+          ],
+          "reason": "存在一般简历建议，但未恢复预注册直接针对缺少指标的讨论。不能只凭target缺失判所有建议错误；是否完成核心问题需人工判。"
+        },
+        {
+          "fact_id": "avoid_unsupported_priority_claim",
+          "status": "fail",
+          "attached_source_handles": [
+            "claim-2/e2",
+            "m1-23",
+            "m1-30",
+            "m1-32"
+          ],
+          "reason": "来源谈岗位关键词匹配，没有比较关键词和数据指标优先级；答案把一般建议转化成缺指标情形下的明确比较结论，超出附带来源。"
+        }
+      ],
+      "core_requirements": "pending",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "general_advice_transformed_into_comparative_rule",
+          "status": "fail",
+          "evidence": [
+            "claim-2/e2"
+          ],
+          "reason": "有真实关键词建议，但特定条件下优先于量化数据的结论不是来源事实，也未清晰区分为自行提出的方法。",
+          "attribution": "answer_synthesis_unsupported_inference"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 16,
+      "canonical_snapshot_check": "pass"
+    },
+    {
+      "case_id": "quality-dev-cite-nanobot",
+      "necessary_facts": [
+        {
+          "fact_id": "intended_beneficiary",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-29",
+            "m1-16",
+            "m1-14"
+          ],
+          "reason": "实际介绍明确插件面向目标Agent项目，未混为其他项目。"
+        },
+        {
+          "fact_id": "memory_plugin_purpose",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-29",
+            "m1-16",
+            "m1-14"
+          ],
+          "reason": "附带介绍支持记忆与结构化知识管理用途；自述与独立实测已区分。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "unattached_numeric_detail",
+          "status": "fail",
+          "evidence": [
+            "claim-1/e1",
+            "m2-71",
+            "m2-10",
+            "unattached:m2-73"
+          ],
+          "reason": "首block额外给出代码规模数字；该数字出现在同次ToolResult的m2-73，却未在该block实际附带来源中。不是虚构数字，是可定位的引用绑定遗漏。",
+          "attribution": "claim_evidence_binding"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 9,
+      "canonical_snapshot_check": "pass"
+    },
+    {
+      "case_id": "quality-dev-cite-meimei",
+      "necessary_facts": [
+        {
+          "fact_id": "java_resource",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-4",
+            "m1-5"
+          ],
+          "reason": "分享原文与Java资源对应。"
+        },
+        {
+          "fact_id": "nestjs_resource",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-4",
+            "m1-5"
+          ],
+          "reason": "分享原文包含实际NestJS仓库入口。"
+        },
+        {
+          "fact_id": "mention_vs_recommendation_distinguished",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-2",
+            "m1-14",
+            "m1-1",
+            "m1-3"
+          ],
+          "reason": "把无链接的框架口头提及与具体模板分享分开，保留未独立核验限制。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "pass",
+      "grounded_answer": "pass",
+      "issues": [],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 12,
+      "canonical_snapshot_check": "pass"
+    }
+  ],
+  "causal_findings": [
+    "One verified off-topic positive-feedback attribution; canonical reply field null, so missing reply projection is not its root cause.",
+    "Named-resource failure arises before synthesis: no named-resource evidence in returned set, no alternate lexical attempt for that material gap.",
+    "Reply projection omission remains a deterministic host gap but is not established as causal for the eight baseline answer errors."
+  ],
+  "proposal_assessment": "Clarify existing sufficiency contract for concrete resource discovery: general advice or unnamed skill is materially insufficient when identity/access evidence is still missing. An alternative existing retrieval path is then justified; do not create an unconditional two-tool sequence or alter budgets. Offline reachability and real paired evaluation are still required."
+}

@@ -1,0 +1,461 @@
+{
+  "review_status": "assistant_provisional",
+  "human_review": "pending",
+  "date": "2026-10-20",
+  "completion": "all eight inspected; assistant provisional, human pending",
+  "candidate_commit": "3d9cc0ebce781444f4fcbd6f80489d323d7f436f",
+  "same_protocol_as": "baseline-assistant-review.json",
+  "necessary_fact_policy": "Same 21 fact IDs and denominator as Baseline; no changing requirements to reward alternate resource or missing targets.",
+  "privacy": "No private chat quotations or personal display names retained.",
+  "cases": [
+    {
+      "case_id": "quality-dev-context-archify",
+      "necessary_facts": [
+        {
+          "fact_id": "actual_use_not_invitation_only",
+          "status": "pass",
+          "attached_source_handles": [
+            "m2-3",
+            "m2-6",
+            "m2-7",
+            "m1-47",
+            "m1-39"
+          ],
+          "reason": "实际自用、后续好评与场景来源附到e2。"
+        },
+        {
+          "fact_id": "positive_feedback_exists",
+          "status": "pass",
+          "attached_source_handles": [
+            "m2-6",
+            "m1-26",
+            "m1-58"
+          ],
+          "reason": "有实际正面评价，新增context提供更完整来源。"
+        },
+        {
+          "fact_id": "avoid_no_feedback_conclusion",
+          "status": "pass",
+          "attached_source_handles": [
+            "m2-6",
+            "m1-38",
+            "m1-50",
+            "m1-65"
+          ],
+          "reason": "同时呈现正负反馈，没有声称总体无人反馈。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "summary_binding_incomplete",
+          "status": "fail",
+          "evidence": [
+            "claim-1/e1",
+            "m1-17",
+            "m1-11",
+            "m1-33",
+            "m1-10",
+            "m1-29",
+            "m1-30"
+          ],
+          "reason": "首block仍包含部分人实际上手的判断，而其绑定来源只支持链接、热度、生态和定位；实际使用证据附在其他block，延续Baseline同种绑定缺口。",
+          "attribution": "claim_evidence_binding"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 34,
+      "canonical_snapshot_check": "pending_until_final_canonical_pass",
+      "comparison": "核心维持pass；实际好评新增context恢复，但引用缺口仍在，不能算grounded改善。",
+      "baseline": {
+        "core_requirements": "pass",
+        "citation_support": "fail",
+        "grounded_answer": "fail"
+      }
+    },
+    {
+      "case_id": "quality-dev-context-mattpocock-1",
+      "necessary_facts": [
+        {
+          "fact_id": "repository_identified",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-1",
+            "m1-6",
+            "m1-7"
+          ],
+          "reason": "附带目标仓库来源。"
+        },
+        {
+          "fact_id": "teach_usage_recovered",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-14",
+            "m1-19"
+          ],
+          "reason": "附带具体使用指导。"
+        },
+        {
+          "fact_id": "positive_firsthand_feedback",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-51",
+            "m1-53",
+            "m1-54",
+            "m2-4",
+            "m2-39",
+            "m2-40",
+            "m2-9"
+          ],
+          "reason": "新增focused lexical后有更具体真实自用反馈，不依赖Baseline别话题好评。"
+        },
+        {
+          "fact_id": "recommendation_not_inferred_from_bare_link_only",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-1",
+            "m1-19",
+            "m2-8"
+          ],
+          "reason": "有明确建议使用的来源，不只是裸链接。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "different_utc_dates_merged",
+          "status": "fail",
+          "evidence": [
+            "claim-1/e1",
+            "m1-4",
+            "m1-5"
+          ],
+          "reason": "答案把两位分享并入同一UTC日期；canonical来源分别为2026-09-16和2026-09-17。Baseline逐条日期写对，本次新增错误。",
+          "attribution": "answer_synthesis_temporal_attribution"
+        },
+        {
+          "issue_id": "different_person_used_for_discussion_span",
+          "status": "fail",
+          "evidence": [
+            "claim-6/e6",
+            "m2-27"
+          ],
+          "reason": "把另一位同名英语人名人物的自动化笔记作为目标人物话题持续到10月的依据；来源并非目标人物讨论，弱相关免责声明不能证明该跨度。",
+          "attribution": "evidence_selection_entity_conflation"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 55,
+      "canonical_snapshot_check": "pending_until_final_canonical_pass",
+      "comparison": "Baseline别话题好评未沿用，focused lexical得到更好自用证据；但新增日期与人物归属问题，严格grounded仍fail。",
+      "baseline": {
+        "core_requirements": "pass",
+        "citation_support": "fail",
+        "grounded_answer": "fail"
+      }
+    },
+    {
+      "case_id": "quality-dev-context-mattpocock-2",
+      "necessary_facts": [
+        {
+          "fact_id": "repository_identified",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-24",
+            "m1-23"
+          ],
+          "reason": "实际附带目标仓库定位与安装来源。"
+        },
+        {
+          "fact_id": "positive_reply_feedback",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-50",
+            "m1-52",
+            "m1-53",
+            "m1-49"
+          ],
+          "reason": "正向回复及后续认可实际附在e1，canonical目标关系可恢复。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "pending",
+      "grounded_answer": "pending",
+      "issues": [
+        {
+          "issue_id": "majority_claim_scope",
+          "status": "pending",
+          "evidence": [
+            "claim-1/e1"
+          ],
+          "reason": "有好评成立；总体倾向仍超出代表性样本证明，沿用Baseline pending尺度，不默认通过。",
+          "attribution": "uncertainty_calibration"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 31,
+      "canonical_snapshot_check": "pending_until_final_canonical_pass",
+      "comparison": "核心维持pass；总体倾向校准仍pending，不能把措辞变化直接算pass。",
+      "baseline": {
+        "core_requirements": "pass",
+        "citation_support": "pending",
+        "grounded_answer": "pending"
+      }
+    },
+    {
+      "case_id": "quality-dev-para-intern-owner",
+      "necessary_facts": [
+        {
+          "fact_id": "accepting_position",
+          "status": "fail",
+          "attached_source_handles": [],
+          "reason": "答案没有呈现认可独立负责内部工作的既有立场，四个block均为反对/风险叙述。"
+        },
+        {
+          "fact_id": "cautious_position",
+          "status": "pass",
+          "attached_source_handles": [
+            "m2-4",
+            "m2-5",
+            "m2-9",
+            "m2-10",
+            "m3-9"
+          ],
+          "reason": "实际附带重要或核心工作不宜交给实习生的谨慎观点。"
+        },
+        {
+          "fact_id": "avoid_unanimous_single_side",
+          "status": "fail",
+          "attached_source_handles": [
+            "claim-1/e1",
+            "claim-2/e2",
+            "claim-3/e3",
+            "claim-4/e4"
+          ],
+          "reason": "将已见反对意见概括为主流/默认预期，没有呈现已知另一立场；非穷尽性免责声明不补足要求。"
+        }
+      ],
+      "core_requirements": "fail",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "known_opposing_position_missing",
+          "status": "fail",
+          "evidence": [
+            "tool-call/1:semantic_search",
+            "tool-call/2:get_message_context",
+            "tool-call/3:get_message_context"
+          ],
+          "reason": "首次semantic改了表述和窗口，没有取回Baseline首路已得的认可来源；随后深入两处反对立场锚点，没有替代lexical。核心双立场要求由pass退化为fail。",
+          "attribution": "retrieval_candidate_selection_and_followup_anchor_choice"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 20,
+      "canonical_snapshot_check": "pending_until_final_canonical_pass",
+      "comparison": "core pass→fail；必要事实3/3→1/3；grounded pending→fail，属明确退化。",
+      "baseline": {
+        "core_requirements": "pass",
+        "citation_support": "pending",
+        "grounded_answer": "pending"
+      }
+    },
+    {
+      "case_id": "quality-dev-lexical-resume-miner",
+      "necessary_facts": [
+        {
+          "fact_id": "named_resource_identified",
+          "status": "fail",
+          "attached_source_handles": [],
+          "reason": "实际找到另一具名简历制作工具，但未识别预注册项目；不能把别题检出或不同用途资源替代。"
+        },
+        {
+          "fact_id": "project_experience_resume_purpose",
+          "status": "fail",
+          "attached_source_handles": [],
+          "reason": "Candidate明确承认另一工具的项目经历整理用途未验证；实际附带链接和自用证明仍未完成此用途要求。"
+        }
+      ],
+      "core_requirements": "fail",
+      "citation_support": "pending",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "alternate_resource_not_requested_purpose",
+          "status": "fail",
+          "evidence": [
+            "m3-26",
+            "m3-27",
+            "tool-call/2:lexical_search"
+          ],
+          "reason": "新增lexical确实得到具名简历制作资源，并实际附带链接与自用陈述；但目标项目和项目经历整理用途缺口仍在。",
+          "attribution": "retrieval_candidate_selection_and_material_sufficiency"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 13,
+      "canonical_snapshot_check": "pending_until_final_canonical_pass",
+      "comparison": "新增focused lexical且从无名资源到具名替代，但固定必要事实0/2→0/2，core fail→fail。",
+      "baseline": {
+        "core_requirements": "fail",
+        "citation_support": "pending",
+        "grounded_answer": "fail"
+      }
+    },
+    {
+      "case_id": "quality-dev-para-resume-advice",
+      "necessary_facts": [
+        {
+          "fact_id": "advice_specifically_without_metrics",
+          "status": "pass",
+          "attached_source_handles": [
+            "m1-93",
+            "m1-95",
+            "m1-96",
+            "m1-97"
+          ],
+          "reason": "实际附带缺量化指标语境与真实上线/真实数据建议，比Baseline泛简历建议更贴近问题。"
+        },
+        {
+          "fact_id": "avoid_unsupported_priority_claim",
+          "status": "fail",
+          "attached_source_handles": [
+            "claim-4/e4",
+            "m1-82",
+            "m1-85",
+            "m1-86",
+            "m1-87"
+          ],
+          "reason": "把项目表达清晰与能应答推广为优先于数字的比较；附带来源不包含该比较，沿用Baseline规则判fail。"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "fail",
+      "grounded_answer": "fail",
+      "issues": [
+        {
+          "issue_id": "general_advice_transformed_into_comparative_rule",
+          "status": "fail",
+          "evidence": [
+            "claim-4/e4"
+          ],
+          "reason": "表达能力建议是真实来源，优先于数据指标的结论仍超出来源。",
+          "attribution": "answer_synthesis_unsupported_inference"
+        }
+      ],
+      "reply_relation_loss_caused_error": "not_demonstrated",
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "execution": "pass",
+      "attached_source_count": 31,
+      "canonical_snapshot_check": "pending_until_final_canonical_pass",
+      "comparison": "core pending→pass；必要事实0pass/1fail/1pending→1pass/1fail。引用支持缺口仍在，grounded fail→fail。",
+      "baseline": {
+        "core_requirements": "pending",
+        "citation_support": "fail",
+        "grounded_answer": "fail"
+      }
+    },
+    {
+      "case_id": "quality-dev-cite-nanobot",
+      "necessary_facts": [
+        {
+          "fact_id": "intended_beneficiary",
+          "status": "pass",
+          "attached_evidence_ids": [
+            "e1"
+          ],
+          "reason": "实际附带来源明确宿主项目"
+        },
+        {
+          "fact_id": "memory_plugin_purpose",
+          "status": "pass",
+          "attached_evidence_ids": [
+            "e2",
+            "e3"
+          ],
+          "reason": "实际附带长文明确插件用途"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "pending",
+      "grounded_answer": "pending",
+      "execution": "pass",
+      "issues": [
+        {
+          "status": "pending",
+          "reason": "核心宿主、用途和介绍有实际绑定支持，旧数字错绑已消失；附加背景将有限讨论概括为普遍看法并解释作者选择，需人工判断该推断是否超出来源。不能仅凭引用合法判全部语义通过。",
+          "attribution": "claim_evidence_entailment"
+        }
+      ],
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "reply_relation_loss_caused_error": "not_demonstrated"
+    },
+    {
+      "case_id": "quality-dev-cite-meimei",
+      "necessary_facts": [
+        {
+          "fact_id": "java_resource",
+          "status": "pass",
+          "attached_evidence_ids": [
+            "e1"
+          ],
+          "reason": "实际附带按语言分类的资源清单"
+        },
+        {
+          "fact_id": "nestjs_resource",
+          "status": "pass",
+          "attached_evidence_ids": [
+            "e1"
+          ],
+          "reason": "实际附带目标NestJS仓库"
+        },
+        {
+          "fact_id": "mention_vs_recommendation_distinguished",
+          "status": "pass",
+          "attached_evidence_ids": [
+            "e1",
+            "e2"
+          ],
+          "reason": "区分真实分享/学习建议与其他概念提及，没有把后者当新模板"
+        }
+      ],
+      "core_requirements": "pass",
+      "citation_support": "pending",
+      "grounded_answer": "pending",
+      "execution": "pass",
+      "issues": [
+        {
+          "status": "pending",
+          "reason": "核心清单与学习路径有实际绑定支持；e3只附带让AI执行的简短答复，没有同绑定的关键词/检索问题，关于代劳检索的扩展解释需人工判断。",
+          "attribution": "claim_evidence_entailment"
+        }
+      ],
+      "review_status": "assistant_provisional",
+      "human_review": "pending",
+      "reply_relation_loss_caused_error": "not_demonstrated"
+    }
+  ],
+  "method": "Actual attached source review. All208 candidate message-source references recovered from fixed canonical and matched snapshot excerpt prefix/timestamp. No Provider Judge."
+}

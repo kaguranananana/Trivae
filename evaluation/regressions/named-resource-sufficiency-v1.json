@@ -28,7 +28,27 @@
   ],
   "expected_behavior": "A concrete resource query is not fulfilled by general advice or an unnamed implementation. Use a focused existing retrieval path when that evidence need remains unmet; preserve uncertainty and original budgets.",
   "review_status": "assistant_provisional; current snapshot GT applicability and answer human review pending",
-  "candidate_status": "awaiting paired experiment; this record is not an automatic quality assertion",
+  "candidate_status": "Rejected; production baseline restored. Development target11/19 to8/19; tuning-withheld validation23/29 to22/29 with execution12/12 to11/12. Supplementary repeats preserve initial outcomes and demonstrate stochastic content variation.",
   "private_evidence_root": "data/evaluation/quality-optimization-20261020",
-  "validation_boundary": "Existing Development cases withheld from this task tuning; no fresh/blind Holdout claim."
+  "validation_boundary": "Existing Development cases withheld from this task tuning; no fresh/blind Holdout claim.",
+  "candidate_execution_commit": "3d9cc0e",
+  "scope": "diagnostic regression and rejected treatment; no published quality uplift",
+  "independent_validation": {
+    "case_count": 12,
+    "exposure": "existing Development withheld from current tuning, not fresh/blind/unseen",
+    "baseline_target_hits": 23,
+    "candidate_target_hits": 22,
+    "target_denominator": 29,
+    "baseline_execution_success": 12,
+    "candidate_execution_success": 11,
+    "run_denominator_per_arm": 12
+  },
+  "supplementary_repeat": {
+    "case_count": 2,
+    "additional_runs": 4,
+    "http_requests": 13,
+    "role": "sensitivity only; no replacement of formal failures"
+  },
+  "total_http_requests": 118,
+  "total_http_maximum": 120
 }

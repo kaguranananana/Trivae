@@ -249,3 +249,48 @@ Good：同一个快照、Query和Scope下先冻结完整正文Reference，再运
 ### 7. Wrong vs Correct
 
 Wrong：将`LIKE '%词%'`无条件视为完整正文穷举，或把索引hit数称为Agent准确率。Correct：检验Oracle适用范围；同一Query分别报告top10、全深度字面覆盖、误匹配、真实Agent与审核状态。完整证据见[实验报告](../../../evaluation/experiments/cjk-bigram-v1/report.md)。
+
+## 历史失败驱动的当前快照配对实验（2026-10-20）
+
+### 1. Scope / Trigger
+
+重放历史Case时，代码、Provider或数据已有变化；需要明确当前Baseline与单一treatment，不把历史分数直接当修复前值。
+
+### 2. Signatures
+
+`evaluation_quality_experiment.py --database DB --semantic-index INDEX --cases-dir DIR --case ID --arm baseline|candidate --output NEW_DIR --budget-ledger LEDGER`复用生产Application与EvaluationRunner。`--prompt-treatment`须同时指定candidate与`--baseline-dir`。`evaluation_quality_report.py --root PRIVATE_DIR [--public-output SUMMARY]`只读原始产物并生成既有Tier1与ReviewPacket。
+
+### 3. Contracts
+
+- Snapshot变化创建独立Case身份，保留历史provenance；新快照适用性未人工审核时保持pending。
+- 固定七工具、Standard override、生产预算与官方Flash；实验CLI不覆写Prompt或增加重试。
+- 全局HTTP账本在实际httpx2单次发送前持久化debit，包含失败和SDK尝试，120封顶；不能换批次清零。
+- 默认所有条件严格相等，仅arm/执行commit不同；显式Prompt实验只允许基础Prompt前缀变化，动态instructions后缀及工具/模型/Case/索引/预算仍相等。保存真实diff。
+- 从实际import的源码工作树记录commit；独立验证使用冻结A/B源码。临时worktree放仓库外，避免pytest递归收集第二份tests。
+- 统计分母先固定；未跑/失败不剔除。来源可解析率、目标Evidence覆盖、必要事实与claim引用支持分别报告，未审核维度不默认pass。
+- 历史Prompt删减候选和行号矩阵对照其冻结源码fixture；不得为匹配新生产Prompt而改写历史实验产物。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 结果 |
+|---|---|
+| Snapshot/非treatment条件漂移 | 首次发送前失败 |
+| 未声明Prompt treatment但基础文本改变 | 拒绝 |
+| 声明Prompt treatment但动态后缀/工具预算改变 | 拒绝 |
+| 已有output或总账本上限改变 | 拒绝覆盖/重置 |
+| 传输失败/预算耗尽 | 保留发送事实、失败或not_run_budget，不重试补齐成功 |
+| Trace导出失败 | 单列artifact_capture_error，不覆盖已完成Query事实 |
+
+### 5. Good / Base / Bad
+
+Good：历史失败定位→新快照Baseline→单变量Candidate→冻结后调参外验证；Base：全部完成但目标仍遗漏，保留负结果并拒绝Candidate；Bad：仅凭更多链接、合法引用或某条旧target命中便声称质量提升。
+
+### 6. Tests Required
+
+`test_evaluation_quality_experiment.py`覆盖真实Application/Runner装配、请求发送边界、失败debit、共享上限、条件前缀与动态后缀差异。真实实验核对raw/Evaluation/Trace/Artifact/HTTP身份；报告脚本复用原生指标与ReviewPacket，不用模拟运行替代真实质量结论。
+
+### 7. Wrong vs Correct
+
+Wrong：对已冻结的历史候选继续与可变`SYSTEM_PROMPT`逐字比较，或把引用存在等同支持。
+
+Correct：对原实验源码fixture保持同样逐字断言；新实验另行冻结，按实际附带来源核验必要事实与引用，并保留pending。

@@ -1,0 +1,1667 @@
+{
+  "experiment": "quality-optimization-20261020",
+  "review_status": "human_pending",
+  "baseline_commit": "8def8d7",
+  "candidate_commit": "3d9cc0e",
+  "splits": {
+    "development": {
+      "baseline": {
+        "run_denominator": 8,
+        "execution_success_numerator": 8,
+        "status_counts": {
+          "completed": 8
+        },
+        "target_denominator": 19,
+        "direct_targets": 11,
+        "returned_targets": 12,
+        "final_evidence_targets": 11,
+        "http_requests": 21,
+        "latency_mean_ms": 34660.25,
+        "latency_median_ms": 24987.0,
+        "latency_observed_runs": 8,
+        "usage_observed_runs": 8,
+        "usage": {
+          "input_tokens": 505224,
+          "output_tokens": 18264,
+          "total_tokens": 523488,
+          "cached_input_tokens": 163584
+        },
+        "grounded_answer_human": "unavailable: human review pending",
+        "claim_citation_support_human": "unavailable: human review pending",
+        "currency_cost": null,
+        "cases": [
+          {
+            "case_id": "quality-dev-context-archify",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-context-archify:v1:quality:baseline:86e5962ffee4467aa77c6b490f6cb490",
+            "trace_id": "trace-394d71d52e204421bba5ee3280dacf93",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 0,
+            "http_requests": 2,
+            "latency_ms": 23939.0,
+            "experiment_wall_ms": 24079.373500018846,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 33678,
+              "output_tokens": 2673,
+              "total_tokens": 36351,
+              "cached_input_tokens": 9216
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-context-mattpocock-1",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-context-mattpocock-1:v1:quality:baseline:5f41b7a6b4f045b6adaa2c4122427c61",
+            "trace_id": "trace-7f360fac171244698fccc1eb9bc8f8ac",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 2,
+            "latency_ms": 21394.0,
+            "experiment_wall_ms": 24480.14670802513,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 34943,
+              "output_tokens": 2699,
+              "total_tokens": 37642,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-context-mattpocock-2",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-context-mattpocock-2:v1:quality:baseline:f2d7d745163447779c39edf15a386b22",
+            "trace_id": "trace-ef07ac0ab58d468ab7a85a037f2714da",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 1,
+            "returned_targets": 2,
+            "model_visible_targets": 2,
+            "final_evidence_targets": 2,
+            "http_requests": 3,
+            "latency_ms": 25523.0,
+            "experiment_wall_ms": 28453.899749962147,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 67248,
+              "output_tokens": 3166,
+              "total_tokens": 70414,
+              "cached_input_tokens": 21248
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-intern-owner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-intern-owner:v1:quality:baseline:b98a63a698124ebdb2ab9c433c776800",
+            "trace_id": "trace-e23eab9a53ad40bc8ca9ecaca7ed8ea9",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 3,
+            "latency_ms": 85516.0,
+            "experiment_wall_ms": 88363.37766697397,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 93615,
+              "output_tokens": 2326,
+              "total_tokens": 95941,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-resume-miner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-resume-miner:v1:quality:baseline:16365ba8519b4c23b0fab456231fa122",
+            "trace_id": "trace-d3c250978de145f1b0cf2208d7b97ad0",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 36289.0,
+            "experiment_wall_ms": 38389.70066700131,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 59509,
+              "output_tokens": 1520,
+              "total_tokens": 61029,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-resume-advice",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-resume-advice:v1:quality:baseline:2c252554cdb54fa5ada4d41dae58a9c6",
+            "trace_id": "trace-acbac4654cc041079355c859b20a3244",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 40397.0,
+            "experiment_wall_ms": 43334.3067499809,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 112445,
+              "output_tokens": 2581,
+              "total_tokens": 115026,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "get_message_context",
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-nanobot",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-nanobot:v1:quality:baseline:0e83f112ffc24504bd6c96d03f0e49e1",
+            "trace_id": "trace-f03acc31384644d7a04bfd3430d93351",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 4,
+            "returned_targets": 4,
+            "model_visible_targets": 4,
+            "final_evidence_targets": 4,
+            "http_requests": 2,
+            "latency_ms": 24451.0,
+            "experiment_wall_ms": 26348.155584011693,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 56881,
+              "output_tokens": 1644,
+              "total_tokens": 58525,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-meimei",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-meimei:v1:quality:baseline:e4bd5648e5cb4e26a1ee011b477afa7b",
+            "trace_id": "trace-d2cfdedb77a749b9bfbf860adb46344d",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 3,
+            "http_requests": 3,
+            "latency_ms": 19773.0,
+            "experiment_wall_ms": 21775.02016699873,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 46905,
+              "output_tokens": 1655,
+              "total_tokens": 48560,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "lexical_search",
+              "lexical_search",
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          }
+        ],
+        "assistant_provisional": {
+          "core_requirements": {
+            "pass": 6,
+            "fail": 1,
+            "pending": 1
+          },
+          "citation_support": {
+            "fail": 4,
+            "pending": 3,
+            "pass": 1
+          },
+          "grounded_answer": {
+            "fail": 5,
+            "pending": 2,
+            "pass": 1
+          }
+        }
+      },
+      "candidate": {
+        "run_denominator": 8,
+        "execution_success_numerator": 8,
+        "status_counts": {
+          "completed": 8
+        },
+        "target_denominator": 19,
+        "direct_targets": 10,
+        "returned_targets": 11,
+        "final_evidence_targets": 8,
+        "http_requests": 21,
+        "latency_mean_ms": 44480.25,
+        "latency_median_ms": 38680.5,
+        "latency_observed_runs": 8,
+        "usage_observed_runs": 8,
+        "usage": {
+          "input_tokens": 564731,
+          "output_tokens": 20200,
+          "total_tokens": 584931,
+          "cached_input_tokens": 160896
+        },
+        "grounded_answer_human": "unavailable: human review pending",
+        "claim_citation_support_human": "unavailable: human review pending",
+        "currency_cost": null,
+        "cases": [
+          {
+            "case_id": "quality-dev-context-archify",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-context-archify:v1:quality:candidate:9dcd04565eb646928c11d0c0062f9db6",
+            "trace_id": "trace-0f29a1160864409289c5ea69dcbaf059",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 25713.0,
+            "experiment_wall_ms": 25853.318582987413,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 64419,
+              "output_tokens": 2418,
+              "total_tokens": 66837,
+              "cached_input_tokens": 8832
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-context-mattpocock-1",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-context-mattpocock-1:v1:quality:candidate:60f7a683c82d4bf48d07d45628d0fc3e",
+            "trace_id": "trace-d494b18f5f6d4a1391eb969cf855a3c4",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 2,
+            "latency_ms": 31242.0,
+            "experiment_wall_ms": 33400.61374998186,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 53768,
+              "output_tokens": 3814,
+              "total_tokens": 57582,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-context-mattpocock-2",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-context-mattpocock-2:v1:quality:candidate:bac4356ff2cc44409202f7b38de57d91",
+            "trace_id": "trace-0f2714d0f1d5490893c37345f50519c5",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 1,
+            "returned_targets": 2,
+            "model_visible_targets": 2,
+            "final_evidence_targets": 1,
+            "http_requests": 2,
+            "latency_ms": 71222.0,
+            "experiment_wall_ms": 73147.11695798906,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 49679,
+              "output_tokens": 2106,
+              "total_tokens": 51785,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-intern-owner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-intern-owner:v1:quality:candidate:151bea1705a74069a05b0de33566c6b2",
+            "trace_id": "trace-4efe45806f3943efa2048bcfda89ec2f",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 51422.0,
+            "experiment_wall_ms": 54938.89691703953,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 63884,
+              "output_tokens": 2468,
+              "total_tokens": 66352,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-resume-miner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-resume-miner:v1:quality:candidate:92918cc8cbb44a93ae9fbbbbdab09f19",
+            "trace_id": "trace-096ff995e7d34541afde2e170b5d1f68",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 41785.0,
+            "experiment_wall_ms": 45644.83945799293,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 99754,
+              "output_tokens": 1997,
+              "total_tokens": 101751,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-resume-advice",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-resume-advice:v1:quality:candidate:f453426518614902ac5d80a96b5f80c1",
+            "trace_id": "trace-2430ef91bdc44757beef5c2b74bf6305",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 75827.0,
+            "experiment_wall_ms": 78497.93641699944,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 90098,
+              "output_tokens": 2987,
+              "total_tokens": 93085,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "semantic_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-nanobot",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-nanobot:v1:quality:candidate:c939727b49f843a990beef0d393bca1e",
+            "trace_id": "trace-34722253aa7e43099a664f3a9d41ec47",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 4,
+            "returned_targets": 4,
+            "model_visible_targets": 4,
+            "final_evidence_targets": 4,
+            "http_requests": 2,
+            "latency_ms": 35576.0,
+            "experiment_wall_ms": 39625.33558299765,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 56792,
+              "output_tokens": 2104,
+              "total_tokens": 58896,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-meimei",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-meimei:v1:quality:candidate:34a2497f674c4a2798541b09b1a6b633",
+            "trace_id": "trace-91eab52e8fc94b208fe6bf3f45a2ab2d",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 2,
+            "http_requests": 3,
+            "latency_ms": 23055.0,
+            "experiment_wall_ms": 27426.416250003967,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 86337,
+              "output_tokens": 2306,
+              "total_tokens": 88643,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "lexical_search",
+              "get_message_context",
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          }
+        ],
+        "assistant_provisional": {
+          "core_requirements": {
+            "pass": 6,
+            "fail": 2
+          },
+          "citation_support": {
+            "fail": 4,
+            "pending": 4
+          },
+          "grounded_answer": {
+            "fail": 5,
+            "pending": 3
+          }
+        }
+      }
+    },
+    "validation": {
+      "baseline": {
+        "run_denominator": 12,
+        "execution_success_numerator": 12,
+        "status_counts": {
+          "completed": 12
+        },
+        "target_denominator": 29,
+        "direct_targets": 25,
+        "returned_targets": 25,
+        "final_evidence_targets": 23,
+        "http_requests": 30,
+        "latency_mean_ms": 37892.5,
+        "latency_median_ms": 21223.5,
+        "latency_observed_runs": 12,
+        "usage_observed_runs": 12,
+        "usage": {
+          "input_tokens": 632333,
+          "output_tokens": 19310,
+          "total_tokens": 651643,
+          "cached_input_tokens": 245376
+        },
+        "grounded_answer_human": "unavailable: human review pending",
+        "claim_citation_support_human": "unavailable: human review pending",
+        "currency_cost": null,
+        "cases": [
+          {
+            "case_id": "quality-dev-lexical-forge",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-forge:v1:quality:baseline:f9267ef916f6439dbd9cf98cc163c62f",
+            "trace_id": "trace-91ab0ab025b0488db086468701f5098d",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 1,
+            "http_requests": 2,
+            "latency_ms": 21286.0,
+            "experiment_wall_ms": 25358.74595795758,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 42243,
+              "output_tokens": 1125,
+              "total_tokens": 43368,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-mcp-switch",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-mcp-switch:v1:quality:baseline:05b3b0e9d97146d18b6f20715113b550",
+            "trace_id": "trace-d9175089fd974e55a0da4f47bf43e947",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 2,
+            "returned_targets": 2,
+            "model_visible_targets": 2,
+            "final_evidence_targets": 2,
+            "http_requests": 2,
+            "latency_ms": 73623.0,
+            "experiment_wall_ms": 73790.08704202715,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 48633,
+              "output_tokens": 1456,
+              "total_tokens": 50089,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-vibe-game",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-vibe-game:v1:quality:baseline:5e3c00fc80724e8bae1b375f54225bb7",
+            "trace_id": "trace-92c0c4a53354427a856910b427178d99",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 3,
+            "latency_ms": 76483.0,
+            "experiment_wall_ms": 76643.8025420066,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 80039,
+              "output_tokens": 2151,
+              "total_tokens": 82190,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-siclaw",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-siclaw:v1:quality:baseline:637af1fde16746168b847d22c438f859",
+            "trace_id": "trace-b18577e080c14c299fe4db20e7f0ee72",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 3,
+            "http_requests": 2,
+            "latency_ms": 13621.0,
+            "experiment_wall_ms": 13760.29337500222,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 21387,
+              "output_tokens": 838,
+              "total_tokens": 22225,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-zenith",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-zenith:v1:quality:baseline:725fe7dcb1e94c94a51f8bbba7be0f3e",
+            "trace_id": "trace-df45a76903c44b4da36d6e6d809ecd7c",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 4,
+            "returned_targets": 4,
+            "model_visible_targets": 4,
+            "final_evidence_targets": 4,
+            "http_requests": 2,
+            "latency_ms": 8464.0,
+            "experiment_wall_ms": 8596.804499975406,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 21303,
+              "output_tokens": 981,
+              "total_tokens": 22284,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-archify",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-archify:v1:quality:baseline:b7b6c70805824fa99522dae78c392873",
+            "trace_id": "trace-fda1b162cc494e2c9b0a6d719e378364",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 3,
+            "http_requests": 2,
+            "latency_ms": 16486.0,
+            "experiment_wall_ms": 16719.232916017063,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 33675,
+              "output_tokens": 2247,
+              "total_tokens": 35922,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-volcengine",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-volcengine:v1:quality:baseline:1e6020ecc9c44114bfe8b4a70493411c",
+            "trace_id": "trace-f10d9cb75fbd4571b88c7b97d3f5079f",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 5,
+            "direct_targets": 5,
+            "returned_targets": 5,
+            "model_visible_targets": 5,
+            "final_evidence_targets": 5,
+            "http_requests": 3,
+            "latency_ms": 12479.0,
+            "experiment_wall_ms": 12627.8593330062,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 41714,
+              "output_tokens": 1088,
+              "total_tokens": 42802,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-lofisu",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-lofisu:v1:quality:baseline:7ead230543f046e1a530a31d004bd7b3",
+            "trace_id": "trace-88a2dc4857ce42d29b6719de08ffd10e",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 3,
+            "http_requests": 3,
+            "latency_ms": 21161.0,
+            "experiment_wall_ms": 21301.992874999996,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 62708,
+              "output_tokens": 2502,
+              "total_tokens": 65210,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-intern-hard-part",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-intern-hard-part:v1:quality:baseline:13e4adbeba8844b58f0a4b8a49df536c",
+            "trace_id": "trace-d8b0b7b21c5f4b7ebacb8843430bd21a",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 2,
+            "latency_ms": 60570.0,
+            "experiment_wall_ms": 60717.56700001424,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 46115,
+              "output_tokens": 2028,
+              "total_tokens": 48143,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "semantic_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-written-test",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-written-test:v1:quality:baseline:74bd33c24bbe40ae8fc283fe92bceeb4",
+            "trace_id": "trace-d17a58efcf7943ad9dcbfb784dbbd42b",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 4,
+            "latency_ms": 67476.0,
+            "experiment_wall_ms": 67650.18629102269,
+            "usage": {
+              "requests": 4,
+              "input_tokens": 150851,
+              "output_tokens": 1699,
+              "total_tokens": 152550,
+              "cached_input_tokens": 29056
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-webnovel",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-webnovel:v1:quality:baseline:709de06383c84bd4a3d9f964c4bf3d59",
+            "trace_id": "trace-04984c708a514f8ca9753ed792db3b16",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 76141.0,
+            "experiment_wall_ms": 76283.24354201322,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 64844,
+              "output_tokens": 2143,
+              "total_tokens": 66987,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-zero-empty-2",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-zero-empty-2:v1:quality:baseline:dea16568d5c242e1b4f341df74e2102d",
+            "trace_id": "trace-11b6202650884b4b82bdc8849ec23e6e",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 0,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 2,
+            "latency_ms": 6920.0,
+            "experiment_wall_ms": 7043.958916969132,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 18821,
+              "output_tokens": 1052,
+              "total_tokens": 19873,
+              "cached_input_tokens": 16640
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "get_recent_messages"
+            ],
+            "human_quality_review": "pending"
+          }
+        ]
+      },
+      "candidate": {
+        "run_denominator": 12,
+        "execution_success_numerator": 11,
+        "status_counts": {
+          "completed": 11,
+          "failed": 1
+        },
+        "target_denominator": 29,
+        "direct_targets": 23,
+        "returned_targets": 23,
+        "final_evidence_targets": 22,
+        "http_requests": 33,
+        "latency_mean_ms": 48485.416666666664,
+        "latency_median_ms": 52097.0,
+        "latency_observed_runs": 12,
+        "usage_observed_runs": 12,
+        "usage": {
+          "input_tokens": 777257,
+          "output_tokens": 21991,
+          "total_tokens": 799248,
+          "cached_input_tokens": 270208
+        },
+        "grounded_answer_human": "unavailable: human review pending",
+        "claim_citation_support_human": "unavailable: human review pending",
+        "currency_cost": null,
+        "cases": [
+          {
+            "case_id": "quality-dev-lexical-forge",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-forge:v1:quality:candidate:9c3e87b2d635406d8450196f4a058bbb",
+            "trace_id": "trace-a37adc918a4248cbb2bc6b0acc3533c7",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 3,
+            "http_requests": 2,
+            "latency_ms": 58553.0,
+            "experiment_wall_ms": 58901.214833022095,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 65227,
+              "output_tokens": 1211,
+              "total_tokens": 66438,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "semantic_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-mcp-switch",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-mcp-switch:v1:quality:candidate:71d477bb3286483ca65c04d8cfe0380a",
+            "trace_id": "trace-f78601cd8007414cab3174f4af011629",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 2,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 2,
+            "latency_ms": 54212.0,
+            "experiment_wall_ms": 54344.59849999985,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 31816,
+              "output_tokens": 991,
+              "total_tokens": 32807,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-vibe-game",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-vibe-game:v1:quality:candidate:584815a347ca4aa48ba3cb3d1ee7d16c",
+            "trace_id": "trace-93ab8be2a004425e9d42b76be6a42a68",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 3,
+            "latency_ms": 75781.0,
+            "experiment_wall_ms": 75960.4376250063,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 105234,
+              "output_tokens": 2821,
+              "total_tokens": 108055,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "semantic_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-siclaw",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-siclaw:v1:quality:candidate:c33a3c0e836f4a4f81ff36726996ec68",
+            "trace_id": "trace-4bddcb5c45164a998edbdf8176ac8995",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 3,
+            "http_requests": 2,
+            "latency_ms": 9044.0,
+            "experiment_wall_ms": 9172.655250004027,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 20795,
+              "output_tokens": 636,
+              "total_tokens": 21431,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-zenith",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-zenith:v1:quality:candidate:cef9d82523b34e908c0155a138b36997",
+            "trace_id": "trace-d1c62a7381f44f90bf4191c7e674bd87",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 4,
+            "returned_targets": 4,
+            "model_visible_targets": 4,
+            "final_evidence_targets": 4,
+            "http_requests": 2,
+            "latency_ms": 9778.0,
+            "experiment_wall_ms": 9905.919084034394,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 22714,
+              "output_tokens": 1033,
+              "total_tokens": 23747,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-archify",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-archify:v1:quality:candidate:d8995227b3454de99c4207d9aaa07252",
+            "trace_id": "trace-f3e78d12cf32429fb899324353db73e0",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 2,
+            "http_requests": 2,
+            "latency_ms": 11916.0,
+            "experiment_wall_ms": 12056.48587498581,
+            "usage": {
+              "requests": 2,
+              "input_tokens": 26801,
+              "output_tokens": 1464,
+              "total_tokens": 28265,
+              "cached_input_tokens": 16896
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-volcengine",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-volcengine:v1:quality:candidate:5ed9f3da6d9c4f96b3d406dd21d640fa",
+            "trace_id": "trace-1b67a4722eae496b9940cb9da15f8a33",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 5,
+            "direct_targets": 5,
+            "returned_targets": 5,
+            "model_visible_targets": 5,
+            "final_evidence_targets": 5,
+            "http_requests": 3,
+            "latency_ms": 49982.0,
+            "experiment_wall_ms": 50198.85795901064,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 78690,
+              "output_tokens": 1548,
+              "total_tokens": 80238,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "semantic_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-cite-lofisu",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-cite-lofisu:v1:quality:candidate:e88869d716354f25b23f96e53d0ee26b",
+            "trace_id": "trace-8f1aedb5cb1a48658c607aebf53e3817",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 3,
+            "direct_targets": 3,
+            "returned_targets": 3,
+            "model_visible_targets": 3,
+            "final_evidence_targets": 3,
+            "http_requests": 3,
+            "latency_ms": 24093.0,
+            "experiment_wall_ms": 24240.40775001049,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 75846,
+              "output_tokens": 2444,
+              "total_tokens": 78290,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "lexical_search",
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-intern-hard-part",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-intern-hard-part:v1:quality:candidate:516d1da7605b4753aa7e4862eb1b0e8e",
+            "trace_id": "trace-01a75a7039624e5496b0e8cccfdcc4ba",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 58892.0,
+            "experiment_wall_ms": 59042.70208301023,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 75174,
+              "output_tokens": 1601,
+              "total_tokens": 76775,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-written-test",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-written-test:v1:quality:candidate:bd56fc1f4e72436db0c915ded4141f0b",
+            "trace_id": "trace-d0a2087794b0447397fdce90791aa7a7",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 127896.0,
+            "experiment_wall_ms": 128048.00066695316,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 98404,
+              "output_tokens": 2753,
+              "total_tokens": 101157,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "semantic_search",
+              "lexical_search",
+              "lexical_search"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-para-webnovel",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-webnovel:v1:quality:candidate:dddc6c54905d4f8d8358e18d4fdf4e72",
+            "trace_id": "trace-adfcb1fb1f024f2091b8ea49c692eeda",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 4,
+            "latency_ms": 87154.0,
+            "experiment_wall_ms": 87315.85645797895,
+            "usage": {
+              "requests": 4,
+              "input_tokens": 126326,
+              "output_tokens": 3392,
+              "total_tokens": 129718,
+              "cached_input_tokens": 29440
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-zero-empty-2",
+            "status": "failed",
+            "execution_success": false,
+            "run_id": "eval-run:quality-dev-zero-empty-2:v1:quality:candidate:677b29ef478b41dab24d019a390b0cf3",
+            "trace_id": "trace-fb2f07e731c7401185348990525ebca9",
+            "runtime_termination": "completed",
+            "failure_code": "INVALID_FINAL_OUTPUT",
+            "target_denominator": 0,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 4,
+            "latency_ms": 14524.0,
+            "experiment_wall_ms": 14663.980083016213,
+            "usage": {
+              "requests": 4,
+              "input_tokens": 50230,
+              "output_tokens": 2097,
+              "total_tokens": 52327,
+              "cached_input_tokens": 29568
+            },
+            "trace_completeness": "complete",
+            "citation_state": "failed",
+            "finalization_status": "failed",
+            "tools": [
+              "get_schema",
+              "execute_sql",
+              "execute_sql",
+              "get_recent_messages"
+            ],
+            "human_quality_review": "pending"
+          }
+        ]
+      }
+    },
+    "repeat": {
+      "baseline": {
+        "run_denominator": 2,
+        "execution_success_numerator": 2,
+        "status_counts": {
+          "completed": 2
+        },
+        "target_denominator": 5,
+        "direct_targets": 1,
+        "returned_targets": 1,
+        "final_evidence_targets": 1,
+        "http_requests": 6,
+        "latency_mean_ms": 64530.5,
+        "latency_median_ms": 64530.5,
+        "latency_observed_runs": 2,
+        "usage_observed_runs": 2,
+        "usage": {
+          "input_tokens": 156723,
+          "output_tokens": 3729,
+          "total_tokens": 160452,
+          "cached_input_tokens": 49920
+        },
+        "grounded_answer_human": "unavailable: human review pending",
+        "claim_citation_support_human": "unavailable: human review pending",
+        "currency_cost": null,
+        "cases": [
+          {
+            "case_id": "quality-dev-para-intern-owner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-intern-owner:v1:quality:baseline:ee62a7ae77fd46bca7a7083911f1436c",
+            "trace_id": "trace-8ae2743d6f634d7ea4ede1722f50b6b9",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 3,
+            "latency_ms": 61335.0,
+            "experiment_wall_ms": 61486.76195804728,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 62130,
+              "output_tokens": 1724,
+              "total_tokens": 63854,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-resume-miner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-resume-miner:v1:quality:baseline:1fa8ba50fa4a4e668f3a583f7e69eb54",
+            "trace_id": "trace-e9f310671aae406b865d1f698c6a17ff",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 3,
+            "latency_ms": 67726.0,
+            "experiment_wall_ms": 67905.23754199967,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 94593,
+              "output_tokens": 2005,
+              "total_tokens": 96598,
+              "cached_input_tokens": 24960
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          }
+        ]
+      },
+      "candidate": {
+        "run_denominator": 2,
+        "execution_success_numerator": 2,
+        "status_counts": {
+          "completed": 2
+        },
+        "target_denominator": 5,
+        "direct_targets": 1,
+        "returned_targets": 1,
+        "final_evidence_targets": 1,
+        "http_requests": 7,
+        "latency_mean_ms": 82961.0,
+        "latency_median_ms": 82961.0,
+        "latency_observed_runs": 2,
+        "usage_observed_runs": 2,
+        "usage": {
+          "input_tokens": 285374,
+          "output_tokens": 4688,
+          "total_tokens": 290062,
+          "cached_input_tokens": 54912
+        },
+        "grounded_answer_human": "unavailable: human review pending",
+        "claim_citation_support_human": "unavailable: human review pending",
+        "currency_cost": null,
+        "cases": [
+          {
+            "case_id": "quality-dev-para-intern-owner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-para-intern-owner:v1:quality:candidate:f0d31af5f2c44348baae1018a6f5d4a4",
+            "trace_id": "trace-e98f699df97f48f9aa7b490fe463cdbe",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 1,
+            "direct_targets": 1,
+            "returned_targets": 1,
+            "model_visible_targets": 1,
+            "final_evidence_targets": 1,
+            "http_requests": 3,
+            "latency_ms": 86186.0,
+            "experiment_wall_ms": 86347.62858302565,
+            "usage": {
+              "requests": 3,
+              "input_tokens": 96413,
+              "output_tokens": 1809,
+              "total_tokens": 98222,
+              "cached_input_tokens": 25344
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          },
+          {
+            "case_id": "quality-dev-lexical-resume-miner",
+            "status": "completed",
+            "execution_success": true,
+            "run_id": "eval-run:quality-dev-lexical-resume-miner:v1:quality:candidate:4253c04e65914204a7eb54fb218a6dd1",
+            "trace_id": "trace-924a7408d69d440f9a968a32cba52838",
+            "runtime_termination": "completed",
+            "failure_code": null,
+            "target_denominator": 4,
+            "direct_targets": 0,
+            "returned_targets": 0,
+            "model_visible_targets": 0,
+            "final_evidence_targets": 0,
+            "http_requests": 4,
+            "latency_ms": 79736.0,
+            "experiment_wall_ms": 79908.27008301858,
+            "usage": {
+              "requests": 4,
+              "input_tokens": 188961,
+              "output_tokens": 2879,
+              "total_tokens": 191840,
+              "cached_input_tokens": 29568
+            },
+            "trace_completeness": "complete",
+            "citation_state": "passed",
+            "finalization_status": "valid",
+            "tools": [
+              "semantic_search",
+              "lexical_search",
+              "lexical_search",
+              "get_message_context",
+              "get_message_context"
+            ],
+            "human_quality_review": "pending"
+          }
+        ]
+      }
+    }
+  },
+  "http": {
+    "maximum": 120,
+    "started": 118,
+    "finished": 118,
+    "statuses": {
+      "200": 118
+    }
+  },
+  "integrity": {
+    "runs": 44,
+    "evaluation_runs": 44,
+    "evaluation_results": 44,
+    "traces": 44,
+    "artifacts": 43,
+    "review_packets": 44,
+    "trace_completeness": {
+      "complete": 44
+    },
+    "attached_message_references": 777,
+    "canonical_mismatches": 0,
+    "http_started": 118,
+    "http_finished": 118,
+    "http_200": 118,
+    "snapshot_unchanged": true,
+    "review_identity_unique": true
+  }
+}

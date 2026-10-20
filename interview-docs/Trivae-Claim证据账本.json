@@ -7,7 +7,7 @@
       "大模型应用开发工程师",
       "Agent Infra / Evaluation 工程师"
     ],
-    "updated_at": "2026-09-05"
+    "updated_at": "2026-10-20"
   },
   "claims": [
     {
@@ -72,7 +72,7 @@
         }
       ],
       "responsibility_level": "主导方案或交付",
-      "verification_status": "已确认",
+      "verification_status": "已过期",
       "allowed_uses": [
         "AI Agent 开发简历",
         "大模型应用开发简历",
@@ -95,7 +95,9 @@
         "result": "事实层可幂等归并，索引策略变化不修改 Canonical Message"
       },
       "boundary": "989256 是累计输入记录，473236 是唯一 Canonical Message；14 是来源文件，不是 14 个独立群。",
-      "risk_notes": [],
+      "risk_notes": [
+        "原记录为2026-09-05旧快照；当前规模使用2026-10-20冻结数据811892消息/88来源，不覆盖原历史测量事实。"
+      ],
       "last_verified": "2026-09-05"
     },
     {
@@ -312,6 +314,286 @@
       "boundary": "185 次为 37 Development case × 5 Variant × 1 repetition；Calibration 不进入 headline denominator，Holdout 不存在，不能声称泛化或生产 SLA。",
       "risk_notes": [],
       "last_verified": "2026-09-05"
+    },
+    {
+      "responsibility_level": "负责模块",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "Evaluation 工程面试"
+      ],
+      "boundary": "个人项目中的AI辅助实现和实验；确定性运行统计已核验，Assistant语义复核非人工。没有线上SLA或已提升准确率主张。",
+      "risk_notes": [
+        "当前Snapshot适用性及新答案人工审核pending；历史Development已暴露；不可写fresh/blind Holdout或质量提升。"
+      ],
+      "last_verified": "2026-10-20",
+      "id": "claim-quality-execution-20261020",
+      "source_fact": "20个独立quality Case共40次正式A/B，另2个关键Case复测4次；raw/Evaluation run/result/Trace/ReviewPacket各44，正式Artifact43。",
+      "candidate_wording": "复用版本化GT与生产查询链路，完成20题40次A/B及4次关键复测，保留失败和审计链。",
+      "sources": [
+        {
+          "type": "experiment_report",
+          "location": "interview-docs/Evaluation端到端质量实验-20261020.md",
+          "public": true,
+          "note": "正式开发/调参外/复测分母分开；原始聊天和Trace不公开"
+        },
+        {
+          "type": "measured_statistics",
+          "location": "evaluation/experiments/answer-quality-20261020/metrics.json",
+          "public": true,
+          "note": "逐题计数、usage、执行与Trace身份"
+        }
+      ],
+      "measurement": {
+        "experiment": "quality-optimization-20261020",
+        "baseline_commit": "8def8d7",
+        "candidate_commit": "3d9cc0e",
+        "historical_gt": "47 human adjudicated; original files unchanged",
+        "current_case_applicability": "assistant checked, human pending",
+        "current_answer_quality": "assistant provisional where reviewed; human pending",
+        "public_statistics": "evaluation/experiments/answer-quality-20261020/metrics.json",
+        "private_evidence": "data/evaluation/quality-optimization-20261020/",
+        "formal_queries": {
+          "numerator": 40,
+          "denominator": 40,
+          "unit": "8 development pairs +12 tuning-withheld pairs"
+        },
+        "additional_repeat_queries": {
+          "numerator": 4,
+          "denominator": 4
+        },
+        "artifacts": {
+          "numerator": 43,
+          "denominator": 44
+        },
+        "trace_records": {
+          "numerator": 44,
+          "denominator": 44
+        }
+      },
+      "interview_details": {
+        "decisions": [
+          "A/B冻结源码与同一快照，条件门禁仅允许已声明基础Prompt变化",
+          "失败同样进入ReviewPacket，不将Runtime completed当作Query交付"
+        ],
+        "difficulties": [
+          "历史环境已变化，必须创建新Case身份",
+          "复测复用Case需用split区分评审身份"
+        ],
+        "verification": [
+          "逐run关联Evaluation SQLite与Trace ID",
+          "44份Packet解析、展示/封存映射身份唯一"
+        ],
+        "result": "工程链路完整；唯一Finalizer失败保留，无质量提升声明"
+      }
+    },
+    {
+      "responsibility_level": "负责模块",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "Evaluation 工程面试"
+      ],
+      "boundary": "个人项目中的AI辅助实现和实验；确定性运行统计已核验，Assistant语义复核非人工。没有线上SLA或已提升准确率主张。",
+      "risk_notes": [
+        "当前Snapshot适用性及新答案人工审核pending；历史Development已暴露；不可写fresh/blind Holdout或质量提升。"
+      ],
+      "last_verified": "2026-10-20",
+      "id": "claim-quality-budget-20261020",
+      "source_fact": "所有实验共享真实发送边界账本，118次发送与118次200，在120上限内；777次附带消息引用可恢复且时间/正文前缀一致。",
+      "candidate_wording": "建立跨批次请求预算与来源审计，统一核算实际HTTP、Token和失败运行。",
+      "sources": [
+        {
+          "type": "experiment_report",
+          "location": "interview-docs/Evaluation端到端质量实验-20261020.md",
+          "public": true,
+          "note": "正式开发/调参外/复测分母分开；原始聊天和Trace不公开"
+        },
+        {
+          "type": "measured_statistics",
+          "location": "evaluation/experiments/answer-quality-20261020/metrics.json",
+          "public": true,
+          "note": "逐题计数、usage、执行与Trace身份"
+        }
+      ],
+      "measurement": {
+        "experiment": "quality-optimization-20261020",
+        "baseline_commit": "8def8d7",
+        "candidate_commit": "3d9cc0e",
+        "historical_gt": "47 human adjudicated; original files unchanged",
+        "current_case_applicability": "assistant checked, human pending",
+        "current_answer_quality": "assistant provisional where reviewed; human pending",
+        "public_statistics": "evaluation/experiments/answer-quality-20261020/metrics.json",
+        "private_evidence": "data/evaluation/quality-optimization-20261020/",
+        "http_budget": {
+          "numerator": 118,
+          "denominator": 120
+        },
+        "http_responses": {
+          "numerator": 118,
+          "denominator": 118
+        },
+        "recoverable_message_references": {
+          "numerator": 777,
+          "denominator": 777,
+          "unit": "references, repeated sources included"
+        }
+      },
+      "interview_details": {
+        "decisions": [
+          "httpx2单次发送前持久化debit",
+          "来源恢复与语义支持分开"
+        ],
+        "difficulties": [
+          "工具调用数、Query数和HTTP数不同",
+          "引用合法不能替代语义复核"
+        ],
+        "verification": [
+          "连续编号1至118、started/finished一一对应",
+          "canonical来源与Artifact快照对照"
+        ],
+        "result": "实际请求预算可审计，无重置；货币cost unavailable"
+      }
+    },
+    {
+      "responsibility_level": "负责模块",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "Evaluation 工程面试"
+      ],
+      "boundary": "个人项目中的AI辅助实现和实验；确定性运行统计已核验，Assistant语义复核非人工。没有线上SLA或已提升准确率主张。",
+      "risk_notes": [
+        "当前Snapshot适用性及新答案人工审核pending；历史Development已暴露；不可写fresh/blind Holdout或质量提升。"
+      ],
+      "last_verified": "2026-10-20",
+      "id": "claim-quality-rejection-20261020",
+      "source_fact": "开发目标Evidence11/19→8/19，调参外23/29→22/29；候选未解决具名工具目标并出现一次额外交付失败，已恢复Baseline。",
+      "candidate_wording": "沿召回、模型可见和最终引用定位失败，识别并回退证据覆盖退化的Prompt候选。",
+      "sources": [
+        {
+          "type": "experiment_report",
+          "location": "interview-docs/Evaluation端到端质量实验-20261020.md",
+          "public": true,
+          "note": "正式开发/调参外/复测分母分开；原始聊天和Trace不公开"
+        },
+        {
+          "type": "measured_statistics",
+          "location": "evaluation/experiments/answer-quality-20261020/metrics.json",
+          "public": true,
+          "note": "逐题计数、usage、执行与Trace身份"
+        }
+      ],
+      "measurement": {
+        "experiment": "quality-optimization-20261020",
+        "baseline_commit": "8def8d7",
+        "candidate_commit": "3d9cc0e",
+        "historical_gt": "47 human adjudicated; original files unchanged",
+        "current_case_applicability": "assistant checked, human pending",
+        "current_answer_quality": "assistant provisional where reviewed; human pending",
+        "public_statistics": "evaluation/experiments/answer-quality-20261020/metrics.json",
+        "private_evidence": "data/evaluation/quality-optimization-20261020/",
+        "development_target_coverage": {
+          "baseline_numerator": 11,
+          "candidate_numerator": 8,
+          "denominator": 19
+        },
+        "validation_target_coverage": {
+          "baseline_numerator": 23,
+          "candidate_numerator": 22,
+          "denominator": 29
+        },
+        "validation_execution": {
+          "baseline_numerator": 12,
+          "candidate_numerator": 11,
+          "denominator": 12
+        },
+        "human_grounded_answer_rate": "unavailable"
+      },
+      "interview_details": {
+        "decisions": [
+          "只试通用充分性说明，不增加预算或硬编码Case",
+          "无可信收益则拒绝候选、保留负结果"
+        ],
+        "difficulties": [
+          "相关建议与具名工具不同",
+          "来源重复覆盖与业务答案是否充分不同",
+          "复测显示模型非确定性"
+        ],
+        "verification": [
+          "同21个必要事实/约束与实际附带来源复核",
+          "12题未参与本次调参，冻结后运行"
+        ],
+        "result": "没有可信质量提升；该主张只描述实验诊断和候选否决能力"
+      }
+    },
+    {
+      "responsibility_level": "负责模块",
+      "verification_status": "已确认",
+      "allowed_uses": [
+        "AI Agent 开发简历",
+        "Evaluation 工程面试"
+      ],
+      "boundary": "个人项目中的AI辅助实现和实验；确定性运行统计已核验，Assistant语义复核非人工。没有线上SLA或已提升准确率主张。",
+      "risk_notes": [
+        "当前Snapshot适用性及新答案人工审核pending；历史Development已暴露；不可写fresh/blind Holdout或质量提升。"
+      ],
+      "last_verified": "2026-10-20",
+      "id": "claim-quality-snapshot-20261020",
+      "source_fact": "2026-10-20实验冻结811892条canonical消息、14119条forward occurrence、88份来源；不是历史473236条基线。",
+      "candidate_wording": "在81.2万条真实消息冻结快照上开展可复现配对评测。",
+      "sources": [
+        {
+          "type": "experiment_report",
+          "location": "interview-docs/Evaluation端到端质量实验-20261020.md",
+          "public": true,
+          "note": "正式开发/调参外/复测分母分开；原始聊天和Trace不公开"
+        },
+        {
+          "type": "measured_statistics",
+          "location": "evaluation/experiments/answer-quality-20261020/metrics.json",
+          "public": true,
+          "note": "逐题计数、usage、执行与Trace身份"
+        }
+      ],
+      "measurement": {
+        "experiment": "quality-optimization-20261020",
+        "baseline_commit": "8def8d7",
+        "candidate_commit": "3d9cc0e",
+        "historical_gt": "47 human adjudicated; original files unchanged",
+        "current_case_applicability": "assistant checked, human pending",
+        "current_answer_quality": "assistant provisional where reviewed; human pending",
+        "public_statistics": "evaluation/experiments/answer-quality-20261020/metrics.json",
+        "private_evidence": "data/evaluation/quality-optimization-20261020/",
+        "canonical_messages": {
+          "numerator": 811892,
+          "denominator": null,
+          "unit": "messages"
+        },
+        "sources": {
+          "numerator": 88,
+          "denominator": null,
+          "unit": "source files"
+        },
+        "forward_occurrences": {
+          "numerator": 14119,
+          "denominator": null
+        }
+      },
+      "interview_details": {
+        "decisions": [
+          "SQLite backup固定数据",
+          "新Snapshot创建quality Case，保留历史provenance"
+        ],
+        "difficulties": [
+          "Provider/代码/数据均与历史不同"
+        ],
+        "verification": [
+          "快照起止时间、数量、来源和索引身份核验",
+          "结束时重新解析Snapshot身份不变"
+        ],
+        "result": "确定性数据身份成立；GT当前适用性人工待审"
+      }
     }
   ]
 }
