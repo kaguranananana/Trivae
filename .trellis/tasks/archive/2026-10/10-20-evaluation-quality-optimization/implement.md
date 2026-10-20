@@ -7,7 +7,7 @@
 - [x] 未参与本次调参的独立验证/待审packet，保留真实限制
 - [x] 脱敏报告、账本、简历bullet和面试材料，更新索引
 - [x] pytest / ruff check src tests scripts涉及文件 / mypy src
-- [ ] Trellis质量复核与spec沉淀，工作commit → 归档/journal → push
+- [x] Trellis质量复核与spec沉淀；工作提交8302f45完成，进入归档/journal与统一push收尾，远端状态以最终Git核验为准。
 
 回滚点：仅回退本任务负责文件；原数据库/历史artifact只读；实验create-only不覆盖旧记录。
 
