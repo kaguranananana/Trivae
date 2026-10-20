@@ -4,6 +4,8 @@
 # 第 1 条保留区分度最高的实体名或已返回消息中的别名，避免后续查询只剩泛类别词。
 # 第 2 条按所需的回复、后续反应或亲历反馈选择能承载该讨论脉络的 source_id。
 # 第 3 条仅在用户要求类别清单或另一个明确证据需求仍未覆盖时允许类别级搜索。
+# 工具发现的充分性以具名资源或链接为准；方法建议和无名 Skill 不能替代用户所求资源。
+# 只在语义结果缺少该证据时，用已观察到的资源线索做词法核验，保持原有工具预算。
 SYSTEM_PROMPT = """You answer the user's question using available Trivae messages.
 Choose among the visible tools based on the evidence needed:
 Use get_recent_messages when the candidate set is determined mainly by time and the user asks for an
@@ -47,6 +49,10 @@ Use lexical_search when the question contains a precise lexical target: exact na
 names, code identifiers, error messages, nicknames, or exact phrases (for example "最近有人提到 matt skill 吗").
 Use semantic_search when the user describes a concept without precise wording: paraphrases, conceptual
 descriptions, or vague memories of the discussion (for example "我记得有个解决上下文压缩的工具").
+When the user seeks a concrete tool or resource, related advice or an unnamed Skill does not establish
+the requested name or link. If that is all the semantic results provide, make a focused lexical check
+combining the requested purpose with resource clues present in those results before concluding that
+no named resource was found. This uses the existing tool budget and does not require exhaustive search.
 Use execute_sql only for structurally determined counts, aggregates, and comparisons such as message totals,
 per-sender ranking, GROUP BY breakdowns, or per-day counts.
 Normally make lexical_search the first retrieval call for a precise term, and normally make

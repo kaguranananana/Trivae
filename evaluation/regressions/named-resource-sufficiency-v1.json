@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "regression_id": "named-resource-sufficiency-v1",
+  "historical_case_identity": "dev-lexical-resume-miner@v2",
+  "current_case_identity": "quality-dev-lexical-resume-miner@v1",
+  "experiment": "quality-optimization-20261020",
+  "baseline_execution_commit": "8def8d7",
+  "baseline_observations": 1,
+  "baseline_http_requests": 3,
+  "baseline_execution_status": "completed",
+  "baseline_gt_targets": {
+    "tool_returned": 0,
+    "model_visible": 0,
+    "final_evidence": 0,
+    "denominator": 4
+  },
+  "first_divergence": "Semantic retrieval returned related advice and an unnamed Skill. Agent deepened that discussion and finalized without a focused lexical check for a named resource.",
+  "root_cause_boundary": "Tool selection and material evidence sufficiency; no Host projection omission; not a verified embedding failure.",
+  "offline_reachability": "Two purpose-plus-resource queries, using concepts in the user request or observed result, recovered all four known targets within existing lexical limit100; no API requests or budget increase.",
+  "treatment": "Clarify named-resource sufficiency in existing production prompt; no case names, keywords or message IDs in runtime rule.",
+  "fixed_contracts": [
+    "three tool rounds",
+    "seven tools",
+    "scope",
+    "retrieval algorithm",
+    "finalizer",
+    "citation criteria"
+  ],
+  "expected_behavior": "A concrete resource query is not fulfilled by general advice or an unnamed implementation. Use a focused existing retrieval path when that evidence need remains unmet; preserve uncertainty and original budgets.",
+  "review_status": "assistant_provisional; current snapshot GT applicability and answer human review pending",
+  "candidate_status": "awaiting paired experiment; this record is not an automatic quality assertion",
+  "private_evidence_root": "data/evaluation/quality-optimization-20261020",
+  "validation_boundary": "Existing Development cases withheld from this task tuning; no fresh/blind Holdout claim."
+}
