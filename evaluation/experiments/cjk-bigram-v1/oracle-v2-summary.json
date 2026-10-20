@@ -1,0 +1,6671 @@
+{
+  "created_at": "2026-10-20T02:03:27.549+00:00",
+  "build": {
+    "A": {
+      "insert_commit_ms": 1838.6295000091195,
+      "bytes": 130686976
+    },
+    "B": {
+      "insert_commit_ms": 4842.145875038113,
+      "bytes": 179273728
+    }
+  },
+  "overall": {
+    "A": {
+      "recall_at_k": {
+        "macro": 0.09772038588401483,
+        "micro": 0.0031147785724949446,
+        "numerator": 459,
+        "denominator": 147362,
+        "queries": 57
+      },
+      "hit_at_k": {
+        "macro": 0.9473684210526315,
+        "micro": 0.9473684210526315,
+        "numerator": 54.0,
+        "denominator": 57,
+        "queries": 57
+      },
+      "mrr_at_k": {
+        "macro": 0.9473684210526315,
+        "micro": 0.9473684210526315,
+        "numerator": 54.0,
+        "denominator": 57,
+        "queries": 57
+      },
+      "completeness": {
+        "macro": 0.25633766521207496,
+        "micro": 0.06234307351963193,
+        "numerator": 9187,
+        "denominator": 147362
+      },
+      "literal_precision_at_10": {
+        "numerator": 459,
+        "denominator": 461,
+        "value": 0.9956616052060737
+      },
+      "full_false_positive": 2,
+      "missing": 138175,
+      "zero_correct": 6,
+      "zero_cases": 7,
+      "latency_median_ms": 0.2341459912713617,
+      "latency_p95_ms": 14.470124966464937
+    },
+    "B": {
+      "recall_at_k": {
+        "macro": 0.1325390345896548,
+        "micro": 0.003454079070588076,
+        "numerator": 509,
+        "denominator": 147362,
+        "queries": 57
+      },
+      "hit_at_k": {
+        "macro": 0.9824561403508771,
+        "micro": 0.9824561403508771,
+        "numerator": 56.0,
+        "denominator": 57,
+        "queries": 57
+      },
+      "mrr_at_k": {
+        "macro": 0.9649122807017544,
+        "micro": 0.9649122807017544,
+        "numerator": 55.0,
+        "denominator": 57,
+        "queries": 57
+      },
+      "completeness": {
+        "macro": 0.9238830514248823,
+        "micro": 0.6941138149590803,
+        "numerator": 102286,
+        "denominator": 147362
+      },
+      "literal_precision_at_10": {
+        "numerator": 509,
+        "denominator": 519,
+        "value": 0.9807321772639692
+      },
+      "full_false_positive": 341,
+      "missing": 45076,
+      "zero_correct": 6,
+      "zero_cases": 7,
+      "latency_median_ms": 2.305416011950001,
+      "latency_p95_ms": 81.9817500305362
+    }
+  },
+  "categories": {
+    "absent": {
+      "A": {
+        "recall_at_k": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0,
+          "queries": 0
+        },
+        "hit_at_k": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0,
+          "queries": 0
+        },
+        "mrr_at_k": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0,
+          "queries": 0
+        },
+        "completeness": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0
+        },
+        "literal_precision_at_10": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        },
+        "full_false_positive": 0,
+        "missing": 0,
+        "zero_correct": 4,
+        "zero_cases": 4,
+        "latency_median_ms": 0.055500015150755644,
+        "latency_p95_ms": 0.14433404430747032
+      },
+      "B": {
+        "recall_at_k": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0,
+          "queries": 0
+        },
+        "hit_at_k": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0,
+          "queries": 0
+        },
+        "mrr_at_k": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0,
+          "queries": 0
+        },
+        "completeness": {
+          "macro": null,
+          "micro": null,
+          "numerator": 0,
+          "denominator": 0
+        },
+        "literal_precision_at_10": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        },
+        "full_false_positive": 0,
+        "missing": 0,
+        "zero_correct": 4,
+        "zero_cases": 4,
+        "latency_median_ms": 0.11816699407063425,
+        "latency_p95_ms": 0.23479200899600983
+      }
+    },
+    "control": {
+      "A": {
+        "recall_at_k": {
+          "macro": 0.12178608063649038,
+          "micro": 0.006685194922256441,
+          "numerator": 89,
+          "denominator": 13313,
+          "queries": 9
+        },
+        "hit_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 9.0,
+          "denominator": 9,
+          "queries": 9
+        },
+        "mrr_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 9.0,
+          "denominator": 9,
+          "queries": 9
+        },
+        "completeness": {
+          "macro": 0.5566685993845227,
+          "micro": 0.47502441222864866,
+          "numerator": 6324,
+          "denominator": 13313
+        },
+        "literal_precision_at_10": {
+          "numerator": 89,
+          "denominator": 91,
+          "value": 0.978021978021978
+        },
+        "full_false_positive": 2,
+        "missing": 6989,
+        "zero_correct": 2,
+        "zero_cases": 3,
+        "latency_median_ms": 2.0172919903416187,
+        "latency_p95_ms": 27.043916983529925
+      },
+      "B": {
+        "recall_at_k": {
+          "macro": 0.12178608063649038,
+          "micro": 0.006685194922256441,
+          "numerator": 89,
+          "denominator": 13313,
+          "queries": 9
+        },
+        "hit_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 9.0,
+          "denominator": 9,
+          "queries": 9
+        },
+        "mrr_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 9.0,
+          "denominator": 9,
+          "queries": 9
+        },
+        "completeness": {
+          "macro": 0.9730579219826593,
+          "micro": 0.9709306692706378,
+          "numerator": 12926,
+          "denominator": 13313
+        },
+        "literal_precision_at_10": {
+          "numerator": 89,
+          "denominator": 91,
+          "value": 0.978021978021978
+        },
+        "full_false_positive": 2,
+        "missing": 387,
+        "zero_correct": 2,
+        "zero_cases": 3,
+        "latency_median_ms": 6.760229502106085,
+        "latency_p95_ms": 41.65275004925206
+      }
+    },
+    "long": {
+      "A": {
+        "recall_at_k": {
+          "macro": 0.21539530105187385,
+          "micro": 0.04935622317596566,
+          "numerator": 69,
+          "denominator": 1398,
+          "queries": 12
+        },
+        "hit_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 12.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "mrr_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 12.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "completeness": {
+          "macro": 0.28961277091456666,
+          "micro": 0.20314735336194564,
+          "numerator": 284,
+          "denominator": 1398
+        },
+        "literal_precision_at_10": {
+          "numerator": 69,
+          "denominator": 69,
+          "value": 1.0
+        },
+        "full_false_positive": 0,
+        "missing": 1114,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 0.10564600233919919,
+        "latency_p95_ms": 0.44962496031075716
+      },
+      "B": {
+        "recall_at_k": {
+          "macro": 0.36158215810236,
+          "micro": 0.06795422031473533,
+          "numerator": 95,
+          "denominator": 1398,
+          "queries": 12
+        },
+        "hit_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 12.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "mrr_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 12.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "completeness": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 1398,
+          "denominator": 1398
+        },
+        "literal_precision_at_10": {
+          "numerator": 95,
+          "denominator": 95,
+          "value": 1.0
+        },
+        "full_false_positive": 0,
+        "missing": 0,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 0.82795848720707,
+        "latency_p95_ms": 2.521042013540864
+      }
+    },
+    "mixed": {
+      "A": {
+        "recall_at_k": {
+          "macro": 0.15135921286356693,
+          "micro": 0.05432835820895522,
+          "numerator": 91,
+          "denominator": 1675,
+          "queries": 12
+        },
+        "hit_at_k": {
+          "macro": 0.8333333333333334,
+          "micro": 0.8333333333333334,
+          "numerator": 10.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "mrr_at_k": {
+          "macro": 0.8333333333333334,
+          "micro": 0.8333333333333334,
+          "numerator": 10.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "completeness": {
+          "macro": 0.45391772014974885,
+          "micro": 0.2382089552238806,
+          "numerator": 399,
+          "denominator": 1675
+        },
+        "literal_precision_at_10": {
+          "numerator": 91,
+          "denominator": 91,
+          "value": 1.0
+        },
+        "full_false_positive": 0,
+        "missing": 1276,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 0.163416494615376,
+        "latency_p95_ms": 0.5267500528134406
+      },
+      "B": {
+        "recall_at_k": {
+          "macro": 0.17053455472502263,
+          "micro": 0.06686567164179104,
+          "numerator": 112,
+          "denominator": 1675,
+          "queries": 12
+        },
+        "hit_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 12.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "mrr_at_k": {
+          "macro": 0.9166666666666666,
+          "micro": 0.9166666666666666,
+          "numerator": 11.0,
+          "denominator": 12,
+          "queries": 12
+        },
+        "completeness": {
+          "macro": 0.9918197765531032,
+          "micro": 0.9964179104477612,
+          "numerator": 1669,
+          "denominator": 1675
+        },
+        "literal_precision_at_10": {
+          "numerator": 112,
+          "denominator": 120,
+          "value": 0.9333333333333333
+        },
+        "full_false_positive": 339,
+        "missing": 6,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 0.7009170076344162,
+        "latency_p95_ms": 8.797333983238786
+      }
+    },
+    "short": {
+      "A": {
+        "recall_at_k": {
+          "macro": 0.0036006542765972933,
+          "micro": 0.002318222387073592,
+          "numerator": 200,
+          "denominator": 86273,
+          "queries": 20
+        },
+        "hit_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 20.0,
+          "denominator": 20,
+          "queries": 20
+        },
+        "mrr_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 20.0,
+          "denominator": 20,
+          "queries": 20
+        },
+        "completeness": {
+          "macro": 0.033897180635629284,
+          "micro": 0.025152712899748474,
+          "numerator": 2170,
+          "denominator": 86273
+        },
+        "literal_precision_at_10": {
+          "numerator": 200,
+          "denominator": 200,
+          "value": 1.0
+        },
+        "full_false_positive": 0,
+        "missing": 84103,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 0.5998745036777109,
+        "latency_p95_ms": 3.2949160085991025
+      },
+      "B": {
+        "recall_at_k": {
+          "macro": 0.0036006542765972933,
+          "micro": 0.002318222387073592,
+          "numerator": 200,
+          "denominator": 86273,
+          "queries": 20
+        },
+        "hit_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 20.0,
+          "denominator": 20,
+          "queries": 20
+        },
+        "mrr_at_k": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 20.0,
+          "denominator": 20,
+          "queries": 20
+        },
+        "completeness": {
+          "macro": 1.0,
+          "micro": 1.0,
+          "numerator": 86273,
+          "denominator": 86273
+        },
+        "literal_precision_at_10": {
+          "numerator": 200,
+          "denominator": 200,
+          "value": 1.0
+        },
+        "full_false_positive": 0,
+        "missing": 0,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 27.782374992966652,
+        "latency_p95_ms": 218.68783299578354
+      }
+    },
+    "single": {
+      "A": {
+        "recall_at_k": {
+          "macro": 0.00023000428579916143,
+          "micro": 0.00022369863320135115,
+          "numerator": 10,
+          "denominator": 44703,
+          "queries": 4
+        },
+        "hit_at_k": {
+          "macro": 0.75,
+          "micro": 0.75,
+          "numerator": 3.0,
+          "denominator": 4,
+          "queries": 4
+        },
+        "mrr_at_k": {
+          "macro": 0.75,
+          "micro": 0.75,
+          "numerator": 3.0,
+          "denominator": 4,
+          "queries": 4
+        },
+        "completeness": {
+          "macro": 0.00023000428579916143,
+          "micro": 0.00022369863320135115,
+          "numerator": 10,
+          "denominator": 44703
+        },
+        "literal_precision_at_10": {
+          "numerator": 10,
+          "denominator": 10,
+          "value": 1.0
+        },
+        "full_false_positive": 0,
+        "missing": 44693,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 0.0757085217628628,
+        "latency_p95_ms": 0.09758298983797431
+      },
+      "B": {
+        "recall_at_k": {
+          "macro": 0.0003091516053432729,
+          "micro": 0.0002908082231617565,
+          "numerator": 13,
+          "denominator": 44703,
+          "queries": 4
+        },
+        "hit_at_k": {
+          "macro": 0.75,
+          "micro": 0.75,
+          "numerator": 3.0,
+          "denominator": 4,
+          "queries": 4
+        },
+        "mrr_at_k": {
+          "macro": 0.75,
+          "micro": 0.75,
+          "numerator": 3.0,
+          "denominator": 4,
+          "queries": 4
+        },
+        "completeness": {
+          "macro": 0.0004938286842795329,
+          "micro": 0.0004473972664027023,
+          "numerator": 20,
+          "denominator": 44703
+        },
+        "literal_precision_at_10": {
+          "numerator": 13,
+          "denominator": 13,
+          "value": 1.0
+        },
+        "full_false_positive": 0,
+        "missing": 44683,
+        "zero_correct": 0,
+        "zero_cases": 0,
+        "latency_median_ms": 0.07591649773530662,
+        "latency_p95_ms": 0.13404199853539467
+      }
+    }
+  },
+  "rows": [
+    {
+      "case_id": "cjk-01",
+      "term": "推荐",
+      "category": "short",
+      "reference_count": 2485,
+      "production_parity": true,
+      "A": {
+        "total": 283,
+        "top_true_positive": 10,
+        "full_true_positive": 283,
+        "latency_ms": [
+          2.3882079985924065,
+          2.198166970629245,
+          1.8021249561570585,
+          2.0426660194061697,
+          1.7043339903466403
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2485,
+            "hits": 10,
+            "value": 0.004024144869215292,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2485,
+        "top_true_positive": 10,
+        "full_true_positive": 2485,
+        "latency_ms": [
+          22.509499976877123,
+          22.149000025819987,
+          21.925791981630027,
+          21.976082993205637,
+          24.016709008719772
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2485,
+            "hits": 10,
+            "value": 0.004024144869215292,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-02",
+      "term": "实习",
+      "category": "short",
+      "reference_count": 12563,
+      "production_parity": true,
+      "A": {
+        "total": 147,
+        "top_true_positive": 10,
+        "full_true_positive": 147,
+        "latency_ms": [
+          1.4888749574311078,
+          1.0629590251483023,
+          1.4483749982900918,
+          0.9170830016955733,
+          1.5401249984279275
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 12563,
+            "hits": 10,
+            "value": 0.0007959882193743533,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 12563,
+        "top_true_positive": 10,
+        "full_true_positive": 12563,
+        "latency_ms": [
+          78.96791695384309,
+          82.3976660030894,
+          83.40395800769329,
+          81.9817500305362,
+          81.20099996449426
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 12563,
+            "hits": 10,
+            "value": 0.0007959882193743533,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-03",
+      "term": "面试",
+      "category": "short",
+      "reference_count": 6390,
+      "production_parity": true,
+      "A": {
+        "total": 63,
+        "top_true_positive": 10,
+        "full_true_positive": 63,
+        "latency_ms": [
+          0.5449580494314432,
+          0.4659169935621321,
+          0.28295896481722593,
+          0.49112498527392745,
+          0.27662503998726606
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 6390,
+            "hits": 10,
+            "value": 0.001564945226917058,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 6390,
+        "top_true_positive": 10,
+        "full_true_positive": 6390,
+        "latency_ms": [
+          46.7360420152545,
+          46.561374969314784,
+          46.540833020117134,
+          46.830707986373454,
+          409.7598749794997
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 6390,
+            "hits": 10,
+            "value": 0.001564945226917058,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-04",
+      "term": "项目",
+      "category": "short",
+      "reference_count": 8059,
+      "production_parity": true,
+      "A": {
+        "total": 127,
+        "top_true_positive": 10,
+        "full_true_positive": 127,
+        "latency_ms": [
+          2.1827919990755618,
+          0.5305000231601298,
+          1.3936249888502061,
+          0.5397499771788716,
+          3.837041964288801
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 8059,
+            "hits": 10,
+            "value": 0.0012408487405385284,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 8059,
+        "top_true_positive": 10,
+        "full_true_positive": 8059,
+        "latency_ms": [
+          143.83483299752697,
+          165.0940839899704,
+          89.70245800446719,
+          1299.7234580107033,
+          248.08454199228436
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 8059,
+            "hits": 10,
+            "value": 0.0012408487405385284,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-05",
+      "term": "开源",
+      "category": "short",
+      "reference_count": 2067,
+      "production_parity": true,
+      "A": {
+        "total": 72,
+        "top_true_positive": 10,
+        "full_true_positive": 72,
+        "latency_ms": [
+          0.6009580101817846,
+          0.5245840293355286,
+          0.30800001695752144,
+          0.9962090407498181,
+          0.4250409547239542
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2067,
+            "hits": 10,
+            "value": 0.004837929366231253,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2067,
+        "top_true_positive": 10,
+        "full_true_positive": 2067,
+        "latency_ms": [
+          21.34133398067206,
+          19.937834003940225,
+          21.2262500426732,
+          20.591207954566926,
+          20.549000008031726
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2067,
+            "hits": 10,
+            "value": 0.004837929366231253,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-06",
+      "term": "简历",
+      "category": "short",
+      "reference_count": 4543,
+      "production_parity": true,
+      "A": {
+        "total": 42,
+        "top_true_positive": 10,
+        "full_true_positive": 42,
+        "latency_ms": [
+          23.531582963187248,
+          0.222208967898041,
+          1.0928749688901007,
+          0.22529199486598372,
+          0.3612079890444875
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 4543,
+            "hits": 10,
+            "value": 0.002201188641866608,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 4543,
+        "top_true_positive": 10,
+        "full_true_positive": 4543,
+        "latency_ms": [
+          522.6939159911126,
+          149.6584169799462,
+          50.91170803643763,
+          35.53370799636468,
+          36.502040980849415
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 4543,
+            "hits": 10,
+            "value": 0.002201188641866608,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-07",
+      "term": "算法",
+      "category": "short",
+      "reference_count": 3171,
+      "production_parity": true,
+      "A": {
+        "total": 218,
+        "top_true_positive": 10,
+        "full_true_positive": 218,
+        "latency_ms": [
+          1.930041005834937,
+          2.2842090111225843,
+          1.4360420173034072,
+          2.4183749919757247,
+          1.399667002260685
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 3171,
+            "hits": 10,
+            "value": 0.00315357931251971,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 3171,
+        "top_true_positive": 10,
+        "full_true_positive": 3171,
+        "latency_ms": [
+          27.62970799813047,
+          28.812625037971884,
+          33.27220899518579,
+          29.439250007271767,
+          28.995499946177006
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 3171,
+            "hits": 10,
+            "value": 0.00315357931251971,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-08",
+      "term": "模型",
+      "category": "short",
+      "reference_count": 11353,
+      "production_parity": true,
+      "A": {
+        "total": 185,
+        "top_true_positive": 10,
+        "full_true_positive": 185,
+        "latency_ms": [
+          23.342832981143147,
+          1.513791037723422,
+          72.27245799731463,
+          2.1136249997653067,
+          2.1840830449946225
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 11353,
+            "hits": 10,
+            "value": 0.0008808244516867788,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 11353,
+        "top_true_positive": 10,
+        "full_true_positive": 11353,
+        "latency_ms": [
+          159.88045796984807,
+          105.11175001738593,
+          557.0077499723993,
+          218.68783299578354,
+          92.99525001551956
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 11353,
+            "hits": 10,
+            "value": 0.0008808244516867788,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-09",
+      "term": "工具",
+      "category": "short",
+      "reference_count": 2971,
+      "production_parity": true,
+      "A": {
+        "total": 129,
+        "top_true_positive": 10,
+        "full_true_positive": 129,
+        "latency_ms": [
+          1.1697500012814999,
+          0.724292011000216,
+          0.48166594933718443,
+          0.7563330000266433,
+          0.5012910114601254
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2971,
+            "hits": 10,
+            "value": 0.003365870077415012,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2971,
+        "top_true_positive": 10,
+        "full_true_positive": 2971,
+        "latency_ms": [
+          24.415040970779955,
+          24.341916025150567,
+          25.178540963679552,
+          25.105291977524757,
+          24.546625034417957
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2971,
+            "hits": 10,
+            "value": 0.003365870077415012,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-10",
+      "term": "代码",
+      "category": "short",
+      "reference_count": 5168,
+      "production_parity": true,
+      "A": {
+        "total": 77,
+        "top_true_positive": 10,
+        "full_true_positive": 77,
+        "latency_ms": [
+          3.2949160085991025,
+          1.7096250085160136,
+          23.49712495924905,
+          0.3632499719969928,
+          0.843374989926815
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 5168,
+            "hits": 10,
+            "value": 0.001934984520123839,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 5168,
+        "top_true_positive": 10,
+        "full_true_positive": 5168,
+        "latency_ms": [
+          65.52120798733085,
+          56.111250014510006,
+          51.288959046360105,
+          44.76329096360132,
+          47.09837504196912
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 5168,
+            "hits": 10,
+            "value": 0.001934984520123839,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-11",
+      "term": "学习",
+      "category": "short",
+      "reference_count": 3664,
+      "production_parity": true,
+      "A": {
+        "total": 114,
+        "top_true_positive": 10,
+        "full_true_positive": 114,
+        "latency_ms": [
+          1.0174589697271585,
+          0.6925840280018747,
+          0.4238330293446779,
+          0.6947499932721257,
+          0.4154579946771264
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 3664,
+            "hits": 10,
+            "value": 0.0027292576419213972,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 3664,
+        "top_true_positive": 10,
+        "full_true_positive": 3664,
+        "latency_ms": [
+          34.63845798978582,
+          33.874957996886224,
+          32.76754199760035,
+          32.878291036468,
+          33.03891699761152
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 3664,
+            "hits": 10,
+            "value": 0.0027292576419213972,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-12",
+      "term": "工作",
+      "category": "short",
+      "reference_count": 6433,
+      "production_parity": true,
+      "A": {
+        "total": 36,
+        "top_true_positive": 10,
+        "full_true_positive": 36,
+        "latency_ms": [
+          0.4562920075841248,
+          0.2097499673254788,
+          0.35816599847748876,
+          0.19937497563660145,
+          0.34854200202971697
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 6433,
+            "hits": 10,
+            "value": 0.00155448468832582,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 6433,
+        "top_true_positive": 10,
+        "full_true_positive": 6433,
+        "latency_ms": [
+          57.09045799449086,
+          70.02412498695776,
+          52.550458000041544,
+          53.647125023417175,
+          52.8128330479376
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 6433,
+            "hits": 10,
+            "value": 0.00155448468832582,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-13",
+      "term": "岗位",
+      "category": "short",
+      "reference_count": 2249,
+      "production_parity": true,
+      "A": {
+        "total": 222,
+        "top_true_positive": 10,
+        "full_true_positive": 222,
+        "latency_ms": [
+          2.045166038442403,
+          1.9172499887645245,
+          1.4177500270307064,
+          1.9397499854676425,
+          1.5324160340242088
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2249,
+            "hits": 10,
+            "value": 0.004446420631391729,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2249,
+        "top_true_positive": 10,
+        "full_true_positive": 2249,
+        "latency_ms": [
+          23.485374986194074,
+          26.766625000163913,
+          27.935041987802833,
+          21.648708963766694,
+          22.95224997214973
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2249,
+            "hits": 10,
+            "value": 0.004446420631391729,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-14",
+      "term": "秋招",
+      "category": "short",
+      "reference_count": 2368,
+      "production_parity": true,
+      "A": {
+        "total": 95,
+        "top_true_positive": 10,
+        "full_true_positive": 95,
+        "latency_ms": [
+          0.64429099438712,
+          0.43504202039912343,
+          0.6387920002453029,
+          0.4135419731028378,
+          0.5870829918421805
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2368,
+            "hits": 10,
+            "value": 0.004222972972972973,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2368,
+        "top_true_positive": 10,
+        "full_true_positive": 2368,
+        "latency_ms": [
+          21.862416004296392,
+          22.965624986682087,
+          21.928542002569884,
+          21.63470897357911,
+          21.27533301245421
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2368,
+            "hits": 10,
+            "value": 0.004222972972972973,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-15",
+      "term": "内推",
+      "category": "short",
+      "reference_count": 1730,
+      "production_parity": true,
+      "A": {
+        "total": 24,
+        "top_true_positive": 10,
+        "full_true_positive": 24,
+        "latency_ms": [
+          0.4579169908538461,
+          0.25558401830494404,
+          0.16262498684227467,
+          0.27458398835733533,
+          0.1557079958729446
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1730,
+            "hits": 10,
+            "value": 0.005780346820809248,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 1730,
+        "top_true_positive": 10,
+        "full_true_positive": 1730,
+        "latency_ms": [
+          13.437499990686774,
+          13.701500021852553,
+          13.352332985959947,
+          13.430916995275766,
+          13.277749996632338
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1730,
+            "hits": 10,
+            "value": 0.005780346820809248,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-16",
+      "term": "校招",
+      "category": "short",
+      "reference_count": 1331,
+      "production_parity": true,
+      "A": {
+        "total": 29,
+        "top_true_positive": 10,
+        "full_true_positive": 29,
+        "latency_ms": [
+          0.41316699935123324,
+          0.19150000298395753,
+          0.3250419977121055,
+          0.18679199274629354,
+          0.3220830112695694
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1331,
+            "hits": 10,
+            "value": 0.007513148009015778,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 1331,
+        "top_true_positive": 10,
+        "full_true_positive": 1331,
+        "latency_ms": [
+          15.491041005589068,
+          14.545125013682991,
+          12.259416980668902,
+          12.54979200894013,
+          12.393707991577685
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1331,
+            "hits": 10,
+            "value": 0.007513148009015778,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-17",
+      "term": "论文",
+      "category": "short",
+      "reference_count": 1259,
+      "production_parity": true,
+      "A": {
+        "total": 35,
+        "top_true_positive": 10,
+        "full_true_positive": 35,
+        "latency_ms": [
+          0.33366598654538393,
+          0.38720801239833236,
+          0.2145419712178409,
+          0.31983398366719484,
+          0.1972499885596335
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1259,
+            "hits": 10,
+            "value": 0.007942811755361398,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 1259,
+        "top_true_positive": 10,
+        "full_true_positive": 1259,
+        "latency_ms": [
+          11.383333010599017,
+          11.155374988447875,
+          10.894750012084842,
+          10.567958001047373,
+          10.474791983142495
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1259,
+            "hits": 10,
+            "value": 0.007942811755361398,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-18",
+      "term": "数据",
+      "category": "short",
+      "reference_count": 4503,
+      "production_parity": true,
+      "A": {
+        "total": 85,
+        "top_true_positive": 10,
+        "full_true_positive": 85,
+        "latency_ms": [
+          0.8452909532934427,
+          0.3517500008456409,
+          0.5825830157846212,
+          0.3565839724615216,
+          0.5987909971736372
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 4503,
+            "hits": 10,
+            "value": 0.0022207417277370642,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 4503,
+        "top_true_positive": 10,
+        "full_true_positive": 4503,
+        "latency_ms": [
+          37.745125009678304,
+          36.5584579994902,
+          36.203207971993834,
+          37.037583999335766,
+          36.45908395992592
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 4503,
+            "hits": 10,
+            "value": 0.0022207417277370642,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-19",
+      "term": "测试",
+      "category": "short",
+      "reference_count": 2700,
+      "production_parity": true,
+      "A": {
+        "total": 158,
+        "top_true_positive": 10,
+        "full_true_positive": 158,
+        "latency_ms": [
+          1.539000018965453,
+          1.5876659890636802,
+          1.0599590023048222,
+          1.8442500149831176,
+          1.2531669926829636
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2700,
+            "hits": 10,
+            "value": 0.003703703703703704,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2700,
+        "top_true_positive": 10,
+        "full_true_positive": 2700,
+        "latency_ms": [
+          23.14516599290073,
+          23.195834015496075,
+          23.13874999526888,
+          22.98641699599102,
+          25.105125037953258
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2700,
+            "hits": 10,
+            "value": 0.003703703703703704,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-20",
+      "term": "部署",
+      "category": "short",
+      "reference_count": 1266,
+      "production_parity": true,
+      "A": {
+        "total": 29,
+        "top_true_positive": 10,
+        "full_true_positive": 29,
+        "latency_ms": [
+          0.2863749978132546,
+          0.17091701738536358,
+          0.2835000050254166,
+          0.17029099399223924,
+          0.3001660224981606
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1266,
+            "hits": 10,
+            "value": 0.007898894154818325,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 1266,
+        "top_true_positive": 10,
+        "full_true_positive": 1266,
+        "latency_ms": [
+          10.602915950585157,
+          10.571416991297156,
+          10.568250028882176,
+          10.1686249836348,
+          10.430250025819987
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1266,
+            "hits": 10,
+            "value": 0.007898894154818325,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-21",
+      "term": "人工智能",
+      "category": "long",
+      "reference_count": 283,
+      "production_parity": true,
+      "A": {
+        "total": 45,
+        "top_true_positive": 10,
+        "full_true_positive": 45,
+        "latency_ms": [
+          0.3220000071451068,
+          0.26587501633912325,
+          0.21675002062693238,
+          0.3863329766318202,
+          0.22220797836780548
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 283,
+            "hits": 10,
+            "value": 0.0353356890459364,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 283,
+        "top_true_positive": 10,
+        "full_true_positive": 283,
+        "latency_ms": [
+          2.3841660004109144,
+          2.226666023489088,
+          2.444499987177551,
+          2.4490829673595726,
+          2.845584007445723
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 283,
+            "hits": 10,
+            "value": 0.0353356890459364,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-22",
+      "term": "大语言模型",
+      "category": "long",
+      "reference_count": 41,
+      "production_parity": true,
+      "A": {
+        "total": 5,
+        "top_true_positive": 5,
+        "full_true_positive": 5,
+        "latency_ms": [
+          0.10624999413266778,
+          0.08358299965038896,
+          0.09079097071662545,
+          0.08220900781452656,
+          0.08633401012048125
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 41,
+            "hits": 5,
+            "value": 0.12195121951219512,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 41,
+        "top_true_positive": 10,
+        "full_true_positive": 41,
+        "latency_ms": [
+          0.8513330249115825,
+          0.8474580245092511,
+          0.8550420170649886,
+          0.8376250043511391,
+          0.8310829871334136
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 41,
+            "hits": 10,
+            "value": 0.24390243902439024,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-23",
+      "term": "检索增强生成",
+      "category": "long",
+      "reference_count": 2,
+      "production_parity": true,
+      "A": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.10441703489050269,
+          0.0797079992480576,
+          0.07362500764429569,
+          0.07658300455659628,
+          0.08195801638066769
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2,
+            "hits": 1,
+            "value": 0.5,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2,
+        "top_true_positive": 2,
+        "full_true_positive": 2,
+        "latency_ms": [
+          0.3731250180862844,
+          0.3577910247258842,
+          0.35675003891810775,
+          0.35445799585431814,
+          0.36170799285173416
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2,
+            "hits": 2,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-24",
+      "term": "向量数据库",
+      "category": "long",
+      "reference_count": 62,
+      "production_parity": true,
+      "A": {
+        "total": 6,
+        "top_true_positive": 6,
+        "full_true_positive": 6,
+        "latency_ms": [
+          0.1152089680545032,
+          0.09887502528727055,
+          0.09866699110716581,
+          0.0943340128287673,
+          0.09629200212657452
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 62,
+            "hits": 6,
+            "value": 0.0967741935483871,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 62,
+        "top_true_positive": 10,
+        "full_true_positive": 62,
+        "latency_ms": [
+          0.8000840316526592,
+          0.7874580333009362,
+          0.7722500013187528,
+          0.7779580191709101,
+          0.7746659684926271
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 62,
+            "hits": 10,
+            "value": 0.16129032258064516,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-25",
+      "term": "后端开发",
+      "category": "long",
+      "reference_count": 214,
+      "production_parity": true,
+      "A": {
+        "total": 27,
+        "top_true_positive": 10,
+        "full_true_positive": 27,
+        "latency_ms": [
+          0.26220903964713216,
+          0.18250005086883903,
+          0.16158301150426269,
+          0.2013340126723051,
+          0.16150000737980008
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 214,
+            "hits": 10,
+            "value": 0.04672897196261682,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 214,
+        "top_true_positive": 10,
+        "full_true_positive": 214,
+        "latency_ms": [
+          2.0530420006252825,
+          1.928791985847056,
+          1.9380419980734587,
+          1.9452080014161766,
+          1.9814170082099736
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 214,
+            "hits": 10,
+            "value": 0.04672897196261682,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-26",
+      "term": "机器学习",
+      "category": "long",
+      "reference_count": 234,
+      "production_parity": true,
+      "A": {
+        "total": 136,
+        "top_true_positive": 10,
+        "full_true_positive": 136,
+        "latency_ms": [
+          0.638541008811444,
+          0.4348750226199627,
+          0.6282500107772648,
+          0.44962496031075716,
+          0.48045796575024724
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 234,
+            "hits": 10,
+            "value": 0.042735042735042736,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 234,
+        "top_true_positive": 10,
+        "full_true_positive": 234,
+        "latency_ms": [
+          2.033833006862551,
+          2.1314999903552234,
+          2.5477500166743994,
+          2.1268329583108425,
+          1.9864999921992421
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 234,
+            "hits": 10,
+            "value": 0.042735042735042736,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-27",
+      "term": "操作系统",
+      "category": "long",
+      "reference_count": 233,
+      "production_parity": true,
+      "A": {
+        "total": 30,
+        "top_true_positive": 10,
+        "full_true_positive": 30,
+        "latency_ms": [
+          0.2749169943854213,
+          0.2008749870583415,
+          0.18208305118605494,
+          0.185999961104244,
+          0.17445901175960898
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 233,
+            "hits": 10,
+            "value": 0.04291845493562232,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 233,
+        "top_true_positive": 10,
+        "full_true_positive": 233,
+        "latency_ms": [
+          1.8701250082813203,
+          1.8119169981218874,
+          1.7911250470206141,
+          1.782708044629544,
+          1.7765830270946026
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 233,
+            "hits": 10,
+            "value": 0.04291845493562232,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-28",
+      "term": "计算机网络",
+      "category": "long",
+      "reference_count": 34,
+      "production_parity": true,
+      "A": {
+        "total": 4,
+        "top_true_positive": 4,
+        "full_true_positive": 4,
+        "latency_ms": [
+          0.1134169870056212,
+          0.10641594417393208,
+          0.10504201054573059,
+          0.09908300125971437,
+          0.09837496327236295
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 34,
+            "hits": 4,
+            "value": 0.11764705882352941,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 34,
+        "top_true_positive": 10,
+        "full_true_positive": 34,
+        "latency_ms": [
+          0.7209170144051313,
+          0.7197080412879586,
+          0.706917024217546,
+          0.7271250360645354,
+          0.6958329468034208
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 34,
+            "hits": 10,
+            "value": 0.29411764705882354,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-29",
+      "term": "数据结构",
+      "category": "long",
+      "reference_count": 269,
+      "production_parity": true,
+      "A": {
+        "total": 27,
+        "top_true_positive": 10,
+        "full_true_positive": 27,
+        "latency_ms": [
+          0.3189580165781081,
+          0.23337500169873238,
+          0.17562502762302756,
+          0.20404200768098235,
+          0.16962498193606734
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 269,
+            "hits": 10,
+            "value": 0.03717472118959108,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 269,
+        "top_true_positive": 10,
+        "full_true_positive": 269,
+        "latency_ms": [
+          2.6779579930007458,
+          2.4129999801516533,
+          2.521042013540864,
+          2.413042006082833,
+          2.4165420327335596
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 269,
+            "hits": 10,
+            "value": 0.03717472118959108,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-30",
+      "term": "真心推荐",
+      "category": "long",
+      "reference_count": 2,
+      "production_parity": true,
+      "A": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.0771670020185411,
+          0.07191702025011182,
+          0.06929202936589718,
+          0.06724998820573092,
+          0.06808398757129908
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2,
+            "hits": 1,
+            "value": 0.5,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2,
+        "top_true_positive": 2,
+        "full_true_positive": 2,
+        "latency_ms": [
+          0.2858749940060079,
+          0.2845830167643726,
+          0.2827499993145466,
+          0.28295902302488685,
+          0.28216600185260177
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2,
+            "hits": 2,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-31",
+      "term": "值得看一看",
+      "category": "long",
+      "reference_count": 1,
+      "production_parity": true,
+      "A": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.0819999841041863,
+          0.07075001485645771,
+          0.07466599345207214,
+          0.06966700311750174,
+          0.06795901572331786
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.3429169883020222,
+          0.33887499012053013,
+          0.34395797410979867,
+          0.33604202326387167,
+          0.3357909736223519
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-32",
+      "term": "面试经验",
+      "category": "long",
+      "reference_count": 23,
+      "production_parity": true,
+      "A": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.11679099407047033,
+          0.07412501145154238,
+          0.07745902985334396,
+          0.07237499812617898,
+          0.08295802399516106
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 23,
+            "hits": 1,
+            "value": 0.043478260869565216,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 23,
+        "top_true_positive": 10,
+        "full_true_positive": 23,
+        "latency_ms": [
+          0.8248339872807264,
+          0.7187080336734653,
+          0.70583401247859,
+          0.6984170177020133,
+          0.693499983754009
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 23,
+            "hits": 10,
+            "value": 0.43478260869565216,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-33",
+      "term": "ai应用开发",
+      "category": "mixed",
+      "reference_count": 249,
+      "production_parity": true,
+      "A": {
+        "total": 178,
+        "top_true_positive": 10,
+        "full_true_positive": 178,
+        "latency_ms": [
+          0.9087910293601453,
+          0.6446249899454415,
+          0.5164589965716004,
+          0.5267500528134406,
+          0.4950420116074383
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 249,
+            "hits": 10,
+            "value": 0.040160642570281124,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 276,
+        "top_true_positive": 9,
+        "full_true_positive": 249,
+        "latency_ms": [
+          2.8457919834181666,
+          3.075874992646277,
+          2.7984159532934427,
+          2.664625004399568,
+          2.9946250142529607
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 249,
+            "hits": 9,
+            "value": 0.03614457831325301,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-34",
+      "term": "大模型infra",
+      "category": "mixed",
+      "reference_count": 122,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.060500053223222494,
+          0.047916953917592764,
+          0.04937499761581421,
+          0.047250010538846254,
+          0.05141703877598047
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 122,
+            "hits": 0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 122,
+        "top_true_positive": 10,
+        "full_true_positive": 122,
+        "latency_ms": [
+          1.1021660175174475,
+          1.080834015738219,
+          1.080708985682577,
+          1.0807079961523414,
+          1.0741250007413328
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 122,
+            "hits": 10,
+            "value": 0.08196721311475409,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-35",
+      "term": "AI算法",
+      "category": "mixed",
+      "reference_count": 75,
+      "production_parity": true,
+      "A": {
+        "total": 42,
+        "top_true_positive": 10,
+        "full_true_positive": 42,
+        "latency_ms": [
+          0.23670803057029843,
+          0.24541601305827498,
+          0.20120799308642745,
+          0.2010409953072667,
+          0.23491698084399104
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 75,
+            "hits": 10,
+            "value": 0.13333333333333333,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 91,
+        "top_true_positive": 8,
+        "full_true_positive": 75,
+        "latency_ms": [
+          1.4765420346520841,
+          1.4673330006189644,
+          1.3931249850429595,
+          1.340000017080456,
+          1.4806249528191984
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 75,
+            "hits": 8,
+            "value": 0.10666666666666667,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.5,
+            "value": 0.5,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-36",
+      "term": "华为od",
+      "category": "mixed",
+      "reference_count": 66,
+      "production_parity": true,
+      "A": {
+        "total": 18,
+        "top_true_positive": 10,
+        "full_true_positive": 18,
+        "latency_ms": [
+          0.498417008202523,
+          0.46199996722862124,
+          0.25033397832885385,
+          0.31712499912828207,
+          0.49004098400473595
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 66,
+            "hits": 10,
+            "value": 0.15151515151515152,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 68,
+        "top_true_positive": 10,
+        "full_true_positive": 65,
+        "latency_ms": [
+          1.8726660055108368,
+          1.0835829889401793,
+          0.5058330134488642,
+          0.9947500075213611,
+          0.7121670059859753
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 66,
+            "hits": 10,
+            "value": 0.15151515151515152,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-37",
+      "term": "字节hr",
+      "category": "mixed",
+      "reference_count": 82,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.19070797134190798,
+          0.06562500493600965,
+          0.05808298010379076,
+          0.0512079568579793,
+          0.04650000482797623
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 82,
+            "hits": 0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 101,
+        "top_true_positive": 8,
+        "full_true_positive": 81,
+        "latency_ms": [
+          0.8450829773209989,
+          0.6896670092828572,
+          0.6629170384258032,
+          0.6585000082850456,
+          0.6580419722013175
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 82,
+            "hits": 8,
+            "value": 0.0975609756097561,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.5,
+            "value": 0.5,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-38",
+      "term": "PC端校招官网",
+      "category": "mixed",
+      "reference_count": 32,
+      "production_parity": true,
+      "A": {
+        "total": 32,
+        "top_true_positive": 10,
+        "full_true_positive": 32,
+        "latency_ms": [
+          0.2503329887986183,
+          0.16633298946544528,
+          0.17529202159494162,
+          0.1604999997653067,
+          0.1675000530667603
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 32,
+            "hits": 10,
+            "value": 0.3125,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 32,
+        "top_true_positive": 10,
+        "full_true_positive": 32,
+        "latency_ms": [
+          0.4543340182863176,
+          0.44074998004361987,
+          0.4219160182401538,
+          0.42691698763519526,
+          0.4166250000707805
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 32,
+            "hits": 10,
+            "value": 0.3125,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-39",
+      "term": "PDD校园招聘",
+      "category": "mixed",
+      "reference_count": 30,
+      "production_parity": true,
+      "A": {
+        "total": 30,
+        "top_true_positive": 10,
+        "full_true_positive": 30,
+        "latency_ms": [
+          0.1682080328464508,
+          0.1573750050738454,
+          0.1469160197302699,
+          0.1752919633872807,
+          0.15404197620227933
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 30,
+            "hits": 10,
+            "value": 0.3333333333333333,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 30,
+        "top_true_positive": 10,
+        "full_true_positive": 30,
+        "latency_ms": [
+          0.4098750068806112,
+          0.4029999836347997,
+          0.5454589845612645,
+          0.4588749725371599,
+          0.4096659831702709
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 30,
+            "hits": 10,
+            "value": 0.3333333333333333,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-40",
+      "term": "agent开发",
+      "category": "mixed",
+      "reference_count": 482,
+      "production_parity": true,
+      "A": {
+        "total": 27,
+        "top_true_positive": 10,
+        "full_true_positive": 27,
+        "latency_ms": [
+          0.9087079670280218,
+          0.25954103330150247,
+          0.27358299121260643,
+          0.15049998182803392,
+          0.3567080129869282
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 482,
+            "hits": 10,
+            "value": 0.02074688796680498,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 675,
+        "top_true_positive": 9,
+        "full_true_positive": 480,
+        "latency_ms": [
+          13.99712497368455,
+          11.896957992576063,
+          13.366000028327107,
+          8.531250001396984,
+          8.797333983238786
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 482,
+            "hits": 9,
+            "value": 0.01867219917012448,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-41",
+      "term": "AI应用",
+      "category": "mixed",
+      "reference_count": 401,
+      "production_parity": true,
+      "A": {
+        "total": 26,
+        "top_true_positive": 10,
+        "full_true_positive": 26,
+        "latency_ms": [
+          0.2574160462245345,
+          0.224041985347867,
+          0.1483340165577829,
+          0.2432079636491835,
+          0.1486249966546893
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 401,
+            "hits": 10,
+            "value": 0.02493765586034913,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 466,
+        "top_true_positive": 10,
+        "full_true_positive": 401,
+        "latency_ms": [
+          5.501417035702616,
+          5.020124954171479,
+          5.340958014130592,
+          5.2723330445587635,
+          5.2477080025710166
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 401,
+            "hits": 10,
+            "value": 0.02493765586034913,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-42",
+      "term": "拿到offer",
+      "category": "mixed",
+      "reference_count": 84,
+      "production_parity": true,
+      "A": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.09216595208272338,
+          0.07079198257997632,
+          0.07116602500900626,
+          0.06858300184831023,
+          0.0700420350767672
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 84,
+            "hits": 1,
+            "value": 0.011904761904761904,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 94,
+        "top_true_positive": 8,
+        "full_true_positive": 84,
+        "latency_ms": [
+          0.5944999866187572,
+          0.5729590193368495,
+          0.5676660221070051,
+          0.5658749723806977,
+          0.5652920226566494
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 84,
+            "hits": 8,
+            "value": 0.09523809523809523,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-43",
+      "term": "TME转正实习",
+      "category": "mixed",
+      "reference_count": 22,
+      "production_parity": true,
+      "A": {
+        "total": 22,
+        "top_true_positive": 10,
+        "full_true_positive": 22,
+        "latency_ms": [
+          0.15904102474451065,
+          0.1397079904563725,
+          0.13679196126759052,
+          0.13333297101780772,
+          0.13112497981637716
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 22,
+            "hits": 10,
+            "value": 0.45454545454545453,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 22,
+        "top_true_positive": 10,
+        "full_true_positive": 22,
+        "latency_ms": [
+          0.4284579772502184,
+          0.44054200407117605,
+          0.41387497913092375,
+          0.42108300840482116,
+          0.41937496280297637
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 22,
+            "hits": 10,
+            "value": 0.45454545454545453,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-44",
+      "term": "code源码",
+      "category": "mixed",
+      "reference_count": 30,
+      "production_parity": true,
+      "A": {
+        "total": 23,
+        "top_true_positive": 10,
+        "full_true_positive": 23,
+        "latency_ms": [
+          0.16787496861070395,
+          0.12445898028090596,
+          0.1484170206822455,
+          0.1307500060647726,
+          0.1486249966546893
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 30,
+            "hits": 10,
+            "value": 0.3333333333333333,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 31,
+        "top_true_positive": 10,
+        "full_true_positive": 28,
+        "latency_ms": [
+          0.5192920216359198,
+          0.4497090121731162,
+          0.39599998854100704,
+          0.38295798003673553,
+          0.4949169815517962
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 30,
+            "hits": 10,
+            "value": 0.3333333333333333,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-45",
+      "term": "GitHub",
+      "category": "control",
+      "reference_count": 2324,
+      "production_parity": true,
+      "A": {
+        "total": 1524,
+        "top_true_positive": 10,
+        "full_true_positive": 1524,
+        "latency_ms": [
+          16.38112496584654,
+          14.59433400304988,
+          51.85391602572054,
+          44.12966698873788,
+          33.45045796595514
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2324,
+            "hits": 10,
+            "value": 0.004302925989672977,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2315,
+        "top_true_positive": 10,
+        "full_true_positive": 2315,
+        "latency_ms": [
+          41.65275004925206,
+          39.689207973424345,
+          82.07083301385865,
+          79.6405830187723,
+          24.53024999704212
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2324,
+            "hits": 10,
+            "value": 0.004302925989672977,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-46",
+      "term": "Python",
+      "category": "control",
+      "reference_count": 2804,
+      "production_parity": true,
+      "A": {
+        "total": 1409,
+        "top_true_positive": 10,
+        "full_true_positive": 1409,
+        "latency_ms": [
+          19.26866703433916,
+          15.774249972309917,
+          27.043916983529925,
+          18.38491699891165,
+          15.187915996648371
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2804,
+            "hits": 10,
+            "value": 0.003566333808844508,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2789,
+        "top_true_positive": 10,
+        "full_true_positive": 2789,
+        "latency_ms": [
+          27.189332991838455,
+          37.607959005981684,
+          22.94166700448841,
+          32.37733303103596,
+          52.21895797876641
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2804,
+            "hits": 10,
+            "value": 0.003566333808844508,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-47",
+      "term": "Java",
+      "category": "control",
+      "reference_count": 3131,
+      "production_parity": true,
+      "A": {
+        "total": 447,
+        "top_true_positive": 10,
+        "full_true_positive": 447,
+        "latency_ms": [
+          4.441459022928029,
+          4.2743749800138175,
+          3.601832955610007,
+          4.259291978087276,
+          3.3607499790377915
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 3131,
+            "hits": 10,
+            "value": 0.0031938677738741618,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2910,
+        "top_true_positive": 10,
+        "full_true_positive": 2910,
+        "latency_ms": [
+          21.410082990769297,
+          20.952749997377396,
+          20.853707974310964,
+          23.11883302172646,
+          21.181292016990483
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 3131,
+            "hits": 10,
+            "value": 0.0031938677738741618,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-48",
+      "term": "Redis",
+      "category": "control",
+      "reference_count": 484,
+      "production_parity": true,
+      "A": {
+        "total": 124,
+        "top_true_positive": 10,
+        "full_true_positive": 124,
+        "latency_ms": [
+          0.6738340016454458,
+          0.45250001130625606,
+          0.5329590057954192,
+          0.4350829985924065,
+          0.5530839553102851
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 484,
+            "hits": 10,
+            "value": 0.02066115702479339,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 454,
+        "top_true_positive": 10,
+        "full_true_positive": 454,
+        "latency_ms": [
+          2.799791982397437,
+          2.8073750436306,
+          2.6575420051813126,
+          2.906709036324173,
+          2.7071249787695706
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 484,
+            "hits": 10,
+            "value": 0.02066115702479339,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-49",
+      "term": "Docker",
+      "category": "control",
+      "reference_count": 248,
+      "production_parity": true,
+      "A": {
+        "total": 112,
+        "top_true_positive": 10,
+        "full_true_positive": 112,
+        "latency_ms": [
+          0.6014590035192668,
+          0.5519159603863955,
+          0.4095829790458083,
+          0.4116670461371541,
+          0.3874580143019557
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 248,
+            "hits": 10,
+            "value": 0.04032258064516129,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 235,
+        "top_true_positive": 10,
+        "full_true_positive": 235,
+        "latency_ms": [
+          1.536833995487541,
+          1.8103329930454493,
+          1.3919579796493053,
+          1.2980829924345016,
+          1.297582988627255
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 248,
+            "hits": 10,
+            "value": 0.04032258064516129,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-50",
+      "term": "DeepSeek",
+      "category": "control",
+      "reference_count": 2273,
+      "production_parity": true,
+      "A": {
+        "total": 1220,
+        "top_true_positive": 10,
+        "full_true_positive": 1220,
+        "latency_ms": [
+          16.22479100478813,
+          9.2734579811804,
+          10.217499977443367,
+          9.403208969160914,
+          10.0237499573268
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2273,
+            "hits": 10,
+            "value": 0.004399472063352398,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2183,
+        "top_true_positive": 10,
+        "full_true_positive": 2183,
+        "latency_ms": [
+          18.399042019154876,
+          20.309000043198466,
+          18.372582970187068,
+          18.25733302393928,
+          17.769458005204797
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2273,
+            "hits": 10,
+            "value": 0.004399472063352398,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-51",
+      "term": "https://github.com/",
+      "category": "control",
+      "reference_count": 987,
+      "production_parity": true,
+      "A": {
+        "total": 943,
+        "top_true_positive": 10,
+        "full_true_positive": 943,
+        "latency_ms": [
+          13.163457973860204,
+          11.891832982655615,
+          11.244332999922335,
+          17.54354202421382,
+          14.470124966464937
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 987,
+            "hits": 10,
+            "value": 0.010131712259371834,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 985,
+        "top_true_positive": 10,
+        "full_true_positive": 985,
+        "latency_ms": [
+          12.319125002250075,
+          12.635167047847062,
+          16.59862499218434,
+          11.142541014123708,
+          12.476624979171902
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 987,
+            "hits": 10,
+            "value": 0.010131712259371834,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-52",
+      "term": "ImportError",
+      "category": "control",
+      "reference_count": 0,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.22633298067376018,
+          0.13179099187254906,
+          0.05758303450420499,
+          0.051292008720338345,
+          0.05266699008643627
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      },
+      "B": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.05983299342915416,
+          0.07775000995025039,
+          0.05783402593806386,
+          0.05508400499820709,
+          0.05262496415525675
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-53",
+      "term": "asyncio",
+      "category": "control",
+      "reference_count": 9,
+      "production_parity": true,
+      "A": {
+        "total": 9,
+        "top_true_positive": 9,
+        "full_true_positive": 9,
+        "latency_ms": [
+          0.3339159884490073,
+          0.1187919988296926,
+          0.11045800056308508,
+          0.10908400872722268,
+          0.16583397518843412
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 9,
+            "hits": 9,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 9,
+        "top_true_positive": 9,
+        "full_true_positive": 9,
+        "latency_ms": [
+          0.1567500294186175,
+          0.12250000145286322,
+          0.11724996147677302,
+          0.1139590167440474,
+          0.11591601651161909
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 9,
+            "hits": 9,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-54",
+      "term": "openai",
+      "category": "control",
+      "reference_count": 1053,
+      "production_parity": true,
+      "A": {
+        "total": 536,
+        "top_true_positive": 10,
+        "full_true_positive": 536,
+        "latency_ms": [
+          6.128832988906652,
+          6.240084010642022,
+          6.3599999994039536,
+          4.844416049309075,
+          5.528624984435737
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1053,
+            "hits": 10,
+            "value": 0.00949667616334283,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 1046,
+        "top_true_positive": 10,
+        "full_true_positive": 1046,
+        "latency_ms": [
+          11.933875037357211,
+          12.401333020534366,
+          11.40095799928531,
+          10.613749967887998,
+          11.118207999970764
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1053,
+            "hits": 10,
+            "value": 0.00949667616334283,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-55",
+      "term": "HTTP 500",
+      "category": "control",
+      "reference_count": 0,
+      "production_parity": true,
+      "A": {
+        "total": 2,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.17316697631031275,
+          0.1569580053910613,
+          0.15245901886373758,
+          0.1540829543955624,
+          0.15104201156646013
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      },
+      "B": {
+        "total": 2,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.2044999855570495,
+          0.19895797595381737,
+          0.19812502432614565,
+          0.19583397079259157,
+          0.2025000285357237
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-56",
+      "term": "get_message_context",
+      "category": "control",
+      "reference_count": 0,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.12987497029826045,
+          0.12245896505191922,
+          0.1236249809153378,
+          0.12170802801847458,
+          0.1217089593410492
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      },
+      "B": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.14366698451340199,
+          0.14104100409895182,
+          0.1419170293956995,
+          0.14058296801522374,
+          0.1361249596811831
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-57",
+      "term": "不存在的量子香蕉数据库",
+      "category": "absent",
+      "reference_count": 0,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.08704198990017176,
+          0.06225000834092498,
+          0.054875039495527744,
+          0.06087502697482705,
+          0.051292008720338345
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      },
+      "B": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.24141697213053703,
+          0.23304199567064643,
+          0.23420900106430054,
+          0.23075001081451774,
+          0.23479200899600983
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-58",
+      "term": "TrivaeNoSuchLiteral20261020",
+      "category": "absent",
+      "reference_count": 0,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.05645799683406949,
+          0.050458009354770184,
+          0.04891701973974705,
+          0.04733301466330886,
+          0.0482079922221601
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      },
+      "B": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.05579099524766207,
+          0.05191704258322716,
+          0.050332979299128056,
+          0.04966597771272063,
+          0.048707996029406786
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-59",
+      "term": "火星招聘量子独角兽",
+      "category": "absent",
+      "reference_count": 0,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.05612499080598354,
+          0.05241698818281293,
+          0.04950002767145634,
+          0.05004199920222163,
+          0.04887505201622844
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      },
+      "B": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.09070901433005929,
+          0.08958298712968826,
+          0.08708296809345484,
+          0.08862500544637442,
+          0.08691701805219054
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-60",
+      "term": "zero_result_probe_20261020",
+      "category": "absent",
+      "reference_count": 0,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.16024999786168337,
+          0.1355410204268992,
+          0.1354589476250112,
+          0.14433404430747032,
+          0.13445899821817875
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      },
+      "B": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.1587079605087638,
+          0.15049998182803392,
+          0.14608300989493728,
+          0.14816701877862215,
+          0.1456249738112092
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 0,
+            "hits": null,
+            "value": null,
+            "availability": "unavailable",
+            "reason": "gt_not_exhaustive_or_no_relevant"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-61",
+      "term": "荐",
+      "category": "single",
+      "reference_count": 2504,
+      "production_parity": true,
+      "A": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.07804197957739234,
+          0.054750009439885616,
+          0.049625057727098465,
+          0.04895799793303013,
+          0.047707988414913416
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2504,
+            "hits": 0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 0,
+        "top_true_positive": 0,
+        "full_true_positive": 0,
+        "latency_ms": [
+          0.07354200351983309,
+          0.05687499651685357,
+          0.05304103251546621,
+          0.05141698056831956,
+          0.05262496415525675
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 2504,
+            "hits": 0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 0.0,
+            "value": 0.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-62",
+      "term": "习",
+      "category": "single",
+      "reference_count": 16979,
+      "production_parity": true,
+      "A": {
+        "total": 2,
+        "top_true_positive": 2,
+        "full_true_positive": 2,
+        "latency_ms": [
+          0.08158397395163774,
+          0.07504201494157314,
+          0.08070800686255097,
+          0.07029197877272964,
+          0.07112498860806227
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 16979,
+            "hits": 2,
+            "value": 0.00011779256728900406,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 2,
+        "top_true_positive": 2,
+        "full_true_positive": 2,
+        "latency_ms": [
+          0.08166598854586482,
+          0.07666600868105888,
+          0.09629200212657452,
+          0.07437501335516572,
+          0.07366598583757877
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 16979,
+            "hits": 2,
+            "value": 0.00011779256728900406,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-63",
+      "term": "模",
+      "category": "single",
+      "reference_count": 15744,
+      "production_parity": true,
+      "A": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.09050004882737994,
+          0.07637502858415246,
+          0.07458403706550598,
+          0.07337500574067235,
+          0.07200002437457442
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 15744,
+            "hits": 1,
+            "value": 6.351626016260163e-05,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 1,
+        "top_true_positive": 1,
+        "full_true_positive": 1,
+        "latency_ms": [
+          0.07966696284711361,
+          0.07587502477690578,
+          0.07595797069370747,
+          0.07370795356109738,
+          0.07533299503847957
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 15744,
+            "hits": 1,
+            "value": 6.351626016260163e-05,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "cjk-64",
+      "term": "码",
+      "category": "single",
+      "reference_count": 9476,
+      "production_parity": true,
+      "A": {
+        "total": 7,
+        "top_true_positive": 7,
+        "full_true_positive": 7,
+        "latency_ms": [
+          0.1087500131689012,
+          0.09579199831932783,
+          0.09537499863654375,
+          0.09204098023474216,
+          0.09758298983797431
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 9476,
+            "hits": 7,
+            "value": 0.0007387083157450401,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      },
+      "B": {
+        "total": 17,
+        "top_true_positive": 10,
+        "full_true_positive": 17,
+        "latency_ms": [
+          0.13925001258030534,
+          0.13404100900515914,
+          0.13404199853539467,
+          0.13287499314174056,
+          0.12954097473993897
+        ],
+        "metrics": [
+          {
+            "name": "recall_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 9476,
+            "hits": 10,
+            "value": 0.001055297593921486,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "hit_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          },
+          {
+            "name": "mrr_at_k",
+            "k": 10,
+            "scope": "corpus",
+            "denominator": 1,
+            "hits": 1.0,
+            "value": 1.0,
+            "availability": "available",
+            "reason": null
+          }
+        ]
+      }
+    }
+  ]
+}

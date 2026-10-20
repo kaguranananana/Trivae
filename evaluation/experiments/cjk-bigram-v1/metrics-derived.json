@@ -1,0 +1,168 @@
+{
+  "cjk44": {
+    "A": {
+      "recall_at_k": {
+        "macro": 0.10166061937539171,
+        "micro": 0.004029279430528507,
+        "numerator": 360,
+        "denominator": 89346,
+        "queries": 44
+      },
+      "hit_at_k": {
+        "macro": 0.9545454545454546,
+        "micro": 0.9545454545454546,
+        "numerator": 42.0,
+        "denominator": 44,
+        "queries": 44
+      },
+      "mrr_at_k": {
+        "macro": 0.9545454545454546,
+        "micro": 0.9545454545454546,
+        "numerator": 42.0,
+        "denominator": 44,
+        "queries": 44
+      },
+      "completeness": {
+        "macro": 0.2181888523973721,
+        "micro": 0.03193203948693842,
+        "numerator": 2853,
+        "denominator": 89346
+      },
+      "literal_precision_at_10": {
+        "numerator": 360,
+        "denominator": 360,
+        "value": 1.0
+      },
+      "full_false_positive": 0,
+      "missing": 86493,
+      "zero_correct": 0,
+      "zero_cases": 0,
+      "latency_median_ms": 0.2608750364743173,
+      "latency_p95_ms": 2.1827919990755618
+    },
+    "B": {
+      "recall_at_k": {
+        "macro": 0.1467594008968304,
+        "micro": 0.004555324245069729,
+        "numerator": 407,
+        "denominator": 89346,
+        "queries": 44
+      },
+      "hit_at_k": {
+        "macro": 1.0,
+        "micro": 1.0,
+        "numerator": 44.0,
+        "denominator": 44,
+        "queries": 44
+      },
+      "mrr_at_k": {
+        "macro": 0.9772727272727273,
+        "micro": 0.9772727272727273,
+        "numerator": 43.0,
+        "denominator": 44,
+        "queries": 44
+      },
+      "completeness": {
+        "macro": 0.997769029969028,
+        "micro": 0.9999328453428246,
+        "numerator": 89340,
+        "denominator": 89346
+      },
+      "literal_precision_at_10": {
+        "numerator": 407,
+        "denominator": 415,
+        "value": 0.980722891566265
+      },
+      "full_false_positive": 339,
+      "missing": 6,
+      "zero_correct": 0,
+      "zero_cases": 0,
+      "latency_median_ms": 4.047999973408878,
+      "latency_p95_ms": 92.99525001551956
+    }
+  },
+  "pure32": {
+    "A": {
+      "recall_at_k": {
+        "macro": 0.083023646817326,
+        "micro": 0.003068289400143719,
+        "numerator": 269,
+        "denominator": 87671,
+        "queries": 32
+      },
+      "hit_at_k": {
+        "macro": 1.0,
+        "micro": 1.0,
+        "numerator": 32.0,
+        "denominator": 32,
+        "queries": 32
+      },
+      "mrr_at_k": {
+        "macro": 1.0,
+        "micro": 1.0,
+        "numerator": 32.0,
+        "denominator": 32,
+        "queries": 32
+      },
+      "completeness": {
+        "macro": 0.1297905269902308,
+        "micro": 0.02799101185112523,
+        "numerator": 2454,
+        "denominator": 87671
+      },
+      "literal_precision_at_10": {
+        "numerator": 269,
+        "denominator": 269,
+        "value": 1.0
+      },
+      "full_false_positive": 0,
+      "missing": 85217,
+      "zero_correct": 0,
+      "zero_cases": 0,
+      "latency_median_ms": 0.35416698665358126,
+      "latency_p95_ms": 2.2842090111225843
+    },
+    "B": {
+      "recall_at_k": {
+        "macro": 0.13784371821125832,
+        "micro": 0.0033648526878899522,
+        "numerator": 295,
+        "denominator": 87671,
+        "queries": 32
+      },
+      "hit_at_k": {
+        "macro": 1.0,
+        "micro": 1.0,
+        "numerator": 32.0,
+        "denominator": 32,
+        "queries": 32
+      },
+      "mrr_at_k": {
+        "macro": 1.0,
+        "micro": 1.0,
+        "numerator": 32.0,
+        "denominator": 32,
+        "queries": 32
+      },
+      "completeness": {
+        "macro": 1.0,
+        "micro": 1.0,
+        "numerator": 87671,
+        "denominator": 87671
+      },
+      "literal_precision_at_10": {
+        "numerator": 295,
+        "denominator": 295,
+        "value": 1.0
+      },
+      "full_false_positive": 0,
+      "missing": 0,
+      "zero_correct": 0,
+      "zero_cases": 0,
+      "latency_median_ms": 17.714437504764646,
+      "latency_p95_ms": 149.6584169799462
+    }
+  },
+  "reference_pairs": 147362,
+  "reference_revision": "oracle-v2"
+}

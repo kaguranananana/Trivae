@@ -123,3 +123,7 @@ bigram 归一化的 recall 契约是**长度 ≥2 的 Han 子串按保序短语�
 （如 `荐`）不是 substring recall：doc 侧 token 全部为 bigram（或孤立单字），单字无法命中
 bigram 内部字符位置（回归 `test_single_han_character_recall` 锁定该边界）。当前不引入
 unigram/LIKE/fallback 改变索引形态；如未来出现真实 Failure Case（单字搜索高频）再评估。
+
+## 独立对照实验补充（2026-10-20）
+
+[64 Query独立实验](../../../../evaluation/experiments/cjk-bigram-v1/report.md)使用新的809,850 canonical +13,985 forward快照，不重算上述历史claim。32条纯中文查询的全深度字面覆盖2454/87671→87671/87671；混排另有6条ASCII前后缀漏召回、339条分隔写法额外命中和3条top10退化。单字依然不具备完整子串召回。原文NUL会使LIKE Oracle漏读后段，实验已保留首版并独立冻结instr修正版。真实Flash仅7完整配对，没有稳定E2E质量提升证据；具体分母、性能和失败归因以新报告为准。

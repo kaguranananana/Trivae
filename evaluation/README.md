@@ -316,3 +316,7 @@ Benchmark 的 `--paired-order counterbalanced` 以 AB/BA 交替次序运行同 C
 v3 已在 pin `70593fd` 上完成 6 组 paired observation、12 个 run；Environment gate、唯一 forced-route Variant diff 与 Snapshot identity 均通过，raw/Evaluation/result/Trace 身份 12/12/12/12 对齐。实际调用为 44/102（Planner 6、Runtime 38、Jev 0）；v3 DeepSeek monetary cost unavailable。相比 v2 冻结时 ledger 74 次，本地累计为 118 次。
 
 assistant review 在 `dev-context-archify` 两组重复中均发现 Planned 恢复关键使用反馈；dependent 两组仍由 Standard 给出更完整 firsthand context；aggregation 与 zero-result controls 无退化。这形成一个狭窄的 case-level Router Classification supervision candidate，不支持 treatment-wide utility 或 generalization。正式 v2 adjudication 保持不变，Jev 仍为 `shadow`，未访问 Holdout。详见 [Planner Utility v3 validation](../.trellis/tasks/archive/2026-09/09-27-planner-retrieval-degradation-v3/validation.md)。
+
+## CJK bigram v2 单变量检索实验（2026-10-20）
+
+[独立实验报告](experiments/cjk-bigram-v1/report.md)使用809,850条canonical及13,985条forward occurrence、64个固定字面查询，对照原文unicode61与当前v2。44条中文/混排查询的全深度micro覆盖2,853/89,346→89,340/89,346，Recall@10 macro10.166%→14.676%；同时记录339个mixed字面额外匹配、3条前十退化、单字限制和性能开销。LIKE/NUL Oracle修订前结果保留但不用于claim。真实Flash为7完整配对及1中断，不能宣称稳定Agent质量提升。详见报告的分母、Oracle和HTTP计数限制。

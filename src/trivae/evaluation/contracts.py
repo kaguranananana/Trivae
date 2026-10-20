@@ -72,14 +72,14 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
 
-def _text(value: object, field_name: str) -> str:
+def _text(value: object, field_name: str, *, max_chars: int | None = MAX_EVALUATION_TEXT_CHARS) -> str:
     """统一拒绝空字符串，不把非法值隐式转成字符串。"""
 
     if not isinstance(value, str) or not value.strip():
         raise EvaluationContractError(f"{field_name} must be a non-empty string")
     normalized = value.strip()
-    if len(normalized) > MAX_EVALUATION_TEXT_CHARS:
-        raise EvaluationContractError(f"{field_name} exceeds {MAX_EVALUATION_TEXT_CHARS} characters")
+    if max_chars is not None and len(normalized) > max_chars:
+        raise EvaluationContractError(f"{field_name} exceeds {max_chars} characters")
     return normalized
 
 
@@ -350,7 +350,13 @@ class DatasetSnapshot:
             "deterministic_fingerprint",
             "created_at",
         ):
-            object.__setattr__(self, field_name, _text(getattr(self, field_name), field_name))
+            # 数据源清单是结构化身份，长度随真实来源数增长，不适用正文展示上限。
+            structured_identity = field_name in (
+                "canonical_database_identity", "source_identity", "deterministic_fingerprint"
+            )
+            # 保留完整身份参与快照比较；普通标识符仍沿用原有文本长度契约。
+            limit = None if structured_identity else MAX_EVALUATION_TEXT_CHARS
+            object.__setattr__(self, field_name, _text(getattr(self, field_name), field_name, max_chars=limit))
         if isinstance(self.message_count, bool) or not isinstance(self.message_count, int) or self.message_count < 0:
             raise EvaluationContractError("snapshot message_count must be a non-negative integer")
         if (
@@ -485,7 +491,10 @@ class DatasetSnapshot:
 
     @classmethod
     def from_dict(cls, value: object) -> DatasetSnapshot:
-        payload = _mapping(value, "dataset_snapshot")
+        # 本对象的字段由构造器及嵌套 contract 分别校验，避免把结构化快照身份当正文截断。
+        if not isinstance(value, Mapping):
+            raise EvaluationContractError("dataset_snapshot must be an object")
+        payload = _JSONMapping(value)
         time_range = payload.get("relevant_time_range")
         if not isinstance(time_range, (list, tuple)):
             raise EvaluationContractError("dataset_snapshot.relevant_time_range must be an array")
@@ -669,7 +678,10 @@ class EvaluationCaseBundle:
 
     @classmethod
     def from_dict(cls, value: object) -> EvaluationCaseBundle:
-        payload = _mapping(value, "evaluation_case")
+        # 本对象的字段由构造器及嵌套 contract 分别校验，避免把结构化快照身份当正文截断。
+        if not isinstance(value, Mapping):
+            raise EvaluationContractError("evaluation_case must be an object")
+        payload = _JSONMapping(value)
         findings = payload.get("reference_findings", ())
         if not isinstance(findings, (list, tuple)):
             raise EvaluationContractError("reference_findings must be an array")

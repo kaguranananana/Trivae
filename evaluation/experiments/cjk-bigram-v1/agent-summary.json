@@ -1,0 +1,407 @@
+{
+  "rows": [
+    {
+      "case_id": "cjk-01",
+      "term": "推荐",
+      "strategy": "A",
+      "status": "completed",
+      "direct_literal_hits": 10,
+      "evidence_literal_hits": 5,
+      "evidence_sources": 5,
+      "existing_sources": 5,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15075,
+        "output_tokens": 750,
+        "total_tokens": 15825,
+        "cached_input_tokens": 9216
+      },
+      "latency_ms": 11763.919542019721,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-01",
+      "term": "推荐",
+      "strategy": "B",
+      "status": "completed",
+      "direct_literal_hits": 10,
+      "evidence_literal_hits": 5,
+      "evidence_sources": 5,
+      "existing_sources": 5,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15034,
+        "output_tokens": 805,
+        "total_tokens": 15839,
+        "cached_input_tokens": 12160
+      },
+      "latency_ms": 7446.626833989285,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-21",
+      "term": "人工智能",
+      "strategy": "B",
+      "status": "completed",
+      "direct_literal_hits": 3,
+      "evidence_literal_hits": 3,
+      "evidence_sources": 3,
+      "existing_sources": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 14235,
+        "output_tokens": 615,
+        "total_tokens": 14850,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 7067.129917035345,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-21",
+      "term": "人工智能",
+      "strategy": "A",
+      "status": "completed",
+      "direct_literal_hits": 3,
+      "evidence_literal_hits": 3,
+      "evidence_sources": 3,
+      "existing_sources": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 14403,
+        "output_tokens": 676,
+        "total_tokens": 15079,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 4790.147541963961,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-33",
+      "term": "ai应用开发",
+      "strategy": "A",
+      "status": "completed",
+      "direct_literal_hits": 10,
+      "evidence_literal_hits": 3,
+      "evidence_sources": 3,
+      "existing_sources": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15119,
+        "output_tokens": 548,
+        "total_tokens": 15667,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 3677.008791011758,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-33",
+      "term": "ai应用开发",
+      "strategy": "B",
+      "status": "completed",
+      "direct_literal_hits": 9,
+      "evidence_literal_hits": 6,
+      "evidence_sources": 7,
+      "existing_sources": 7,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15083,
+        "output_tokens": 682,
+        "total_tokens": 15765,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 5551.819499989506,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-34",
+      "term": "大模型infra",
+      "strategy": "B",
+      "status": "completed",
+      "direct_literal_hits": 10,
+      "evidence_literal_hits": 4,
+      "evidence_sources": 4,
+      "existing_sources": 4,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 16649,
+        "output_tokens": 957,
+        "total_tokens": 17606,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 6254.546750045847,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-34",
+      "term": "大模型infra",
+      "strategy": "A",
+      "status": "completed_degraded",
+      "direct_literal_hits": 0,
+      "evidence_literal_hits": 0,
+      "evidence_sources": 3,
+      "existing_sources": 3,
+      "usage": {
+        "requests": 3,
+        "input_tokens": 24071,
+        "output_tokens": 1035,
+        "total_tokens": 25106,
+        "cached_input_tokens": 15872
+      },
+      "latency_ms": 8154.2821250041015,
+      "tools": [
+        "lexical_search",
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-45",
+      "term": "GitHub",
+      "strategy": "B",
+      "status": "completed",
+      "direct_literal_hits": 10,
+      "evidence_literal_hits": 3,
+      "evidence_sources": 3,
+      "existing_sources": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 15110,
+        "output_tokens": 707,
+        "total_tokens": 15817,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 21441.172791994177,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-46",
+      "term": "Python",
+      "strategy": "B",
+      "status": "completed",
+      "direct_literal_hits": 3,
+      "evidence_literal_hits": 3,
+      "evidence_sources": 3,
+      "existing_sources": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 13972,
+        "output_tokens": 463,
+        "total_tokens": 14435,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 8981.801166955847,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-46",
+      "term": "Python",
+      "strategy": "A",
+      "status": "completed",
+      "direct_literal_hits": 3,
+      "evidence_literal_hits": 3,
+      "evidence_sources": 3,
+      "existing_sources": 3,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 13975,
+        "output_tokens": 513,
+        "total_tokens": 14488,
+        "cached_input_tokens": 12160
+      },
+      "latency_ms": 17187.525833025575,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "collector_degraded",
+      "finalization_error": null,
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-57",
+      "term": "不存在的量子香蕉数据库",
+      "strategy": "A",
+      "status": "failed",
+      "direct_literal_hits": 0,
+      "evidence_literal_hits": 0,
+      "evidence_sources": 0,
+      "existing_sources": 0,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 13559,
+        "output_tokens": 480,
+        "total_tokens": 14039,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 6947.767957986798,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": {
+        "code": "INVALID_FINAL_OUTPUT",
+        "path": null
+      },
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-57",
+      "term": "不存在的量子香蕉数据库",
+      "strategy": "B",
+      "status": "failed",
+      "direct_literal_hits": 0,
+      "evidence_literal_hits": 0,
+      "evidence_sources": 0,
+      "existing_sources": 0,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 13559,
+        "output_tokens": 266,
+        "total_tokens": 13825,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 6633.6434169788845,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": {
+        "code": "INVALID_FINAL_OUTPUT",
+        "path": null
+      },
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-61",
+      "term": "荐",
+      "strategy": "B",
+      "status": "failed",
+      "direct_literal_hits": 0,
+      "evidence_literal_hits": 0,
+      "evidence_sources": 0,
+      "existing_sources": 0,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 13584,
+        "output_tokens": 546,
+        "total_tokens": 14130,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 6649.902083037887,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": {
+        "code": "INVALID_FINAL_OUTPUT",
+        "path": null
+      },
+      "human_verified": false
+    },
+    {
+      "case_id": "cjk-61",
+      "term": "荐",
+      "strategy": "A",
+      "status": "failed",
+      "direct_literal_hits": 0,
+      "evidence_literal_hits": 0,
+      "evidence_sources": 0,
+      "existing_sources": 0,
+      "usage": {
+        "requests": 2,
+        "input_tokens": 13541,
+        "output_tokens": 386,
+        "total_tokens": 13927,
+        "cached_input_tokens": 11776
+      },
+      "latency_ms": 5826.664208958391,
+      "tools": [
+        "lexical_search"
+      ],
+      "trace_completeness": "complete",
+      "finalization_error": {
+        "code": "INVALID_FINAL_OUTPUT",
+        "path": null
+      },
+      "human_verified": false
+    }
+  ],
+  "accounting": {
+    "completed_record_requests": 31,
+    "interrupted_completed_requests": 1,
+    "confirmed_http_responses": 32,
+    "possible_cancelled_inflight_requests": 1,
+    "http_attempt_range": [
+      32,
+      33
+    ],
+    "remaining_batch_transport_requests": 14,
+    "tokens_completed_records": {
+      "input_tokens": 226969,
+      "output_tokens": 9429,
+      "total_tokens": 236398,
+      "cached_input_tokens": 178944
+    },
+    "interrupted_confirmed_usage": {
+      "input_tokens": 6048,
+      "output_tokens": 188,
+      "total_tokens": 6236
+    },
+    "interrupted_inflight_usage": "unknown; not fabricated",
+    "original_zero_counter_invalid": true,
+    "budget_upper_bound": 40
+  },
+  "interrupted": {
+    "case_id": "cjk-45",
+    "strategy": "A",
+    "cause": "stopped to correct HTTP transport instrumentation"
+  }
+}

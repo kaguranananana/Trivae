@@ -216,3 +216,36 @@ Correct：使用 Case 邻接配对缩短时间漂移，保留 Provider failure a
 - Evaluation 的具体实现框架、Case / Dataset Schema、runner、Review workflow、数值指标口径与 threshold；Stage 1.10 的 Case Bundle、Reference、Suite、Baseline、paired comparison 与 Review 治理语义已确认
 - Stage 1.11 的 create_application / create_http_app 具体实现、QueryRequest 最终 Schema、CLI / API wire contract、Evaluation runner 与具体 package 文件；Application Boundary、Composition Root、统一 execution core、factory/lifecycle ownership、trusted context 与 package ownership 已确认
 - 工具链具体选型（formatter / linter / test runner 版本与配置）
+
+## 多来源 Evaluation Snapshot 与 CJK 字面 Oracle（2026-10-20）
+
+### 1. Scope / Trigger
+
+真实80来源快照暴露结构化身份超过4000字符；真实聊天NUL暴露LIKE不适合作完整正文Oracle。用于后续Snapshot序列化或字面检索实验。
+
+### 2. Signatures
+
+`DatasetSnapshot.from_database(path)`、`DatasetSnapshot.from_dict(value)`、`EvaluationCaseBundle.from_dict(value)`保持原接口；`source_identity`、`canonical_database_identity`、`deterministic_fingerprint`仍为完整字符串身份。
+
+### 3. Contracts
+
+结构化身份不能套用正文展示的4000字符上限，也不能截断后比较。普通snapshot_id等短标识继续使用原长度契约；字段类型与非空要求不变。Snapshot/Case的from_dict应让各字段及嵌套contract执行其所属校验。完整正文的ASCII大小写不敏感字面Oracle采用`instr(lower(content_text), lower(?)) > 0`，不把FTS的token/分隔符匹配声称为任意子串匹配。
+
+### 4. Validation & Error Matrix
+
+- 80个合法来源导致身份增长：成功构造并无损round-trip；身份字段不是正文。
+- 非字符串/空身份：继续显式EvaluationContractError；普通snapshot_id超限仍报错。
+- 文本含NUL：LIKE可能漏掉NUL后段，不能作为该正文的穷举真值；应单独冻结修正版Oracle，保留旧证据。
+- 无人工审核：保持非human_verified；来源存在不代表答案语义与引用正确。
+
+### 5. Good / Base / Bad Cases
+
+Good：同一个快照、Query和Scope下先冻结完整正文Reference，再运行A/B及生产parity。Base：无NUL的字面匹配保持原口径。Bad：看到Candidate额外命中就全部标错、改题，或截短Snapshot身份绕过构造错误。
+
+### 6. Tests Required
+
+`test_cjk_benchmark.py`覆盖80来源真实构造和Case round-trip、普通标识超限、NUL后的完整字面串、mixed空格额外匹配、空Reference分母、forward Scope/preview排除及实验A不伪造生产metadata。
+
+### 7. Wrong vs Correct
+
+Wrong：将`LIKE '%词%'`无条件视为完整正文穷举，或把索引hit数称为Agent准确率。Correct：检验Oracle适用范围；同一Query分别报告top10、全深度字面覆盖、误匹配、真实Agent与审核状态。完整证据见[实验报告](../../../evaluation/experiments/cjk-bigram-v1/report.md)。

@@ -1,0 +1,24 @@
+{
+  "execution_base_commit": "201a81bef8e3ba18755489d6df6b898ad3d4b7d2",
+  "execution_tree": "base plus committed experiment harness and evaluation Snapshot fix; not clean-worktree run",
+  "python": "3.12.13",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "sqlite": "3.50.4",
+  "packages": {
+    "openai": "3.5.0",
+    "openai-agents": "0.22.0",
+    "httpx": "0.28.1",
+    "httpx2": "2.12.0"
+  },
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "base_url": "https://api.deepseek.com",
+  "api_key_configured": true,
+  "canonical_messages": 809850,
+  "forward_occurrences": 13985,
+  "canonical_revision": 44070,
+  "source_count": 80,
+  "sessions": 12,
+  "forward_gaps": 217,
+  "tokenizer": "unicode61 versus unicode61+cjk-bigram-v2"
+}

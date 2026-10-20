@@ -1,0 +1,54 @@
+{
+  "reason": "LIKE stops at NUL; instr searches full text",
+  "changed_reference_cases": [
+    {
+      "case_id": "cjk-08",
+      "term": "模型",
+      "old": 11350,
+      "new": 11353
+    },
+    {
+      "case_id": "cjk-09",
+      "term": "工具",
+      "old": 2970,
+      "new": 2971
+    },
+    {
+      "case_id": "cjk-10",
+      "term": "代码",
+      "old": 5166,
+      "new": 5168
+    },
+    {
+      "case_id": "cjk-17",
+      "term": "论文",
+      "old": 1258,
+      "new": 1259
+    },
+    {
+      "case_id": "cjk-18",
+      "term": "数据",
+      "old": 4500,
+      "new": 4503
+    },
+    {
+      "case_id": "cjk-50",
+      "term": "DeepSeek",
+      "old": 2270,
+      "new": 2273
+    },
+    {
+      "case_id": "cjk-63",
+      "term": "模",
+      "old": 15741,
+      "new": 15744
+    },
+    {
+      "case_id": "cjk-64",
+      "term": "码",
+      "old": 9473,
+      "new": 9476
+    }
+  ],
+  "query_changes": 0
+}

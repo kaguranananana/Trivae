@@ -89,3 +89,7 @@ uv run trivae eval compare --help
 真实模型评测需要准备自己的合法数据、匹配该数据的 Snapshot / Case / Suite，以及与当前运行配置一致的 Variant。仓库中的设计 Seed 或历史 Variant 不能直接作为任意新数据的质量基准。`eval run` 会调用所配置的 Provider，模型请求的额度和费用按实际 Provider 处理。
 
 Case 格式与历史评测工具入口见 [evaluation/README.md](../evaluation/README.md)；应用边界、来源检查和预算机制见 [系统架构](architecture.md)。公开实验材料前，还应检查其中的问题、Reference、ReviewPacket、Trace 和来源摘录是否包含私人数据。
+
+## CJK 字面检索对照的解释边界
+
+2026-10-20的[独立CJK实验](../evaluation/experiments/cjk-bigram-v1/report.md)将字面完整性、top10排序和真实Agent分开。LIKE会在原文NUL处截断，完整正文Oracle改用`instr(lower(text), lower(term))`；首版证据保留，修正版Reference先冻结再复测。mixed-script分隔符等价、ASCII exact token和单字限制都必须独立说明。实验中的99.993%是44个固定中文/混排Query的全深度字面micro覆盖，不能称为Agent准确率。面试材料见[CJK检索实验-简历与面试.md](../interview-docs/CJK检索实验-简历与面试.md)。

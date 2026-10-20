@@ -1,0 +1,258 @@
+[
+  {
+    "term": "推荐",
+    "category": "short"
+  },
+  {
+    "term": "实习",
+    "category": "short"
+  },
+  {
+    "term": "面试",
+    "category": "short"
+  },
+  {
+    "term": "项目",
+    "category": "short"
+  },
+  {
+    "term": "开源",
+    "category": "short"
+  },
+  {
+    "term": "简历",
+    "category": "short"
+  },
+  {
+    "term": "算法",
+    "category": "short"
+  },
+  {
+    "term": "模型",
+    "category": "short"
+  },
+  {
+    "term": "工具",
+    "category": "short"
+  },
+  {
+    "term": "代码",
+    "category": "short"
+  },
+  {
+    "term": "学习",
+    "category": "short"
+  },
+  {
+    "term": "工作",
+    "category": "short"
+  },
+  {
+    "term": "岗位",
+    "category": "short"
+  },
+  {
+    "term": "秋招",
+    "category": "short"
+  },
+  {
+    "term": "内推",
+    "category": "short"
+  },
+  {
+    "term": "校招",
+    "category": "short"
+  },
+  {
+    "term": "论文",
+    "category": "short"
+  },
+  {
+    "term": "数据",
+    "category": "short"
+  },
+  {
+    "term": "测试",
+    "category": "short"
+  },
+  {
+    "term": "部署",
+    "category": "short"
+  },
+  {
+    "term": "人工智能",
+    "category": "long"
+  },
+  {
+    "term": "大语言模型",
+    "category": "long"
+  },
+  {
+    "term": "检索增强生成",
+    "category": "long"
+  },
+  {
+    "term": "向量数据库",
+    "category": "long"
+  },
+  {
+    "term": "后端开发",
+    "category": "long"
+  },
+  {
+    "term": "机器学习",
+    "category": "long"
+  },
+  {
+    "term": "操作系统",
+    "category": "long"
+  },
+  {
+    "term": "计算机网络",
+    "category": "long"
+  },
+  {
+    "term": "数据结构",
+    "category": "long"
+  },
+  {
+    "term": "真心推荐",
+    "category": "long"
+  },
+  {
+    "term": "值得看一看",
+    "category": "long"
+  },
+  {
+    "term": "面试经验",
+    "category": "long"
+  },
+  {
+    "term": "ai应用开发",
+    "category": "mixed"
+  },
+  {
+    "term": "大模型infra",
+    "category": "mixed"
+  },
+  {
+    "term": "AI算法",
+    "category": "mixed"
+  },
+  {
+    "term": "华为od",
+    "category": "mixed"
+  },
+  {
+    "term": "字节hr",
+    "category": "mixed"
+  },
+  {
+    "term": "PC端校招官网",
+    "category": "mixed"
+  },
+  {
+    "term": "PDD校园招聘",
+    "category": "mixed"
+  },
+  {
+    "term": "agent开发",
+    "category": "mixed"
+  },
+  {
+    "term": "AI应用",
+    "category": "mixed"
+  },
+  {
+    "term": "拿到offer",
+    "category": "mixed"
+  },
+  {
+    "term": "TME转正实习",
+    "category": "mixed"
+  },
+  {
+    "term": "code源码",
+    "category": "mixed"
+  },
+  {
+    "term": "GitHub",
+    "category": "control"
+  },
+  {
+    "term": "Python",
+    "category": "control"
+  },
+  {
+    "term": "Java",
+    "category": "control"
+  },
+  {
+    "term": "Redis",
+    "category": "control"
+  },
+  {
+    "term": "Docker",
+    "category": "control"
+  },
+  {
+    "term": "DeepSeek",
+    "category": "control"
+  },
+  {
+    "term": "https://github.com/",
+    "category": "control"
+  },
+  {
+    "term": "ImportError",
+    "category": "control"
+  },
+  {
+    "term": "asyncio",
+    "category": "control"
+  },
+  {
+    "term": "openai",
+    "category": "control"
+  },
+  {
+    "term": "HTTP 500",
+    "category": "control"
+  },
+  {
+    "term": "get_message_context",
+    "category": "control"
+  },
+  {
+    "term": "不存在的量子香蕉数据库",
+    "category": "absent"
+  },
+  {
+    "term": "TrivaeNoSuchLiteral20261020",
+    "category": "absent"
+  },
+  {
+    "term": "火星招聘量子独角兽",
+    "category": "absent"
+  },
+  {
+    "term": "zero_result_probe_20261020",
+    "category": "absent"
+  },
+  {
+    "term": "荐",
+    "category": "single"
+  },
+  {
+    "term": "习",
+    "category": "single"
+  },
+  {
+    "term": "模",
+    "category": "single"
+  },
+  {
+    "term": "码",
+    "category": "single"
+  }
+]
