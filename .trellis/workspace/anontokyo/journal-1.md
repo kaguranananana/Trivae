@@ -1951,3 +1951,24 @@ TLS路径恢复后完成真实High消融；139/140请求，最终B01关键target
 ### Status
 
 [OK] **Completed**
+
+
+## Session 74: CJK bigram v2 controlled benchmark
+
+**Date**: 2026-10-20
+**Task**: CJK bigram v2 controlled benchmark
+**Branch**: `main`
+
+### Summary
+
+完成64 Query、823835条投影的unicode61/v2真实A/B；44条中文/混排全深度字面覆盖3.193%→99.993%，Recall@10 macro10.166%→14.676%；保留339个mixed额外命中、3条top10退化及单字限制。修复80来源Snapshot身份上限，独立冻结NUL Oracle修正版。真实Flash15 returned+1中断，7完整配对、32–33 HTTP尝试，无稳定E2E提升结论。1187 tests passed/1 skipped，ruff/mypy通过；报告、简历与面试材料已提交，私有证据本地保留。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c7f1e5e` | (see git log) |
+
+### Status
+
+[OK] **Completed**

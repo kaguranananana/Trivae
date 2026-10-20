@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 73
-- **Last Active**: 2026-10-19
+- **Total Sessions**: 74
+- **Last Active**: 2026-10-20
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1953 | Active |
+| `journal-1.md` | ~1974 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 74 | 2026-10-20 | CJK bigram v2 controlled benchmark | `c7f1e5e` | `main` |
 | 73 | 2026-10-19 | 真实群聊产品截图替换 | `36b43ec` | `main` |
 | 72 | 2026-10-19 | GitHub README 与 About 产品化改造 | `559e2e4` | `main` |
 | 71 | 2026-10-19 | GPT High TLS续修与消融否决结论 | `aa47c3f`, `0f6d531`, `5ff3357` | `main` |
