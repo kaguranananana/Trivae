@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import runpy
 import sqlite3
 from pathlib import Path
 
@@ -36,7 +37,9 @@ from trivae.query.runtime.openai_tools import (
 from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES
 
 # 原实验候选必须对照当时冻结的生产基线（8def8d7），避免后续策略演进改写历史比较。
-HISTORICAL_PROMPT = (Path(__file__).parent / "fixtures/prompt-policy-audit-baseline.txt").read_text()
+HISTORICAL_PROMPT = runpy.run_path(str(Path(__file__).parent / "fixtures/prompt-policy-audit-baseline.py"))[
+    "SYSTEM_PROMPT"
+]
 
 TASK = Path(__file__).parents[1] / ".trellis/tasks/10-05-prompt-policy-audit"
 

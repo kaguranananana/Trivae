@@ -212,13 +212,13 @@ def test_historical_import_rejects_failed_candidate_without_provider(tmp_path):
 
 
 def test_static_prompt_responsibility_mapping_covers_exact_production_wording():
-    """L0检查92条mapping与224行实际原文，防止审计脱离当前baseline。"""
+    """历史92条mapping必须绑定原实验源码，不能随生产Prompt演进改写。"""
     import re
     from pathlib import Path
 
     root = Path(__file__).parents[1]
     matrix = (root / ".trellis/tasks/10-05-prompt-policy-audit/prompt-responsibility-matrix.md").read_text()
-    original = (root / "src/trivae/query/runtime/prompt.py").read_text().splitlines()
+    original = (root / "tests/fixtures/prompt-policy-audit-baseline.py").read_text().splitlines()
     rows = [re.split(r"(?<!\\)\|", line)[1:-1] for line in matrix.splitlines() if re.match(r"\| P\d+ \|", line)]
     assert len(rows) == 92
     covered = set()
@@ -230,7 +230,7 @@ def test_static_prompt_responsibility_mapping_covers_exact_production_wording():
         start, end = int(span[0]), int(span[-1])
         covered.update(range(start, end + 1))
         wording = "\n".join(original[start - 1 : end]).removeprefix('SYSTEM_PROMPT = """')
-        # 精确语义片段可从行中间开始；仍必须属于所报当前源码范围。
+        # 精确语义片段可从行中间开始；仍必须属于历史冻结源码所报范围。
         quoted = fields[1].strip().replace("<br>", "\n").replace("\\|", "|")
         assert quoted in wording
         # 声明最小行范围，防止用大段覆盖掩盖错位。
