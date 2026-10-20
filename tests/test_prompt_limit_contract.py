@@ -14,7 +14,9 @@ from tests import test_stage_b_tools as fixtures
 from trivae.capabilities import ExecutionScope
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import LexicalSearchSDKToolAdapter, SearchMessagesSDKToolAdapter
-from trivae.query.runtime.prompt import SYSTEM_PROMPT
+
+# 原实验候选必须对照当时冻结的生产基线（8def8d7），避免后续策略演进改写历史比较。
+HISTORICAL_PROMPT = (Path(__file__).parent / "fixtures/prompt-policy-audit-baseline.txt").read_text()
 
 REMOVED_LIMIT_RULE = (
     "limit must be a positive integer no greater than the trusted result limit\n"
@@ -86,5 +88,5 @@ def test_valid_limit_boundaries_keep_actual_retrieval(limit_tool, value):
 
 def test_candidate_is_exactly_one_parameter_fragment_removal():
     """整串相等比保护子段更强：所有非目标文字、顺序和空白都不变。"""
-    assert SYSTEM_PROMPT.count(REMOVED_LIMIT_RULE) == 1
-    assert CANDIDATE_PATH.read_text() == SYSTEM_PROMPT.replace(REMOVED_LIMIT_RULE, "", 1)
+    assert HISTORICAL_PROMPT.count(REMOVED_LIMIT_RULE) == 1
+    assert CANDIDATE_PATH.read_text() == HISTORICAL_PROMPT.replace(REMOVED_LIMIT_RULE, "", 1)

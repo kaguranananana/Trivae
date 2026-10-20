@@ -33,8 +33,10 @@ from trivae.query.runtime.openai_tools import (
     SearchMessagesSDKToolAdapter,
     SemanticSearchSDKToolAdapter,
 )
-from trivae.query.runtime.prompt import SYSTEM_PROMPT
 from trivae.retrieval.context import MAX_CONTEXT_EXPANSION_MESSAGES
+
+# 原实验候选必须对照当时冻结的生产基线（8def8d7），避免后续策略演进改写历史比较。
+HISTORICAL_PROMPT = (Path(__file__).parent / "fixtures/prompt-policy-audit-baseline.txt").read_text()
 
 TASK = Path(__file__).parents[1] / ".trellis/tasks/10-05-prompt-policy-audit"
 
@@ -107,7 +109,7 @@ def test_p02_schema_and_valid_context_keep_message_counts(adapter, name):
 def test_all_iteration_candidates_only_remove_declared_fragments():
     """每一步都从前一候选精确删一片段；其余正文、空白与顺序整体相等。"""
     manifest = json.loads((TASK / "research/optimization-candidates.json").read_text())
-    previous = SYSTEM_PROMPT
+    previous = HISTORICAL_PROMPT
     for item in manifest:
         assert previous.count(item["removed"]) == 1
         expected = previous.replace(item["removed"], "", 1)
