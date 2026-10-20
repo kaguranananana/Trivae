@@ -25,3 +25,5 @@
 最终完整 `uv run pytest -q`：1187 passed、1 skipped（26.77s）；ruff/mypy/diff及文档链接/公开指标一致性检查均通过。
 
 历史证据额外审计：原trace-87060c…仍在快照，可恢复0-hit的单会话trusted Scope、archive_latest前两天[1786671390000,1786844190001)、limit30/context2、complete coverage。157/187后续smoke完整参数未恢复，不能把历史记录视为本次新结果或擅自认定与14条诊断同分母。
+
+工作提交：c7f1e5e（实验脚本、Snapshot修复、测试、结果、报告及面试材料）；无关.opencode改动、导入锁和Obsidian base均未暂存。
