@@ -1972,3 +1972,27 @@ TLS路径恢复后完成真实High消融；139/140请求，最终B01关键target
 ### Status
 
 [OK] **Completed**
+
+
+## Session 75: Evaluation historical audit and paired quality validation
+
+**Date**: 2026-10-20
+**Task**: Evaluation historical audit and paired quality validation
+**Branch**: `main`
+
+### Summary
+
+审计历史context、Evidence及Gate3失败；冻结811892条canonical与官方DeepSeek Flash，完成20题40次正式A/B和4次补充复测，共118/120次实际HTTP。开发Evidence11/19至8/19，调参外验证23/29至22/29且一次Finalizer失败；候选无可信收益，恢复生产基线，人工质量审核pending。44运行/Trace/ReviewPacket、43正式Artifact及777次消息引用恢复核验对齐；补充脱敏报告、简历第五条、Claim账本及面试材料。1201 tests passed/1 skipped，Ruff及mypy128源文件通过。历史Prompt审计绑定原始fixture，报告跨split评审身份回归补齐。仅提交本任务并保留无关改动。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `53a5155` | (see git log) |
+| `3d9cc0e` | (see git log) |
+| `da7a2d0` | (see git log) |
+| `8302f45` | (see git log) |
+
+### Status
+
+[OK] **Completed**
