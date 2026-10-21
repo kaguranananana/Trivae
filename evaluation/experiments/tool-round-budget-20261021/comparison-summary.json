@@ -1,0 +1,478 @@
+{
+  "pairs": [
+    {
+      "case_id": "budget-dev-lexical-resume-miner",
+      "reason": "历史 3 轮仍遗漏具名工具；多阶段发现候选",
+      "A": {
+        "status": "completed_degraded",
+        "rounds": 3,
+        "reported_rounds": 3,
+        "calls": 4,
+        "tools_by_round": {
+          "1": [
+            "semantic_search"
+          ],
+          "2": [
+            "lexical_search"
+          ],
+          "3": [
+            "get_message_context",
+            "get_message_context"
+          ]
+        },
+        "unique_returned": 189,
+        "direct_targets": 0,
+        "returned_targets": 0,
+        "final_targets": 0,
+        "target_denominator": 4,
+        "context_final_hits": 0,
+        "growth": [
+          {
+            "round": 1,
+            "unique_returned": 100,
+            "new_messages": 100,
+            "new_target_count": 0
+          },
+          {
+            "round": 2,
+            "unique_returned": 50,
+            "new_messages": 50,
+            "new_target_count": 0
+          },
+          {
+            "round": 3,
+            "unique_returned": 41,
+            "new_messages": 39,
+            "new_target_count": 0
+          }
+        ],
+        "finalization_status": "degraded",
+        "finalization_diagnostics": {
+          "status": "degraded",
+          "user_answer_preserved": true,
+          "error_code": "UNRESOLVED_SOURCE_HANDLE",
+          "error_path": "evidence_items[7].sources[0].source",
+          "degradation_codes": [
+            "strict_validation_failed",
+            "citation_dropped",
+            "field_dropped"
+          ],
+          "dropped_field_count": 1,
+          "dropped_field_paths": [
+            "evidence_items[7].sources[0].source"
+          ],
+          "dropped_citation_count": 1,
+          "normalization_count": 0,
+          "validated_citation_count": 24
+        },
+        "projection_omitted_messages": 0,
+        "citation_state": "degraded",
+        "latency_ms": 105030.0,
+        "wall_ms": 111538.50816603517,
+        "http_requests": 4,
+        "usage": {
+          "cached_input_tokens": 29056,
+          "input_tokens": 120572,
+          "output_tokens": 2698,
+          "requests": 4,
+          "total_tokens": 123270
+        },
+        "terminal_usage": {
+          "requests": 4,
+          "input_tokens": 120572,
+          "output_tokens": 2698,
+          "total_tokens": 123270,
+          "cached_input_tokens": 29056
+        },
+        "usage_complete": true,
+        "estimated_usd_at_published_offpeak_rate": 0.015433368,
+        "estimated_usd_peak_upper": 0.030866736,
+        "provider_reported_currency_cost": null,
+        "unobserved_request_max_usd": 0.0
+      },
+      "B": {
+        "status": "completed",
+        "rounds": 3,
+        "reported_rounds": 3,
+        "calls": 6,
+        "tools_by_round": {
+          "1": [
+            "semantic_search",
+            "semantic_search"
+          ],
+          "2": [
+            "get_message_context",
+            "get_message_context"
+          ],
+          "3": [
+            "lexical_search",
+            "lexical_search"
+          ]
+        },
+        "unique_returned": 295,
+        "direct_targets": 4,
+        "returned_targets": 4,
+        "final_targets": 4,
+        "target_denominator": 4,
+        "context_final_hits": 0,
+        "growth": [
+          {
+            "round": 1,
+            "unique_returned": 140,
+            "new_messages": 140,
+            "new_target_count": 0
+          },
+          {
+            "round": 2,
+            "unique_returned": 79,
+            "new_messages": 59,
+            "new_target_count": 0
+          },
+          {
+            "round": 3,
+            "unique_returned": 102,
+            "new_messages": 96,
+            "new_target_count": 4
+          }
+        ],
+        "finalization_status": "valid",
+        "finalization_diagnostics": {
+          "status": "valid",
+          "user_answer_preserved": true,
+          "error_code": null,
+          "error_path": null,
+          "degradation_codes": [],
+          "dropped_field_count": 0,
+          "dropped_field_paths": [],
+          "dropped_citation_count": 0,
+          "normalization_count": 0,
+          "validated_citation_count": 28
+        },
+        "projection_omitted_messages": 0,
+        "citation_state": "passed",
+        "latency_ms": 128836.00000000001,
+        "wall_ms": 134558.34404198686,
+        "http_requests": 4,
+        "usage": {
+          "cached_input_tokens": 16384,
+          "input_tokens": 187636,
+          "output_tokens": 4489,
+          "requests": 4,
+          "total_tokens": 192125
+        },
+        "terminal_usage": {
+          "requests": 4,
+          "input_tokens": 187636,
+          "output_tokens": 4489,
+          "total_tokens": 192125,
+          "cached_input_tokens": 16384
+        },
+        "usage_complete": true,
+        "estimated_usd_at_published_offpeak_rate": 0.028430352,
+        "estimated_usd_peak_upper": 0.056860704,
+        "provider_reported_currency_cost": null,
+        "unobserved_request_max_usd": 0.0
+      },
+      "B_messages_absent_A": 202,
+      "B_new_target_count": 4
+    },
+    {
+      "case_id": "budget-dev-context-archify",
+      "reason": "历史 standard 触顶且 required_context 丢失；跨消息反馈恢复",
+      "A": {
+        "status": "completed",
+        "rounds": 2,
+        "reported_rounds": 2,
+        "calls": 3,
+        "tools_by_round": {
+          "1": [
+            "lexical_search"
+          ],
+          "2": [
+            "get_message_context",
+            "get_message_context"
+          ]
+        },
+        "unique_returned": 142,
+        "direct_targets": 1,
+        "returned_targets": 1,
+        "final_targets": 0,
+        "target_denominator": 2,
+        "context_final_hits": 0,
+        "growth": [
+          {
+            "round": 1,
+            "unique_returned": 100,
+            "new_messages": 100,
+            "new_target_count": 1
+          },
+          {
+            "round": 2,
+            "unique_returned": 44,
+            "new_messages": 42,
+            "new_target_count": 0
+          }
+        ],
+        "finalization_status": "valid",
+        "finalization_diagnostics": {
+          "status": "valid",
+          "user_answer_preserved": true,
+          "error_code": null,
+          "error_path": null,
+          "degradation_codes": [],
+          "dropped_field_count": 0,
+          "dropped_field_paths": [],
+          "dropped_citation_count": 0,
+          "normalization_count": 0,
+          "validated_citation_count": 38
+        },
+        "projection_omitted_messages": 0,
+        "citation_state": "passed",
+        "latency_ms": 18790.0,
+        "wall_ms": 23712.30883296812,
+        "http_requests": 3,
+        "usage": {
+          "cached_input_tokens": 24960,
+          "input_tokens": 65639,
+          "output_tokens": 2404,
+          "requests": 3,
+          "total_tokens": 68043
+        },
+        "terminal_usage": {
+          "requests": 3,
+          "input_tokens": 65639,
+          "output_tokens": 2404,
+          "total_tokens": 68043,
+          "cached_input_tokens": 24960
+        },
+        "usage_complete": true,
+        "estimated_usd_at_published_offpeak_rate": 0.007619129999999999,
+        "estimated_usd_peak_upper": 0.015238259999999998,
+        "provider_reported_currency_cost": null,
+        "unobserved_request_max_usd": 0.0
+      },
+      "B": {
+        "status": "completed",
+        "rounds": 2,
+        "reported_rounds": 2,
+        "calls": 4,
+        "tools_by_round": {
+          "1": [
+            "lexical_search"
+          ],
+          "2": [
+            "get_message_context",
+            "get_message_context",
+            "get_message_context"
+          ]
+        },
+        "unique_returned": 173,
+        "direct_targets": 1,
+        "returned_targets": 1,
+        "final_targets": 0,
+        "target_denominator": 2,
+        "context_final_hits": 0,
+        "growth": [
+          {
+            "round": 1,
+            "unique_returned": 100,
+            "new_messages": 100,
+            "new_target_count": 1
+          },
+          {
+            "round": 2,
+            "unique_returned": 83,
+            "new_messages": 73,
+            "new_target_count": 0
+          }
+        ],
+        "finalization_status": "valid",
+        "finalization_diagnostics": {
+          "status": "valid",
+          "user_answer_preserved": true,
+          "error_code": null,
+          "error_path": null,
+          "degradation_codes": [],
+          "dropped_field_count": 0,
+          "dropped_field_paths": [],
+          "dropped_citation_count": 0,
+          "normalization_count": 0,
+          "validated_citation_count": 27
+        },
+        "projection_omitted_messages": 0,
+        "citation_state": "passed",
+        "latency_ms": 22677.0,
+        "wall_ms": 29647.764375025872,
+        "http_requests": 3,
+        "usage": {
+          "cached_input_tokens": 24960,
+          "input_tokens": 70539,
+          "output_tokens": 2551,
+          "requests": 3,
+          "total_tokens": 73090
+        },
+        "terminal_usage": {
+          "requests": 3,
+          "input_tokens": 70539,
+          "output_tokens": 2551,
+          "total_tokens": 73090,
+          "cached_input_tokens": 24960
+        },
+        "usage_complete": true,
+        "estimated_usd_at_published_offpeak_rate": 0.00844233,
+        "estimated_usd_peak_upper": 0.01688466,
+        "provider_reported_currency_cost": null,
+        "unobserved_request_max_usd": 0.0
+      },
+      "B_messages_absent_A": 61,
+      "B_new_target_count": 0
+    },
+    {
+      "case_id": "budget-dev-para-written-test",
+      "reason": "最近 baseline 3 轮已恢复核心经历；充分证据对照",
+      "A": {
+        "status": "completed",
+        "rounds": 2,
+        "reported_rounds": 2,
+        "calls": 2,
+        "tools_by_round": {
+          "1": [
+            "semantic_search"
+          ],
+          "2": [
+            "lexical_search"
+          ]
+        },
+        "unique_returned": 133,
+        "direct_targets": 0,
+        "returned_targets": 0,
+        "final_targets": 0,
+        "target_denominator": 1,
+        "context_final_hits": 0,
+        "growth": [
+          {
+            "round": 1,
+            "unique_returned": 100,
+            "new_messages": 100,
+            "new_target_count": 0
+          },
+          {
+            "round": 2,
+            "unique_returned": 33,
+            "new_messages": 33,
+            "new_target_count": 0
+          }
+        ],
+        "finalization_status": "valid",
+        "finalization_diagnostics": {
+          "status": "valid",
+          "user_answer_preserved": true,
+          "error_code": null,
+          "error_path": null,
+          "degradation_codes": [],
+          "dropped_field_count": 0,
+          "dropped_field_paths": [],
+          "dropped_citation_count": 0,
+          "normalization_count": 0,
+          "validated_citation_count": 12
+        },
+        "projection_omitted_messages": 0,
+        "citation_state": "passed",
+        "latency_ms": 89600.0,
+        "wall_ms": 94528.2762919669,
+        "http_requests": 3,
+        "usage": {
+          "cached_input_tokens": 24960,
+          "input_tokens": 66201,
+          "output_tokens": 2069,
+          "requests": 3,
+          "total_tokens": 68270
+        },
+        "terminal_usage": {
+          "requests": 3,
+          "input_tokens": 66201,
+          "output_tokens": 2069,
+          "total_tokens": 68270,
+          "cached_input_tokens": 24960
+        },
+        "usage_complete": true,
+        "estimated_usd_at_published_offpeak_rate": 0.007502429999999999,
+        "estimated_usd_peak_upper": 0.015004859999999998,
+        "provider_reported_currency_cost": null,
+        "unobserved_request_max_usd": 0.0
+      },
+      "B": {
+        "status": "failed",
+        "rounds": 2,
+        "reported_rounds": 3,
+        "calls": 4,
+        "tools_by_round": {
+          "1": [
+            "lexical_search",
+            "semantic_search"
+          ],
+          "2": [
+            "get_message_context",
+            "get_message_context"
+          ]
+        },
+        "unique_returned": 172,
+        "direct_targets": 0,
+        "returned_targets": 0,
+        "final_targets": 0,
+        "target_denominator": 1,
+        "context_final_hits": 0,
+        "growth": [
+          {
+            "round": 1,
+            "unique_returned": 154,
+            "new_messages": 154,
+            "new_target_count": 0
+          },
+          {
+            "round": 2,
+            "unique_returned": 26,
+            "new_messages": 18,
+            "new_target_count": 0
+          }
+        ],
+        "finalization_status": "valid",
+        "finalization_diagnostics": null,
+        "projection_omitted_messages": 0,
+        "citation_state": "not_available",
+        "latency_ms": 90553.0,
+        "wall_ms": 97521.87095803674,
+        "http_requests": 3,
+        "usage": {
+          "cached_input_tokens": 16640,
+          "input_tokens": 46210,
+          "output_tokens": 989,
+          "requests": 2,
+          "total_tokens": 47199
+        },
+        "terminal_usage": {
+          "requests": 1,
+          "input_tokens": 37663,
+          "output_tokens": 759,
+          "total_tokens": 38422,
+          "cached_input_tokens": 8320
+        },
+        "usage_complete": false,
+        "estimated_usd_at_published_offpeak_rate": 0.0050788199999999995,
+        "estimated_usd_peak_upper": 0.010157639999999999,
+        "provider_reported_currency_cost": null,
+        "unobserved_request_max_usd": 0.15983039999999998
+      },
+      "B_messages_absent_A": 79,
+      "B_new_target_count": 0
+    }
+  ],
+  "queries": 6,
+  "http_started": 20,
+  "http_finished": 20,
+  "http_status": {
+    "200": 20
+  },
+  "estimated_observed_usd_lower": 0.07250643,
+  "estimated_total_usd_upper": 0.23233683
+}
