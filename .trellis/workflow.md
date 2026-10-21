@@ -1,5 +1,8 @@
 # Development Workflow
 
+> 历史参考（已停用）：Trellis Phase/Task/PRD/Hook 不再作为 Trivae 日常开发约束。实际有效的项目约定见根目录 AGENTS.md，跨 Agent 进度见 docs/PROJECT_STATUS.md。旧内容仅供查看历史工作方式。
+
+
 ---
 
 ## Core Principles
