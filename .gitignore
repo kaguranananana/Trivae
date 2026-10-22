@@ -38,6 +38,8 @@ tmp/
 
 data/raw/
 data/*.sqlite3
+# 导入互斥锁保留原 inode，仅在本地使用，不纳入版本控制。
+data/*.sqlite3.import-once.lock
 # 真实 retrieval packet/标签/审计队列包含私有聊天正文，只允许本地保存。
 data/evaluation/
 # TUI /export 产出包含会话与聊天内容，仅本地保存。
