@@ -6,10 +6,12 @@ import argparse
 import asyncio
 import json
 import subprocess
+from contextlib import nullcontext
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from scripts.audit_projection_compaction import compact_projection
 from scripts.run_runtime_budget_followup import RequestLedger, configured_runtime, read_json, write_json
 from trivae.bootstrap.application import create_application
 from trivae.conversation import SQLiteConversationStore
@@ -53,7 +55,7 @@ def inspect(root: Path, label: str, application: Any) -> tuple[Any, Any, Any]:
     return case, snapshot, semantic
 
 
-async def prepare(root: Path, labels: list[str]) -> None:
+async def prepare(root: Path, labels: list[str], *, compact: bool = False) -> None:
     """真实请求前冻结条件，每题预留最多8次发送但不自动重试。"""
     root.mkdir(parents=True, exist_ok=False)
     (root / "snapshot").mkdir()
@@ -61,7 +63,7 @@ async def prepare(root: Path, labels: list[str]) -> None:
         subprocess.run(["cp", "-c", str(SOURCE / name), str(root / "snapshot" / name)], check=True)
     protocol: dict[str, Any] = {"cases": {}, "order": labels, "system_prompt": SYSTEM_PROMPT,
         "code_version": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
-        "automatic_retries": False, "judge": False, "tools": TOOLS}
+        "automatic_retries": False, "judge": False, "tools": TOOLS, "projection_compaction": compact}
     for label in labels:
         runtime = configured_runtime()
         application = application_for(root, label, runtime)
@@ -123,11 +125,14 @@ async def run(root: Path, label: str) -> None:
             variant_id=root.name, code_version=protocol["code_version"], provider="chatgpt-plan", model="gpt-6.1-sol",
             available_tools=TOOLS, model_parameters={"reasoning_effort": "medium"},
             prompt_identity="production-system-prompt", budget={"max_tool_rounds": 3, "max_turns": 8},
+            runtime_configuration={"projection_compaction": protocol["projection_compaction"]},
             execution_override=ExecutionOverride(forced_route="standard_execution"),
         )
         runner = EvaluationRunner(query_executor=query, trace_reader=application.read_trace,
                                   store=application.evaluation_store, snapshot_resolver=lambda: snapshot)
-        evaluation = (await runner.run_case(case, variant, suite_id="quality-repair-development"))[0]
+        # 候选只更改投影编码，查询、正文、排序、Prompt和16k共享预算均不动。
+        with compact_projection() if protocol["projection_compaction"] else nullcontext():
+            evaluation = (await runner.run_case(case, variant, suite_id="quality-repair-development"))[0]
         result = captured["result"]
         record.update(status=result.execution_status, result=asdict(result), evaluation=evaluation.to_dict(),
                       http_requests=read_json(ledger_path)["used"] - before)
@@ -146,10 +151,12 @@ def main() -> None:
     parser.add_argument("action", choices=("prepare", "run"))
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--case", choices=CASES, action="append", required=True)
+    parser.add_argument("--compact-projection", action="store_true", help="仅prepare时冻结投影精简候选")
     args = parser.parse_args()
     if args.action == "run" and len(args.case) != 1:
         parser.error("run accepts exactly one case")
-    asyncio.run(prepare(args.root, args.case) if args.action == "prepare" else run(args.root, args.case[0]))
+    asyncio.run(prepare(args.root, args.case, compact=args.compact_projection)
+                if args.action == "prepare" else run(args.root, args.case[0]))
 
 
 if __name__ == "__main__":
