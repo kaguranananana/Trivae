@@ -44,6 +44,8 @@ uv run trivae auth models --provider chatgpt
 
 登录命令打开系统浏览器，由本人完成 ChatGPT 登录与授权。实现采用动态客户端注册、PKCE 和 OIDC 验证；授权必须包含订阅调用所需 scopes。凭证只保存在本机受保护的 Auth Store，不写入 `.env`、Trace、Evaluation 或前端。access token 到期后在实际调用时刷新，失败时明确要求重新登录。
 
+身份凭证的 `iat` / `nbf` / `exp` 校验固定允许 10 秒时钟偏差；这是针对已实测约 3.5 秒的服务端/本机时间差，签名、issuer、audience、nonce 和时间校验仍保留。若仍提示 `not yet valid (iat)`，应检查系统自动校时；超过容差的凭证仍会被拒绝。浏览器的 “Authorization received” 只表示收到授权回调，最终是否登录成功以终端结果为准。
+
 从 `auth models` 返回的该账号模型目录复制真实 slug，再编辑 `.env`：
 
 ```dotenv

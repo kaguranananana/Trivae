@@ -12,8 +12,8 @@ ContextWindowSource = Literal[
     "not_used",
 ]
 ReasoningEffort = Literal["low", "high", "max"]
-# 只登记本轮明确验证的 effort 身份，不推导账号授权或 context 容量。
-CHATGPT_REASONING_EFFORTS = {("chatgpt-plan", "gpt-6.1-sol"): frozenset({"high"})}
+# 按当前账号模型目录登记已确认的 effort；Medium 另经真实请求验收，不据此推导 context 容量。
+CHATGPT_REASONING_EFFORTS = {("chatgpt-plan", "gpt-6.1-sol"): frozenset({"medium", "high"})}
 
 
 class ModelCapabilityError(ValueError):

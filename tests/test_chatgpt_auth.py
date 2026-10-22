@@ -647,3 +647,55 @@ def test_refresh_waits_for_cross_process_lock(tmp_path: Path) -> None:
         await asyncio.gather(*server.browser_tasks)
 
     run(scenario())
+
+
+@pytest.mark.parametrize("iat_offset", [3, 10])
+def test_oidc_accepts_small_real_clock_skew(tmp_path: Path, monkeypatch, iat_offset: int) -> None:
+    """实测官方时间快约 3.5 秒；真实登录链路应接受明确有界的正常时钟偏差。"""
+    from datetime import datetime
+
+    fixed_now = 1_800_000_000
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            # 固定 JWT 校验时刻，边界测试不依赖执行耗时或本机当时的秒数。
+            return datetime.fromtimestamp(fixed_now, tz=tz)
+
+    monkeypatch.setattr(jwt.api_jwt, "datetime", FixedDateTime)
+    store, server, manager = setup(tmp_path)
+    server.claim_changes = {"iat": fixed_now + iat_offset, "exp": fixed_now + 3600}
+
+    async def scenario() -> None:
+        # 走完整浏览器回调、签名校验、身份落盘和 models 主链路，不只测 decode 参数。
+        await manager.login(browser_opener=server.browser)
+        assert (await manager.list_models())[0]["slug"] == "account-only-model"
+        await asyncio.gather(*server.browser_tasks)
+
+    run(scenario())
+    assert store.status()["authenticated"] is True
+
+
+@pytest.mark.parametrize("claim", ["iat", "nbf", "exp"])
+def test_oidc_rejects_time_claims_outside_clock_skew(tmp_path: Path, monkeypatch, claim: str) -> None:
+    """容差仅十秒，超界签发/生效时间及过期凭证仍显式拒绝，且不落盘。"""
+    from datetime import datetime
+
+    fixed_now = 1_800_000_000
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.fromtimestamp(fixed_now, tz=tz)
+
+    monkeypatch.setattr(jwt.api_jwt, "datetime", FixedDateTime)
+    store, server, manager = setup(tmp_path)
+    server.claim_changes = {"exp": fixed_now + 3600, claim: fixed_now - 11 if claim == "exp" else fixed_now + 11}
+
+    async def scenario() -> None:
+        with pytest.raises(ChatGPTAuthError, match="AUTH_OIDC"):
+            await manager.login(browser_opener=server.browser)
+        await asyncio.gather(*server.browser_tasks)
+
+    run(scenario())
+    assert store.status()["accounts"] == []

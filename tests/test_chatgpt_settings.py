@@ -9,6 +9,8 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from tests.test_evaluation import _case, _snapshot, _trace, _variant
 from trivae.bootstrap.status import ProviderReadiness
 from trivae.config.model_capabilities import resolve_context_window, resolve_reasoning_effort
@@ -222,16 +224,17 @@ class ChatGPTSettingsTests(unittest.TestCase):
         self.assertIsNone(run.operational_measurements["provider"])
 
 
-def test_high_is_explicit_and_rejects_unverified_provider_model_combinations():
-    """只为本轮精确身份启用 High，不把其它 Provider 的配置悄悄改档。"""
+@pytest.mark.parametrize("effort", ["medium", "high"])
+def test_effort_is_explicit_and_rejects_unverified_provider_model_combinations(effort):
+    """精确身份允许已验证档位，未知组合仍显式拒绝，不悄悄改档。"""
     import pytest
 
     values = {"TRIVAE_MODEL_PROVIDER": "chatgpt-plan", "TRIVAE_MODEL_NAME": "gpt-6.1-sol",
-              "TRIVAE_CHATGPT_REASONING_EFFORT": "high"}
+              "TRIVAE_CHATGPT_REASONING_EFFORT": effort}
     settings = load_settings(values)
-    assert settings.chatgpt_reasoning_effort == "high"
-    assert settings.to_safe_dict()["reasoning_effort"] == "high"
-    for override in ({"TRIVAE_MODEL_NAME": "unknown"}, {"TRIVAE_CHATGPT_REASONING_EFFORT": "medium"},
+    assert settings.chatgpt_reasoning_effort == effort
+    assert settings.to_safe_dict()["reasoning_effort"] == effort
+    for override in ({"TRIVAE_MODEL_NAME": "unknown"}, {"TRIVAE_CHATGPT_REASONING_EFFORT": "low"},
                      {"TRIVAE_MODEL_PROVIDER": "deepseek", "TRIVAE_MODEL_API_KEY": "test",
                       "TRIVAE_MODEL_BASE_URL": "https://api.deepseek.com"}):
         with pytest.raises(SettingsError, match="reasoning effort"):

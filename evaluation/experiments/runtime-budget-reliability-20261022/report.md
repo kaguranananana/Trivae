@@ -1,6 +1,6 @@
 # Runtime Tool Result 预算可靠性修复（2026-10-22）
 
-预算与 Collector 修复已通过本地回归；原私有失败可以确定性重放，修复后的 SDK 调用协议闭合并进入综合，Host Citation 校验通过。**GPT-6.1 Sol Medium 核验被现有 OAuth 会话阻塞，没有真实推理请求，也没有启用 Medium。** 这些结果不代表真实模型答案质量提升。
+预算与 Collector 修复已通过本地回归；原私有失败可以确定性重放，修复后的 SDK 调用协议闭合并进入综合，Host Citation 校验通过。**后续已定位并修复 OAuth 时钟偏差问题，GPT-6.1 Sol Medium 通过真实工具协议验收，本地配置和 Web 服务已生效。** 这些结果不代表真实模型答案质量提升。
 
 ## 根因与改动
 
@@ -40,21 +40,36 @@
 
 - 新增 [test_runtime_budget_reliability.py](../../../tests/test_runtime_budget_reliability.py)：16 项通过，覆盖正常结束、中断、同轮多调用、部分 Usage 缺失、终态 observer 异常、最小准入、刚好用尽、并行预留/退款、不可裁剪结构、SDK 包装归因、控制结果、跳过能力、无依据 no_result 被拒绝、Citation 与 Trace/Evaluation 一致。
 - 原有 [test_tool_result_budget.py](../../../tests/test_tool_result_budget.py) 的预算上限/余额预期按新增控制预留契约调整；未削弱累计实际消费断言。原有投影裁剪与模型可见来源一致性测试继续通过。
-- 完整 `uv run pytest -q`：**1,217 passed、1 skipped、0 failed**。`uv run ruff check src tests scripts` 通过；`uv run mypy src` 通过（129 个源码文件）；`git diff --check` 通过。
+- 完整 `uv run pytest -q`：**1,224 passed、1 skipped、0 failed**。`uv run ruff check src tests scripts` 通过；`uv run mypy src` 通过（129 个源码文件）；`git diff --check` 通过。
 - 额外 `ruff check .`：53 项既有错误，全部位于未改动的 `.trellis/` 脚本/归档；未把归档批量格式化混入本次修复。
 - 极端低预算、模型一次声明过多调用导致控制结构无法准入、或独立模型/存储错误仍可使 Query 失败。证据不足仍由原 Finalizer 拒绝无依据答案；错误结果不能被判为完整空检索。
 
-## Medium 核验与请求边界
+## OAuth 根因、Medium 核验与请求边界（08:43 后续完成）
 
-通过生产 `ChatGPTAuthManager.list_models()` 使用既有 OAuth 会话核验账号目录，在认证层遭遇：`AUTH_OIDC: ID token validation failed: The token is not yet valid (iat)`。没有绕过 OIDC、读取/复制/输出凭证，不能由此断言服务端不支持 Medium。
+初次目录核验被 `AUTH_OIDC: ID token validation failed: The token is not yet valid (iat)` 阻断。网页 “Authorization received” 只表示浏览器授权回调已收到；终端之后才交换并验证 ID Token，因此网页成功和终端拒绝可以同时发生。重复登录不能消除每次新凭证与本机的时间差。
 
-因此尚未完成账号目录确认、Medium 最小真实请求、`reasoning.effort=medium` 实际 HTTP 投影及真实 Runtime/Router/Planner 验证。按用户要求“验证成功后扩展”，**未修改能力白名单、Settings 或本地 `.env`，未用 High 代替，也未重启成一个未经确认的配置**。现有本地运行配置仍为原 DeepSeek 配置；本轮没有调用它，未发现运行中的 Trivae Web/Chat 进程。
+后续对官方 discovery 的一次公开 GET 实测：本机 UTC `00:43:06.289`，官方 Date 为 `00:43:10`，往返约 0.411 秒，以请求中点估算服务端快 **3.462 秒**。未读取真实凭证正文。使用本地签名、固定时间的完整登录回归，`iat=now+3` 与 `now+10` 在修改前均复现同一 AUTH_OIDC（2 failed / 3 passed），确定零容差能造成该失败。
 
-本轮推理 HTTP 为 **0 / 4**。ignored `http-ledger.json` 已保存上限、零计数和阻塞原因；没有自动重试，也没有绕过生产认证另外发送请求。后续先恢复有效 OAuth/时间声明校验，再以本轮持久化账本计数执行最多四次 Plan 推理；之后才能扩展 Medium 校验、补配置测试、切换本地配置并重启验证。
+[chatgpt.py](../../../src/trivae/auth/chatgpt.py) 仅增加固定 10 秒的 PyJWT `leeway`，不关闭签名、issuer、audience、nonce 或时间校验，也不根据 HTTP Date 改系统时钟。`iat/nbf` 超过 10 秒、`exp` 超过容差的过期凭证继续失败且不落盘。5 项新增时间边界回归通过。[PyJWT 官方文档](https://pyjwt.readthedocs.io/en/stable/usage.html) 与 [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation) 允许小幅时钟偏差处理。
 
-维持 `max_tool_rounds=3`、`max_turns=8` 和 16k 未知 context 预算。未重新运行 10-21 实验、未扩展 37 题、未使用独立付费 Provider/Judge、未触碰封存 Holdout、人工 GT 或语义索引。Context Expansion、reply 关系和 Conversation History 继续留待独立任务，不据本轮协议成功宣称答案质量收益。
+修复后既有 OAuth 会话、完整 CLI `uv run trivae auth models --provider chatgpt` 均成功。账号目录明确包含 `gpt-6.1-sol` 和 `supported_reasoning_levels[].effort=medium`。能力白名单仅新增该精确组合的 Medium；没有登记新的 GPT context 容量。Settings 与 HTTP Mock 新增参数化覆盖 Medium / High，证明 Runtime、Router completion、Planner completion 的实际请求体与安全投影同源，均显式传 `reasoning.effort=medium`，未知组合仍拒绝。
 
-私有脚本、原始参数、完整结果/投影、认证阻塞、请求账本、测试输出保留在 ignored 的 `data/evaluation/runtime-budget-20261022/`。公开仓库只含合成测试与此脱敏报告。
+真实推理严格复用原四请求持久化账本，每个 HTTP request hook 在发送前写计数、实际 model/reasoning/store/stream 投影并 fsync；失败不回退计数，不自动重试。前两次预检在目录 GET 连接失败，推理为 0 次，均留失败工件。之后实际使用 **4 / 4**：
+
+| 验证 | 推理 HTTP | 结果与证据边界 |
+|---|---:|---|
+| 极小 JSON completion 探针 | 1 | JSON 内容校验失败，保留失败，不重复。脚本未保存该失败的完整 response observation，因此该条 Usage 未知，不计为零，也不单凭它宣称验收成功 |
+| 独立合成预算协议：seed 证据 → 不可裁剪结构 → 最终综合 | 3 | 真实 GPT-6.1 Sol Medium，3 次 response.completed；实际两工具轮，两个调用为 ok / 明确预算错误，工具投影 424 / 198 Token；无工具综合后 1 个 Citation binding 通过 Host 校验。成功用量为输入 15,647、输出 342、总 15,989（仅这三次，不含未知探针） |
+
+四次实际 HTTP 投影均为 `reasoning={summary:auto,effort:medium}`。真实预算案例的消息/结构由本地 fixture 合成，不包含群聊内容，不冒充原私有 Case 重跑，也不据此声称答案质量改善。原私有 134 Token 故障的确定性重放仍见上表。
+
+确认后，本地 ignored `.env` 已切换 `chatgpt-plan / gpt-6.1-sol / medium`；另将既有 `TRIVIAE_ROUTER_JEV_ENABLED=false`，避免本轮本地查询走独立 OpenRouter shadow（保留仓库既有变量拼写，不修改 Router 主体）。原无运行中 Web/Chat 进程，已按新配置启动本地 Web **127.0.0.1:8710**，`/api/readiness` 验证 provider=chatgpt-plan、model=gpt-6.1-sol、status=ready。未提交 `.env` 或复制 OAuth 凭证。真实 Runtime、预算退出及 Citation 已验证；Router/Planner 的共享参数由 Mock HTTP 验证，不宣称完成真实业务路由质量验收。
+
+补充后完整回归 **1,224 passed / 1 skipped / 0 failed（27.52s）**；认证/订阅/共享参数/预算定向 **127 passed**；Ruff（src/tests/scripts）、mypy（129 文件）与 diff --check 通过。
+
+维持 `max_tool_rounds=3`、`max_turns=8` 和 16k 未知 context 预算。请求上限已用满，不继续补跑；未重跑 10-21 实验、扩展 37 题、使用独立付费 Provider/Judge、触碰封存 Holdout/人工 GT 或重建语义索引。Context Expansion、reply 关系和 Conversation History 留待独立任务。
+
+私有脚本、原始参数、完整结果/投影、时钟观测、模型能力摘要、请求账本、Web 启动/就绪记录与测试输出保留在 ignored `data/evaluation/runtime-budget-20261022/`。公开仓库只含合成测试与此脱敏报告。
 
 ## Git 交付状态
 

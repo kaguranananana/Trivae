@@ -730,8 +730,9 @@ def test_arguments_done_without_associated_added_function_is_explicit_failure():
     asyncio.run(run())
 
 
-def test_high_serialization_is_shared_by_runtime_router_and_planner():
-    """真实 HTTP body 证明三条路径同为 High，失败请求也计入同一预算。"""
+@pytest.mark.parametrize("effort", ["medium", "high"])
+def test_effort_serialization_is_shared_by_runtime_router_and_planner(effort):
+    """真实 HTTP body 证明三条路径使用同一显式档位，失败请求也计入同一预算。"""
     from dataclasses import replace
 
     from trivae.evaluation.prompt_screening import ProviderCallBudget, ScreeningRuntime
@@ -747,7 +748,7 @@ def test_high_serialization_is_shared_by_runtime_router_and_planner():
 
     async def run():
         runtime = ScreeningRuntime(settings=replace(settings(), model_name="gpt-6.1-sol",
-                                                    chatgpt_reasoning_effort="high"),
+                                                    chatgpt_reasoning_effort=effort),
                                    chatgpt_auth=FakeAuth(models=[{"slug": "gpt-6.1-sol"}]))
         await runtime._model._client.aclose()
         runtime._model._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -760,8 +761,8 @@ def test_high_serialization_is_shared_by_runtime_router_and_planner():
             with pytest.raises(ChatGPTResponsesError, match="test_failure"):
                 await runtime.complete_planner_text_with_observation("Return JSON.")
             assert len(sent) == len(budget.requests) == 3
-            assert all(body["reasoning"] == {"effort": "high", "summary": "auto"} for body in sent)
-            assert runtime.safe_configuration()["protocol"]["reasoning_effort"] == "high"
+            assert all(body["reasoning"] == {"effort": effort, "summary": "auto"} for body in sent)
+            assert runtime.safe_configuration()["protocol"]["reasoning_effort"] == effort
             assert runtime.completion_request_projection()["reasoning"] == sent[0]["reasoning"]
             assert runtime.planner_completion_request_projection()["reasoning"] == sent[0]["reasoning"]
         finally:

@@ -32,6 +32,8 @@ DISCOVERY_URL = f"{ISSUER}/.well-known/openid-configuration"
 RESOURCE = "https://api.openai.com/v1"
 SCOPES = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
 DIRECT_SCOPE = "chatgpt.tokens.use.direct"
+# 实测官方认证时间比本机快约 3.5 秒；仅允许十秒时钟偏差，不关闭任何时间或签名校验。
+OIDC_CLOCK_SKEW_SECONDS = 10
 TERMINAL_REFRESH_ERRORS = {
     "invalid_grant",
     "invalid_refresh_token",
@@ -326,6 +328,8 @@ class ChatGPTAuthManager:
                 algorithms=["RS256"],
                 audience=client_id,
                 issuer=ISSUER,
+                # 使用 PyJWT 标准容差统一处理 iat/nbf/exp，超出十秒仍按原合同拒绝。
+                leeway=OIDC_CLOCK_SKEW_SECONDS,
                 options={"require": ["iss", "aud", "exp", "sub"]},
             )
             if not isinstance(claims["sub"], str) or not claims["sub"]:
