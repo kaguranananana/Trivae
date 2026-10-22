@@ -8,6 +8,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-22 关键回复恢复审计与修复完成：`get_message_context` 新增显式 `include_replies`，按同会话/直接转发容器的真实回复边补查，保持原容量与 16k 预算；模型投影保留原始回复关系及当前结果内可唯一解析的短 handle，目标裁剪后不留下悬空关系。修复 20 锚点上限未披露的截断事实，Trace/Evidence 同步新参数与回复边界。
+- 原始最小复现 2 failed，修复后新增 12 项回归通过；真实 10-20 Development 快照固定 anchor 配对：Archify、Matt-1 从 1/2 目标到 2/2，Matt-2 保持 2/2，关系与目标 Citation 均通过，模型请求 0 次。完整 pytest 1,241 passed / 1 skipped / 0 failed，Ruff、mypy（129 文件）通过。未验证真实模型自主选 anchor/新参数或答案收益；未修改预算分配、历史压缩和索引。报告：`evaluation/experiments/reply-context-20261022/report.md`，工作提交 `25e7438`，收尾后普通推送另核对。
 - 2026-10-22 后续 Plan Medium 实验完成：用户追加并放宽至 24 次/每 Case 8 次，保留旧 4/4 账本；实际新用 12 次、4 条 Development Query 均 completed、无实验门禁阻断。Archify 真实触发两个预算错误，四个 SDK Tool Call 均有响应，最终综合与四组 Citation 绑定通过。Runtime/Trace/Evaluation 的轮次及累计 Usage 一致；没有自然复现坏 JSON，未声称质量提升或 A/B 收益。
 - 新实验发现前三条 Case 的 canonical ToolResult 限制未进入 Trace，最小修复 Collector 的一次 emit；原始失败 Evaluation 保留，Matt 零 HTTP 原输出序列/快照重放后检查通过，稳定 Evidence/答案/Citation 不变，修复后新 Archify 全部检查通过。完整测试 1,229 passed / 1 skipped / 0 failed，Ruff 和 mypy（129文件）通过。Web 已重启加载修复，Medium readiness=ready。报告：`evaluation/experiments/runtime-budget-followup-20261022/report.md`。
 - 2026-10-22 Runtime 预算可靠性与 Collector 修复完成本地验证：原 10-18 私有快照/参数重放由第四结果投影失败，变为完整返回 4 个 Tool Call、明确预算错误后无工具综合，先前 Citation 校验通过。新增整轮控制结果预留、最小准入、完整投影开销记账及 SDK 异常链预算归因；不扩大 16k 池，仍为 3 工具轮 / 8 模型回合。
@@ -22,6 +24,7 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 仍需确认的事项
 
+- 回复补查路径已打通，但真实 Agent 自主选择与最终答案质量仍待独立对照；首轮结果挤占后续预算的问题未在本任务中调参。
 - 10-22 修复已本地提交，但 GitHub DNS/SSH 网络阻断普通推送；后续实验收尾的普通推送仍在 25 秒后超时，网络恢复后需执行 git push。
 - 旧 Session 75 中的人工质量审核是否已经完成。
 - .trellis/spec/project/overview.md 提到的 human-verified 标注、长期参数阈值和 HTTP 产品交互，应按当前源码及新任务实际情况逐项核对；这些是旧文档记录的待办，不保证仍未完成。

@@ -50,3 +50,12 @@
 - 追加12个响应均response.completed，Usage输入190,897/输出3,345/总194,242，逐响应、终态、Trace和Evaluation一致；四条真实流均正常结束，坏JSON中断统计只由前轮确定性测试覆盖。仍维持16k产品池、3工具轮/8turns；四条不构成质量A/B，不支持统一五轮。结束因为本轮可靠性问题已验证并归档，非请求预算耗尽。
 - 完整pytest 1,229 passed / 1 skipped / 0 failed（30.38s），定向34 passed，ruff src/tests/scripts与mypy src（129文件）通过，diff --check通过。新增实验脚本与3个零费用账本门禁测试。Web旧进程29549已重启为31153，8710 readiness确认Plan/Sol/ready，ignored配置Medium/Jev关闭，健康检查0推理。
 - 脱敏报告在evaluation/experiments/runtime-budget-followup-20261022/report.md；完整Trace/正文/冻结副本/账本及授权调整/失败与重放/安全汇总保留ignored目录。工作代码已提交，前置普通git push仍在25秒后网络超时；收尾提交后继续普通推送并按实际结果交付。两个原有未跟踪文件未暂存。
+
+## 2026-10-22 · 关键回复恢复与关系投影审计修复
+
+- 先经真实导入/SDK/Capability/投影复现 2 failed：143 条中间消息使明确回复落在局部窗口之外，单独取得回复后又丢失 reply 字段。修复前复现命令为 `uv run pytest -q tests/test_reply_context.py`。
+- 在既有 get_message_context 增加显式 include_replies，SQL 同 session/time 查直接回复；转发另限同直接 parent/container，不递归或扩大消息容量。anchor/回复优先，哨兵披露 has_more_replies；无平台 ID 显式失败。普通默认窗口保持原意，不做检索失败切换。
+- evidence.py 对真实回复保留原始关系，目标在当前结果内唯一且可见时关联短 source handle；预算裁剪优先保留请求的 anchor/回复，删除目标时撤掉悬空关系 handle。普通消息不重复搬运平台 ID。SDK schema、Prompt 参数说明、Trace 请求/结果和 Evidence 快照同步；ContextExpander 修复前20来源上限遗漏的 truncated 事实。
+- 新增 audit_reply_context.py，只读 10-20 快照与三个明确 Development 目标，固定 anchor 配对 2/2 窗口有无 include_replies；Archify、Matt-1 的模型可见目标从1/2到2/2，Matt-2维持2/2；目标回复关系及真实 Host Citation 绑定通过。另有3/5窗口与只取直接回复对照，原快照大小/mtime不变；没有模型请求、Holdout、GT修改或索引重建。最终工件在 ignored `data/evaluation/reply-context-20261022/paired/`。
+- 新增12项回归；完整pytest **1,241 passed / 1 skipped / 0 failed（29.42s）**，Ruff src/tests/scripts、mypy src（129文件）和diff --check通过。生产SDK loop 的搜索handle→补查→最终Citation/Trace贯通，但模型由ScriptedModel提供，不能声称真实模型自主选择或答案改善。未在本轮调整首轮预算、工具轮次、Semantic或历史压缩。
+- 报告在 `evaluation/experiments/reply-context-20261022/report.md`，工作提交 `25e7438`；收尾后按既有授权普通推送，网络结果以随后交付/记录为准。下一步是单独验证真实Agent在原预算下能否自主选中有价值锚点、开启补查，并满足必要事实。
