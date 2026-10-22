@@ -31,3 +31,12 @@
 - Medium 阻塞：既有 OAuth 在生产 models 核验前返回 AUTH_OIDC（ID token iat 尚未生效），没有绕过校验或检查凭证正文。推理 HTTP 0/4，账本已保存；未扩白名单、未改本地配置或重启，未用 High/独立付费路径替代。后续恢复有效会话后才能完成 Medium 能力/实际参数/共享配置测试及启用。
 - 保持 3 工具轮 / 8 模型回合、16k 未知 context 池；未运行旧付费实验、新 Judge 或 37 题，未改 Holdout/GT/语义索引。脱敏报告位于 evaluation/experiments/runtime-budget-reliability-20261022/report.md，私有重放/结果/完整投影/账本/检查输出位于 ignored data/evaluation/runtime-budget-20261022/。
 - Git 收尾：工作提交与状态提交均已完成；普通 git push 被本机 GitHub DNS 解析阻断，ssh.github.com 无法解析，github.com HTTPS 探测也在 10 秒后解析超时。挂起推送已停止，尚未推送；待解析恢复后普通推送，不改 DNS/SSH 全局配置、不 force push。原有两个未跟踪文件未暂存。
+
+## 2026-10-22 · 修复 OAuth iat 时钟偏差并完成 Medium 协议验收
+
+- 网页授权成功但终端失败的根因：官方 Date 比本机快约 3.462 秒，而 JWT 校验未设时钟容差。本地签名固定时刻的完整登录/模型目录回归先复现 2 failed / 3 passed；chatgpt.py 仅增加十秒标准 leeway 后通过，超界 iat/nbf/exp 仍拒绝且不落盘。未关闭签名/身份/时间校验，未读取/复制/输出真实凭证正文。生产既有 OAuth 会话及原 CLI models 命令已复验成功。
+- 当前账号目录明确列出 gpt-6.1-sol / medium；model_capabilities.py 精确扩展 Medium，Settings 与 Runtime/Router/Planner 的实际 HTTP 参数 Mock 测试覆盖 medium/high，无静默改档。未根据目录顺带扩大 context 或 Tool Result 池。
+- 真实推理先发送前持久化并 fsync，严格 4/4：极小 JSON 探针 1 请求内容校验失败（该条 Usage 未保存、未知），不重复；独立合成预算协议 3 请求全部 response.completed，seed→不可裁剪结构→无工具综合，两个工具为 ok/error、两工具轮，投影 424/198 Token，1 Citation binding 通过。三成功响应已知输入15,647/输出342/总15,989；不冒充四请求完整用量或答案质量收益。两次目录网络预检失败发生在推理前，另存工件，推理计数不增加。
+- 本地 ignored .env 切换 Plan / gpt-6.1-sol / medium，并关闭既有 TRIVIAE_ROUTER_JEV_ENABLED（避免 OpenRouter shadow）；新启 Web 127.0.0.1:8710，readiness 确认 Plan/目标模型/ready。此前没有 Web/Chat 进程，不宣称重启了不存在的旧进程。无后续模型调用。
+- 验证：完整 pytest 1,224 passed / 1 skipped / 0 failed（27.52s），相关定向127 passed，ruff src/tests/scripts 与 mypy（129文件）通过，diff --check 通过。报告补充在原 runtime-budget-reliability-20261022/report.md，私有记录均 ignored；保持3轮/8turns，不新增Judge、Holdout、GT或索引重建。本轮4次请求已用满。
+- Git：对既有提交的有限时 SSH 推送在25秒后超时，后续按约定提交本轮改动并再次核对推送结果。
