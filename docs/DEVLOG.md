@@ -30,3 +30,4 @@
 - 新增 16 项预算可靠性测试通过；完整 pytest 1,217 passed / 1 skipped / 0 failed（27.03s）；ruff check src tests scripts 通过；mypy src 通过（129 文件）；diff --check 通过。额外全树 Ruff 的 53 项均为未改动 .trellis 旧脚本/归档问题，不做无关批量修复。
 - Medium 阻塞：既有 OAuth 在生产 models 核验前返回 AUTH_OIDC（ID token iat 尚未生效），没有绕过校验或检查凭证正文。推理 HTTP 0/4，账本已保存；未扩白名单、未改本地配置或重启，未用 High/独立付费路径替代。后续恢复有效会话后才能完成 Medium 能力/实际参数/共享配置测试及启用。
 - 保持 3 工具轮 / 8 模型回合、16k 未知 context 池；未运行旧付费实验、新 Judge 或 37 题，未改 Holdout/GT/语义索引。脱敏报告位于 evaluation/experiments/runtime-budget-reliability-20261022/report.md，私有重放/结果/完整投影/账本/检查输出位于 ignored data/evaluation/runtime-budget-20261022/。
+- Git 收尾：工作提交与状态提交均已完成；普通 git push 被本机 GitHub DNS 解析阻断，ssh.github.com 无法解析，github.com HTTPS 探测也在 10 秒后解析超时。挂起推送已停止，尚未推送；待解析恢复后普通推送，不改 DNS/SSH 全局配置、不 force push。原有两个未跟踪文件未暂存。

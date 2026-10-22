@@ -55,3 +55,7 @@
 维持 `max_tool_rounds=3`、`max_turns=8` 和 16k 未知 context 预算。未重新运行 10-21 实验、未扩展 37 题、未使用独立付费 Provider/Judge、未触碰封存 Holdout、人工 GT 或语义索引。Context Expansion、reply 关系和 Conversation History 继续留待独立任务，不据本轮协议成功宣称答案质量收益。
 
 私有脚本、原始参数、完整结果/投影、认证阻塞、请求账本、测试输出保留在 ignored 的 `data/evaluation/runtime-budget-20261022/`。公开仓库只含合成测试与此脱敏报告。
+
+## Git 交付状态
+
+代码、测试、报告和状态记录已本地提交。按仓库约定执行 `git push`，但当前 SSH 配置的 `ssh.github.com:443` 无法解析；独立 HTTPS 检查 `github.com` 同样 DNS 解析超时（10 秒）。挂起推送已停止，**远端推送尚未完成**。未更改全局 DNS/SSH 配置或强制推送；待网络解析恢复后对当前分支执行普通 `git push`。任务开始前的两个未跟踪文件保持原样。
