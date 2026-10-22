@@ -198,6 +198,8 @@ class SemanticRetrieval:
             limit=min(max(limit, limit * 32), MAX_CONTEXT_EXPANSION_MESSAGES),
             scope=query,
             preferred_primary_message_ids=tuple(preferred_message_ids),
+            # 请求上下文时，语义命中的明确回复与词法命中使用相同的关系恢复策略。
+            include_direct_replies=True,
         )
         # 邻居同样只能来自请求 scope；内部原始时间不参与当前群的时间过滤。
         expanded_messages = tuple(
@@ -265,6 +267,8 @@ class SemanticRetrieval:
                     "context_after": query.context_after,
                     "expanded_candidate_messages": expansion.candidate_count,
                     "context_source_hits": expansion.context_source_hits,
+                    "reply_source_hits": expansion.reply_source_hits,
+                    "expanded_reply_messages": expansion.expanded_reply_messages,
                     "context_source_budget": MAX_AUTOMATIC_CONTEXT_SOURCE_HITS,
                     "known_gaps": (
                         *(("ann_candidate_pool",) if pool_exhausted else ()),

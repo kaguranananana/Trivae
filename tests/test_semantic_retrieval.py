@@ -115,12 +115,15 @@ class SemanticRetrievalTests(unittest.TestCase):
         class RecordingContextExpander:
             def __init__(self) -> None:
                 self.limit: int | None = None
+                self.include_direct_replies: bool | None = None
 
             def expand_ranges(
-                self, ranges, before, after, limit, *, scope=None, preferred_primary_message_ids=()
+                self, ranges, before, after, limit, *, scope=None, preferred_primary_message_ids=(),
+                include_direct_replies=False,
             ):
                 # 只记录 Retrieval 传入的 transport bound，不重新实现 context merge。
                 self.limit = limit
+                self.include_direct_replies = include_direct_replies
                 return ContextExpansionResult((), False, False, 0)
 
         class Repository:
@@ -213,6 +216,7 @@ class SemanticRetrievalTests(unittest.TestCase):
         )
 
         self.assertEqual(expander.limit, MAX_CONTEXT_EXPANSION_MESSAGES)
+        self.assertTrue(expander.include_direct_replies)
 
     def test_chunker_preserves_void_range_but_excludes_void_text(self) -> None:
         """semantic void 仍参与 canonical range，embedding input 只保留有效正文。"""

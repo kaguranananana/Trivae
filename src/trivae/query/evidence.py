@@ -1880,6 +1880,8 @@ def _project_model_data(
                     "context_before",
                     "context_after",
                     "expanded_candidate_messages",
+                    "reply_source_hits",
+                    "expanded_reply_messages",
                     "known_gaps",
                     "unexpanded_forward_node_count",
                     "unexpanded_forward_nodes",

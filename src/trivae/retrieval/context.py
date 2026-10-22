@@ -279,6 +279,7 @@ class ContextExpander:
         *,
         scope: ScopeFilters | None = None,
         preferred_primary_message_ids: Sequence[str] = (),
+        include_direct_replies: bool = False,
     ) -> ContextExpansionResult:
         """恢复 semantic child ranges，再复用同一 bounded context 合并规则。"""
 
@@ -341,6 +342,20 @@ class ContextExpander:
                         raise RetrievalError(f"Semantic context crossed session boundary: {item.session_id}")
                     messages_by_id[message.internal_message_id] = message
 
+        reply_ids: set[str] = set()
+        reply_source_hits = 0
+        if include_direct_replies and (before or after) and len(core_ids) < limit:
+            # 只以真实range核心为锚点，普通邻居不递归触发额外线程展开。
+            anchors = tuple(message for message in messages_by_id.values()
+                            if message.internal_message_id in core_ids and message.source_message_id is not None)
+            reply_source_hits = len(anchors)
+            # 共用原容量并多读一个哨兵，超出的明确回复必须披露截断。
+            replies = self.repository.read_message_replies_for_anchors(
+                anchors, scope or ScopeFilters(), limit - len(core_ids) + 1,
+            )
+            # repository负责同会话/时间/转发容器约束，回复始终保留非核心身份。
+            messages_by_id.update((message.internal_message_id, message) for message in replies)
+            reply_ids = {message.internal_message_id for message in replies}
         ordered = tuple(sorted(messages_by_id.values(), key=message_sort_key))
         if len(ordered) <= limit:
             return ContextExpansionResult(
@@ -350,6 +365,8 @@ class ContextExpander:
                 candidate_count=len(ordered),
                 primary_message_ids=tuple(message.internal_message_id for message in ordered if message.internal_message_id in core_ids),
                 context_source_hits=len(ranges),
+                reply_source_hits=reply_source_hits,
+                expanded_reply_messages=len(reply_ids),
             )
 
         # 优先保留每个 range 的核心消息，context 超出预算时显式标记截断。
@@ -368,7 +385,11 @@ class ContextExpander:
                 sorted((*preferred_messages, *other_core_messages)[:limit], key=message_sort_key)
             )
         else:
-            context_messages = tuple(message for message in ordered if message.internal_message_id not in core_ids)
+            # 核心消息之后优先明确回复，再填普通邻居，展示顺序仍按原始时间排序。
+            context_messages = tuple(sorted(
+                (message for message in ordered if message.internal_message_id not in core_ids),
+                key=lambda message: (message.internal_message_id not in reply_ids, message_sort_key(message)),
+            ))
             selected = tuple(sorted((*core_messages, *context_messages[: limit - len(core_messages)]), key=message_sort_key))
         return ContextExpansionResult(
             messages=selected,
@@ -377,4 +398,6 @@ class ContextExpander:
             candidate_count=len(ordered),
             primary_message_ids=tuple(message.internal_message_id for message in selected if message.internal_message_id in core_ids),
             context_source_hits=len(ranges),
+            reply_source_hits=reply_source_hits,
+            expanded_reply_messages=len(reply_ids & {message.internal_message_id for message in selected}),
         )
