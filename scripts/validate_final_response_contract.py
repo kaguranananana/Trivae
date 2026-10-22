@@ -40,7 +40,9 @@ def replay_steps(saved: dict[str, Any]) -> list[ModelStep]:
             arguments = {key: scope[key] for key in ("start_timestamp", "end_timestamp", "limit")}
         rounds.setdefault(call["round"], []).append(function_call(
             # Plan通过公开trivae namespace分发；回放也必须保留同一SDK接口契约。
-            call["name"], arguments, call_id=f"recorded-{index}", namespace="trivae",
+            # Responses会校验历史函数调用项的id前缀；SDK测试默认id不能直接用于真实请求。
+            call["name"], arguments, call_id=f"call_recorded_{index}",
+            item_id=f"fc_recorded_{index}", namespace="trivae",
         ))
     return [ModelStep(output=calls) for calls in rounds.values()]
 

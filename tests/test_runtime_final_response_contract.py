@@ -7,6 +7,7 @@ import asyncio
 import pytest
 from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
 
+from scripts.validate_final_response_contract import replay_steps
 from tests.test_ingestion import make_message, write_export
 from tests.test_tool_result_budget import _dynamic_settings
 from trivae.capabilities import CapabilityRegistry, ExecutionScope
@@ -76,3 +77,15 @@ def test_next_model_input_receives_actual_finalizer_eligibility(tmp_path, sql, r
         with pytest.raises(AnswerFinalizationError, match="verified complete-and-empty"):
             finalize_answer(result.final_answer, run_id=result.run_id,
                             tool_results=result.tool_results, scope=request.scope)
+
+
+def test_historical_replay_uses_responses_function_identity_contract():
+    """回放项须同时满足Plan namespace和Responses历史调用id契约，避免HTTP400。"""
+    history = {"result": {"runtime_result": {
+        "tool_calls": [{"name": "get_schema", "round": 1}],
+        "tool_results": [{"query_scope_snapshot": {}}],
+    }}}
+    call = replay_steps(history)[0].output[0]
+    assert call.id.startswith("fc_")
+    assert call.call_id.startswith("call_")
+    assert call.namespace == "trivae"
