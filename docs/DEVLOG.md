@@ -92,3 +92,4 @@
 - Archify后续两次补查仍有明确TOOL_RESULT_BUDGET_EXHAUSTED并进入最终限制，Matt首轮接近池上限后无工具综合；一般首轮预算策略未在本次解决。没有用更大池、fallback或掩盖错误的规则通过验收。
 - Web从31153重启为40113加载修复，经现有代理运行，数据库与Plan/Sol readiness=ready；当前827,614条本地库的回复访问索引已创建，与独立811,892条实验旧快照区分。健康检查0推理。经同一代理GitHub SSH443远端读成功，定位此前普通推送失败的网络原因；收尾提交后普通推送，不改全局SSH或强推。
 - 报告 `evaluation/experiments/reply-repair-20261022/report.md`；完整原文/Trace、账本、repair-replay.json、analysis.json、answer-verification.json与网络/Web工件保留ignored独立目录。更新当前状态及回复/存储契约，最后改动仅验收脚本/文档，已验收产品代码保持不变。
+- Git收尾：经现有系统代理执行普通git push成功，origin/main从9539aec更新至a4e7fbb，包含本轮及此前DNS阻塞的本地提交；当时main与origin/main对齐、工作区干净。该事实补记后继续普通推送，无amend/force或全局网络改动。

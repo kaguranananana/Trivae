@@ -61,7 +61,7 @@ Archify 首轮保留了目标回复，但后续两次补查仍明确返回 `TOOL
 
 真实执行链为终端模块 → EvaluationRunner → 生产 Application.query → Responses/SDK → Tool/Finalizer。另从同次运行 Conversation Store 的已提交 Artifact 零 HTTP 还原，用生产 CLI Evidence/Sources 组件生成 `terminal.txt`，不是再调用模型或编辑答案。核对目标回复 Sources 编号 9 / 7 / 6 均存在，分别绑定到最终结论。
 
-Web 从旧 PID 31153 重启为 40113，使用同一现有代理；`/api/readiness` 的数据库与 Plan/Sol 均 ready，当前本地库 827,614 消息，回复访问索引已创建。该库与实验冻结的 811,892 条快照明确区分；Web 健康检查没有推理请求。GitHub SSH 443 经同一代理只读检查成功，收尾按既有授权进行普通推送。
+Web 从旧 PID 31153 重启为 40113，使用同一现有代理；`/api/readiness` 的数据库与 Plan/Sol 均 ready，当前本地库 827,614 消息，回复访问索引已创建。该库与实验冻结的 811,892 条快照明确区分；Web 健康检查没有推理请求。GitHub SSH 443 经同一代理连接成功，普通 push 已将远端 main 从9539aec更新至a4e7fbb，包含此前网络阻塞的提交；未强推或更改全局 SSH。
 
 ## 验证与工件
 
