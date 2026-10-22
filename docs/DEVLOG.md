@@ -59,3 +59,4 @@
 - 新增 audit_reply_context.py，只读 10-20 快照与三个明确 Development 目标，固定 anchor 配对 2/2 窗口有无 include_replies；Archify、Matt-1 的模型可见目标从1/2到2/2，Matt-2维持2/2；目标回复关系及真实 Host Citation 绑定通过。另有3/5窗口与只取直接回复对照，原快照大小/mtime不变；没有模型请求、Holdout、GT修改或索引重建。最终工件在 ignored `data/evaluation/reply-context-20261022/paired/`。
 - 新增12项回归；完整pytest **1,241 passed / 1 skipped / 0 failed（29.42s）**，Ruff src/tests/scripts、mypy src（129文件）和diff --check通过。生产SDK loop 的搜索handle→补查→最终Citation/Trace贯通，但模型由ScriptedModel提供，不能声称真实模型自主选择或答案改善。未在本轮调整首轮预算、工具轮次、Semantic或历史压缩。
 - 报告在 `evaluation/experiments/reply-context-20261022/report.md`，工作提交 `25e7438`；收尾后按既有授权普通推送，网络结果以随后交付/记录为准。下一步是单独验证真实Agent在原预算下能否自主选中有价值锚点、开启补查，并满足必要事实。
+- Git 收尾：工作与开发记录均已提交后执行普通 `git push`，25 秒超时退出；随后 bounded SSH 检查明确返回 `Could not resolve hostname ssh.github.com`。尚未推送，不更改全局 SSH/网络配置，不 force push。保留既有 DNS 阻塞，待网络恢复后普通推送。
