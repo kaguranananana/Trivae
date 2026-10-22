@@ -222,6 +222,41 @@ class AgentToolSurfaceTests(unittest.TestCase):
         self.assertIn("resource inventories", SYSTEM_PROMPT)
         self.assertIn('"github.com" the FIRST retrieval call', SYSTEM_PROMPT)
 
+    def test_recent_time_range_schema_exposes_relative_contract(self) -> None:
+        """真实空日调用曾误传absolute对象；SDK必须公开Capability已有的相对时间结构。"""
+
+        registry = CapabilityRegistry()
+        recent = _RecordingTool("get_recent_messages")
+        registry.register(recent)
+        relative = {"kind": "relative", "amount": 2, "unit": "day", "anchor": "archive_latest"}
+        model = ScriptedModel([
+            ModelStep(output=[function_call("get_recent_messages", {
+                "time_range": {"kind": "absolute", "start": "2025-08-23", "end": "2025-08-24"},
+            }, call_id="invalid")]),
+            ModelStep(output=[function_call("get_recent_messages", {"time_range": relative, "limit": 20},
+                                           call_id="recent")]),
+            ModelStep(output=[assistant_message("已读取时间窗。")]),
+        ])
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=model)
+        request = AgentRunRequest("最近两天聊了什么", ExecutionScope(),
+                                  available_capabilities=("get_recent_messages",))
+        agent = runtime._build_agent(request, runtime._build_context(request), object())
+        schema = agent.tools[0].params_json_schema
+        # 引用业务已有的数据类型，避免工具说明只写relative、JSON结构却允许任意kind。
+        time_schema = next(part for part in schema["properties"]["time_range"]["anyOf"]
+                           if part.get("type") == "object")
+        self.assertEqual(time_schema["properties"]["kind"]["const"], "relative")
+        self.assertEqual(time_schema["properties"]["anchor"]["const"], "archive_latest")
+        self.assertEqual(set(time_schema["required"]), {"kind", "amount", "unit", "anchor"})
+        # 实际SDK转换后仍复用原Capability输入，不新增absolute对象兼容解析。
+        result = asyncio.run(runtime.run(request))
+        self.assertEqual(result.termination, "completed")
+        # 非法对象仍显式记录INVALID_ARGUMENT，Schema修复不能偷偷兼容或清除错误历史。
+        self.assertEqual(result.tool_calls[0].error_code, "INVALID_ARGUMENT")
+        self.assertIsNone(result.tool_calls[1].error_code)
+        self.assertEqual(len(recent.calls), 1)
+        self.assertEqual(recent.calls[0][0].time_range.to_dict(), relative)
+
     def test_agent_can_continue_from_lexical_to_semantic_in_one_runtime(self) -> None:
         lexical = _RecordingTool("lexical_search")
         semantic = _RecordingTool("semantic_search")

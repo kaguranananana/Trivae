@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Annotated, Any, cast
 from agents import RunContextWrapper, function_tool
 from agents.exceptions import ModelBehaviorError
 from agents.tool_context import ToolContext
-from pydantic import Field
+from pydantic import Field, TypeAdapter, WithJsonSchema
 
 from trivae.capabilities.contracts import (
     CapabilityContractError,
@@ -17,6 +17,7 @@ from trivae.capabilities.contracts import (
     GetMessageContextInput,
     GetRecentMessagesInput,
     GetSchemaInput,
+    RelativeTimeRange,
     SearchMessagesInput,
     SemanticSearchInput,
     ToolEnvelope,
@@ -1252,7 +1253,10 @@ class GetRecentMessagesSDKToolAdapter:
         )
         async def get_recent_messages(
             context: RunContextWrapper[RuntimeContext],
-            time_range: dict[str, object] | None = None,
+            # 从原业务类型生成Schema；JSON仍交给原Capability解析，保留原错误和类型约束。
+            time_range: Annotated[
+                dict[str, object], WithJsonSchema(TypeAdapter(RelativeTimeRange).json_schema())
+            ] | None = None,
             start_timestamp: int | None = None,
             end_timestamp: int | None = None,
             # 只公开并执行已有非空数组约束；scope、时间和cursor逻辑原样保留。
