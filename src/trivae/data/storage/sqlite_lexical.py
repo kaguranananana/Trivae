@@ -1,4 +1,4 @@
-"""SQLite 唯一 FTS5 与合并转发 derived projection 的事务重建边界。"""
+"""SQLite词法主索引、独立Han单字索引与合并转发投影的事务重建边界。"""
 
 from __future__ import annotations
 
@@ -14,7 +14,11 @@ from trivae.data.storage.sqlite_forward import (
     FORWARDED_SCHEMA_SQL,
     ensure_canonical_revision,
 )
-from trivae.data.storage.sqlite_lexical_text import FTS_TOKENIZER_STRATEGY_ID, normalize_lexical_index_text
+from trivae.data.storage.sqlite_lexical_text import (
+    FTS_TOKENIZER_STRATEGY_ID,
+    normalize_lexical_index_text,
+    normalize_lexical_unigram_text,
+)
 from trivae.data.storage.sqlite_read import ORDER_BY_SQL, PROJECTION_COLUMNS, _row_to_forward_tree
 from trivae.retrieval.structured import LexicalIndexError
 
@@ -71,22 +75,20 @@ class SQLiteLexicalIndex:
                 raise LexicalIndexError("Canonical revision/count is unavailable")
             canonical_count = int(canonical_row["total"])
             self._connection.execute("DROP TABLE IF EXISTS messages_fts")
+            self._connection.execute("DROP TABLE IF EXISTS messages_han_fts")
             self._connection.execute("DROP TABLE IF EXISTS forwarded_messages")
             self._connection.execute(FORWARDED_SCHEMA_SQL)
             self._connection.execute(
                 "CREATE INDEX idx_forwarded_session_time ON forwarded_messages(session_id, timestamp, seq)"
             )
-            self._connection.execute(
-                """
-                CREATE VIRTUAL TABLE messages_fts USING fts5(
-                    internal_message_id UNINDEXED,
-                    session_id UNINDEXED,
-                    source_message_id UNINDEXED,
-                    content_text,
-                    tokenize = 'unicode61'
+            # 两种查询各有自己的主索引；单字频次不改变原bigram文档长度和BM25。
+            for table in ("messages_fts", "messages_han_fts"):
+                self._connection.execute(
+                    f"CREATE VIRTUAL TABLE {table} USING fts5("
+                    "internal_message_id UNINDEXED, session_id UNINDEXED, "
+                    "source_message_id UNINDEXED, content_text, tokenize='unicode61')"
                 )
-                """
-            )
+            self._connection.create_function("trivae_han_unigrams", 1, normalize_lexical_unigram_text)
             self._connection.create_function("trivae_normalize_lexical_text", 1, normalize_lexical_index_text)
             self._connection.create_function(
                 "trivae_forward_own_text", 1, lambda content: _own_content_text(json.loads(content))
@@ -101,6 +103,20 @@ class SQLiteLexicalIndex:
                            THEN trivae_forward_own_text(m.content_json) ELSE m.content_text END
                        )
                 FROM messages AS m
+                """
+            )
+            # 单字索引仅保存含Han正文的消息，空文本/英文无需重复占用索引空间。
+            self._connection.execute(
+                f"""
+                WITH source AS MATERIALIZED (
+                    SELECT m.internal_message_id, m.session_id, m.source_message_id,
+                           trivae_han_unigrams(CASE WHEN {FORWARD_CONTENT_PREDICATE}
+                           THEN trivae_forward_own_text(m.content_json) ELSE m.content_text END) AS chars
+                    FROM messages AS m
+                )
+                INSERT INTO messages_han_fts
+                SELECT internal_message_id, session_id, source_message_id, chars FROM source
+                WHERE chars <> ''
                 """
             )
             cursor = self._connection.execute(
@@ -146,6 +162,13 @@ class SQLiteLexicalIndex:
                                 normalize_lexical_index_text(message.normalized_content),
                             ),
                         )
+                        # 转发仍按每个真实occurrence独立索引，不能合并同ID的重复转发。
+                        unigrams = normalize_lexical_unigram_text(message.normalized_content)
+                        if unigrams:
+                            self._connection.execute(
+                                "INSERT INTO messages_han_fts VALUES (?, ?, ?, ?)",
+                                (message.internal_message_id, message.session_id, message.source_message_id, unigrams),
+                            )
                         forwarded_count += 1
             indexed_row = self._connection.execute("SELECT COUNT(*) AS total FROM messages_fts").fetchone()
             if indexed_row is None or int(indexed_row["total"]) != canonical_count + forwarded_count:
@@ -183,6 +206,7 @@ class SQLiteLexicalIndex:
         """只删除可重建的数据，保留单调 canonical revision 及其触发器。"""
 
         self._connection.execute("DROP TABLE IF EXISTS messages_fts")
+        self._connection.execute("DROP TABLE IF EXISTS messages_han_fts")
         self._connection.execute("DROP TABLE IF EXISTS forwarded_messages")
         self._connection.execute("DELETE FROM trivae_derived_meta WHERE key LIKE 'lexical_%'")
         self._connection.commit()

@@ -15,6 +15,7 @@ from scripts.audit_projection_compaction import legacy_projection
 from scripts.run_runtime_budget_followup import RequestLedger, configured_runtime, read_json, write_json
 from trivae.bootstrap.application import create_application
 from trivae.conversation import SQLiteConversationStore
+from trivae.data.storage.sqlite_lexical import SQLiteLexicalIndex
 from trivae.evaluation.contracts import DatasetSnapshot, EvaluationCaseBundle
 from trivae.evaluation.runner import EvaluationRunner
 from trivae.evaluation.variant import ControlledVariant
@@ -61,7 +62,13 @@ async def prepare(root: Path, labels: list[str], *, legacy: bool = False) -> Non
     (root / "snapshot").mkdir()
     for name in ("trivae.sqlite3", "trivae.semantic.sqlite3"):
         subprocess.run(["cp", "-c", str(SOURCE / name), str(root / "snapshot" / name)], check=True)
-    protocol: dict[str, Any] = {"cases": {}, "order": labels, "system_prompt": SYSTEM_PROMPT,
+    # 明确重建本次克隆的词法索引再冻结；不能让旧策略索引冒充当前代码的能力。
+    index = SQLiteLexicalIndex(root / "snapshot/trivae.sqlite3")
+    try:
+        lexical_build = asdict(index.rebuild())
+    finally:
+        index.close()
+    protocol: dict[str, Any] = {"lexical_build": lexical_build, "cases": {}, "order": labels, "system_prompt": SYSTEM_PROMPT,
         "code_version": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "automatic_retries": False, "judge": False, "tools": TOOLS, "legacy_projection": legacy}
     for label in labels:

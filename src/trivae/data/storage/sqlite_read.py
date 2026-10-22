@@ -19,7 +19,11 @@ from trivae.data.ingestion.qq_forward import (
 )
 from trivae.data.model import ChatSession
 from trivae.data.storage.sqlite_forward import FORWARD_CONTENT_PREDICATE
-from trivae.data.storage.sqlite_lexical_text import FTS_TOKENIZER_STRATEGY_ID, normalize_lexical_query_term
+from trivae.data.storage.sqlite_lexical_text import (
+    FTS_TOKENIZER_STRATEGY_ID,
+    is_single_han_term,
+    normalize_lexical_query_term,
+)
 from trivae.retrieval.identity import (
     FindMembersResult,
     MemberCandidate,
@@ -1141,6 +1145,12 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
                 f" (expected {FTS_TOKENIZER_STRATEGY_ID}, found {observed})"
             )
 
+        # 策略版本承诺单字索引存在；缺失时显式要求重建，不能静默返回假零条。
+        if self._connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'messages_han_fts'"
+        ).fetchone() is None:
+            raise LexicalIndexError("Han unigram index is unavailable; rebuild the derived index")
+
         metadata = {
             str(row["key"]): str(row["value"])
             for row in self._connection.execute(
@@ -1171,14 +1181,17 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             raise LexicalIndexError("messages_fts is stale; rebuild the derived index")
 
     def _lexical_match_union(self, query: LexicalQuery, *, scored: bool) -> tuple[str, list[object]]:
-        """普通与转发 occurrence 共用唯一 FTS；SQL scope 分别绑定到对应事实投影。"""
+        """按查询形态选择主索引；普通/转发共用既有Scope SQL与事实恢复。"""
 
+        # 仅完整查询为一个Han字符时选单字索引；其他查询的BM25和候选序列保持原样。
+        index_table = ("messages_han_fts" if len(query.terms) == 1 and is_single_han_term(query.terms[0])
+                       else "messages_fts")
         where_sql, parameters = _where_clause(query)
         columns = "m.internal_message_id AS internal_message_id, m.session_id AS session_id"
         if scored:
             columns += (
                 ", m.timestamp, CASE WHEN m.seq IS NULL THEN 1 ELSE 0 END AS missing_seq, "
-                "COALESCE(m.seq, 0) AS order_seq, bm25(messages_fts) AS lexical_score"
+                f"COALESCE(m.seq, 0) AS order_seq, bm25({index_table}) AS lexical_score"
             )
         branches = []
         for table in ("messages", "forwarded_messages"):
@@ -1186,10 +1199,10 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             branches.append(
                 f"""
                 SELECT {columns}
-                FROM messages_fts AS f
+                FROM {index_table} AS f
                 INNER JOIN {table} AS m
                   ON m.internal_message_id = f.internal_message_id AND m.session_id = f.session_id
-                WHERE messages_fts MATCH ? AND {where_sql}
+                WHERE {index_table} MATCH ? AND {where_sql}
                 """
             )
         bound = [_fts_match_expression(query), *parameters]

@@ -144,6 +144,22 @@ class ChineseLexicalRetrievalTests(unittest.TestCase):
             {"qq:900:c1", "qq:900:c2", "qq:900:c3", "qq:900:a5", "qq:900:mx1", "qq:900:mx2", "qq:900:mx3"},
         )
 
+    def test_single_han_inside_long_run_is_searchable(self) -> None:
+        # 真实失败类别：“荐”存在于“推荐”内部，不能因为bigram没有单字token返回零条。
+        total, ids = self._search("荐")
+        self.assertEqual(total, 7)
+        self.assertEqual(set(ids), {"qq:900:c1", "qq:900:c2", "qq:900:c3", "qq:900:a5",
+                                    "qq:900:mx1", "qq:900:mx2", "qq:900:mx3"})
+
+    def test_single_han_preserves_session_and_time_scope(self) -> None:
+        # 单字主索引必须复用既有Scope SQL，不能用无范围的全文扫库替代。
+        result = self.lexical.search(LexicalQuery(keyword="荐", session_ids=(SESSION,),
+                                                end_timestamp=1_786_700_355_000, limit=50))
+        self.assertEqual({hit.message.internal_message_id for hit in result.hits},
+                         {"qq:900:c1", "qq:900:c2", "qq:900:c3", "qq:900:mx1"})
+        other = self.lexical.search(LexicalQuery(keyword="荐", session_ids=("qq:other",), limit=50))
+        self.assertEqual(other.total_hits, 0)
+
     def test_chinese_full_phrase_substring(self) -> None:
         total, ids = self._search("值得看")
         self.assertEqual(total, 1)
@@ -226,6 +242,16 @@ class ChineseLexicalRetrievalTests(unittest.TestCase):
         with self.assertRaises(LexicalIndexError):
             self._search("推荐")
 
+    def test_bigram_only_index_is_explicitly_stale(self) -> None:
+        # 新策略不自动假装旧v2索引已有单字能力；同一事务重建后才恢复服务。
+        with sqlite3.connect(self.database_path) as connection:
+            connection.execute("UPDATE trivae_derived_meta SET value='unicode61+cjk-bigram-v2' "
+                               "WHERE key='lexical_tokenizer_strategy'")
+        with self.assertRaises(LexicalIndexError):
+            self._search("荐")
+        self.index.rebuild()
+        self.assertEqual(self._search("荐")[0], 7)
+
     def test_rebuild_after_stale_meta_restores_service(self) -> None:
         with sqlite3.connect(self.database_path) as connection:
             connection.execute(
@@ -242,7 +268,7 @@ class ChineseLexicalRetrievalTests(unittest.TestCase):
             self._search("推荐")
 
     def test_strategy_id_version_is_stable_contract(self) -> None:
-        self.assertEqual(FTS_TOKENIZER_STRATEGY_ID, "unicode61+cjk-bigram-v2")
+        self.assertEqual(FTS_TOKENIZER_STRATEGY_ID, "unicode61+cjk-bigram-v2+han-unigram-v1")
 
 
 if __name__ == "__main__":  # pragma: no cover

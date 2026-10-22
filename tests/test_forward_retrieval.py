@@ -308,3 +308,18 @@ def test_multiple_forward_elements_have_independent_context(forward_fixture: For
     assert fixture.reader.read_message_context("qq:100", left_id, 10, 10) == (left,)
     with pytest.raises(RetrievalError, match="forward container"):
         fixture.reader.read_message_range("qq:100", left_id, right_id, 20)
+
+
+def test_single_han_recovers_forward_occurrences_without_preview(forward_fixture: ForwardFixture) -> None:
+    """单字也以真实转发位置恢复；时间按外层过滤，preview不能成为正文。"""
+    result = forward_fixture.lexical.search(LexicalQuery(
+        keyword="程", session_ids=("qq:100",), end_timestamp=15_000, limit=20,
+        context_before=0, context_after=0,
+    ))
+    assert result.total_hits == 2
+    assert {hit.message.internal_message_id for hit in result.hits} == {
+        "qq:100:outer-a#forward:0.0", "qq:100:outer-a#forward:0.4",
+    }
+    assert all(hit.message.forward is not None and hit.message.timestamp == 10_000 for hit in result.hits)
+    preview = forward_fixture.lexical.search(LexicalQuery(keyword="密", context_before=0, context_after=0))
+    assert preview.total_hits == 0
