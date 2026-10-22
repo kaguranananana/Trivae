@@ -40,3 +40,13 @@
 - 本地 ignored .env 切换 Plan / gpt-6.1-sol / medium，并关闭既有 TRIVIAE_ROUTER_JEV_ENABLED（避免 OpenRouter shadow）；新启 Web 127.0.0.1:8710，readiness 确认 Plan/目标模型/ready。此前没有 Web/Chat 进程，不宣称重启了不存在的旧进程。无后续模型调用。
 - 验证：完整 pytest 1,224 passed / 1 skipped / 0 failed（27.52s），相关定向127 passed，ruff src/tests/scripts 与 mypy（129文件）通过，diff --check 通过。报告补充在原 runtime-budget-reliability-20261022/report.md，私有记录均 ignored；保持3轮/8turns，不新增Judge、Holdout、GT或索引重建。本轮4次请求已用满。
 - Git：有限时 SSH 推送在25秒后超时，GitHub HTTPS 也在8秒后 DNS 解析超时；本轮工作已本地提交，尚未推送。未改变全局网络/SSH配置、未强制推送，网络恢复后执行普通 git push。
+
+## 2026-10-22 · 扩展 Plan Medium 实验并修复 Trace 限制传递
+
+- 用户允许追加并放宽实验次数；旧 4/4 账本保留，新账本先冻结 12 次/每 Case 4 次，再保留已有9次调整为24次/每Case8次。实际新用12次、四条既有Development Case各一次、0次门禁阻断，所有HTTP发送前校验Medium并持久化预扣，失败也计入、不自动重试。原Snapshot/索引身份一致，不重绑GT、不重建索引，不触碰Holdout/Judge/旧付费脚本。
+- Matt/Miner/Written 均completed、每条3 HTTP/2工具轮；投影分别15,768/11,866/15,754，余额232/4,134/246。三条均暴露 limitation_preservation 诊断失败：canonical ToolResult 有 coverage:partial / unexpanded_forward_content，但 Collector 的 runtime.tool.completed 遗漏 limitations。最终 Artifact 已保留限制，未修改 Evaluation 检查掩盖故障。
+- collector.py 仅补一次emit的canonical限制字段，两个确定性测试覆盖普通/预算错误结果。保留原三份真实失败Evaluation；Matt原SDK输出和快照零HTTP重放后限制检查通过，规范Evidence（排除新运行身份）/答案/Citation绑定一致。首次离线强字节相等断言失败已保留，查明latency_ms及派生预算导致两次投影±1 Token、asdict tuple和JSON list比较差异，随后对保存JSON稳定事实逐项核对，未为实验断言更改产品。
+- 修复提交d4cf513后用新Archify验证：3 HTTP/2轮/4 Tool Call，投影14,628+738+198+198=15,762，余额238；两工具返回TOOL_RESULT_BUDGET_EXHAUSTED，SDK四个结果齐全，Query completed，4组Citation绑定、18个有效引用、0丢弃，14检查通过/1不适用/0失败。实际Capability3次，仍有一次返回后才发现数据投影放不下，最后一次检索被跳过，未宣称消除全部无用检索。
+- 追加12个响应均response.completed，Usage输入190,897/输出3,345/总194,242，逐响应、终态、Trace和Evaluation一致；四条真实流均正常结束，坏JSON中断统计只由前轮确定性测试覆盖。仍维持16k产品池、3工具轮/8turns；四条不构成质量A/B，不支持统一五轮。结束因为本轮可靠性问题已验证并归档，非请求预算耗尽。
+- 完整pytest 1,229 passed / 1 skipped / 0 failed（30.38s），定向34 passed，ruff src/tests/scripts与mypy src（129文件）通过，diff --check通过。新增实验脚本与3个零费用账本门禁测试。Web旧进程29549已重启为31153，8710 readiness确认Plan/Sol/ready，ignored配置Medium/Jev关闭，健康检查0推理。
+- 脱敏报告在evaluation/experiments/runtime-budget-followup-20261022/report.md；完整Trace/正文/冻结副本/账本及授权调整/失败与重放/安全汇总保留ignored目录。工作代码已提交，前置普通git push仍在25秒后网络超时；收尾提交后继续普通推送并按实际结果交付。两个原有未跟踪文件未暂存。
