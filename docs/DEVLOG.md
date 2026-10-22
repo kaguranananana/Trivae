@@ -21,3 +21,12 @@
 - 失败核对发现Collector observer异常分支把下一模型turn的tool_round当消耗轮次，并只保留last_usage。通过真实parser/Collector的零费用合成事件复现该统计缺陷；没有声称重放未保存的真实坏字符。生产缺陷保留，建议独立修复。实际20次HTTP中19次完整usage可见，按官方非峰价格观测下界$0.07251、最坏补齐未知响应上界$0.23234，非Provider精确账单。
 - 验证：三脚本Ruff通过、compileall通过；既有agent runtime相关测试2 passed / 58 deselected，execution core预算测试2 passed / 26 deselected，observer/parser相关测试4 passed / 25 deselected；统计缺陷离线复现断言通过。独立完整性检查6 Evaluation/6 result/6 Trace、20 HTTP、0 Planner、1 finalizing一致；三份Case仅身份改变，GT/query/scope等逐字段相等，canonical条数保持811,892。未运行完整产品测试。
 - 建议维持3轮默认；五轮统一采用的证据不足，暂无新增付费实验。完整私有原始数据、账本和复现保存在 `data/evaluation/tool-round-budget-20261021/`。实验阶段用户明确要求不Commit，当时未暂存、提交或推送，保留既有工作区改动；后续用户已授权提交并推送整个工作区的有效改动，空锁文件与空Obsidian临时文件保留本地。
+
+## 2026-10-22 · Runtime Tool Result 预算可靠性与 Collector 统计修复
+
+- 修改前使用 10-18 原独立快照与工具参数，只读重放 15,866 / 16,000 已消费、134 剩余的真实预算故障，确认 Capability 已执行后 ProjectionError 被 SDK UserError 包装为通用 Runtime 错误。历史工件不覆盖。
+- budget.py / openai_tools.py / openai_adapter.py 新增最小准入、同轮全部控制结果预留、失败投影退款、显式预算错误结果及整轮闭合后综合；SDK 包装后保留预算 code/type。evidence.py 修复漏算 metrics/meta 自身开销，未扩大预算或修改 Evidence/Citation 契约。原快照修复后记账 15,758 / 16,000、剩 242，4 调用均有结果、最后为预算错误，Runtime completed、1 Citation binding 通过；第四次 Capability 仍执行，不能宣称消灭全部无用检索或改善真实模型答案质量。
+- Collector 按完成工具事实计轮次；新增 usage.py 统一完整累计与 known_* 下界/未知响应语义；projection.py 用终态快照替换逐响应累加，避免漏计或翻倍。终态/Trace/Evaluation 一致性、无依据零结果拒绝、SDK 归因与协议闭合均有确定性回归。
+- 新增 16 项预算可靠性测试通过；完整 pytest 1,217 passed / 1 skipped / 0 failed（27.03s）；ruff check src tests scripts 通过；mypy src 通过（129 文件）；diff --check 通过。额外全树 Ruff 的 53 项均为未改动 .trellis 旧脚本/归档问题，不做无关批量修复。
+- Medium 阻塞：既有 OAuth 在生产 models 核验前返回 AUTH_OIDC（ID token iat 尚未生效），没有绕过校验或检查凭证正文。推理 HTTP 0/4，账本已保存；未扩白名单、未改本地配置或重启，未用 High/独立付费路径替代。后续恢复有效会话后才能完成 Medium 能力/实际参数/共享配置测试及启用。
+- 保持 3 工具轮 / 8 模型回合、16k 未知 context 池；未运行旧付费实验、新 Judge 或 37 题，未改 Holdout/GT/语义索引。脱敏报告位于 evaluation/experiments/runtime-budget-reliability-20261022/report.md，私有重放/结果/完整投影/账本/检查输出位于 ignored data/evaluation/runtime-budget-20261022/。
