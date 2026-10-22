@@ -94,6 +94,13 @@ def reserve_budget_stop_results(context: RuntimeContext, calls: list[tuple[str, 
         context.budget_stop_reservations[call_id] = context.tool_result_budget_policy.begin_call(
             minimum_budget=minimum, maximum_budget=minimum,
         )
+    if len(calls) > 1 and all(name == "get_recent_messages" for name, _ in calls):
+        # 控制结果已逐个预留；这里只均分本轮剩余的数据额度，不扩大共享池。
+        available = context.tool_result_budget_policy.remaining_run_tool_evidence_budget
+        if available is not None:
+            # 固定每窗上限，避免执行顺序影响哪个时间段能获得证据。
+            per_window = max(1, available // len(calls))
+            context.temporal_result_budget_limits.update({call_id: per_window for call_id, _ in required})
 
 
 def protect_tool_result_budget(tool: Any) -> None:
@@ -608,7 +615,9 @@ def _tool_runtime_context(
         raise RuntimeError(f"{tool_name} was invoked outside the allowed capability set")
     # 预留发生在 capability invoke 前，确保同一 run 的并发/连续 Tool 调用不会重置共享池。
     minimum = minimum_budget_stop_tokens(runtime_context, tool_name, tool_call_id)
-    budget_call = runtime_context.tool_result_budget_policy.begin_call(minimum_budget=minimum)
+    # 时间窗批次使用Host分配的份额；单次及其他工具沿用原有上限。
+    maximum = runtime_context.temporal_result_budget_limits.pop(tool_call_id, None)
+    budget_call = runtime_context.tool_result_budget_policy.begin_call(minimum_budget=minimum, maximum_budget=maximum)
     return runtime_context, tool_call_id, trace_context, budget_call
 
 
@@ -658,6 +667,8 @@ def _append_runtime_tool_result(
         or model_result_omitted_messages is None
     ):
         raise RuntimeError("model projection did not expose complete budget metrics")
+    # 未执行Capability而直接返回预算控制结果时，也完成该窗口份额的生命周期。
+    runtime_context.temporal_result_budget_limits.pop(tool_call_id, None)
     control = runtime_context.budget_stop_reservations.pop(tool_call_id, None)
     if control is not None and control != budget_call:
         # 数据投影已成功，可以先退回本调用控制预留，再生成准确的结算快照。

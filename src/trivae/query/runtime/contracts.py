@@ -154,6 +154,8 @@ class RuntimeContext:
     _next_tool_call_number: int = field(default=0, repr=False)
     # 当前 SDK 响应的每个调用先预留一个预算错误结果，保证整轮协议能闭合。
     budget_stop_reservations: dict[str, ToolResultBudgetCall] = field(default_factory=dict, repr=False)
+    # 同轮时间窗批量读取共享数据额度，避免前几个窗口吃完全部余额。
+    temporal_result_budget_limits: dict[str, int] = field(default_factory=dict, repr=False)
     tool_result_budget_exhausted: bool = False
 
     def resolve_tool_call_id(self, provider_tool_call_id: str | None) -> str:
