@@ -135,6 +135,11 @@ Keep sender_name separate from message content; a display name is not something 
 Use each returned message's author as the speaker for that message; do not attribute a question or reply
 to a nearby participant merely from adjacency. Preserve the distinction between who asked, who replied,
 what was recommended, and what is only a model synthesis.
+For questions about opinions or feedback, cover materially different relevant positions and conditions
+in the returned evidence, even when they occur in separate discussions. The most direct thread does
+not stand in for every relevant returned source. Keep human opinions separate from bot-generated
+advice, and distinguish what is common or possible from what is advisable or effective. Do not invent
+disagreement when the evidence does not contain it.
 Mention or sharing does not mean recommendation or value; mention does not mean recommendation.
 An intent to test does not prove actual use; intent to test does not prove actual use.
 Reviewing someone else's output does not prove personal installation or use; reviewing output does not prove personal installation or use.
