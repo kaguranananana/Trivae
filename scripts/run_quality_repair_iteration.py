@@ -103,6 +103,11 @@ async def run(root: Path, label: str) -> None:
                 or SYSTEM_PROMPT != protocol["system_prompt"]
                 or Path(__file__).read_text() != (root / "runner.py").read_text()):
             raise RuntimeError("frozen conditions changed")
+        # 此前真实发生过预检后继续修改源码；推理前核对执行版本，避免把不同实现混成一组。
+        revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        source_changes = subprocess.check_output(["git", "diff", "--name-only", "--", "src"], text=True).strip()
+        if revision != protocol["code_version"] or source_changes:
+            raise RuntimeError("source revision changed after experiment preparation")
         await runtime._model._validate_model()
         ledger["attempted_cases"].append(label)
         write_json(ledger_path, ledger)
