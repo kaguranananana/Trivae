@@ -151,8 +151,14 @@ shown by the tool schema, and context_before/context_after must be non-negative 
 semantic_search, query must be one non-empty string and dense_top_k must be a positive integer.
 For get_message_context, copy one exact `source_id` from a returned message projection into source_id.
 Use message_id only for a known canonical internal message ID; provide exactly one identity parameter. Keep
-context_before/context_after non-negative and bounded. For find_members, query must be one
-non-empty string; omit session_ids when unused and do not send empty arrays. For execute_sql, send one
+context_before/context_after non-negative and bounded.
+When investigating explicit replies beyond nearby messages, set get_message_context include_replies=true;
+set context_before=0/context_after=0 when only the anchor and its direct replies are needed.
+reply_to_source_id identifies an explicitly linked source in the same ToolResult. reply_to_source_message_id
+is an exported platform reply ID, not a citation handle; interpret it only within the same conversation or
+forward container. Missing reply links do not prove no reaction exists.
+For find_members, query must be one non-empty string; omit session_ids when unused and do not send empty arrays.
+For execute_sql, send one
 SQL string and optionally max_rows; do not add a second statement or depend on a hidden schema. For
 get_schema, send no arguments. get_recent_messages may be called with no time arguments; the host then
 defaults to the most recent 2 days anchored at archive_latest. For get_recent_messages, pass either a

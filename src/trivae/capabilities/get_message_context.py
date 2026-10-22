@@ -18,7 +18,7 @@ from trivae.retrieval.context import (
     ContextReadRepository,
     MessageContextResult,
 )
-from trivae.retrieval.structured import Coverage, MessageHit, RetrievalMetadata
+from trivae.retrieval.structured import Coverage, MessageHit, RetrievalMetadata, message_sort_key
 
 
 class MessageContextNotFound(CapabilityContractError):
@@ -35,11 +35,12 @@ class GetMessageContextCapability:
         description=(
             "Recover a larger but bounded same-conversation context around a known message_id. "
             "Use only after lexical_search or semantic_search returned an important message whose "
-            "local context is insufficient; do not call mechanically for every hit."
+            "local context is insufficient; include_replies=true retrieves direct replies beyond the local window. "
+            "Do not call mechanically for every hit."
         ),
         bounded=True,
         # SDK adapter 可把当前 Tool Result 的 source_id 解析成同一个 canonical message_id。
-        input_fields=("message_id", "source_id", "context_before", "context_after"),
+        input_fields=("message_id", "source_id", "context_before", "context_after", "include_replies"),
     )
 
     def __init__(
@@ -67,6 +68,9 @@ class GetMessageContextCapability:
             raise MessageContextNotFound(f"message_id does not exist: {request.message_id}")
         if not _scope_allows_anchor(anchor, scope):
             raise CapabilityScopeError("message_id is outside trusted data access scope")
+        # 没有平台消息 ID 就无法确定回复边，显式报告，不能把不可查误报为没有回复。
+        if request.include_replies and anchor.source_message_id is None:
+            raise CapabilityContractError("reply lookup requires an anchor source_message_id")
 
         # scope.max_results 同时约束显式 context 的可返回数量，transport bound 保护 ToolResultRecord。
         result_limit = min(scope.max_results, MAX_CONTEXT_EXPANSION_MESSAGES)
@@ -77,7 +81,36 @@ class GetMessageContextCapability:
             limit=result_limit,
             scope=scope_filters(scope),
         )
-        if any(message.session_id != anchor.session_id for message in expansion.messages):
+        messages = expansion.messages
+        truncated = expansion.truncated
+        candidate_count = expansion.candidate_count
+        reply_details: dict[str, object] = {"include_replies": request.include_replies}
+        if request.include_replies:
+            # 额外读取一条相对于可用回复槽位的哨兵，以准确披露未返回的回复。
+            replies = self.repository.read_message_replies_scoped(anchor, scope_filters(scope), result_limit)
+            # 合并计数只报告实际观察到的唯一候选，不把哨兵查询误称为全部回复总数。
+            candidate_count = len({message.internal_message_id for message in (*messages, *replies, anchor)})
+            # anchor 与直接回复优先占用原来的总容量，不扩大消息或 Token 预算。
+            selected = {anchor.internal_message_id: anchor}
+            for message in (*replies, *messages):
+                if len(selected) < result_limit:
+                    selected[message.internal_message_id] = message
+            messages = tuple(sorted(selected.values(), key=message_sort_key))
+            returned_replies = sum(message.internal_message_id in selected for message in replies)
+            has_more_replies = returned_replies < len(replies)
+            # 邻居被关系结果挤出也属于截断，不能只披露回复一侧的容量限制。
+            truncated = truncated or has_more_replies or any(
+                message.internal_message_id not in selected for message in expansion.messages
+            )
+            reply_details.update({
+                "reply_relation": "direct_only",
+                "returned_replies": returned_replies,
+                "has_more_replies": has_more_replies,
+                "neighbor_candidate_count": expansion.candidate_count,
+                "candidate_count_basis": "observed_neighbor_and_reply_union",
+                "reply_boundary": "same_session_and_forward_container_within_scope",
+            })
+        if any(message.session_id != anchor.session_id for message in messages):
             # repository 跨 conversation boundary 是主链路错误，不能把它投影成正常结果。
             raise RuntimeError("context expansion crossed conversation boundary")
 
@@ -85,17 +118,18 @@ class GetMessageContextCapability:
             strategy="context",
             message_id=anchor.internal_message_id,
             session_id=anchor.session_id,
-            messages=expansion.messages,
+            messages=messages,
             requested_before=request.context_before,
             requested_after=request.context_after,
             coverage=Coverage(status="complete", basis="canonical_store"),
             partial=expansion.partial,
-            truncated=expansion.truncated,
+            truncated=truncated,
             metadata=RetrievalMetadata(
                 filters={
                     "message_id": request.message_id,
                     "context_before": request.context_before,
                     "context_after": request.context_after,
+                    "include_replies": request.include_replies,
                     "scope": scope_filters(scope).scope_dict(),
                 },
                 ordering="timestamp ASC, present seq ASC, missing seq after present seq, internal_message_id ASC",
@@ -104,9 +138,10 @@ class GetMessageContextCapability:
                     "explicit_deepening": True,
                     "automatic_search_context": False,
                     "anchor_message_id": anchor.internal_message_id,
-                    "candidate_count": expansion.candidate_count,
+                    "candidate_count": candidate_count,
                     "result_limit": result_limit,
                     "conversation_boundary": anchor.session_id,
+                    **reply_details,
                 },
             ),
         )

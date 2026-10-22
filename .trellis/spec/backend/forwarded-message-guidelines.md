@@ -31,6 +31,8 @@ TrivaeApplication.rebuild_semantic_index(*, resume: bool = False) -> SemanticBui
 
 子消息的 context / semantic range 限制在同一 root、直接 parent 和 container 中；不能把两个独立转发对话拼成连续原生聊天。来源回读通过 root + 数字位置从 Canonical JSON 恢复，不把派生表正文或模型生成快照当作真相。
 
+`get_message_context(include_replies=True)` 显式恢复已知消息的直接回复，不受局部邻居距离限制，不递归展开回复链。普通消息限定同 session；转发 occurrence 另限定同直接 parent/container，沿用外层转发时间 scope。anchor、回复和邻居共用原结果容量，先保留 anchor/回复；`has_more_replies` 披露容量内未返回的回复。模型投影保留 `reply_to_source_message_id`，仅在当前结果内目标唯一且正文仍可见时增加 `reply_to_source_id`。缺少导出的回复边不能证明没有其他反馈，缺少 anchor 平台 ID 时显式报错。
+
 ## 索引与失效
 
 唯一 `messages_fts` 同时包含普通消息及子消息 occurrence。重建以单个 SQLite 事务替换 FTS、forwarded projection 和版本水位，任何异常回滚。`canonical_revision` 通过 messages insert/update/delete 触发器单调增加，解决数量不变但正文或来源变化时的漏失效；删除派生索引不能重置 revision。

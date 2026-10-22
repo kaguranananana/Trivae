@@ -709,6 +709,10 @@ class GetMessageContextSDKToolAdapter:
             "context_after parameters are message counts, not minutes or seconds; a small window cannot "
             "prove that nobody replied. It never crosses the trusted session/time scope and may return "
             "truncated=true."
+            " Set include_replies=true to retrieve explicit direct replies even when they are far outside "
+            "the neighbor window; replies take priority within the same total result bound. "
+            "With context_before=0 and context_after=0, return only the anchor and its direct replies. "
+            "This follows exported reply links, not all possible reactions or recursive reply threads."
         )
 
         @function_tool(
@@ -742,6 +746,11 @@ class GetMessageContextSDKToolAdapter:
                 "duration in minutes or seconds. Increase it when checking later replies or advice; "
                 "a small value cannot establish that no reply exists."
             ))] = 8,
+            # 只有 Agent 明确请求回复调查时才跨越局部邻居窗口。
+            include_replies: Annotated[bool, Field(strict=True, description=(
+                "Retrieve explicit direct replies to the anchor in the trusted session/time scope, "
+                "regardless of distance. Does not recursively follow replies. Default false."
+            ))] = False,
         ) -> dict[str, object]:
             """恢复由 Search 结果公开的 source handle，兼容旧的 canonical message_id。"""
 
@@ -763,6 +772,7 @@ class GetMessageContextSDKToolAdapter:
                     message_id=resolved_message_id,
                     context_before=context_before,
                     context_after=context_after,
+                    include_replies=include_replies,
                 )
             except CapabilityContractError as exc:
                 envelope = _contract_error_envelope(exc)

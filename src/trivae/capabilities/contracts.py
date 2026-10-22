@@ -415,11 +415,15 @@ class GetMessageContextInput:
     message_id: str
     context_before: int = 8
     context_after: int = 8
+    include_replies: bool = False
 
     def __post_init__(self) -> None:
         """拒绝空 locator、负窗口和超过 transport bound 的请求。"""
 
         object.__setattr__(self, "message_id", _normalize_required_identifier("message_id", self.message_id))
+        # 回复关系查询必须显式开启，不能把普通邻居窗口悄悄变成另一种检索。
+        if not isinstance(self.include_replies, bool):
+            raise CapabilityContractError("include_replies must be a boolean")
         for name, value in (
             ("context_before", self.context_before),
             ("context_after", self.context_after),

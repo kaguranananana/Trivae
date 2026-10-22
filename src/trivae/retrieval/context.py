@@ -46,6 +46,14 @@ class ContextReadRepository(Protocol):
     ) -> tuple[MessageProjection, ...]:
         """在 trusted scope 内读取 anchor 周围的 canonical projection。"""
 
+    def read_message_replies_scoped(
+        self,
+        anchor: MessageProjection,
+        scope: ScopeFilters,
+        limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """按明确回复关系读取同会话、同转发容器的有界直接回复。"""
+
     def read_message_range(
         self,
         session_id: str,
@@ -213,8 +221,8 @@ class ContextExpander:
             return ContextExpansionResult(
                 messages=ordered,
                 partial=False,
-                # direct hit 已占满容量时，requested neighbor 被明确省略，保留 truncation 事实。
-                truncated=bool((before or after) and not source_hits),
+                # 容量耗尽或来源锚点上限均会省略 requested neighbor，必须保留截断事实。
+                truncated=bool((before or after) and len(source_hits) < len(hits)),
                 candidate_count=len(ordered),
                 primary_message_ids=tuple(message.internal_message_id for message in hit_messages),
                 context_source_hits=len(source_hits),

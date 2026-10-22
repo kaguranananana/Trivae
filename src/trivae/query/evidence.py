@@ -1660,6 +1660,7 @@ def build_tool_result_record(
             "session_id": data.session_id,
             "requested_before": data.requested_before,
             "requested_after": data.requested_after,
+            "include_replies": data.metadata.details.get("include_replies", False),
             "scope": dict(raw_scope) if isinstance(raw_scope, Mapping) else {},
         }
     elif isinstance(data, FindMembersResult):
@@ -1755,10 +1756,23 @@ def _model_content(content: str, maximum: int = MAX_MODEL_MESSAGE_CHARS) -> tupl
     return content[: maximum - 1] + "…", True
 
 
+def _reply_identity(message: MessageProjection, source_message_id: str) -> tuple[str, str | None, str | None, str]:
+    """平台回复 ID 只能在同会话、同一个直接转发容器内关联。"""
+
+    forward = message.forward
+    return (
+        message.session_id,
+        None if forward is None else forward.parent_message_id,
+        None if forward is None else forward.container_path,
+        source_message_id,
+    )
+
+
 def _model_message_projection(
     record: ToolResultRecord,
     item: ToolMessageItem,
     source_id: str,
+    reply_handles: Mapping[tuple[str, str | None, str | None, str], str | None],
 ) -> tuple[dict[str, object], tuple[dict[str, object], bool, str, bool]]:
     """生成正文与必要转发来源 projection，并返回 budget trimming slot。"""
 
@@ -1777,6 +1791,13 @@ def _model_message_projection(
         "content_truncated": item.content_truncated or model_content_truncated,
         "hit": item.is_hit,
     }
+    # 只给真实回复增加关系字段，避免给所有普通命中重复搬运平台 ID、挤占调查预算。
+    if message.reply_to_source_message_id is not None:
+        entry["reply_to_source_message_id"] = message.reply_to_source_message_id
+        target_handle = reply_handles.get(_reply_identity(message, message.reply_to_source_message_id))
+        if target_handle is not None:
+            # 目标在本结果内且能唯一定位时，直接关联模型已经认识的 source handle。
+            entry["reply_to_source_id"] = target_handle
     if message.forward is not None:
         # 使用同一个 canonical provenance，模型无需从预览或相邻消息猜测父消息与作者。
         entry["forward"] = message.forward.to_dict()
@@ -1812,6 +1833,12 @@ def _project_model_data(
         item.message.internal_message_id: (index, item)
         for index, item in enumerate(record.message_items)
     }
+    reply_handles: dict[tuple[str, str | None, str | None, str], str | None] = {}
+    for index, item in enumerate(record.message_items):
+        if item.message.source_message_id is not None:
+            key = _reply_identity(item.message, item.message.source_message_id)
+            # 转发导出允许重复平台 ID；有歧义时只保留原始关系，不指认任意一个 occurrence。
+            reply_handles[key] = None if key in reply_handles else f"m{record.model_scope_id}-{index + 1}"
     structured_items_by_locator = {
         (item.locator_kind, item.locator): (index, item)
         for index, item in enumerate(record.structured_items)
@@ -1883,6 +1910,7 @@ def _project_model_data(
                     record,
                     item,
                     f"m{record.model_scope_id}-{message_index + 1}",
+                    reply_handles,
                 )
                 hit["message"] = entry
                 hit_message_ids.add(internal_id)
@@ -1922,6 +1950,7 @@ def _project_model_data(
                 record,
                 item,
                 f"m{record.model_scope_id}-{message_index + 1}",
+                reply_handles,
             )
             projected_messages.append(entry)
             slots.append((projected_messages, entry, entry, *slot[1:]))
@@ -2057,6 +2086,23 @@ def project_tool_result_for_model(
         raise ToolResultProjectionError("tool result token budget must be positive")
     canonical_payload = envelope.to_dict()
     projected_data, slots = _project_model_data(canonical_payload.get("data"), record)
+    # 预算二分会反复删减或恢复消息；独立保存原始关联，避免产生指向已省略来源的 handle。
+    reply_target_entries = tuple(
+        (slot[1], slot[1]["reply_to_source_id"])
+        for slot in slots if "reply_to_source_id" in slot[1]
+    )
+    if isinstance(envelope.data, MessageContextResult) and envelope.data.metadata.details.get("include_replies"):
+        # 只改变预算省略优先级：先保留 anchor 和显式请求的回复，再保留普通邻居。
+        # canonical 返回顺序、来源 handle 与 hit/context 语义均保持原值。
+        anchor_id = envelope.data.message_id
+        anchor = next(item.message for item in record.message_items if item.message.internal_message_id == anchor_id)
+        reply_handles = {
+            f"m{record.model_scope_id}-{index + 1}"
+            for index, item in enumerate(record.message_items)
+            if item.message.internal_message_id == anchor_id
+            or item.message.reply_to_source_message_id == anchor.source_message_id
+        }
+        slots.sort(key=lambda slot: slot[1]["source_id"] not in reply_handles)
     literal_ids = _semantic_literal_ids(envelope.data) if isinstance(envelope.data, SemanticRetrievalResult) else set()
     # 已核验命中保留最初的有界原文；否则先缩到 32 字再省略其他来源会丢掉正文中段的查询词。
     protected_source_ids = {
@@ -2082,7 +2128,14 @@ def project_tool_result_for_model(
         """每次检查都包含 projection metrics，保证公开 payload 本身不越预算。"""
 
         # context trim 后同步缩小 model provenance；Host canonical record 不受此 projection 变化影响。
-        payload["provenance"] = record.to_model_provenance(source_ids=_projected_source_ids(payload["data"]))
+        visible_source_ids = _projected_source_ids(payload["data"])
+        for entry, target_handle in reply_target_entries:
+            if target_handle in visible_source_ids:
+                entry["reply_to_source_id"] = target_handle
+            else:
+                # 原始平台回复 ID 仍保留，但不再暗示被裁掉的目标正文已经对模型可见。
+                entry.pop("reply_to_source_id", None)
+        payload["provenance"] = record.to_model_provenance(source_ids=visible_source_ids)
         payload.pop("model_projection", None)
         _set_projection_metrics(
             payload,

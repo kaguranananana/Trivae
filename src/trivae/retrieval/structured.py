@@ -599,6 +599,14 @@ class CanonicalReadRepository(Protocol):
     ) -> tuple[MessageProjection, ...]:
         """读取 trusted Scope 内的同 session surrounding context。"""
 
+    def read_message_replies_scoped(
+        self,
+        anchor: MessageProjection,
+        scope: ScopeFilters,
+        limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """按明确回复关系读取同会话、同转发容器内的 bounded 回复。"""
+
     def iter_semantic_messages(
         self, batch_size: int, *, scope: ScopeFilters | None = None
     ) -> "Iterator[MessageProjection]":

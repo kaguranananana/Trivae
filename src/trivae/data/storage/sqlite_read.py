@@ -56,6 +56,7 @@ from trivae.retrieval.structured import (
     RetrievalError,
     RetrievalMetadata,
     ScopeFilters,
+    message_sort_key,
 )
 
 # 只允许这些 canonical 列穿过 data/storage 到 Retrieval projection。
@@ -1350,6 +1351,42 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
             after_messages = tuple(_row_to_projection(row) for row in after_rows)
 
         return (*before_messages, anchor, *after_messages)
+
+    def read_message_replies_scoped(
+        self,
+        anchor: MessageProjection,
+        scope: ScopeFilters,
+        limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """直接查回复边，不让中间消息数量限制回复恢复距离。"""
+
+        if anchor.forward is not None:
+            # 转发 source ID 只在当前直接容器内解释，不能与外层群或另一份转发串联。
+            tree, _ = self._read_forward_anchor(anchor.session_id, anchor.internal_message_id)
+            replies = (
+                message for message in tree.messages
+                if message.forward is not None
+                and message.forward.parent_message_id == anchor.forward.parent_message_id
+                and message.forward.container_path == anchor.forward.container_path
+                and message.reply_to_source_message_id == anchor.source_message_id
+                and self._projection_in_scope(message, scope)
+            )
+            return tuple(sorted(replies, key=message_sort_key))[:limit]
+
+        # SQL 同时应用 trusted scope 与 anchor 会话，跨群同名 source ID 不会混入。
+        scope_sql, scope_parameters = _where_clause(scope)
+        rows = self._connection.execute(
+            f"""
+            SELECT {PROJECTION_COLUMNS}
+            FROM messages AS m
+            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+            WHERE m.session_id = ? AND m.reply_to_source_message_id = ? AND {scope_sql}
+            ORDER BY {ORDER_BY_SQL}
+            LIMIT ?
+            """,
+            [anchor.session_id, anchor.source_message_id, *scope_parameters, limit],
+        ).fetchall()
+        return tuple(_row_to_projection(row) for row in rows)
 
     def read_member_candidates(self, query: MemberQuery) -> FindMembersResult:
         """读取 UserIdentity 与 scope 内 Membership，并保留每个候选的匹配依据。"""
