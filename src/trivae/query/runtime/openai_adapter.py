@@ -23,7 +23,7 @@ from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.model_capabilities import ReasoningEffort, resolve_context_window, resolve_reasoning_effort
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
-from trivae.query.evidence import ToolResultProjectionError, ToolResultRecord
+from trivae.query.evidence import ToolResultProjectionError, ToolResultRecord, has_verified_zero_result_evidence
 from trivae.query.runtime.budget import (
     ToolResultBudgetConfig,
     ToolResultBudgetError,
@@ -1626,6 +1626,18 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 "consume one round. The finalizing synthesis turn uses no tools and consumes "
                 "no additional round."
             )
+            if context.tool_results:
+                # 复用Finalizer的同一判定，避免让模型自行猜测统计行是否允许no_result。
+                zero_allowed = has_verified_zero_result_evidence(tuple(context.tool_results))
+                # 每次工具返回后重新计算，随后新增的事实或失败都可能改变格式资格。
+                eligibility = "allowed" if zero_allowed else "unavailable"
+                # 只传递资格事实；最终输出仍必须通过原Finalizer，不替模型改写或兜底。
+                parts.append(f"\nHost-verified no_result eligibility: {eligibility}. ")
+                if not zero_allowed:
+                    # 有可引用事实时采用正常claims；缺少证据时保持不确定，不能声称完整为空。
+                    parts.append("Do not return kind=no_result for the current tool history. "
+                                 "Use normal claims with returned source handles for available facts; "
+                                 "state evidence limitations without inventing facts.")
             if request.plan_guidance:
                 parts.append("\n" + request.plan_guidance)
             if state.finalizing:
