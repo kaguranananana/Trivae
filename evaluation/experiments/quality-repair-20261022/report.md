@@ -124,3 +124,13 @@ Assistant逐条源复核：Agent并发/orca/主Agent组织、额度与访问打�
 据此继续最小修正：所有时间概览先20条取得实际数量和消息规模，再决定完整分页或不重叠分段；去除短窗直接max的相反建议。没有对“两天”或单个问题写特殊规则，不改工具/索引/预算。下一轮需复核密集两天与完整空窗控制，再确认14天指导保持；本条不提前声明修正后真实验收通过。
 
 276a56d已完成上述消息量指导修正。49定向、完整pytest1,260 passed/1 skipped（27.78s）、Ruff/mypy129文件通过，最后文字换行后工具说明8项通过。下一轮temporal-volume-series将顺序验证密集两天、原空日问题、14天；实际结果另记，不提前承诺覆盖。
+
+### 密集两天通过，空日控制捕获新的接口根因
+
+ca01b86的temporal-volume-series首题两天3HTTP完成：投影20/18/19/19/18条，Token3,124/2,994/2,984/2,927/2,957，总14,986。四段eligible4,299+2,071+6,193+2,036及pilot20=14,619；此轮末段明确止于pilot第一条前，不重复计算。最终valid，44,345输入/1,380输出，全部Usage已知。源复核支持服务访问/蒸馏路由猜测/频道操作/外围与日常主题，保留猜测、不可解读图片、partial和非热度排名边界；分段覆盖改善不等于稳定总体质量提升。比旧两天单次多1HTTP，输入30,350→44,345，模型可见数量146→94，换取跨时段取证，需明确报告代价。
+
+下一空日控制3HTTP产生非网络失败，验证器按设计退出，不采样重跑、不删除失败，系列累计6真实请求，14天未执行。模型首次传time_range={kind:absolute,start:ISO,end:ISO}，收到INVALID_ARGUMENT；随后顶层毫秒时间成功返回complete/0。Finalizer因历史中仍有错误而将no_result判unavailable，模型仍输出no_result，被显式拒绝。输入24,819/输出328，全部Usage已知。没有把后一次空结果用于放宽整体历史证明契约。
+
+新根因是SDK JSON Schema把time_range公开为任意object，relative结构只藏在说明及业务解析。最小修正用原RelativeTimeRange生成Schema，仍保留dict进入Capability的原解析和错误记录；不新增absolute兼容、重新执行或静默纠正。新回归首版漏call_id是测试入口错误，修正后旧Schema缺结构失败；修正后26项定向、Ruff/mypy129文件通过，完整回归及修正后新冻结真实验收继续。
+
+bef1dc8最终修正仅从原业务数据类生成公开Schema，输入仍是dict并由原Capability解析，避免引入额外类型转换。完整pytest **1,261 passed/1 skipped（27.34s）**、Ruff/mypy129文件通过；随后补充真实SDK非法absolute仍INVALID_ARGUMENT且后续合法relative正常的定向回归1passed。旧空日失败不重写，下一temporal-schema-series冻结顺序验证原空日、密集两天、14天。

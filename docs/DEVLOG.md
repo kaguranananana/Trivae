@@ -140,3 +140,10 @@
 - 继续定位到“短窗接近max”将日历时长等同消息量，最小修正为所有时间概览先20条取得Host实际数量，再决定能完整分页还是分段；无题目特判、不改工具能力/预算。修正前49定向已通过，完整回归及新真实密集两天/空窗/14天控制继续。
 
 - 276a56d消息量指导修复：49定向、完整1,260 passed/1 skipped（27.78s）、Ruff/mypy129文件通过，最终文字换行后工具说明8项再次通过。下一冻结temporal-volume-series顺序验证密集两天、原完整空日问题、14天，旧0ff6bc0系列及所有失败保持。
+
+- ca01b86已推送，Web重启加载此版本，readiness数据库ready/827,614、语义completed/827,614、Plan ready。temporal-volume-series已启动（密集两天→完整空日→14天），每次失败独立保留；当前待最终源核验，运行期间不变更源码或HEAD。
+
+- ca01b86的temporal-volume-series：密集两天3HTTP完成，投影20/18/19/19/18、14,986Token、四段都有正文，finalization valid且源复核通过，输入44,345/输出1,380。空日3HTTP产生非网络失败，累计6推理后明确退出，14天未执行；24,819输入/328输出全部已知。先传absolute对象收到INVALID_ARGUMENT，纠正成顶层毫秒时间后完整0条，最终仍误用no_result，被原Finalizer拒绝。
+- 空日根因进一步定位：time_range SDK Schema只有任意object，已有relative固定字段只在说明和Capability内。最小修复从既有RelativeTimeRange生成公开Schema，保留JSON到Capability的原解析/错误路径；不增加absolute兼容、重试或放宽no_result。新回归先因测试漏call_id失败，修正测试接口后确认旧Schema缺结构；最终验证公开固定字段与实际SDK相对时间调用。26定向、Ruff/mypy通过，完整回归继续。
+
+- bef1dc8时间参数Schema修正：完整1,261 passed/1 skipped（27.34s）、Ruff src/tests/scripts及mypy129文件通过；随后补充非法absolute→合法relative的真实SDK错误透明断言，定向1passed。最终方案仅生成公开Schema，不用Pydantic数据类转换改变原业务类型校验，非法absolute仍INVALID_ARGUMENT，未删除错误历史。下一temporal-schema-series按空日→密集两天→14天冻结验证。
