@@ -687,6 +687,8 @@ class TraceableAgentRuntime(AgentRuntime):
                 parent_operation_id=run_operation,
                 outcome=outcome,
                 payload=payload,
+                # canonical ToolResult 已确认的限制必须进入 Trace 顶层，不能只留在最终 Artifact。
+                limitations=event.tool_result.limitations if event.tool_result is not None else (),
                 failure=failure,
             )
         elif event.type == "turn_completed":
