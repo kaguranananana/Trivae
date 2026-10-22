@@ -60,3 +60,13 @@
 - 新增12项回归；完整pytest **1,241 passed / 1 skipped / 0 failed（29.42s）**，Ruff src/tests/scripts、mypy src（129文件）和diff --check通过。生产SDK loop 的搜索handle→补查→最终Citation/Trace贯通，但模型由ScriptedModel提供，不能声称真实模型自主选择或答案改善。未在本轮调整首轮预算、工具轮次、Semantic或历史压缩。
 - 报告在 `evaluation/experiments/reply-context-20261022/report.md`，工作提交 `25e7438`；收尾后按既有授权普通推送，网络结果以随后交付/记录为准。下一步是单独验证真实Agent在原预算下能否自主选中有价值锚点、开启补查，并满足必要事实。
 - Git 收尾：工作与开发记录均已提交后执行普通 `git push`，25 秒超时退出；随后 bounded SSH 检查明确返回 `Could not resolve hostname ssh.github.com`。尚未推送，不更改全局 SSH/网络配置，不 force push。保留既有 DNS 阻塞，待网络恢复后普通推送。
+
+## 2026-10-22 · 回复调查真实模型终端补验
+
+- 用户要求补真实模型验收，复用此前授权的Plan / gpt-6.1-sol / medium；目录预检成功。原Archify/Matt-1/Matt-2各运行一次，保持原10-20问题、scope、GT和811,892条快照/现有语义索引；克隆到独立ignored目录。强制Standard，七种生产工具，3轮/8turns/16k不变，不注入目标或补查提示、不调用独立Jev/Router/Planner模型。
+- 三题共9HTTP，全部completed、每题2工具轮，模型分别声明3/1/3次include_replies。Host→模型→Evidence固定GT覆盖为Archify 1/2→1/2→0/2、Matt-1 1/2→1/2→1/2、Matt-2 2/2→1/2→0/2；三题旧required reply均未送达。Archify首轮14,699Token并有两次预算错误；Matt-1选另一anchor且未耗尽；Matt-2有一次预算错误及context投影省略。42项确定性检查通过/3项不适用/0失败，不计为答案质量收益；回答包含其他来源，不能机械由旧GT遗漏判整题错误。
+- 为确认真实模型消费到实际回复，另冻结一条合成控制，共用原24/每Case8账本，不覆盖三题协议。145消息、143条间隔噪声、唯一体验不含项目词。真实模型自行lexical→context(include_replies=true,after40)，通过关系找回窗口外reply，最终正确表达正负反馈并引用；3HTTP/2工具轮。合成控制不是群聊质量A/B。
+- 合计12真实响应全部response.completed、0门禁阻断、无重试或补跑/Judge。完整Usage输入167,113/输出3,377/总170,490；不混淆累计模型输入与16k工具池。目录GET不计推理。原HTTP账本、完整正文/Trace、模型输出、冻结执行脚本和快照均保留ignored `data/evaluation/reply-context-live-20261022/`，最终汇总 `final-summary.json`。
+- 初次按脚本文件启动因scripts包导入失败，推理前改用python -m，未补跑已发送Case。合成控制的实验渲染首次漏传source summaries，已修正实验脚本；由同一持久化Artifact零HTTP补渲染，确认anchor/reply两来源，原终端输出保留。未修改产品渲染器、模型答案或检查阈值。
+- 只新增三个实验/分析脚本和报告，未改产品。定向回复/账本15passed（1.30s），Ruff src/tests/scripts、mypy src（129文件）、diff --check通过；不重复完整产品回归，沿用上轮1,241passed/1skipped的已记录边界。报告：`evaluation/experiments/reply-context-live-20261022/report.md`，工作提交 `a224fc8`。后续优先验证首轮预算分配与anchor选择，而不是宣称回复功能已带来稳定质量收益。
+- 本轮SSH复核仍明确返回 `Could not resolve hostname ssh.github.com`；GitHub DNS阻塞未解除。工作与开发记录提交后仍按约定尝试普通推送，不更改全局网络或SSH配置。

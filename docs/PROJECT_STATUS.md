@@ -8,6 +8,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-22 补完真实模型终端验收：Plan / gpt-6.1-sol / medium，三条原始 Development + 一条隔离合成控制，共12次真实推理、全部response.completed、0次门禁阻断、无重试/Judge。原预算3轮/8turns/16k与原问题保持；三题均completed且自主开启include_replies，42项确定性检查通过/3项不适用，但旧required reply均未送达模型（Archify/Matt-2有预算阻断，另有anchor选择和context裁剪问题），未证明质量提升。
+- 合成控制中，真实模型自行通过回复关系找回相隔143条噪声的唯一反馈，最终保留正负两面并引用真实reply；3请求/2工具轮。四题合计Usage输入167,113/输出3,377/总170,490，均完整。未修改产品；新增实验/分析脚本与报告，定向15passed、Ruff和mypy通过。报告：`evaluation/experiments/reply-context-live-20261022/report.md`，工作提交 `a224fc8`。
 - 2026-10-22 关键回复恢复审计与修复完成：`get_message_context` 新增显式 `include_replies`，按同会话/直接转发容器的真实回复边补查，保持原容量与 16k 预算；模型投影保留原始回复关系及当前结果内可唯一解析的短 handle，目标裁剪后不留下悬空关系。修复 20 锚点上限未披露的截断事实，Trace/Evidence 同步新参数与回复边界。本轮普通 `git push` 仍在 25 秒后超时，尚未推送。
 - 原始最小复现 2 failed，修复后新增 12 项回归通过；真实 10-20 Development 快照固定 anchor 配对：Archify、Matt-1 从 1/2 目标到 2/2，Matt-2 保持 2/2，关系与目标 Citation 均通过，模型请求 0 次。完整 pytest 1,241 passed / 1 skipped / 0 failed，Ruff、mypy（129 文件）通过。未验证真实模型自主选 anchor/新参数或答案收益；未修改预算分配、历史压缩和索引。报告：`evaluation/experiments/reply-context-20261022/report.md`，工作提交 `25e7438`，开发记录提交 `bc35810`。
 - 2026-10-22 后续 Plan Medium 实验完成：用户追加并放宽至 24 次/每 Case 8 次，保留旧 4/4 账本；实际新用 12 次、4 条 Development Query 均 completed、无实验门禁阻断。Archify 真实触发两个预算错误，四个 SDK Tool Call 均有响应，最终综合与四组 Citation 绑定通过。Runtime/Trace/Evaluation 的轮次及累计 Usage 一致；没有自然复现坏 JSON，未声称质量提升或 A/B 收益。
@@ -24,7 +26,7 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 仍需确认的事项
 
-- 回复补查路径已打通，但真实 Agent 自主选择与最终答案质量仍待独立对照；首轮结果挤占后续预算的问题未在本任务中调参。
+- 回复补查路径与真实模型使用能力已验证；真实三题未恢复旧required reply，下一步应隔离首轮预算占用和有价值anchor选择的影响。当前没有质量A/B或稳定收益证据，未调整生产预算。
 - 10-22 修复已本地提交，但 GitHub DNS/SSH 网络阻断普通推送；后续实验收尾的普通推送仍在 25 秒后超时，网络恢复后需执行 git push。
 - 旧 Session 75 中的人工质量审核是否已经完成。
 - .trellis/spec/project/overview.md 提到的 human-verified 标注、长期参数阈值和 HTTP 产品交互，应按当前源码及新任务实际情况逐项核对；这些是旧文档记录的待办，不保证仍未完成。
