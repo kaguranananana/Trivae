@@ -39,4 +39,4 @@
 - 真实推理先发送前持久化并 fsync，严格 4/4：极小 JSON 探针 1 请求内容校验失败（该条 Usage 未保存、未知），不重复；独立合成预算协议 3 请求全部 response.completed，seed→不可裁剪结构→无工具综合，两个工具为 ok/error、两工具轮，投影 424/198 Token，1 Citation binding 通过。三成功响应已知输入15,647/输出342/总15,989；不冒充四请求完整用量或答案质量收益。两次目录网络预检失败发生在推理前，另存工件，推理计数不增加。
 - 本地 ignored .env 切换 Plan / gpt-6.1-sol / medium，并关闭既有 TRIVIAE_ROUTER_JEV_ENABLED（避免 OpenRouter shadow）；新启 Web 127.0.0.1:8710，readiness 确认 Plan/目标模型/ready。此前没有 Web/Chat 进程，不宣称重启了不存在的旧进程。无后续模型调用。
 - 验证：完整 pytest 1,224 passed / 1 skipped / 0 failed（27.52s），相关定向127 passed，ruff src/tests/scripts 与 mypy（129文件）通过，diff --check 通过。报告补充在原 runtime-budget-reliability-20261022/report.md，私有记录均 ignored；保持3轮/8turns，不新增Judge、Holdout、GT或索引重建。本轮4次请求已用满。
-- Git：对既有提交的有限时 SSH 推送在25秒后超时，后续按约定提交本轮改动并再次核对推送结果。
+- Git：有限时 SSH 推送在25秒后超时，GitHub HTTPS 也在8秒后 DNS 解析超时；本轮工作已本地提交，尚未推送。未改变全局网络/SSH配置、未强制推送，网络恢复后执行普通 git push。
