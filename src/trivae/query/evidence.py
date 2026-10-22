@@ -2110,6 +2110,12 @@ def project_tool_result_for_model(
         for index, item in enumerate(record.message_items)
         if item.message.internal_message_id in literal_ids
     }
+    # 搜索命中的原消息与其明确直接回复共同构成证据；回复仍保留非 hit 身份。
+    hit_handles = {slot[1]["source_id"] for slot in slots if slot[3]}
+    context_reply_targets = {
+        id(slot[2]): slot[1]["reply_to_source_id"] for slot in slots
+        if not slot[3] and slot[1].get("reply_to_source_id") in hit_handles
+    }
     raw_meta = canonical_payload.get("meta")
     projected_meta = dict(raw_meta) if isinstance(raw_meta, Mapping) else raw_meta
     payload: dict[str, object] = {
@@ -2148,20 +2154,31 @@ def project_tool_result_for_model(
         return _projection_size(payload) <= max_bytes
 
     if not fits():
-        # 第一阶段只删除 context；所有真实 retrieval hits 必须继续留在 model projection。
-        retained_slots: list[
-            tuple[list[dict[str, object]], dict[str, object], dict[str, object], bool, str, bool]
-        ] = []
-        for container, entry, remove_entry, is_hit, full_content, canonical_truncated in slots:
-            if is_hit:
-                retained_slots.append(
-                    (container, entry, remove_entry, is_hit, full_content, canonical_truncated)
-                )
-                continue
-            container.remove(remove_entry)
-            omitted_context_messages += 1
-        slots = retained_slots
-        truncated = omitted_context_messages > 0
+        # 只从普通邻居尾部省略刚好需要的数量，已关联到命中的回复暂不删除。
+        ordinary_context = tuple(slot for slot in slots if not slot[3] and id(slot[2]) not in context_reply_targets)
+        context_base = {id(slot[0]): (slot[0], list(slot[0])) for slot in slots}
+
+        def apply_context_omission(count: int) -> set[int]:
+            """每次从同一基线重建，二分裁剪不会反复丢失候选。"""
+            removed = {id(slot[2]) for slot in ordinary_context[len(ordinary_context) - count:]}
+            for container, original in context_base.values():
+                container[:] = [entry for entry in original if id(entry) not in removed]
+            return removed
+
+        low, high = 0, len(ordinary_context)
+        while low < high:
+            candidate = (low + high) // 2
+            apply_context_omission(candidate)
+            omitted_context_messages = candidate
+            truncated = candidate > 0
+            if fits():
+                high = candidate
+            else:
+                low = candidate + 1
+        removed = apply_context_omission(low)
+        omitted_context_messages = low
+        truncated = low > 0
+        slots = [slot for slot in slots if id(slot[2]) not in removed]
 
     if not fits():
         # 第二阶段只缩短正文；source、canonical/UTC timestamp、author、URL 和 hit identity 不被删除。
@@ -2190,23 +2207,30 @@ def project_tool_result_for_model(
                 id(container): (container, list(container))
                 for container, _entry, _remove_entry, _is_hit, _full_content, _canonical_truncated in slots
             }
+            context_omitted_before_hits = omitted_context_messages
 
-            def apply_hit_omission(count: int) -> None:
+            def apply_hit_omission(count: int) -> int:
                 """从当前 context-trim 基线重建列表，只移除稳定顺序尾部 hit。"""
 
                 omitted_entries = {
                     id(slot[2])
                     for slot in hit_slots[len(hit_slots) - count :]
                 }
+                # 原消息被省略时，它的附属回复也不再占用可见预算，避免孤立回复挤掉其他命中。
+                retained_hits = {slot[1]["source_id"] for slot in hit_slots[:len(hit_slots) - count]}
+                removed_replies = {entry_id for entry_id, target in context_reply_targets.items()
+                    if target not in retained_hits}
+                omitted_entries.update(removed_replies)
                 for container, original in base_contents.values():
                     # 通过 identity 过滤可避免 list.remove 对每个尾部 hit 重复扫描前缀。
                     container[:] = [entry for entry in original if id(entry) not in omitted_entries]
+                return len(removed_replies)
 
             low = 0
             high = len(hit_slots)
             while low < high:
                 candidate = (low + high) // 2
-                apply_hit_omission(candidate)
+                omitted_context_messages = context_omitted_before_hits + apply_hit_omission(candidate)
                 omitted_hit_messages = candidate
                 truncated = True
                 if fits():
@@ -2214,7 +2238,7 @@ def project_tool_result_for_model(
                 else:
                     low = candidate + 1
 
-            apply_hit_omission(low)
+            omitted_context_messages = context_omitted_before_hits + apply_hit_omission(low)
             omitted_hit_messages = low
             truncated = True
             slots = [slot for slot in slots if slot[3] and id(slot[2]) not in {

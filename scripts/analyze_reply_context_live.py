@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+from pathlib import Path
 from typing import Any
 
 from scripts.run_reply_context_live import CASES, ROOT, SOURCE
@@ -94,6 +96,10 @@ def analyze_case(label: str) -> dict[str, object]:
 
 def main() -> None:
     """分析已完成的三条实验，并保留完整私有诊断结果。"""
+    global ROOT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    ROOT = parser.parse_args().root
     cases = [analyze_case(label) for label in CASES]
     ledger = read_json(ROOT / "http-ledger.json")
     summary = {"cases": cases, "http_used": ledger["used"], "http_maximum": ledger["maximum"],

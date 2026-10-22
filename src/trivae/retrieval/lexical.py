@@ -41,6 +41,7 @@ class LexicalRetrieval:
                 start_timestamp=query.start_timestamp,
                 end_timestamp=query.end_timestamp,
             ),
+            include_direct_replies=True,
         )
         gaps = self.repository.forward_content_gaps(query)
         latency_ms = (perf_counter() - started) * 1000
@@ -74,6 +75,8 @@ class LexicalRetrieval:
                     "context_after": query.context_after,
                     "context_source_hits": expansion.context_source_hits,
                     "context_source_budget": MAX_AUTOMATIC_CONTEXT_SOURCE_HITS,
+                    "reply_source_hits": expansion.reply_source_hits,
+                    "expanded_reply_messages": expansion.expanded_reply_messages,
                     "unexpanded_forward_nodes": len(gaps),
                     "unexpanded_forward_locations": gaps[:20],
                 },

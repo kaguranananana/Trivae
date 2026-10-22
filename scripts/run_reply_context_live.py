@@ -160,9 +160,14 @@ async def run_case(label: str) -> None:
 
 def main() -> None:
     """终端逐题运行，失败先定位，禁止为了好结果自动补跑。"""
+    global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("prepare", *CASES))
-    action = parser.parse_args().action
+    # 每轮使用独立目录与账本；原三题记录和已消费请求永远不清零。
+    parser.add_argument("--root", type=Path, default=ROOT)
+    arguments = parser.parse_args()
+    ROOT = arguments.root
+    action = arguments.action
     asyncio.run(prepare() if action == "prepare" else run_case(action))
 
 

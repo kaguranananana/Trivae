@@ -607,6 +607,11 @@ class CanonicalReadRepository(Protocol):
     ) -> tuple[MessageProjection, ...]:
         """按明确回复关系读取同会话、同转发容器内的 bounded 回复。"""
 
+    def read_message_replies_for_anchors(
+        self, anchors: tuple[MessageProjection, ...], scope: ScopeFilters, limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """批量读取同会话/容器内、属于已命中原消息的直接回复。"""
+
     def iter_semantic_messages(
         self, batch_size: int, *, scope: ScopeFilters | None = None
     ) -> "Iterator[MessageProjection]":

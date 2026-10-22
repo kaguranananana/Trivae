@@ -1360,33 +1360,55 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
     ) -> tuple[MessageProjection, ...]:
         """直接查回复边，不让中间消息数量限制回复恢复距离。"""
 
-        if anchor.forward is not None:
-            # 转发 source ID 只在当前直接容器内解释，不能与外层群或另一份转发串联。
-            tree, _ = self._read_forward_anchor(anchor.session_id, anchor.internal_message_id)
-            replies = (
-                message for message in tree.messages
-                if message.forward is not None
-                and message.forward.parent_message_id == anchor.forward.parent_message_id
-                and message.forward.container_path == anchor.forward.container_path
-                and message.reply_to_source_message_id == anchor.source_message_id
-                and self._projection_in_scope(message, scope)
-            )
-            return tuple(sorted(replies, key=message_sort_key))[:limit]
+        return self.read_message_replies_for_anchors((anchor,), scope, limit)
 
-        # SQL 同时应用 trusted scope 与 anchor 会话，跨群同名 source ID 不会混入。
-        scope_sql, scope_parameters = _where_clause(scope)
-        rows = self._connection.execute(
-            f"""
-            SELECT {PROJECTION_COLUMNS}
-            FROM messages AS m
-            INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
-            WHERE m.session_id = ? AND m.reply_to_source_message_id = ? AND {scope_sql}
-            ORDER BY {ORDER_BY_SQL}
-            LIMIT ?
-            """,
-            [anchor.session_id, anchor.source_message_id, *scope_parameters, limit],
-        ).fetchall()
-        return tuple(_row_to_projection(row) for row in rows)
+    def read_message_replies_for_anchors(
+        self, anchors: tuple[MessageProjection, ...], scope: ScopeFilters, limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """批量按真实回复边查找，只返回当前原消息集合之外的新增回复。"""
+
+        anchor_ids = {anchor.internal_message_id for anchor in anchors}
+        ordinary = sorted({(anchor.session_id, anchor.source_message_id) for anchor in anchors
+            if anchor.forward is None and anchor.source_message_id is not None})
+        replies: list[MessageProjection] = []
+        if ordinary:
+            # 一次索引连接完成全部普通消息的关系查询，避免 N 个原消息产生 N 次群聊扫描。
+            values = ", ".join("(?, ?)" for _ in ordinary)
+            parameters = [value for pair in ordinary for value in pair]
+            excluded = ", ".join("?" for _ in anchor_ids)
+            scope_sql, scope_parameters = _where_clause(scope)
+            rows = self._connection.execute(
+                f"""
+                WITH reply_targets(session_id, source_message_id) AS (VALUES {values})
+                SELECT {PROJECTION_COLUMNS}
+                FROM reply_targets AS target
+                INNER JOIN messages AS m ON m.session_id = target.session_id
+                    AND m.reply_to_source_message_id = target.source_message_id
+                INNER JOIN chat_sessions AS s ON s.session_id = m.session_id
+                WHERE {scope_sql} AND m.internal_message_id NOT IN ({excluded})
+                ORDER BY {ORDER_BY_SQL}
+                LIMIT ?
+                """,
+                [*parameters, *scope_parameters, *sorted(anchor_ids), limit],
+            ).fetchall()
+            replies.extend(_row_to_projection(row) for row in rows)
+
+        forward_roots: dict[tuple[str, str], list[MessageProjection]] = {}
+        for anchor in anchors:
+            if anchor.forward is not None and anchor.source_message_id is not None:
+                forward_roots.setdefault((anchor.session_id, anchor.forward.root_message_id), []).append(anchor)
+        for (session_id, _root), root_anchors in forward_roots.items():
+            # 同一个 root 只解析一次；原始平台 ID 仍严格在直接 parent/container 内解释。
+            tree, _ = self._read_forward_anchor(session_id, root_anchors[0].internal_message_id)
+            targets = {(anchor.forward.parent_message_id, anchor.forward.container_path, anchor.source_message_id)
+                for anchor in root_anchors if anchor.forward is not None}
+            replies.extend(message for message in tree.messages
+                if message.forward is not None and message.internal_message_id not in anchor_ids
+                and (message.forward.parent_message_id, message.forward.container_path,
+                    message.reply_to_source_message_id) in targets
+                and self._projection_in_scope(message, scope))
+        # 普通消息与转发 occurrence 使用统一稳定排序和同一返回容量。
+        return tuple(sorted(replies, key=message_sort_key))[:limit]
 
     def read_member_candidates(self, query: MemberQuery) -> FindMembersResult:
         """读取 UserIdentity 与 scope 内 Membership，并保留每个候选的匹配依据。"""

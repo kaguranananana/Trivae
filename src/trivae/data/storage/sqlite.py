@@ -165,6 +165,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_session_time
     ON messages(session_id, timestamp, seq, internal_message_id);
 CREATE INDEX IF NOT EXISTS idx_messages_session_source_id
     ON messages(session_id, source_message_id);
+-- 回复关系补查按会话和回复目标定位，避免每个候选都扫描整段群聊。
+CREATE INDEX IF NOT EXISTS idx_messages_session_reply
+    ON messages(session_id, reply_to_source_message_id, timestamp, seq, internal_message_id);
 CREATE INDEX IF NOT EXISTS idx_message_sources_message
     ON message_sources(internal_message_id);
 CREATE INDEX IF NOT EXISTS idx_import_batches_source

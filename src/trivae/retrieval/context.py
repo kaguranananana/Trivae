@@ -54,6 +54,11 @@ class ContextReadRepository(Protocol):
     ) -> tuple[MessageProjection, ...]:
         """按明确回复关系读取同会话、同转发容器的有界直接回复。"""
 
+    def read_message_replies_for_anchors(
+        self, anchors: tuple[MessageProjection, ...], scope: ScopeFilters, limit: int,
+    ) -> tuple[MessageProjection, ...]:
+        """批量读取已命中原消息的明确回复，避免逐条查询全部候选。"""
+
     def read_message_range(
         self,
         session_id: str,
@@ -87,6 +92,8 @@ class ContextExpansionResult:
     # 记录自动读取邻居的 direct-hit 数量，便于 Trace 解释 expansion 成本与边界。
     context_source_hits: int = 0
     context_source_budget: int = MAX_AUTOMATIC_CONTEXT_SOURCE_HITS
+    reply_source_hits: int = 0
+    expanded_reply_messages: int = 0
 
 
 @dataclass(frozen=True)
@@ -154,6 +161,7 @@ class ContextExpander:
         limit: int,
         *,
         scope: ScopeFilters | None = None,
+        include_direct_replies: bool = False,
     ) -> ContextExpansionResult:
         """合并、去重、排序并 bounded trim；不把 context 当成新的检索 hit。"""
 
@@ -164,6 +172,18 @@ class ContextExpander:
             hit.message.internal_message_id: hit.message for hit in hits
         }
         hit_ids = set(messages_by_id)
+        reply_messages: tuple[MessageProjection, ...] = ()
+        reply_source_hits = 0
+        if include_direct_replies and (before or after) and len(hits) < limit:
+            # 同一容量内优先恢复结构化回复；普通邻居的20锚点上限不截断这条关系路径。
+            reply_anchors = tuple(hit.message for hit in hits if hit.message.source_message_id is not None)
+            reply_source_hits = len(reply_anchors)
+            reply_messages = self.repository.read_message_replies_for_anchors(
+                reply_anchors, scope or ScopeFilters(), limit - len(hits) + 1,
+            )
+            # 多取一个容量哨兵，后续合并裁剪会公开确有未返回的回复。
+            messages_by_id.update((message.internal_message_id, message) for message in reply_messages)
+        reply_ids = {message.internal_message_id for message in reply_messages}
 
         # direct hit 已填满容量时，邻居不会进入结果，因此完全跳过无收益读取。
         source_hits = (
@@ -215,6 +235,8 @@ class ContextExpander:
                 candidate_count=len(ordered),
                 primary_message_ids=tuple(message.internal_message_id for message in selected),
                 context_source_hits=len(source_hits),
+                reply_source_hits=reply_source_hits,
+                expanded_reply_messages=len(reply_ids & {message.internal_message_id for message in selected}),
             )
 
         if len(ordered) <= limit:
@@ -226,10 +248,15 @@ class ContextExpander:
                 candidate_count=len(ordered),
                 primary_message_ids=tuple(message.internal_message_id for message in hit_messages),
                 context_source_hits=len(source_hits),
+                reply_source_hits=reply_source_hits,
+                expanded_reply_messages=len(reply_ids),
             )
 
         # 先放入全部真实 hit，再从 context 中填充剩余空间，避免简单切片丢掉后面的命中。
-        non_hit_messages = tuple(message for message in ordered if message.internal_message_id not in hit_ids)
+        non_hit_messages = tuple(sorted(
+            (message for message in ordered if message.internal_message_id not in hit_ids),
+            key=lambda message: (message.internal_message_id not in reply_ids, message_sort_key(message)),
+        ))
         available_context = limit - len(hit_messages)
         selected = tuple(sorted((*hit_messages, *non_hit_messages[:available_context]), key=message_sort_key))
         return ContextExpansionResult(
@@ -239,6 +266,8 @@ class ContextExpander:
             candidate_count=len(ordered),
             primary_message_ids=tuple(message.internal_message_id for message in hit_messages),
             context_source_hits=len(source_hits),
+            reply_source_hits=reply_source_hits,
+            expanded_reply_messages=len(reply_ids & {message.internal_message_id for message in selected}),
         )
 
     def expand_ranges(

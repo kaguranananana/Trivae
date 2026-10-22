@@ -480,15 +480,17 @@ class EvidenceContractTests(unittest.TestCase):
         serialized = json.dumps(projected, ensure_ascii=False)
         projected_messages = projected["data"]["expanded_messages"]
 
-        self.assertEqual(len(projected_messages), 2)
-        self.assertEqual([item["hit"] for item in projected_messages], [True, True])
+        # 新规则仅省略超额邻居；核心必须全保留，仍装得下的普通上下文无需整批删除。
+        self.assertEqual([item["source_id"] for item in projected_messages if item["hit"]], ["m1-1", "m1-2"])
+        self.assertGreater(len(projected_messages), 2)
+        self.assertLess(len(projected_messages), len(messages))
         # context 被裁剪后，命中消息的 source、作者和两种时间事实仍可供模型核对。
         self.assertEqual(projected_messages[0]["timestamp"], messages[0].timestamp)
         self.assertEqual(projected_messages[0]["timestamp_utc"], format_timestamp_utc(messages[0].timestamp))
         self.assertEqual(projected_messages[0]["author"], messages[0].sender_name)
-        self.assertEqual(projected["model_projection"]["omitted_context_messages"], 38)
+        self.assertEqual(projected["model_projection"]["omitted_context_messages"], len(messages) - len(projected_messages))
         self.assertTrue(projected["model_projection"]["truncated"])
-        self.assertEqual(len(projected["provenance"]["message_sources"]), 2)
+        self.assertEqual(len(projected["provenance"]["message_sources"]), len(projected_messages))
         self.assertNotIn("m1-40", {item["source_id"] for item in projected["provenance"]["message_sources"]})
         self.assertNotIn("internal_message_id", serialized)
         self.assertNotIn("chunk-id-1", serialized)

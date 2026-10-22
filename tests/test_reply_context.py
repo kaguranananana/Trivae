@@ -14,7 +14,7 @@ from agents.tool_context import ToolContext
 from tests.test_forward_retrieval import make_forward_message
 from tests.test_ingestion import make_message, write_export
 from trivae.bootstrap.application import create_application
-from trivae.capabilities import ExecutionScope, GetMessageContextInput, ToolEnvelope
+from trivae.capabilities import ExecutionScope, GetMessageContextInput, SearchMessagesInput, ToolEnvelope
 from trivae.query.contracts import ExecutionOverride, QueryRequest
 from trivae.query.evidence import build_tool_result_record, project_tool_result_for_model
 from trivae.query.runtime.contracts import RuntimeContext
@@ -83,6 +83,44 @@ def test_default_context_remains_local(reply_application):
     """默认窗口不暗中追加关系查询，显式开关区分两种读取意图。"""
     payload = invoke_context(reply_application, context_before=0, context_after=0)
     assert [message["content"] for message in payload["data"]["messages"]] == ["分享一个技术项目"]
+
+
+def test_search_automatically_delivers_distant_direct_reply(reply_application):
+    """搜索的上下文应优先交付明确回复，避免模型盲选另一个无回复锚点。"""
+    reply_application.rebuild_lexical_index()
+    result = reply_application.invoke_tool("lexical_search", SearchMessagesInput(keyword="分享一个技术项目",
+        limit=10, context_before=2, context_after=2), ExecutionScope(end_timestamp=2_500)).data
+    assert "qq:100:reply" in {message.internal_message_id for message in result.expanded_messages}
+    assert "qq:100:future" not in {message.internal_message_id for message in result.expanded_messages}
+    assert "qq:200:reply" not in {message.internal_message_id for message in result.expanded_messages}
+
+
+def test_search_reply_recovery_is_not_limited_to_twenty_neighbor_anchors(reply_application, tmp_path):
+    """排名靠后的命中仍能带回直接回复，20来源限制只约束普通邻居读取。"""
+    raw = tmp_path / "late-anchors"
+    raw.mkdir()
+    messages = [make_message(f"a{index}", index, 4_000 + index, "项目候选") for index in range(30)]
+    messages.append(make_message("late-reply", 31, 5_000, "这个实际用过，很好用", reply_to="a29"))
+    write_export(raw, "late(300).json", messages, chat_name="后排锚点", peer_uid=None, version="5.5.64")
+    reply_application.import_directory(raw)
+    reply_application.rebuild_lexical_index()
+    result = reply_application.invoke_tool("lexical_search", SearchMessagesInput(keyword="项目候选",
+        limit=100, context_before=2, context_after=2), ExecutionScope()).data
+    assert result.hits[29].message.internal_message_id == "qq:300:a29"
+    assert "qq:300:late-reply" in {message.internal_message_id for message in result.expanded_messages}
+
+
+def test_batch_reply_reads_keep_session_time_and_forward_container_boundaries(reply_application):
+    """批量查询混合原生消息和两个转发时，不得混入同名跨群或嵌套容器回复。"""
+    from trivae.retrieval.structured import ScopeFilters
+
+    repository = reply_application.read_repository
+    anchors = tuple(repository.read_message_by_id(identity) for identity in (
+        "qq:100:anchor", "qq:100:forward-a#forward:0.0", "qq:100:forward-b#forward:0.0"))
+    replies = repository.read_message_replies_for_anchors(anchors,
+        ScopeFilters(session_ids=("qq:100",), end_timestamp=2_500), 10)
+    assert {message.internal_message_id for message in replies} == {
+        "qq:100:reply", "qq:100:forward-a#forward:0.1", "qq:100:forward-b#forward:0.1"}
 
 
 @pytest.mark.parametrize("capacity", [1, 2])
