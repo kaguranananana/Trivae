@@ -13,6 +13,7 @@ from scripts.run_runtime_budget_followup import RequestLedger, configured_runtim
 from trivae.capabilities import ExecutionScope
 from trivae.config.limits import DEFAULT_TRUSTED_RESULT_LIMIT
 from trivae.data.storage.sqlite_lexical import SQLiteLexicalIndex
+from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
 from trivae.evaluation.contracts import DatasetSnapshot
 from trivae.query.contracts import ExecutionOverride, QueryRequest
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
@@ -20,17 +21,34 @@ from trivae.query.runtime.prompt import SYSTEM_PROMPT
 QUERY = "最近两周大家主要在聊什么方向的内容？"
 
 
-async def prepare(root: Path, *, query: str = QUERY) -> None:
+async def prepare(root: Path, *, query: str = QUERY, snapshot_template: Path | None = None) -> None:
     """新建独立探针；不改旧14天题的max_results=100或人工标注。"""
     root.mkdir(parents=True, exist_ok=False)
     (root / "snapshot").mkdir()
+    # 同一语料重复重建曾耗尽磁盘；只有显式指定已冻结模板时才复用其写时复制快照。
+    source = SOURCE if snapshot_template is None else snapshot_template / "snapshot"
     for name in ("trivae.sqlite3", "trivae.semantic.sqlite3"):
-        subprocess.run(["cp", "-c", str(SOURCE / name), str(root / "snapshot" / name)], check=True)
-    index = SQLiteLexicalIndex(root / "snapshot/trivae.sqlite3")
-    try:
-        build = asdict(index.rebuild())
-    finally:
-        index.close()
+        subprocess.run(["cp", "-c", str(source / name), str(root / "snapshot" / name)], check=True)
+    if snapshot_template is None:
+        index = SQLiteLexicalIndex(root / "snapshot/trivae.sqlite3")
+        try:
+            build = asdict(index.rebuild())
+        finally:
+            index.close()
+    else:
+        frozen = read_json(snapshot_template / "protocol.json")
+        observed = DatasetSnapshot.from_database(root / "snapshot/trivae.sqlite3").to_dict()
+        # 观察时间不属于语料身份；其他快照字段必须仍与模板一致。
+        observed["created_at"] = frozen["snapshot"]["created_at"]
+        if observed != frozen["snapshot"]:
+            raise RuntimeError("reused temporal snapshot differs from its frozen template")
+        repository = SQLiteCanonicalReadRepository(root / "snapshot/trivae.sqlite3")
+        try:
+            # 复用现有策略/版本/计数校验；旧索引直接报错，不能静默重建或降级。
+            repository._ensure_lexical_ready()
+        finally:
+            repository.close()
+        build = {"reused_from": str(snapshot_template), "source_build": frozen["lexical_build"]}
     runtime = configured_runtime()
     application = application_for(root, "temporal", runtime)
     try:
@@ -121,5 +139,7 @@ if __name__ == "__main__":
     parser.add_argument("action", choices=("prepare", "run"))
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--query", default=QUERY, help="prepare时冻结待验证的原始问题")
+    parser.add_argument("--snapshot-template", type=Path, help="prepare时显式克隆已登记的有效快照，避免重复重建")
     args = parser.parse_args()
-    asyncio.run(prepare(args.root, query=args.query) if args.action == "prepare" else run(args.root))
+    asyncio.run(prepare(args.root, query=args.query, snapshot_template=args.snapshot_template)
+                if args.action == "prepare" else run(args.root))
