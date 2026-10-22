@@ -8,6 +8,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-22 修复清单已沉淀至docs/REPAIR_PLAN.md，并完成首批5条Plan源证据复核及三题首轮预算配对。8k候选虽恢复补查空间，却减少首轮来源，Matt遗漏基线已有的teach负面意见；不采用为默认。6Query/16HTTP，15完成、1TLS连接失败；已知Usage输入215,947/输出4,324，另一次未知，失败保留。报告evaluation/experiments/first-round-budget-20261022/report.md。
+- 同轮最小修复Runtime格式资格信息：每次工具返回后复用Finalizer的原判定，把当前no_result是否可用传给模型；不改校验、检索或生产预算。完整pytest1,251 passed/1 skipped，Ruff及mypy129文件通过，后增回放接口回归定向5 passed。原错误答案仍被拒绝；固定原工具历史的一次真实Plan最终综合改用claims，空日事实与3条统计引用通过，输入10,674/输出214。不是自主检索验收或全库收益。工作6ba2596、回放修正4a9dde8；初次回放namespace错误及真实HTTP400均保留，真实综合共2次发送尝试、1次有效完成。报告evaluation/experiments/final-response-contract-20261022/report.md。
 - 2026-10-22 核验外部问题评估：历史 Miner 失败发生在检索/工具选择层（目标未进入 Host），此前 Prompt 充分性候选已被否决。另核对已有 Plan/Sol/medium 同题工件，模型通过 semantic→lexical 找到 ResumeSkills 的用途匹配替代资源，名称、用途及链接均有保存的 ToolResult 原文支持，3 HTTP/2工具轮、投影11,866、余额4,134；单次观察不能声明稳定修复，也不能仅凭旧target遗漏判业务失败。没有新增模型请求或修改产品；空结果契约测试15 passed。下一步先复核现有当前模型答案质量，再决定具名资源修复；首轮预算分配仍有当前直接证据。
 - 2026-10-22 搜索回复送达修复并完成真实验收：Lexical 在原容量内先批量恢复所有已返回 hit 的明确直接回复，再填普通邻居；投影仅省略必要普通 context，保留 hit/回复关系。新增会话/回复目标访问索引，未扩大 100 条/16k 池、不改 Prompt/GT/语义向量。原参数零模型重放三题直接 hit 身份/顺序不变，目标模型覆盖均从 1/2 到 2/2；完整 pytest 1,246 passed / 1 skipped，Ruff、mypy（129 文件）通过。工作提交 `366f290`。
 - 同轮真实 Plan / gpt-6.1-sol / medium 原三题各一次、7 HTTP 全部 response.completed，三条原遗漏回复全部进入首轮输入并被最终答案引用（Sources 9/7/6）；Archify 最终固定目标 Evidence 1/2，Matt 两题 2/2，均 finalization valid，42 passed/3不适用。Usage 输入110,808/输出3,397/总114,205。Archify 仍有两个明确预算错误，未声称一般预算策略已解决或全库质量提升。离线引用核验提交 `7a7bdde`，报告 `evaluation/experiments/reply-repair-20261022/report.md`。
@@ -31,6 +33,7 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 仍需确认的事项
 
+- 继续按docs/REPAIR_PLAN.md：补intern-owner/resume-advice当前模型答案；预算研究优先保留不同事实/立场，不能直接推广本轮被拒的8k上限。格式资格传递已修复，但模型自主选完整工具序列及重复成功率尚未验证。
 - 具名资源问题须区分历史 DeepSeek 失败与已有 Plan/Sol 用途匹配替代答案，先做当前模型/来源的质量核验，不能直接重复已否决的 Prompt 方案。10-20 zero-empty-2 曾取得完整空时间窗，但额外日期分组行使 no_result 不合契约；Semantic 远回复及 SQL 执行阻塞仍只有静态风险，未在本轮复现。
 - 原三题的关键回复送达/最终引用已在真实模型下恢复；一般首轮预算分配仍未解决，Archify 后续补查有预算错误。没有 Holdout、重复采样或全库质量 A/B，不能外推稳定收益。
 - GitHub DNS/SSH 直连问题可通过现有系统代理解决，本轮普通 push 已成功；后续终端网络操作仍需使用相同进程代理，不改变全局网络或强推。

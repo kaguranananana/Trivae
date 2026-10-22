@@ -1,5 +1,11 @@
 # Agent Runtime and Query Execution Guidelines
 
+## Host final-response eligibility (2026-10-22)
+
+Runtime动态instructions在存在工具历史时，直接复用Evidence/Finalizer的`has_verified_zero_result_evidence`告知模型当前no_result资格；每次工具返回后重新计算，不复制一套SQL形态或空检索判定。通用Prompt说明不能替代当前工具历史的实际资格事实。
+
+资格提示不会改写候选答案、放宽Finalizer或触发自动重试。完整空窗可与符合现有契约的数值聚合并存；日期分组/普通结构化行仍可能使no_result不可用，应以原判定为准。SQL COUNT本身不能代替完整空检索证明。回归须走实际SQLite和SDK，验证资格变化及错误输出仍被拒绝；模型是否遵从须另记真实综合或自主查询的验证边界。
+
 ## Planner capability summary contract (2026-09-27)
 
 ### 1. Scope / Trigger

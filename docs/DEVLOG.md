@@ -102,3 +102,14 @@
 - zero-empty-2独立验证取得过目标日complete/0，失败还涉及不合辅助聚合条件的日期分组行，不能只归因缺少空证明。当前Finalizer仍区分纯数值辅助聚合与普通结构化行；本轮uv run pytest -q tests/test_no_result_finalization.py：15 passed（0.63s）。
 - Archify修复后首轮15,256Token、后续两次预算错误是当前直接证据，但不自动证明答案质量下降。Semantic仍走expand_ranges、SQL仍在async工具内同步执行且无查询计算时限；本轮仅确认静态路径，未把潜在风险升级为已复现故障。长窗300/28,028只证明覆盖不足，不能单独裁定总结事实错误。
 - 建议先复核现有当前模型答案及必要事实/引用支持，再决定具名资源改动；若做工程实验，先固定16k总池隔离首轮分配，记录必要证据覆盖与完整回答，避免同时改Prompt/排序/轮次。长窗、CJK、Semantic及SQL各按真实需求或最小复现独立推进。文档之外无改动，无需重跑完整产品回归。
+
+## 2026-10-22 · 修复清单、首轮分配负结果与最终格式资格修复
+
+- 用户要求沉淀清单并按推荐顺序推进。新增docs/REPAIR_PLAN.md，记录顺序、验收、当前结果及待验证项；首批核验已有Plan Miner/Written/修复后Archify/Matt两题，区分替代资源满足用途、谨慎未确认、事实支持及立场覆盖。未把Assistant复核称作人工审核，intern-owner/resume-advice仍缺本轮当前模型样本。
+- 新增audit_first_round_budget.py，固定原参数/模型实际选中补查/16k总池，保留原始hit顺序。基线require-followup明确复现AssertionError；8k候选使Archify实际补查从0到15条，但原答案引用来源首轮可见Archify14→7、Matt各12→6/17→7，固定anchor/reply仍2/2。未用旧target保持替代答案质量判断。
+- 新增run_first_round_budget_experiment.py及真实SDK总额/后续余额回归。5481716冻结三题各A/B一次，交替顺序，原问题/811,892快照/索引/Prompt/Plan Sol Medium/3轮8turns16k保持；候选仅实验进程限首轮8k，多调用均分。实际16HTTP（上限48），15完成/1连接失败、0门禁阻断。已知输入215,947/输出4,324/总220,271，另一次Usage未知。
+- Archify A首轮15,263，两个补查预算错误；B首轮成功后第二HTTP为ConnectError→EndOfStream→SSLEOFError，链路探测随后正常，未查明具体上游故障方、不重试该unit。Matt B补查3次成功但最终缺少A已有teach负面意见/选用边界，HTTP2→3、输入28,807→43,675。Miner两侧都有用途匹配工具。否决简单8k默认，不宣称稳定因果退化或预算质量提升；报告evaluation/experiments/first-round-budget-20261022/report.md。
+- 当前Runtime每次工具返回后，复用Finalizer原has_verified_zero_result_evidence把no_result资格追加给下一次模型输入；不改静态检索Prompt、Finalizer、预算或候选答案，不新增重试/Judge。真实SQLite/SDK的空窗、数值聚合、日期分组、SQL-only四种历史先因缺少格式资格信息4failed，修复后相关36passed；原错误输出仍被拒绝。工作6ba2596。
+- validate_final_response_contract.py保存原zero-empty-2工具序列/SQL/时间窗，仅将最终综合交给真实模型。初次offline漏trivae namespace，保留失败，修正后有效零HTTP重放为Runtime completed但Query/Finalizer failed。首次live因历史函数项id不以fc开头HTTP400，未生成答案；修正回放身份并增加回归（4a9dde8）后，另建独立unit1HTTP完成，claims正确说明空日，3个统计引用绑定通过、无降级/丢弃。有效响应输入10,674/输出214/总10,888；本项共2发送尝试、1有效响应，HTTP400 Usage不可用。固定历史验收不冒充自主检索或全库稳定收益。
+- 完整pytest1,251 passed/1 skipped（30.51s），Ruff src/tests/scripts、mypy src129文件、diff检查通过；随后新增回放身份测试所在文件5passed，没有重复全量测试或报告未经运行的1,252总数。初次新测试遗漏write_export必填参数及“第二轮额度必大于8k”错误假设均修正为真实接口/控制预留契约，未改产品掩盖测试失败。
+- 更新当前状态及Runtime格式资格持久契约。完整原文、快照、HTTP账本、实际模型输入、失败/有效重放和源码冻结均保留ignored两个独立实验目录；公开报告不包含群聊完整正文。下一步补当前模型质量样本、研究事实/立场保留，长窗/CJK/语义回复/SQL慢查询仍按清单独立复现。
