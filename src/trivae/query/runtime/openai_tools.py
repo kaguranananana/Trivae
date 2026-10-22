@@ -37,7 +37,7 @@ from trivae.observability.contracts import FailureInfo
 from trivae.query.evidence import ToolResultProjectionError, build_tool_result_record, project_tool_result_for_model
 from trivae.query.runtime.budget import ToolResultBudgetCall, ToolResultBudgetExhausted
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
-from trivae.retrieval.sql import MAX_SQL_RESULT_ROWS
+from trivae.retrieval.sql import MAX_SQL_RESULT_ROWS, SQL_QUERY_TIMEOUT_SECONDS
 
 if TYPE_CHECKING:
     # 仅类型引用，避免与 observability.collector 的运行时依赖成环。
@@ -1084,6 +1084,8 @@ class ExecuteSQLSDKToolAdapter:
         )
         if trusted_max_results is not None:
             description += f" The current SQL result row limit is {min(trusted_max_results, MAX_SQL_RESULT_ROWS)}."
+        # 在模型发起查询前告知真实执行限制，超时仍由SQLite而不是模型自觉遵守。
+        description += f" SQL execution has a {SQL_QUERY_TIMEOUT_SECONDS:g}-second time limit; timeout is an explicit error."
 
         @function_tool(
             name_override="execute_sql",

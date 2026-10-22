@@ -30,10 +30,12 @@ from trivae.retrieval.identity import (
     MemberSession,
 )
 from trivae.retrieval.sql import (
+    SQL_QUERY_TIMEOUT_SECONDS,
     SchemaColumn,
     SchemaForeignKey,
     SchemaResult,
     SchemaTable,
+    SQLExecutionTimeout,
     SQLMalformedError,
     SQLQuery,
     SQLQueryResult,
@@ -664,6 +666,18 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
         connection = sqlite3.connect(_readonly_uri(self._database_path), uri=True)
         connection.row_factory = sqlite3.Row
         state: dict[str, str] = {}
+        # 期限覆盖scope物化、statement执行和fetch，不能只限制返回行数或首次execute。
+        deadline = started + SQL_QUERY_TIMEOUT_SECONDS
+
+        def interrupt_expired_query() -> int:
+            """SQLite每千条VM指令检查一次真实耗时，超时由同一连接立即中断。"""
+            if perf_counter() >= deadline:
+                # 保存稳定错误归属，不能把interrupted误报为SQL语法错误。
+                state["code"] = SQLExecutionTimeout.error_code
+                return 1
+            return 0
+
+        connection.set_progress_handler(interrupt_expired_query, 1000)
         allow_main = not _requires_scoped_materialization(scope)
         try:
             # bootstrap 阶段只做 adapter 自己的 temp-table materialization，不执行模型 SQL。
@@ -758,6 +772,10 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
 
         code = state.get("code")
         message = str(exc).strip() or "SQLite rejected the statement"
+        if code == SQLExecutionTimeout.error_code:
+            raise SQLExecutionTimeout(
+                f"read-only SQL execution exceeded the {SQL_QUERY_TIMEOUT_SECONDS:g}s time limit"
+            ) from exc
         if code == SQLReadOnlyViolation.error_code:
             raise SQLReadOnlyViolation("read-only SQL statement was rejected") from exc
         if code == SQLScopeViolation.error_code:

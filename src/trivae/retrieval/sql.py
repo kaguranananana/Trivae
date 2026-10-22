@@ -12,6 +12,8 @@ SQLScalar = bool | float | int | str | None
 
 # ToolResultRecord 当前最多承载 100 个 structured item；SQL row bound 与该 transport contract 对齐。
 MAX_SQL_RESULT_ROWS = MAX_STRUCTURED_RESULT_ITEMS
+# 返回行数不限制计算量；单次SQL执行（含scope准备）最多占用五秒。
+SQL_QUERY_TIMEOUT_SECONDS = 5.0
 
 
 class StructuredSQLError(RetrievalError):
@@ -24,6 +26,12 @@ class SQLMalformedError(StructuredSQLError):
     """SQL 语句无法被 SQLite 编译或不是单条可执行 statement。"""
 
     error_code = "SQL_MALFORMED"
+
+
+class SQLExecutionTimeout(StructuredSQLError):
+    """SQLite计算达到执行期限，被VM progress handler显式中断。"""
+
+    error_code = "SQL_EXECUTION_TIMEOUT"
 
 
 class SQLReadOnlyViolation(StructuredSQLError):
