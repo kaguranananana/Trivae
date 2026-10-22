@@ -59,3 +59,5 @@ uv run python -m scripts.analyze_reply_context_live
 新增三个实验/分析脚本，未修改产品代码。Ruff `src tests scripts`、mypy `src`（129 文件）、`git diff --check` 通过；相关回复回归及账本测试 **15 passed**。本轮没有重新跑完整产品测试；上一轮产品修复的完整回归为 1,241 passed / 1 skipped。
 
 下一步更有证据支持的实验是控制首轮结果对后续预算的占用，并验证模型对有价值 anchor 的选择；继续扩大工具轮次缺乏本轮证据。已有离线修复有效、真实模型能用新能力，但真实问题中的收益仍受这两个瓶颈限制。
+
+后续零模型分层重放进一步区分了三题原因：Matt-2已取得的回复被搜索投影整批删除；Matt-1改正确anchor即可在原额度恢复；Archify改正确anchor后仍受704Token单次额度限制。完整证据见 [遗漏原因诊断](miss-diagnosis.md)，不能把三题统一归因为总预算不足。
