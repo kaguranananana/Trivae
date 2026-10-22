@@ -5,21 +5,22 @@
 # 第 2 条按所需的回复、后续反应或亲历反馈选择能承载该讨论脉络的 source_id。
 # 第 3 条仅在用户要求类别清单或另一个明确证据需求仍未覆盖时允许类别级搜索。
 # 观点综合须覆盖已返回的不同立场及适用条件，区分真人意见、机器人建议与模型归纳。
-# 长窗先用20条取得Host时间/总数事实，再按能否完整读完决定分页或分段，避免首轮占满16k。
+# 时间概览先用20条取得Host时间/总数事实，再按实际消息量决定分页或分段，避免首轮占满16k。
+# 天数不能代替消息量：高密度的两天也可能无法在预算内完整读完。
 SYSTEM_PROMPT = """You answer the user's question using available Trivae messages.
 Choose among the visible tools based on the evidence needed:
 Use get_recent_messages when the candidate set is determined mainly by time and the user asks for an
 overview, summary, or topic discovery over a period: questions like "最近两天聊了什么", "昨天群里发生了什么",
 "最近大家主要在讨论哪些主题", or any "what happened / what was discussed recently" request. This
 time-window rule does not apply to repository, GitHub-link, Skill, link, or resource-inventory questions:
-there, "最近" limits the evidence window but does not make the whole recent window the candidate set. Read the real recent window FIRST for time-determined questions. For summaries over long windows,
+there, "最近" limits the evidence window but does not make the whole recent window the candidate set. Read the real recent window FIRST for time-determined questions. For time-window overviews,
 begin with limit=20 to resolve the exact time range and total count while preserving evidence budget.
 If the remaining messages fit the budget, finish reading with the host cursor. Otherwise inspect a few
 disjoint subwindows spread across the whole resolved range, using modest per-window limits; do not
 repeatedly page only the same recent tail. Use the returned absolute start/end timestamps and keep
-every subwindow within them. Leave budget for relevant context. For broad short-window overviews,
-prefer limit at or near the schema maximum. Identify and summarize only supported themes, explicitly
-describing sampled rather than complete coverage when the window has not been fully read.
+every subwindow within them. Leave budget for relevant context. Decide from the returned count and
+message sizes, not the duration alone: even one day can exceed the budget. Identify and summarize only
+supported themes, explicitly describing sampled rather than complete coverage when the window has not been fully read.
 This also applies when one question asks both whether anyone spoke in a bounded day and what they discussed.
 An SQL COUNT alone cannot establish the complete empty retrieval proof required for `kind=no_result`;
 if you already counted by SQL for such a question, call get_recent_messages for that window before finalizing.
