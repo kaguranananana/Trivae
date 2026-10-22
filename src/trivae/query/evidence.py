@@ -52,6 +52,8 @@ MAX_VALUE_NESTING = 6
 MAX_SOURCE_URLS = 12
 MAX_SOURCE_URL_CHARS = 2_000
 MAX_MODEL_MESSAGE_CHARS = 600
+# 公共默认值在每个有消息的模型结果中显式声明，避免逐条重复占用证据预算。
+MODEL_MESSAGE_DEFAULTS: dict[str, object] = {"message_type": "text", "urls": (), "content_truncated": False}
 MODEL_TOKEN_CHAR_RATIO = 3
 
 _URL_PATTERN = re.compile(
@@ -1819,6 +1821,22 @@ def _model_message_projection(
     return entry, (entry, item.is_hit, message.normalized_content, item.content_truncated)
 
 
+def _compact_model_message_fields(projected: dict[str, Any], entries: list[dict[str, object]]) -> None:
+    """无损编码消息默认字段，排序实现细节继续由Host保留。"""
+    if entries:
+        # 声明省略字段的唯一含义；非默认值（链接、非文本、已截断）仍逐条保留。
+        projected["message_defaults"] = dict(MODEL_MESSAGE_DEFAULTS)
+        for entry in entries:
+            for key, default in MODEL_MESSAGE_DEFAULTS.items():
+                if entry.get(key) == default:
+                    entry.pop(key)
+    if projected.get("strategy") == "lexical":
+        # 检索顺序和每条命中身份不变；模型不用根据BM25分数推断事实或质量。
+        for hit in projected.get("hits", []):
+            for key in ("matched_terms", "score", "score_type"):
+                hit.pop(key)
+
+
 def _project_model_data(
     data: object,
     record: ToolResultRecord,
@@ -2008,6 +2026,8 @@ def _project_model_data(
             projected_rows.append(row)
         projected["rows"] = projected_rows
 
+    # 预算裁剪之前先去掉可还原的重复字段，不以删正文或观点来为后续调查腾空间。
+    _compact_model_message_fields(projected, [slot[1] for slot in slots])
     return projected, slots
 
 

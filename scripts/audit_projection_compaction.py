@@ -21,32 +21,11 @@ from trivae.observability.sqlite import SQLiteTraceStore
 from trivae.query import evidence
 from trivae.retrieval.lexical import LexicalRetrieval
 
-MESSAGE_DEFAULTS = {"message_type": "text", "urls": (), "content_truncated": False}
-
 
 @contextmanager
-def compact_projection() -> Iterator[None]:
-    """只在实验进程替换投影，不改canonical记录、消息正文或生产默认。"""
-    project = evidence._project_model_data
-
-    def compact(data: Any, record: Any) -> Any:
-        projected, slots = project(data, record)
-        if slots:
-            # 模型能从统一声明无损还原被省略的默认字段，不猜测缺失值。
-            projected["message_defaults"] = dict(MESSAGE_DEFAULTS)
-            for slot in slots:
-                entry = slot[1]
-                for key, default in MESSAGE_DEFAULTS.items():
-                    if entry.get(key) == default:
-                        entry.pop(key)
-        if isinstance(projected, dict) and projected.get("strategy") == "lexical":
-            for hit in projected["hits"]:
-                # 排名顺序保留；匹配词与原始打分仍在Host，不是回答事实所需材料。
-                for key in ("matched_terms", "score", "score_type"):
-                    hit.pop(key)
-        return projected, slots
-
-    with patch.object(evidence, "_project_model_data", compact):
+def legacy_projection() -> Iterator[None]:
+    """仅为实验关闭已上线的精简编码，不在产品中添加回退或兼容开关。"""
+    with patch.object(evidence, "_compact_model_message_fields", lambda _data, _entries: None):
         yield
 
 
@@ -80,9 +59,9 @@ def audit(label: str) -> dict[str, Any]:
     record = evidence.build_tool_result_record(run_id=original["run_id"], tool_call_id=original["tool_call_id"],
         tool_result_id=original["tool_result_id"], tool_name=original["tool_name"], envelope=envelope,
         scope=case.data_access_scope)
-    baseline = evidence.project_tool_result_for_model(envelope, record, token_budget=15_801)
-    with compact_projection():
-        candidate = evidence.project_tool_result_for_model(envelope, record, token_budget=15_801)
+    with legacy_projection():
+        baseline = evidence.project_tool_result_for_model(envelope, record, token_budget=15_801)
+    candidate = evidence.project_tool_result_for_model(envelope, record, token_budget=15_801)
     before, after = restored_messages(baseline), restored_messages(candidate)
     assert before.keys() <= after.keys(), "compaction lost a visible message"
     assert all(value == after[key] for key, value in before.items()), "compaction changed message facts"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from scripts.audit_projection_compaction import compact_projection, restored_messages
+from scripts.audit_projection_compaction import legacy_projection, restored_messages
 from tests.test_tool_result_budget import _message
 from trivae.capabilities import ExecutionScope, ToolEnvelope
 from trivae.query.evidence import build_tool_result_record, project_tool_result_for_model
@@ -23,9 +23,9 @@ def test_compaction_preserves_all_message_facts_and_reduces_overhead():
     envelope = ToolEnvelope("ok", data, {}, None)
     record = build_tool_result_record(run_id="run", tool_call_id="run/tool-call/1", tool_result_id="result",
                                       tool_name="lexical_search", envelope=envelope, scope=ExecutionScope())
-    baseline = project_tool_result_for_model(envelope, record)
-    with compact_projection():
-        candidate = project_tool_result_for_model(envelope, record)
+    with legacy_projection():
+        baseline = project_tool_result_for_model(envelope, record)
+    candidate = project_tool_result_for_model(envelope, record)
     assert restored_messages(candidate) == restored_messages(baseline)
     assert candidate["model_projection"]["estimated_tokens"] < baseline["model_projection"]["estimated_tokens"]
     last = candidate["data"]["hits"][-1]["message"]

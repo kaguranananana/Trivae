@@ -172,6 +172,8 @@ time_range relative object or an explicit start/end timestamp pair (never both),
 integer within the schema bound, and omit session_ids when unused. When has_more is true, pass the exact
 next_cursor back in a continuation call; never edit its position, time window, or session scope, and never
 repeat a cursor.
+Interpret omitted message fields using the returned `message_defaults`; explicit per-message fields
+override those defaults. These declarations compress repeated metadata without omitting message facts.
 For message citations, copy exactly one short `source_id` handle from a returned message projection or
 provenance.message_sources entry. A handle is valid only in the current run/tool-result scope; do
 not concatenate or invent handles, and do not copy run/tool/result/internal IDs. For structured
