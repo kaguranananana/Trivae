@@ -93,3 +93,12 @@
 - Web从31153重启为40113加载修复，经现有代理运行，数据库与Plan/Sol readiness=ready；当前827,614条本地库的回复访问索引已创建，与独立811,892条实验旧快照区分。健康检查0推理。经同一代理GitHub SSH443远端读成功，定位此前普通推送失败的网络原因；收尾提交后普通推送，不改全局SSH或强推。
 - 报告 `evaluation/experiments/reply-repair-20261022/report.md`；完整原文/Trace、账本、repair-replay.json、analysis.json、answer-verification.json与网络/Web工件保留ignored独立目录。更新当前状态及回复/存储契约，最后改动仅验收脚本/文档，已验收产品代码保持不变。
 - Git收尾：经现有系统代理执行普通git push成功，origin/main从9539aec更新至a4e7fbb，包含本轮及此前DNS阻塞的本地提交；当时main与origin/main对齐、工作区干净。该事实补记后继续普通推送，无amend/force或全局网络改动。
+
+## 2026-10-22 · 核验质量问题评估与当前模型证据
+
+- 用户要求核验粘贴评估并给出优先级/实施建议。本地起点为8346804，与评估引用提交一致；检查当前代码、10-20质量/独立验证、10-21轮次实验及10-22可靠性/回复修复工件，未新增联网推理、Judge、Holdout或产品修改。
+- Miner历史四目标未进入Host结果，首个偏离在检索/工具选择，不能说成“找到后没选对”。具名充分性Prompt候选已有负结果并恢复基线，不建议直接重复；现有named-resource-sufficiency-v1.json是诊断/候选否决记录，不是已上线修复。
+- 进一步读取ignored runtime-budget-followup-20261022/miner/result.json：Plan/Sol/medium原题通过semantic_search→lexical_search(ResumeSkills)交付用途匹配替代答案；保存的两条forward ToolResult原文分别支持resume-bullet-writer用途及仓库链接，保留机器人分享/未实测边界。3HTTP、2工具轮、投影11,866/16,000、余额4,134、finalization valid。该既有运行仍有旧Collector limitation_preservation失败，保留原记录；本轮源证据复核不是人工审核或稳定收益证明。
+- zero-empty-2独立验证取得过目标日complete/0，失败还涉及不合辅助聚合条件的日期分组行，不能只归因缺少空证明。当前Finalizer仍区分纯数值辅助聚合与普通结构化行；本轮uv run pytest -q tests/test_no_result_finalization.py：15 passed（0.63s）。
+- Archify修复后首轮15,256Token、后续两次预算错误是当前直接证据，但不自动证明答案质量下降。Semantic仍走expand_ranges、SQL仍在async工具内同步执行且无查询计算时限；本轮仅确认静态路径，未把潜在风险升级为已复现故障。长窗300/28,028只证明覆盖不足，不能单独裁定总结事实错误。
+- 建议先复核现有当前模型答案及必要事实/引用支持，再决定具名资源改动；若做工程实验，先固定16k总池隔离首轮分配，记录必要证据覆盖与完整回答，避免同时改Prompt/排序/轮次。长窗、CJK、Semantic及SQL各按真实需求或最小复现独立推进。文档之外无改动，无需重跑完整产品回归。
