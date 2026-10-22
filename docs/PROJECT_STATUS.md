@@ -8,7 +8,10 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
-- ca01b86的密集两天真实自主3HTTP完成：先20+四段，投影20/18/19/19/18、14,986Token，四段全部有正文、finalization valid，主题原文复核通过；输入44,345/输出1,380。随后完整空日控制出现非网络失败，系列按设计退出：模型先误传absolute时间对象，纠正后完整0条，但旧错误历史使no_result unavailable，模型仍选择该格式被拒。三请求24,819输入/328输出，失败保留，14天尚未执行。定位到SDK把time_range公开成任意dict，仅文字要求relative；bef1dc8已从已有RelativeTimeRange生成字段Schema，JSON仍走原Capability解析，不放宽Finalizer或更改错误历史。完整1,261 passed/1 skipped（27.34s）、Ruff/mypy通过；补充验证非法absolute仍显式INVALID_ARGUMENT、后续合法relative正常。准备原temporal-schema-series时重复重建索引实际耗尽磁盘（0推理）；aa9deb0显式复用冻结索引、校对身份/readiness，准备smoke通过。仅清理失败/未运行重复副本，真实运行快照保留，剩余空间523MiB→2.5GiB。下一temporal-schema-v2-series使用复用路径顺序验证原空日、密集两天、14天。
+- 2026-10-23当前修复清单已完成已复现范围的验证：20ce741冻结的最终系列，原空日/密集两天/两周分别2/3/3真实HTTP首次completed，Finalizer全部valid、无工具参数/预算错误，逐条来源复核通过。两天94条/14,969Token引用10-18/19/20，两周98条/15,007Token引用10-06/10/14/18/20，均诚实partial，未声称全量热度；总输入105,632/输出3,106，Usage全已知。完整产品回归1,261 passed/1 skipped（27.34s）、Ruff/mypy通过。报告evaluation/experiments/quality-repair-20261022/report.md，清单docs/REPAIR_PLAN.md。
+- 此次续推三系列共19真实HTTP，volume旧空日一次最终格式失败仍保留，最新8请求全部有效；不同实现/题目不混成稳定成功率。Web已加载bef1dc8产品代码；aa9deb0仅验证准备显式复用索引，空间不足已处理。所有真实运行快照/Trace/账本保留，仅清理0推理失败/未运行重复准备副本。后续源码修改应基于新的具体Failure Case或用户目标。
+
+- ca01b86的密集两天真实自主3HTTP完成：先20+四段，投影20/18/19/19/18、14,986Token，四段全部有正文、finalization valid，主题原文复核通过；输入44,345/输出1,380。随后完整空日控制出现非网络失败，系列按设计退出：模型先误传absolute时间对象，纠正后完整0条，但旧错误历史使no_result unavailable，模型仍选择该格式被拒。三请求24,819输入/328输出，失败保留，14天尚未执行。定位到SDK把time_range公开成任意dict，仅文字要求relative；bef1dc8已从已有RelativeTimeRange生成字段Schema，JSON仍走原Capability解析，不放宽Finalizer或更改错误历史。完整1,261 passed/1 skipped（27.34s）、Ruff/mypy通过；补充验证非法absolute仍显式INVALID_ARGUMENT、后续合法relative正常。准备原temporal-schema-series时重复重建索引实际耗尽磁盘（0推理）；aa9deb0显式复用冻结索引、校对身份/readiness，准备smoke通过。仅清理失败/未运行重复副本，真实运行快照保留，剩余空间523MiB→2.5GiB。20ce741冻结的temporal-schema-v2-series已通过复用准备并启动，顺序验证原空日、密集两天、14天；运行中不改源码或HEAD。
 
 - 0ff6bc0冻结生产系列已完整执行，14天3HTTP/2工具轮：先20条+四窗，投影20/20/20/18/18、14,949Token，全部无预算错误；四窗总数86,287，最终引用10-09/13/16/20且valid，主题原文复核通过。两天2HTTP也valid但仍取5,000/14,619、投影146条/15,767Token集中短时段。新证据证明“短窗直接max”用天数代替消息量，276a56d已去掉此分支，统一先小页按实际量决定分页/分段；完整1,260 passed/1 skipped（27.78s）、Ruff/mypy通过。ca01b86冻结temporal-volume-series已启动，顺序验证密集两天、完整空日、14天，运行中不改HEAD/源码；不把上一轮两天的诚实披露误报为覆盖修复完成。
 
@@ -49,11 +52,11 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 仍需确认的事项
 
-- 继续按docs/REPAIR_PLAN.md：owner/advice/zero新基线已补，owner条件覆盖候选有一次真实正结果；advice/zero已有新的生产有效控制，原精简配对受网络失败不能判胜负；长窗指导已落地，完整自主验收继续。格式资格新基线已有自主空日检索一次通过，不外推重复成功率。
-- 具名资源问题须区分历史 DeepSeek 失败与已有 Plan/Sol 用途匹配替代答案，先做当前模型/来源的质量核验，不能直接重复已否决的 Prompt 方案。10-20 zero-empty-2 曾取得完整空时间窗，但额外日期分组行使 no_result 不合契约；Semantic远回复及SQL计算无期限已复现并修复；CJK单字已独立修复；长窗仍在取证策略实验。
+- docs/REPAIR_PLAN.md本轮已复现范围已收口；当前owner/advice/zero及最终空日/两天/两周有有效来源核验。原精简配对受网络失败不能判胜负，重复稳定性/fresh Holdout未验证，不作为新的已知产品Bug或全库收益。
+- 具名资源问题须区分历史 DeepSeek 失败与已有 Plan/Sol 用途匹配替代答案，先做当前模型/来源的质量核验，不能直接重复已否决的 Prompt 方案。10-20 zero-empty-2 曾取得完整空时间窗，但额外日期分组行使 no_result 不合契约；Semantic远回复及SQL计算无期限已复现并修复；CJK单字已独立修复；长窗分段自主验收完成但始终为partial，不宣称完整或代表性。
 - 原三题的关键回复送达/最终引用已在真实模型下恢复；原Archify补查在SDK固定决策中恢复；当前自主运行两次补查成功、第三仍失败，未证明一般预算策略或全库稳定收益。没有 Holdout、重复采样或全库质量 A/B，不能外推稳定收益。
 - GitHub DNS/SSH 直连问题可通过现有系统代理解决，本轮普通 push 已成功；后续终端网络操作仍需使用相同进程代理，不改变全局网络或强推。
-- 旧 Session 75 中的人工质量审核是否已经完成。
+- 旧Session 75人工质量审核尚未确认；本轮Assistant源证据复核不替代人类审核。
 - .trellis/spec/project/overview.md 提到的 human-verified 标注、长期参数阈值和 HTTP 产品交互，应按当前源码及新任务实际情况逐项核对；这些是旧文档记录的待办，不保证仍未完成。
 - 下一个开发目标应以新的用户请求和当前代码状态确定，避免把旧文档的待办直接当成新授权。
 
