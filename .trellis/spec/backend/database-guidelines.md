@@ -109,6 +109,7 @@ write_variant_when_projection_differs(incoming)
 - Retrieval projection 包含 internal/source ID、session、sender identity snapshot、timestamp、optional seq、message type、normalized content、reply locator、recalled/system，以及可选的 `forward` occurrence 来源和 `unexpanded_forward_paths`；raw payload、`content_json`、`canonical_projection_json` 不出边界。
 - source/reply message ID 必须与显式 `session_ids` 同时出现；session predicate 不能省略。时间范围为 `[start_timestamp, end_timestamp)`。
 - 消息排序显式为 timestamp、present seq、missing seq、internal ID；missing seq 的稳定顺序不代表恢复平台真实顺序。
+- 直接回复批查使用 `(session_id, source_message_id)` 目标集合连接 `messages`，排除已返回的原消息并统一有界排序。`idx_messages_session_reply` 索引 `(session_id, reply_to_source_message_id, timestamp, seq, internal_message_id)` 支持该关系读取；普通 Store 初始化创建该派生访问索引，不改变 canonical revision，也不要求重建 FTS 或语义向量。
 - `total_hits`/`returned_count`、`coverage`/`partial`/`truncated` 分别表达匹配总数、返回数、数据覆盖、内部部分完成和 bounded 截断。
 - Structured aggregate 支持总数以及按 session、sender、UTC month 分组；NULL sender 保留为真实 NULL bucket，不伪造身份。
 

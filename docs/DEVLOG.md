@@ -79,3 +79,16 @@
 - Matt-2原目标已在首轮完整Host结果，但作为非hit context随72条邻居一起删除。投影当前先整批删context、再缩hit正文；留下28hit，仅用8,449/15,801，仍有7,352额度。回复优先仅覆盖显式context，不覆盖搜索附带context，是上一轮修复边界。
 - 只换正确anchor、保持原窗口/单次额度，Matt-1在7,352、Matt-2在6,954即可恢复目标；Archify在704仍失败，改0/0仅关系也仍省略回复。Archify原16k池首轮14,699后剩1,301，同轮三个控制结果预留597，首个补查数据额度704。相同正确anchor的离线16k投影对照可恢复，未伪造实际剩余额度或据此修改生产池。
 - 报告在 `evaluation/experiments/reply-context-live-20261022/miss-diagnosis.md`，私有事实含原文/定位，保存ignored `data/evaluation/reply-miss-diagnosis-20261022/diagnosis.json`。脚本Ruff、compileall、diff --check通过；实际三题重放/反事实对照已执行，未改产品，不重复完整pytest。工作提交 `7176aae`；下一步应优先验证搜索context裁剪，再隔离候选关系线索与首轮预算分配，不声称质量已改善。
+
+## 2026-10-22 · 搜索回复送达主链路修复及真实答案验收
+
+- 用户要求自行诊断、持续修到真实可用。搜索投影两个最小失败与自动回复扩展两个最小失败先复现，修复 evidence.py 的整批 context 删除：仅二分省略必要普通邻居，保留关联到 hit 的非 hit 回复，再沿原正文缩短/尾部 hit 省略流程；删 hit 时移除其附属回复、更新计数与可见 provenance/handle。
+- Lexical 自动 context 在同一 limit 内优先批量补齐全部返回 hit 的明确直接回复，再填前20锚点的普通邻居。SQLite 普通消息一次目标集合连接，转发每root只解析一次，严格同session/time及直接parent/container；不递归，不改0/0或Semantic range。新增会话/回复目标索引，不改canonical revision、不重建FTS/语义向量。metadata保留回复扩展计数及容量截断事实。
+- 新增5项回归，完整pytest **1,246 passed / 1 skipped / 0 failed（30.49s）**；Ruff src/tests/scripts、mypy src（129文件）、diff --check通过。既有Semantic投影测试改为验证新契约“保留可容纳的普通context”，不是维持旧的整批删除数量；其他身份/过滤/时间断言保留。工作代码及冻结入口提交 `366f290`。
+- 新独立快照/协议/账本在ignored reply-repair-20261022，旧失败和原诊断不覆盖。verify_reply_repair固定旧实际工具参数/15,801额度：直接hit身份/顺序均不变，三题模型可见目标1/2→2/2且关系正确；Archify100条/15,262Token，Matt各95条/15,762和15,727，仅删5普通context，不增加100/16k容量。
+- 首次OAuth刷新因直连DNS超时失败，0推理，保留preflight-direct-network-failure.json。查得macOS已有127.0.0.1:7892系统代理；仅进程设置代理后，认证刷新/目录预检通过，再执行三原题各一次。Plan/Sol/medium，原问题/scope/GT/Prompt，Standard七工具，3轮/8turns/16k不变，无GT提示、Jev、Judge、Holdout或推理重试。
+- 实际 **7 HTTP、7 response.completed、0门禁阻断**：Archify3请求/2工具轮，Matt两题各2请求/1轮。三条原遗漏回复全部首轮送达并被最终答案引用；Host→模型均2/2→2/2，最终Evidence为1/2、2/2、2/2，Archify未最终引用固定anchor但引用其正确reply。Citation binding 5/4/5，全部valid，42检查通过/3不适用/0失败。Usage输入110,808/输出3,397/总114,205，全部完整。
+- 实际答案加入了原遗漏的“好用”反馈，也保留/区分具体负面体验、短评局限和机器人安装介绍。verify_reply_answers从同次持久化Artifact恢复，经生产CLI Evidence/Sources组件零HTTP生成terminal.txt；目标reply的Sources编号9/7/6、结论binding与真实source均核对。脚本提交 `7a7bdde`。这是三题局部事实恢复，不宣称全库质量A/B或稳定收益。
+- Archify后续两次补查仍有明确TOOL_RESULT_BUDGET_EXHAUSTED并进入最终限制，Matt首轮接近池上限后无工具综合；一般首轮预算策略未在本次解决。没有用更大池、fallback或掩盖错误的规则通过验收。
+- Web从31153重启为40113加载修复，经现有代理运行，数据库与Plan/Sol readiness=ready；当前827,614条本地库的回复访问索引已创建，与独立811,892条实验旧快照区分。健康检查0推理。经同一代理GitHub SSH443远端读成功，定位此前普通推送失败的网络原因；收尾提交后普通推送，不改全局SSH或强推。
+- 报告 `evaluation/experiments/reply-repair-20261022/report.md`；完整原文/Trace、账本、repair-replay.json、analysis.json、answer-verification.json与网络/Web工件保留ignored独立目录。更新当前状态及回复/存储契约，最后改动仅验收脚本/文档，已验收产品代码保持不变。

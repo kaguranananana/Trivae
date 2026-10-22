@@ -8,6 +8,9 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-22 搜索回复送达修复并完成真实验收：Lexical 在原容量内先批量恢复所有已返回 hit 的明确直接回复，再填普通邻居；投影仅省略必要普通 context，保留 hit/回复关系。新增会话/回复目标访问索引，未扩大 100 条/16k 池、不改 Prompt/GT/语义向量。原参数零模型重放三题直接 hit 身份/顺序不变，目标模型覆盖均从 1/2 到 2/2；完整 pytest 1,246 passed / 1 skipped，Ruff、mypy（129 文件）通过。工作提交 `366f290`。
+- 同轮真实 Plan / gpt-6.1-sol / medium 原三题各一次、7 HTTP 全部 response.completed，三条原遗漏回复全部进入首轮输入并被最终答案引用（Sources 9/7/6）；Archify 最终固定目标 Evidence 1/2，Matt 两题 2/2，均 finalization valid，42 passed/3不适用。Usage 输入110,808/输出3,397/总114,205。Archify 仍有两个明确预算错误，未声称一般预算策略已解决或全库质量提升。离线引用核验提交 `7a7bdde`，报告 `evaluation/experiments/reply-repair-20261022/report.md`。
+- 同轮定位终端直连 DNS 超时；使用 macOS 已有 127.0.0.1:7892 代理完成认证/推理及 GitHub SSH443 只读检查，未改全局网络。Web 从31153重启为40113加载修复，当前827,614条本地库及Plan/Sol均ready，回复索引已创建；实验仍是独立811,892条旧快照。收尾普通推送按实际结果交付。
 - 2026-10-22 进一步零模型诊断真实回复遗漏：三题首轮canonical消息身份与顺序均重放一致，目标原消息已模型可见（rank43/14/6、m1-43/14/6）。Matt-1只改正确anchor即可在原7,352额度恢复；Matt-2正确回复首轮已取回，却被搜索投影一次删除全部72条非hit context，最终仅用8,449/15,801；改正确anchor补查可在原6,954额度恢复。Archify原704额度下，即使正确anchor/仅关系补查仍只剩原消息；足够的离线额度才能恢复。新增诊断脚本，未改产品/GT/索引/预算，无新增模型请求。报告：`evaluation/experiments/reply-context-live-20261022/miss-diagnosis.md`，工作提交 `7176aae`。
 - 2026-10-22 补完真实模型终端验收：Plan / gpt-6.1-sol / medium，三条原始 Development + 一条隔离合成控制，共12次真实推理、全部response.completed、0次门禁阻断、无重试/Judge。原预算3轮/8turns/16k与原问题保持；三题均completed且自主开启include_replies，42项确定性检查通过/3项不适用，但旧required reply均未送达模型（Archify/Matt-2有预算阻断，另有anchor选择和context裁剪问题），未证明质量提升。
 - 合成控制中，真实模型自行通过回复关系找回相隔143条噪声的唯一反馈，最终保留正负两面并引用真实reply；3请求/2工具轮。四题合计Usage输入167,113/输出3,377/总170,490，均完整。未修改产品；新增实验/分析脚本与报告，定向15passed、Ruff和mypy通过。报告：`evaluation/experiments/reply-context-live-20261022/report.md`，工作提交 `a224fc8`。
@@ -27,8 +30,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 仍需确认的事项
 
-- 回复补查路径与真实模型使用能力已验证；真实三题未恢复旧required reply。零费用对照已定位搜索投影整批删context、补查anchor选择及Archify单次余额不足的不同影响；下一步优先验证搜索自动上下文的关系保留/裁剪，再评估首轮预算和候选关系线索。尚未修复这些策略问题，没有质量A/B或稳定收益证据。
-- 10-22 修复已本地提交，但 GitHub DNS/SSH 网络阻断普通推送；后续实验收尾的普通推送仍在 25 秒后超时，网络恢复后需执行 git push。
+- 原三题的关键回复送达/最终引用已在真实模型下恢复；一般首轮预算分配仍未解决，Archify 后续补查有预算错误。没有 Holdout、重复采样或全库质量 A/B，不能外推稳定收益。
+- 此前 GitHub DNS/SSH 直连阻塞已定位为终端未使用现有系统代理；本轮经该代理 SSH443 远端读成功，最终普通推送结果以本轮交付为准，不更改全局网络或强推。
 - 旧 Session 75 中的人工质量审核是否已经完成。
 - .trellis/spec/project/overview.md 提到的 human-verified 标注、长期参数阈值和 HTTP 产品交互，应按当前源码及新任务实际情况逐项核对；这些是旧文档记录的待办，不保证仍未完成。
 - 下一个开发目标应以新的用户请求和当前代码状态确定，避免把旧文档的待办直接当成新授权。

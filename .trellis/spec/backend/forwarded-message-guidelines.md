@@ -33,6 +33,10 @@ TrivaeApplication.rebuild_semantic_index(*, resume: bool = False) -> SemanticBui
 
 `get_message_context(include_replies=True)` 显式恢复已知消息的直接回复，不受局部邻居距离限制，不递归展开回复链。普通消息限定同 session；转发 occurrence 另限定同直接 parent/container，沿用外层转发时间 scope。anchor、回复和邻居共用原结果容量，先保留 anchor/回复；`has_more_replies` 披露容量内未返回的回复。模型投影保留 `reply_to_source_message_id`，仅在当前结果内目标唯一且正文仍可见时增加 `reply_to_source_id`。缺少导出的回复边不能证明没有其他反馈，缺少 anchor 平台 ID 时显式报错。
 
+Lexical 搜索请求自动上下文（before/after 任一非零）且命中未占满容量时，对全部已返回 hit 批量读取直接回复，再填普通邻居。回复仍是非 hit context，遵守同 session/time 及转发直接容器边界；普通邻居继续受 20 个锚点上限约束。总消息 limit 不增加，额外读取一个回复作容量哨兵，省略仍由 partial/truncated 披露；`reply_source_hits`、`expanded_reply_messages` 记录实际关系扩展。0/0 不自动展开回复，Semantic range 未改为关系扩展。
+
+搜索投影先从普通邻居尾部省略刚好需要的数量；直接关联到当前 hit 的回复暂不删除，再按既有规则缩短正文。必须删除尾部 hit 时同步删除它的附属回复并计入省略数，不能挤占预算留下无目标的回复。预算仍可导致省略，不能把本次三题恢复外推为所有回复必达。
+
 ## 索引与失效
 
 唯一 `messages_fts` 同时包含普通消息及子消息 occurrence。重建以单个 SQLite 事务替换 FTS、forwarded projection 和版本水位，任何异常回滚。`canonical_revision` 通过 messages insert/update/delete 触发器单调增加，解决数量不变但正文或来源变化时的漏失效；删除派生索引不能重置 revision。
