@@ -399,7 +399,9 @@ class ToolResultBudgetRuntimeTests(unittest.TestCase):
         self.assertEqual(snapshot.context_window_tokens, 64_000)
         self.assertEqual(snapshot.context_window_source, "explicit_config")
         self.assertEqual(snapshot.run_tool_evidence_budget, 16_000)
-        self.assertEqual(snapshot.effective_per_call_tool_result_budget, 16_000)
+        # 控制结果预留与数据投影共享同一个 16k 池，数据 ceiling 应扣除控制预留。
+        self.assertLess(snapshot.effective_per_call_tool_result_budget, 16_000)
+        self.assertGreater(snapshot.effective_per_call_tool_result_budget, 0)
         self.assertIsInstance(snapshot.projected_tool_result_tokens, int)
         self.assertEqual(
             snapshot.remaining_run_tool_evidence_budget_after_call,
@@ -569,7 +571,8 @@ class ToolResultBudgetRuntimeTests(unittest.TestCase):
         assert first is not None
         assert second is not None
         self.assertEqual(first.run_tool_evidence_budget, second.run_tool_evidence_budget)
-        self.assertEqual(second.remaining_run_tool_evidence_budget_before_call, first.remaining_run_tool_evidence_budget_after_call)
+        # 下一调用已预留控制结果，所以可分配余额小于上一调用结算余额。
+        self.assertLess(second.remaining_run_tool_evidence_budget_before_call, first.remaining_run_tool_evidence_budget_after_call)
         self.assertEqual(
             second.remaining_run_tool_evidence_budget_after_call,
             16_000 - first.projected_tool_result_tokens - second.projected_tool_result_tokens,

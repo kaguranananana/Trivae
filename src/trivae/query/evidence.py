@@ -2034,6 +2034,15 @@ def _set_projection_metrics(
         meta["projected_messages"] = projected_messages
         meta["projected_count"] = projected_messages
         meta["omitted_messages"] = omitted_messages
+    # 估算必须包含 metrics 和新增 meta 自身，旧实现遗漏了这部分 transport 开销。
+    metrics = payload["model_projection"]
+    assert isinstance(metrics, dict)
+    while True:
+        # 数字位数可能使序列化长度变化，收敛到完整 payload 的精确 byte/ratio 估算。
+        estimated = (_projection_size(payload) + MODEL_TOKEN_CHAR_RATIO - 1) // MODEL_TOKEN_CHAR_RATIO
+        if metrics["estimated_tokens"] == estimated:
+            break
+        metrics["estimated_tokens"] = estimated
 
 
 def project_tool_result_for_model(

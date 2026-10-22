@@ -34,14 +34,120 @@ from trivae.config.limits import (
     MAX_SEMANTIC_RESULT_LIMIT,
 )
 from trivae.observability.contracts import FailureInfo
-from trivae.query.evidence import build_tool_result_record, project_tool_result_for_model
-from trivae.query.runtime.budget import ToolResultBudgetCall
+from trivae.query.evidence import ToolResultProjectionError, build_tool_result_record, project_tool_result_for_model
+from trivae.query.runtime.budget import ToolResultBudgetCall, ToolResultBudgetExhausted
 from trivae.query.runtime.contracts import RuntimeContext, RuntimeToolCall
 from trivae.retrieval.sql import MAX_SQL_RESULT_ROWS
 
 if TYPE_CHECKING:
     # 仅类型引用，避免与 observability.collector 的运行时依赖成环。
     from trivae.observability.collector import TraceOperationContext
+
+
+def _budget_stop_envelope(reason: str = "ToolResultBudgetExhausted") -> ToolEnvelope:
+    """预算限制是显式工具错误，绝不能伪装成检索零结果。"""
+
+    return ToolEnvelope(
+        status="error", data=None,
+        meta={"truncated": False, "budget_failure_type": reason},
+        error=ToolError(
+            code="TOOL_RESULT_BUDGET_EXHAUSTED",
+            message="Tool Result budget exhausted. Use existing evidence and state this limitation.",
+        ),
+    )
+
+
+def minimum_budget_stop_tokens(context: RuntimeContext, name: str, call_id: str) -> int:
+    """用真实投影器计算控制结果开销，避免手写一个与协议漂移的 Token 常数。"""
+
+    envelope = _budget_stop_envelope()
+    record = build_tool_result_record(
+        run_id=context.run_id, tool_call_id=call_id, tool_result_id=f"{call_id}/result",
+        tool_name=name, envelope=envelope, scope=context.scope,
+    )
+    payload = project_tool_result_for_model(
+        envelope, record, token_budget=context.tool_result_budget_policy.config.per_call_ceiling,
+    )
+    metrics = cast(dict[str, Any], payload["model_projection"])
+    return cast(int, metrics["estimated_tokens"])
+
+
+def reserve_budget_stop_results(context: RuntimeContext, calls: list[tuple[str, str]]) -> None:
+    """执行同轮任何调用前，为全部调用保留可返回的控制结果。"""
+
+    if context.tool_result_budget_policy.config.mode == "fixed":
+        return
+    required: list[tuple[str, int]] = []
+    for name, provider_id in calls:
+        # 与后续 SDK hooks 共用映射；预分配不会导致同一调用出现两个 identity。
+        call_id = context.resolve_tool_call_id(provider_id)
+        minimum = minimum_budget_stop_tokens(context, name, call_id)
+        required.append((call_id, minimum))
+    remaining = context.tool_result_budget_policy.remaining_run_tool_evidence_budget
+    total = sum(minimum for _, minimum in required)
+    if remaining is not None and total > remaining:
+        # 同步准入先核对整轮总额；拒绝时既不执行工具，也不遗留半轮控制预留。
+        raise ToolResultBudgetExhausted(
+            f"Tool Result batch requires {total} control tokens; available {remaining}"
+        )
+    for call_id, minimum in required:
+        context.budget_stop_reservations[call_id] = context.tool_result_budget_policy.begin_call(
+            minimum_budget=minimum, maximum_budget=minimum,
+        )
+
+
+def protect_tool_result_budget(tool: Any) -> None:
+    """在 SDK 调用边界闭合预算失败；不改变 Capability 的业务职责。"""
+
+    invoke = tool.on_invoke_tool
+
+    async def invoke_with_budget(context: Any, arguments: str) -> object:
+        """控制预留独立于数据预留，失败数据投影释放后仍能返回合法工具错误。"""
+
+        runtime = context.context
+        call_id = runtime.resolve_tool_call_id(getattr(context, "tool_call_id", None))
+        control = runtime.budget_stop_reservations.get(call_id)
+        if control is None:
+            # fixed 模式以及直接 SDK adapter 调用保持原有显式失败合同。
+            return await invoke(context, arguments)
+        policy = runtime.tool_result_budget_policy
+        remaining = policy.remaining_run_tool_evidence_budget
+        reason = "ToolResultBudgetExhausted"
+        if not runtime.tool_result_budget_exhausted and remaining is not None and remaining >= control.effective_per_call_budget:
+            try:
+                result = await invoke(context, arguments)
+            except (ToolResultProjectionError, ToolResultBudgetExhausted) as exc:
+                # _append 已释放未发送的数据预留；只把真实投影失败转换为预算控制结果。
+                reason = type(exc).__name__
+            except Exception:
+                # 无关异常继续显式抛出，不能把能力/参数/存储错误当成预算停止。
+                policy.cancel_call(control)
+                runtime.budget_stop_reservations.pop(call_id)
+                raise
+            else:
+                return result
+        # 剩余数据预算不足时不运行 Capability；同轮后续调用也会获得自己的控制结果。
+        runtime.tool_result_budget_exhausted = True
+        if runtime.trace_context is not None:
+            # 预算控制事实独立于 Capability 检索事实，保留根因与是否执行，避免错误被视为零召回。
+            trace = runtime.trace_context.child(call_id)
+            trace.emit(
+                stage="runtime", operation="runtime.tool.budget_stopped", phase="failed",
+                operation_id=trace.operation_id, parent_operation_id=trace.parent_operation_id,
+                outcome="error", payload={
+                    "tool_name": tool.name, "budget_failure_type": reason,
+                    "capability_executed": reason == "ToolResultProjectionError",
+                    "remaining_data_budget": policy.remaining_run_tool_evidence_budget,
+                },
+                failure=FailureInfo(
+                    error_code="TOOL_RESULT_BUDGET_EXHAUSTED", origin_stage="runtime",
+                    observed_stage="runtime", category="budget", handling="returned_to_agent",
+                    cause_operation_id=trace.operation_id,
+                ),
+            )
+        return _append_runtime_tool_result(runtime, tool.name, call_id, _budget_stop_envelope(reason), control)
+
+    tool.on_invoke_tool = invoke_with_budget
 
 
 def _contract_error_envelope(error: CapabilityContractError) -> ToolEnvelope:
@@ -501,7 +607,8 @@ def _tool_runtime_context(
         # Tool 不可见时属于 Runtime invariant failure，不能返回普通 Agent 可恢复结果。
         raise RuntimeError(f"{tool_name} was invoked outside the allowed capability set")
     # 预留发生在 capability invoke 前，确保同一 run 的并发/连续 Tool 调用不会重置共享池。
-    budget_call = runtime_context.tool_result_budget_policy.begin_call()
+    minimum = minimum_budget_stop_tokens(runtime_context, tool_name, tool_call_id)
+    budget_call = runtime_context.tool_result_budget_policy.begin_call(minimum_budget=minimum)
     return runtime_context, tool_call_id, trace_context, budget_call
 
 
@@ -524,11 +631,16 @@ def _append_runtime_tool_result(
         envelope=envelope,
         scope=runtime_context.scope,
     )
-    result_payload = project_tool_result_for_model(
-        envelope,
-        record,
-        token_budget=budget_call.effective_per_call_budget,
-    )
+    try:
+        result_payload = project_tool_result_for_model(
+            envelope,
+            record,
+            token_budget=budget_call.effective_per_call_budget,
+        )
+    except ToolResultProjectionError:
+        # 模型没有收到失败投影；退回预留，再由 SDK 边界决定返回控制结果或显式终止。
+        runtime_context.tool_result_budget_policy.cancel_call(budget_call)
+        raise
     (
         model_result_estimated_tokens,
         model_result_truncated,
@@ -546,6 +658,10 @@ def _append_runtime_tool_result(
         or model_result_omitted_messages is None
     ):
         raise RuntimeError("model projection did not expose complete budget metrics")
+    control = runtime_context.budget_stop_reservations.pop(tool_call_id, None)
+    if control is not None and control != budget_call:
+        # 数据投影已成功，可以先退回本调用控制预留，再生成准确的结算快照。
+        runtime_context.tool_result_budget_policy.cancel_call(control)
     budget_snapshot = runtime_context.tool_result_budget_policy.complete_call(
         budget_call,
         projected_tool_result_tokens=model_result_estimated_tokens,

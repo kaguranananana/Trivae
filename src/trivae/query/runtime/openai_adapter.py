@@ -23,7 +23,7 @@ from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.model_capabilities import ReasoningEffort, resolve_context_window, resolve_reasoning_effort
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
-from trivae.query.evidence import ToolResultRecord
+from trivae.query.evidence import ToolResultProjectionError, ToolResultRecord
 from trivae.query.runtime.budget import (
     ToolResultBudgetConfig,
     ToolResultBudgetError,
@@ -54,8 +54,12 @@ from trivae.query.runtime.openai_tools import (
     LexicalSearchSDKToolAdapter,
     SearchMessagesSDKToolAdapter,
     SemanticSearchSDKToolAdapter,
+    minimum_budget_stop_tokens,
+    protect_tool_result_budget,
+    reserve_budget_stop_results,
 )
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
+from trivae.query.runtime.usage import aggregate_usage
 
 RuntimeEventType = Literal[
     "run_started",
@@ -608,6 +612,7 @@ class _PendingEvent:
     tool_result: ToolResultRecord | None = None
     tool_round: int | None = None
     usage: dict[str, int | float] | None = None
+    budget_kind: Literal["tool_rounds", "tool_result_tokens"] | None = None
     model_visible_context: tuple[dict[str, object], ...] | None = None
     observable_output: tuple[dict[str, object], ...] | None = None
     provider_observation: Mapping[str, object] | None = None
@@ -627,6 +632,8 @@ class _RunState:
     expected_tool_results: int = 0
     completed_tool_results: int = 0
     tool_rounds: int = 0
+    # started 但未完成的响应显式记为未知；预算准入失败也不能漏掉刚完成模型响应的用量。
+    response_usage: list[dict[str, int | float] | None] = field(default_factory=list)
     finalizing: bool = False
     aborted: bool = False
     settled: bool = False
@@ -818,6 +825,7 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         """在 Provider 调用前捕获 SDK 已过滤的真实 model-visible input。"""
 
         self._state.turn += 1
+        self._state.response_usage.append(None)
         self._state.expected_tool_results = 0
         self._state.completed_tool_results = 0
         runtime_context = getattr(context, "context", None)
@@ -859,6 +867,16 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
         """捕获可观察模型输出，并根据 function call 数量推进回合状态。"""
 
         output = getattr(response, "output", ())
+        # 先记录模型完成事实，再做工具准入；准入失败不能抹掉本次已消耗的 Token。
+        self._state.response_usage[-1] = self._project_model_usage(response)
+        runtime_context = getattr(context, "context", None)
+        if isinstance(runtime_context, RuntimeContext):
+            # 模型已声明本轮全部调用，在任何 Capability 执行前完成整轮控制结果准入。
+            calls = [
+                (str(_public_value(item, "name")), str(_public_value(item, "call_id")))
+                for item in output if _item_type(item) == "function_call"
+            ]
+            reserve_budget_stop_results(runtime_context, calls)
         function_call_count = sum(1 for item in output if _item_type(item) in _MODEL_ACTION_ITEM_TYPES)
         self._state.expected_tool_results = function_call_count
         observable_output = _project_model_output(output)
@@ -980,10 +998,25 @@ class _RuntimeHooks(RunHooks[RuntimeContext]):
             agent.tools.clear()
 
         if self._state.completed_tool_results >= self._state.expected_tool_results:
+            # 所有已声明的 Tool Call 都有响应后才切换综合，保持 SDK 协议完整。
+            remaining = runtime_context.tool_result_budget_policy.remaining_run_tool_evidence_budget
+            next_minimum = max(
+                (minimum_budget_stop_tokens(runtime_context, name, f"{tool_call_id}/next")
+                 for name in runtime_context.available_capabilities), default=0,
+            )
+            if runtime_context.tool_result_budget_exhausted or (
+                remaining is not None and remaining < 2 * next_minimum
+            ):
+                runtime_context.tool_result_budget_exhausted = True
+                self._state.finalizing = True
+                agent.tools.clear()
             if self._state.finalizing:
                 # 等同一模型回合的所有 tool calls 都完成后再广播 finalizing，事件顺序更准确。
                 self._state.pending.append(
-                    _PendingEvent("finalizing", tool_round=self._state.tool_rounds)
+                    _PendingEvent(
+                        "finalizing", tool_round=self._state.tool_rounds,
+                        budget_kind="tool_result_tokens" if runtime_context.tool_result_budget_exhausted else "tool_rounds",
+                    )
                 )
             self._state.pending.append(
                 _PendingEvent("turn_completed", tool_round=self._state.tool_rounds)
@@ -1306,6 +1339,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                         tool_result=pending.tool_result,
                         tool_round=pending.tool_round,
                         usage=pending.usage,
+                        budget_kind=pending.budget_kind,
                         model_visible_context=pending.model_visible_context,
                         observable_output=pending.observable_output,
                         provider_observation=pending.provider_observation,
@@ -1361,6 +1395,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                     tool_result=pending.tool_result,
                     tool_round=pending.tool_round,
                     usage=pending.usage,
+                    budget_kind=pending.budget_kind,
                     model_visible_context=pending.model_visible_context,
                     observable_output=pending.observable_output,
                     provider_observation=pending.provider_observation,
@@ -1382,7 +1417,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 return
 
             final_output = getattr(streamed_result, "final_output", None)
-            usage = self._project_usage(streamed_result)
+            usage = self._project_usage(streamed_result, observed=state.response_usage)
             if not isinstance(final_output, str) or not final_output.strip():
                 # Provider/compatibility repair 返回空正文时，必须在 Runtime 层标成失败；
                 # 不能把“completed + 空字符串”交给 Finalizer 再伪装成正常完成。
@@ -1431,7 +1466,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 category="absolute_backstop",
                 diagnostic_type=type(exc).__name__,
                 exception_type=type(exc).__name__,
-                usage=self._project_usage(streamed_result),
+                usage=self._project_usage(streamed_result, observed=state.response_usage),
             )
             yield self._event(state, "failed", result=result)
         except ToolResultBudgetExhausted as exc:
@@ -1444,7 +1479,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 category="budget",
                 diagnostic_type=type(exc).__name__,
                 exception_type=type(exc).__name__,
-                usage=self._project_usage(streamed_result),
+                usage=self._project_usage(streamed_result, observed=state.response_usage),
             )
             yield self._event(state, "failed", result=result)
         except ToolResultBudgetError as exc:
@@ -1457,7 +1492,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 category="budget",
                 diagnostic_type=type(exc).__name__,
                 exception_type=type(exc).__name__,
-                usage=self._project_usage(streamed_result),
+                usage=self._project_usage(streamed_result, observed=state.response_usage),
             )
             yield self._event(state, "failed", result=result)
         except Exception as exc:
@@ -1472,16 +1507,27 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 return
             # ChatGPT 异常已在 HTTP 边界脱敏，必须保留 Provider 的真实错误代码和原因。
             safe_chatgpt_error = exc if isinstance(exc, ChatGPTResponsesError) else None
+            # SDK UserError 使用异常链包装 Function Tool 错误；沿链保留最早预算归因。
+            budget_cause: BaseException | None = exc
+            while budget_cause is not None and not isinstance(
+                budget_cause, (ToolResultBudgetError, ToolResultProjectionError),
+            ):
+                budget_cause = budget_cause.__cause__ or budget_cause.__context__
+            budget_code = (
+                "TOOL_RESULT_BUDGET_EXHAUSTED" if isinstance(budget_cause, ToolResultBudgetExhausted)
+                else "TOOL_RESULT_PROJECTION_ERROR" if isinstance(budget_cause, ToolResultProjectionError)
+                else "TOOL_RESULT_BUDGET_ERROR" if budget_cause is not None else None
+            )
             # 对外只保留稳定 code/type；原始异常正文可能含 key、请求体或 provider 敏感内容。
             result = self._failed_result(
                 context,
                 state,
-                safe_chatgpt_error.code if safe_chatgpt_error else "RUNTIME_ERROR",
+                budget_code or (safe_chatgpt_error.code if safe_chatgpt_error else "RUNTIME_ERROR"),
                 str(exc) if safe_chatgpt_error else "agent runtime execution failed",
-                category="terminal",
-                diagnostic_type=type(exc).__name__,
+                category="budget" if budget_cause is not None else "terminal",
+                diagnostic_type=type(budget_cause).__name__ if budget_cause is not None else type(exc).__name__,
                 exception_type=type(exc).__name__,
-                usage=self._project_usage(streamed_result),
+                usage=self._project_usage(streamed_result, observed=state.response_usage),
             )
             yield self._event(state, "failed", result=result)
         finally:
@@ -1583,8 +1629,10 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             if request.plan_guidance:
                 parts.append("\n" + request.plan_guidance)
             if state.finalizing:
+                # 动态预算提示区分 Token 与轮次；SYSTEM_PROMPT 主体和检索策略保持原样。
+                exhausted_budget = "Tool Result token budget" if context.tool_result_budget_exhausted else "Tool budget"
                 parts.append(
-                    "\nTool budget is exhausted. Do not call any tool. Synthesize the final answer "
+                    f"\n{exhausted_budget} is exhausted. Do not call any tool. Synthesize the final answer "
                     "from the evidence already returned, and state limitations plainly."
                 )
             return "".join(parts)
@@ -1593,6 +1641,9 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         reasoning_effort = self._resolved_reasoning_effort()
         reasoning = None if reasoning_effort is None else {"effort": reasoning_effort}
 
+        for tool in tools:
+            # 所有工具共用同一预算协议边界，Capability 本身无需了解 SDK 或控制结果。
+            protect_tool_result_budget(tool)
         if self._provider_name == "chatgpt-plan":
             # SDK 的公开 namespace API 同时约束 payload 与 Runner dispatch，不拼接函数名。
             tools = tool_namespace(name="trivae", description="Trivae local evidence tools", tools=tools)
@@ -1680,6 +1731,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         model_visible_context: tuple[dict[str, object], ...] | None = None,
         observable_output: tuple[dict[str, object], ...] | None = None,
         provider_observation: Mapping[str, object] | None = None,
+        budget_kind: Literal["tool_rounds", "tool_result_tokens"] | None = None,
     ) -> RuntimeEvent:
         """为每个事件分配进程内 sequence，不暴露 provider 原始 sequence。"""
 
@@ -1712,6 +1764,7 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             model_visible_context=model_visible_context,
             observable_output=observable_output,
             provider_observation=provider_observation,
+            budget_kind=budget_kind,
         )
 
     def _failed_result(
@@ -1969,17 +2022,20 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
         return message.replace(self._secret, "[REDACTED]") if self._secret else message
 
     @staticmethod
-    def _project_usage(result: Any) -> dict[str, int | float] | None:
+    def _project_usage(
+        result: Any, *, observed: list[dict[str, int | float] | None] | None = None,
+    ) -> dict[str, int | float] | None:
         """将 SDK usage 聚合为普通数字；SDK usage 类型不越过 runtime boundary。"""
 
+        if observed:
+            # hooks 包含当前在途响应；SDK raw_responses 仅包含已接收终态的响应。
+            return aggregate_usage(observed)
         if result is None or not getattr(result, "raw_responses", None):
             return None
-        totals: dict[str, int | float] = {}
-        for response in result.raw_responses:
-            usage = getattr(response, "usage", None)
-            for field_name, value in _project_usage_mapping(usage).items():
-                totals[field_name] = totals.get(field_name, 0) + value
-        return totals or None
+        return aggregate_usage(
+            _project_usage_mapping(getattr(response, "usage", None)) or None
+            for response in result.raw_responses
+        )
 
     @staticmethod
     def _project_completion_usage(response: Any) -> dict[str, int | float] | None:

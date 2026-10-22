@@ -103,6 +103,12 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
     tool_result_projection_omitted_hit_messages = 0
     tool_result_projection_projected_messages = 0
     tool_result_projection_omitted_messages = 0
+    # 新 Trace 终态包含累计 usage；历史 Trace 无该字段时仍可从 model.usage 读取事实。
+    terminal_usage_events = [
+        event for event in stored.events
+        if event.operation == "runtime.run" and event.phase in {"completed", "failed", "aborted"}
+        and "usage" in event.payload
+    ]
 
     for event in stored.events:
         if event.duration_ms is not None:
@@ -114,6 +120,9 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
         if isinstance(model, str) and model:
             models.add(model)
         raw_usage = event.payload.get("usage")
+        if terminal_usage_events and event.operation == "model.usage":
+            # 逐响应 usage 已经包含在终态里，重复相加会翻倍。
+            raw_usage = None
         if isinstance(raw_usage, Mapping):
             for key, value in raw_usage.items():
                 if isinstance(key, str) and isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -146,6 +155,12 @@ def _build_metrics(stored: StoredTrace) -> TraceMetrics:
             if isinstance(raw_omitted_messages, int) and not isinstance(raw_omitted_messages, bool):
                 tool_result_projection_omitted_messages = raw_omitted_messages
 
+    for key in tuple(usage):
+        if key.startswith("known_"):
+            # Runtime 的未知部分不能被 Router/Planner 已知的小计冒充完整总量。
+            complete_key = key.removeprefix("known_")
+            if complete_key in usage:
+                usage[key] += usage.pop(complete_key)
     total_duration_ms = _duration_between(stored.started_at, stored.terminal_at)
     if total_duration_ms is None:
         # 缺少 terminal 时仍可返回已观测阶段的 operational duration，不猜测总耗时。

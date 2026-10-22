@@ -29,6 +29,7 @@ from trivae.query.runtime.contracts import (
     RuntimeResult,
     RuntimeToolCall,
 )
+from trivae.query.runtime.usage import aggregate_usage
 
 
 class TraceCaptureError(ValueError):
@@ -457,7 +458,9 @@ class TraceableAgentRuntime(AgentRuntime):
         # 记录 observer 失败前已经观察到的 canonical provenance，确保失败终态不丢失真实进度。
         observed_tool_calls: list[RuntimeToolCall] = []
         observed_tool_results: list[ToolResultRecord] = []
-        last_usage: Mapping[str, int | float] | None = None
+        response_usage: dict[int, Mapping[str, int | float] | None] = {}
+        response_number = 0
+        terminal_usage: Mapping[str, int | float] | None = None
         last_tool_round = 0
         last_event: RuntimeEvent | None = None
         last_provider_observation: Mapping[str, object] | None = None
@@ -468,6 +471,10 @@ class TraceableAgentRuntime(AgentRuntime):
                     raise TypeError("runtime stream must yield RuntimeEvent values")
                 # 先保存当前事件及其 terminal 快照，再调用 live observer；parser 可能在 observer 内失败。
                 last_event = event
+                if event.type == "turn_started":
+                    # 在途响应即使用量未知也占一个位置，不能把它当成零 Token。
+                    response_number += 1
+                    response_usage[response_number] = None
                 if event.provider_observation is not None:
                     # parser 可能在后续 content delta 中失败，不能因 last_event 被覆盖而丢掉
                     # 最近一次 provider response 的 bounded transport facts。
@@ -484,12 +491,17 @@ class TraceableAgentRuntime(AgentRuntime):
                         if tool_result not in observed_tool_results:
                             observed_tool_results.append(tool_result)
                     if event.result.usage is not None:
-                        last_usage = event.result.usage
+                        terminal_usage = event.result.usage
                     last_tool_round = max(last_tool_round, event.result.tool_rounds)
                 if event.usage is not None:
-                    last_usage = event.usage
-                if event.tool_round is not None:
-                    last_tool_round = max(last_tool_round, event.tool_round)
+                    if event.type == "usage_update":
+                        # usage_update 是单次响应事实，同一响应更新只覆盖本响应，不能覆盖整个 Run。
+                        response_usage[response_number] = event.usage
+                if event.type == "tool_completed":
+                    # 模型回合编号可能属于最终综合；只有实际完成的工具才推进工具轮次。
+                    completed_round = event.tool_call.round if event.tool_call is not None else event.tool_round
+                    if completed_round is not None:
+                        last_tool_round = max(last_tool_round, completed_round)
                 if self._runtime_event_observer is not None:
                     # 同一 RuntimeEvent 先进入 live projection，再由 persistent mapper选择可落盘事实。
                     self._runtime_event_observer(event)
@@ -516,7 +528,7 @@ class TraceableAgentRuntime(AgentRuntime):
                     diagnostic_type=type(exc).__name__,
                     exception_type=type(exc).__name__,
                 ),
-                usage=last_usage,
+                usage=terminal_usage if terminal_usage is not None else aggregate_usage(response_usage.values()),
                 tool_rounds=last_tool_round,
                 run_id=last_event.run_id or (last_event.result.run_id if last_event.result else None),
                 tool_results=tuple(observed_tool_results),
@@ -688,6 +700,7 @@ class TraceableAgentRuntime(AgentRuntime):
                 payload=payload,
             )
         elif event.type == "finalizing":
+            payload["budget_kind"] = event.budget_kind or "tool_rounds"
             self.collector.emit(
                 stage="runtime",
                 operation="runtime.finalizing",
@@ -695,7 +708,10 @@ class TraceableAgentRuntime(AgentRuntime):
                 operation_id=f"{run_operation}:finalizing",
                 parent_operation_id=run_operation,
                 payload=payload,
-                limitations=("tool_budget_exhausted",),
+                limitations=(
+                    "tool_result_budget_exhausted" if event.budget_kind == "tool_result_tokens"
+                    else "tool_budget_exhausted",
+                ),
             )
         elif event.type in {"completed", "failed", "aborted"}:
             self._map_terminal_event(event, run_operation, payload)
@@ -723,6 +739,8 @@ class TraceableAgentRuntime(AgentRuntime):
         payload["termination"] = result.termination
         payload["tool_count"] = len(result.tool_calls)
         payload["tool_rounds"] = result.tool_rounds
+        # 终态是 Runtime 累计快照；Trace metrics 必须据此替换逐响应统计，不能重复相加。
+        payload["usage"] = None if result.usage is None else dict(result.usage)
         projection_estimates = [
             call.model_result_estimated_tokens
             for call in result.tool_calls

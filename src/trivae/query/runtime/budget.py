@@ -206,24 +206,37 @@ class ToolResultBudgetPolicy:
 
     @property
     def remaining_run_tool_evidence_budget(self) -> int | None:
-        """返回尚未被完成 projection 消耗的共享余额。"""
+        """返回扣除已完成投影和在途预留后的可分配余额。"""
 
         return self._remaining
 
-    def begin_call(self) -> ToolResultBudgetCall:
+    def begin_call(
+        self, *, minimum_budget: int = 1, maximum_budget: int | None = None,
+    ) -> ToolResultBudgetCall:
         """先预留本次 ceiling，再允许 Tool 执行，避免调用间超卖共享 pool。"""
 
+        _require_positive_integer(minimum_budget, "minimum_budget")
+        ceiling = self.config.per_call_ceiling
+        if maximum_budget is not None:
+            _require_positive_integer(maximum_budget, "maximum_budget")
+            ceiling = min(ceiling, maximum_budget)
+        # 先核对可分配余额，拒绝无法承载最小合法结果的调用，不能先执行 Capability。
+        available = ceiling if self._remaining is None else min(ceiling, self._remaining)
+        if available < minimum_budget:
+            raise ToolResultBudgetExhausted(
+                f"Tool Result requires at least {minimum_budget} tokens; available {available}"
+            )
         self._next_reservation_id += 1
         reservation_id = self._next_reservation_id
         remaining_before = self._remaining
         if self._remaining is None:
-            effective_budget = self.config.per_call_ceiling
+            effective_budget = ceiling
         else:
             if self._remaining <= 0:
                 raise ToolResultBudgetExhausted(
                     "dynamic Tool Result run evidence budget is exhausted before the next tool call"
                 )
-            effective_budget = min(self.config.per_call_ceiling, self._remaining)
+            effective_budget = min(ceiling, self._remaining)
             self._remaining -= effective_budget
         reservation = ToolResultBudgetCall(
             reservation_id=reservation_id,
@@ -232,6 +245,15 @@ class ToolResultBudgetPolicy:
         )
         self._reservations[reservation_id] = reservation
         return reservation
+
+    def cancel_call(self, reservation: ToolResultBudgetCall) -> None:
+        """归还未发送的投影预留；失败投影不能消耗模型从未收到的 Token。"""
+
+        if self._reservations.get(reservation.reservation_id) != reservation:
+            raise ToolResultBudgetError("Tool Result budget reservation is unknown or already completed")
+        self._reservations.pop(reservation.reservation_id)
+        if self._remaining is not None:
+            self._remaining += reservation.effective_per_call_budget
 
     def complete_call(
         self,

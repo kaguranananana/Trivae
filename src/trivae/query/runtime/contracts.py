@@ -8,7 +8,12 @@ from typing import AsyncIterator, Literal, Mapping, Protocol
 from trivae.capabilities.contracts import ExecutionScope
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.query.evidence import ToolResultRecord
-from trivae.query.runtime.budget import ToolResultBudgetConfig, ToolResultBudgetPolicy, ToolResultBudgetSnapshot
+from trivae.query.runtime.budget import (
+    ToolResultBudgetCall,
+    ToolResultBudgetConfig,
+    ToolResultBudgetPolicy,
+    ToolResultBudgetSnapshot,
+)
 
 
 class AgentRuntimeContractError(ValueError):
@@ -147,6 +152,9 @@ class RuntimeContext:
     # provider call ID 只存在 adapter local context，用于把 SDK hook 对回 Trivae-owned identity。
     _provider_tool_call_ids: dict[str, str] = field(default_factory=dict, repr=False)
     _next_tool_call_number: int = field(default=0, repr=False)
+    # 当前 SDK 响应的每个调用先预留一个预算错误结果，保证整轮协议能闭合。
+    budget_stop_reservations: dict[str, ToolResultBudgetCall] = field(default_factory=dict, repr=False)
+    tool_result_budget_exhausted: bool = False
 
     def resolve_tool_call_id(self, provider_tool_call_id: str | None) -> str:
         """为一次 SDK tool call 分配稳定的 Trivae-owned identity。"""
@@ -296,6 +304,8 @@ class RuntimeEvent:
     observable_output: tuple[Mapping[str, object], ...] | None = None
     # Provider response 的 bounded shape/status/usage 诊断，正文和 hidden reasoning 永不进入这里。
     provider_observation: Mapping[str, object] | None = None
+    # 明确区分工具轮次耗尽与 Tool Result Token 耗尽，不借用模型回合编号表达预算种类。
+    budget_kind: Literal["tool_rounds", "tool_result_tokens"] | None = None
 
 
 RuntimeStream = AsyncIterator[RuntimeEvent]
