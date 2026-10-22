@@ -127,3 +127,15 @@ unigram/LIKE/fallback 改变索引形态；如未来出现真实 Failure Case（
 ## 独立对照实验补充（2026-10-20）
 
 [64 Query独立实验](../../../../evaluation/experiments/cjk-bigram-v1/report.md)使用新的809,850 canonical +13,985 forward快照，不重算上述历史claim。32条纯中文查询的全深度字面覆盖2454/87671→87671/87671；混排另有6条ASCII前后缀漏召回、339条分隔写法额外命中和3条top10退化。单字依然不具备完整子串召回。原文NUL会使LIKE Oracle漏读后段，实验已保留首版并独立冻结instr修正版。真实Flash仅7完整配对，没有稳定E2E质量提升证据；具体分母、性能和失败归因以新报告为准。
+
+## 单字主索引补充（2026-10-22）
+
+上述v2限制为历史事实；当前完整keyword为一个Han字符时使用独立`messages_han_fts`，策略为
+`unicode61+cjk-bigram-v2+han-unigram-v1`。原`messages_fts`的bigram正文、MATCH及BM25不变，
+多词AND中夹单字和ASCII词内前后缀不扩大契约。普通与转发共享既有Scope SQL，转发仍逐occurrence恢复，
+只索引正文，不把preview加入。两索引与策略在同一事务重建；旧v2显式stale，不静默补查LIKE。
+
+决策依据：原“荐”0/7及转发“程”漏召回先复现；同列unigram候选扰动28个非单字题前十，未采用。
+独立索引使4个单字题字面覆盖20/44,703→44,703/44,703，60非单字题全深度身份/顺序不变，
+生产重建后64题count/top10与候选一致。旧快照单字FTS增加142.61MiB，必须同时报告空间代价。
+详细边界与实际验证见[持续迭代报告](../../../../evaluation/experiments/quality-repair-20261022/report.md)。
