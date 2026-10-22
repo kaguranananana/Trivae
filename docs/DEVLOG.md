@@ -70,3 +70,12 @@
 - 初次按脚本文件启动因scripts包导入失败，推理前改用python -m，未补跑已发送Case。合成控制的实验渲染首次漏传source summaries，已修正实验脚本；由同一持久化Artifact零HTTP补渲染，确认anchor/reply两来源，原终端输出保留。未修改产品渲染器、模型答案或检查阈值。
 - 只新增三个实验/分析脚本和报告，未改产品。定向回复/账本15passed（1.30s），Ruff src/tests/scripts、mypy src（129文件）、diff --check通过；不重复完整产品回归，沿用上轮1,241passed/1skipped的已记录边界。报告：`evaluation/experiments/reply-context-live-20261022/report.md`，工作提交 `a224fc8`。后续优先验证首轮预算分配与anchor选择，而不是宣称回复功能已带来稳定质量收益。
 - 本轮SSH复核仍明确返回 `Could not resolve hostname ssh.github.com`；GitHub DNS阻塞未解除。工作与开发记录提交后仍按约定尝试普通推送，不更改全局网络或SSH配置。
+
+## 2026-10-22 · 真实回复遗漏的分层因果诊断
+
+- 用户追问原因后，新增 diagnose_reply_misses.py，只读重放已存三题原参数、实际投影额度与独立快照；三题首轮canonical消息身份/顺序均与原记录完全一致。模型请求0次，不改产品、GT、索引或旧工件。
+- `--case matt2 --require-delivery` 明确复现预期AssertionError：required reply missing from model projection；工具已取得目标但模型不可见。该命令用于捕获现有缺陷，未将预期失败计作回归通过。
+- 目标原消息排名43/14/6，模型可见handle为m1-43/m1-14/m1-6，均未被补查选中。Archify只自动扩前20锚点；Matt-1局部窗口够不到远距离回复。实际所选其他anchor直接回复为0，不等于项目没有其他回复；模型内部选择原因仍不能仅由Trace断言。
+- Matt-2原目标已在首轮完整Host结果，但作为非hit context随72条邻居一起删除。投影当前先整批删context、再缩hit正文；留下28hit，仅用8,449/15,801，仍有7,352额度。回复优先仅覆盖显式context，不覆盖搜索附带context，是上一轮修复边界。
+- 只换正确anchor、保持原窗口/单次额度，Matt-1在7,352、Matt-2在6,954即可恢复目标；Archify在704仍失败，改0/0仅关系也仍省略回复。Archify原16k池首轮14,699后剩1,301，同轮三个控制结果预留597，首个补查数据额度704。相同正确anchor的离线16k投影对照可恢复，未伪造实际剩余额度或据此修改生产池。
+- 报告在 `evaluation/experiments/reply-context-live-20261022/miss-diagnosis.md`，私有事实含原文/定位，保存ignored `data/evaluation/reply-miss-diagnosis-20261022/diagnosis.json`。脚本Ruff、compileall、diff --check通过；实际三题重放/反事实对照已执行，未改产品，不重复完整pytest。工作提交 `7176aae`；下一步应优先验证搜索context裁剪，再隔离候选关系线索与首轮预算分配，不声称质量已改善。
