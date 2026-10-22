@@ -147,3 +147,7 @@
 - 空日根因进一步定位：time_range SDK Schema只有任意object，已有relative固定字段只在说明和Capability内。最小修复从既有RelativeTimeRange生成公开Schema，保留JSON到Capability的原解析/错误路径；不增加absolute兼容、重试或放宽no_result。新回归先因测试漏call_id失败，修正测试接口后确认旧Schema缺结构；最终验证公开固定字段与实际SDK相对时间调用。26定向、Ruff/mypy通过，完整回归继续。
 
 - bef1dc8时间参数Schema修正：完整1,261 passed/1 skipped（27.34s）、Ruff src/tests/scripts及mypy129文件通过；随后补充非法absolute→合法relative的真实SDK错误透明断言，定向1passed。最终方案仅生成公开Schema，不用Pydantic数据类转换改变原业务类型校验，非法absolute仍INVALID_ARGUMENT，未删除错误历史。下一temporal-schema-series按空日→密集两天→14天冻结验证。
+
+
+- 准备下一系列时SQLite重建实际报database or disk is full（磁盘剩余523MiB），本次准备0推理，失败收据保存。aa9deb0新增显式--snapshot-template：写时复制现有冻结快照，校对语料身份并复用生产词法readiness策略/版本/计数校验；不匹配直接失败，不自动重建。实际snapshot-reuse-smoke准备完成、0请求、Ruff通过，没有重复索引写入。
+- 只清理本次未登记失败副本及4个从未运行的重复准备快照；4份先验证0请求/0attempted/无result、语料身份与保留的temporal-schema-empty完全相同，保存共享位置收据。协议、账本、所有真实运行/失败的快照和原始语料均保留。磁盘可用523MiB→2.5GiB；未清理用户其他文件。下一temporal-schema-v2-series使用复用路径验证空日→两天→14天。

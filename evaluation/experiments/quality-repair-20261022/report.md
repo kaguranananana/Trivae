@@ -134,3 +134,7 @@ ca01b86的temporal-volume-series首题两天3HTTP完成：投影20/18/19/19/18�
 新根因是SDK JSON Schema把time_range公开为任意object，relative结构只藏在说明及业务解析。最小修正用原RelativeTimeRange生成Schema，仍保留dict进入Capability的原解析和错误记录；不新增absolute兼容、重新执行或静默纠正。新回归首版漏call_id是测试入口错误，修正后旧Schema缺结构失败；修正后26项定向、Ruff/mypy129文件通过，完整回归及修正后新冻结真实验收继续。
 
 bef1dc8最终修正仅从原业务数据类生成公开Schema，输入仍是dict并由原Capability解析，避免引入额外类型转换。完整pytest **1,261 passed/1 skipped（27.34s）**、Ruff/mypy129文件通过；随后补充真实SDK非法absolute仍INVALID_ARGUMENT且后续合法relative正常的定向回归1passed。旧空日失败不重写，下一temporal-schema-series冻结顺序验证原空日、密集两天、14天。
+
+
+- 准备下一系列时SQLite重建实际报database or disk is full（磁盘剩余523MiB），本次准备0推理，失败收据保存。aa9deb0新增显式--snapshot-template：写时复制现有冻结快照，校对语料身份并复用生产词法readiness策略/版本/计数校验；不匹配直接失败，不自动重建。实际snapshot-reuse-smoke准备完成、0请求、Ruff通过，没有重复索引写入。
+- 只清理本次未登记失败副本及4个从未运行的重复准备快照；4份先验证0请求/0attempted/无result、语料身份与保留的temporal-schema-empty完全相同，保存共享位置收据。协议、账本、所有真实运行/失败的快照和原始语料均保留。磁盘可用523MiB→2.5GiB；未清理用户其他文件。下一temporal-schema-v2-series使用复用路径验证空日→两天→14天。

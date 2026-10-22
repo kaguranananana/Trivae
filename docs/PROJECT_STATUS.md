@@ -8,7 +8,7 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
-- ca01b86的密集两天真实自主3HTTP完成：先20+四段，投影20/18/19/19/18、14,986Token，四段全部有正文、finalization valid，主题原文复核通过；输入44,345/输出1,380。随后完整空日控制出现非网络失败，系列按设计退出：模型先误传absolute时间对象，纠正后完整0条，但旧错误历史使no_result unavailable，模型仍选择该格式被拒。三请求24,819输入/328输出，失败保留，14天尚未执行。定位到SDK把time_range公开成任意dict，仅文字要求relative；bef1dc8已从已有RelativeTimeRange生成字段Schema，JSON仍走原Capability解析，不放宽Finalizer或更改错误历史。完整1,261 passed/1 skipped（27.34s）、Ruff/mypy通过；补充验证非法absolute仍显式INVALID_ARGUMENT、后续合法relative正常。下一temporal-schema-series顺序验证原空日、密集两天、14天。
+- ca01b86的密集两天真实自主3HTTP完成：先20+四段，投影20/18/19/19/18、14,986Token，四段全部有正文、finalization valid，主题原文复核通过；输入44,345/输出1,380。随后完整空日控制出现非网络失败，系列按设计退出：模型先误传absolute时间对象，纠正后完整0条，但旧错误历史使no_result unavailable，模型仍选择该格式被拒。三请求24,819输入/328输出，失败保留，14天尚未执行。定位到SDK把time_range公开成任意dict，仅文字要求relative；bef1dc8已从已有RelativeTimeRange生成字段Schema，JSON仍走原Capability解析，不放宽Finalizer或更改错误历史。完整1,261 passed/1 skipped（27.34s）、Ruff/mypy通过；补充验证非法absolute仍显式INVALID_ARGUMENT、后续合法relative正常。准备原temporal-schema-series时重复重建索引实际耗尽磁盘（0推理）；aa9deb0显式复用冻结索引、校对身份/readiness，准备smoke通过。仅清理失败/未运行重复副本，真实运行快照保留，剩余空间523MiB→2.5GiB。下一temporal-schema-v2-series使用复用路径顺序验证原空日、密集两天、14天。
 
 - 0ff6bc0冻结生产系列已完整执行，14天3HTTP/2工具轮：先20条+四窗，投影20/20/20/18/18、14,949Token，全部无预算错误；四窗总数86,287，最终引用10-09/13/16/20且valid，主题原文复核通过。两天2HTTP也valid但仍取5,000/14,619、投影146条/15,767Token集中短时段。新证据证明“短窗直接max”用天数代替消息量，276a56d已去掉此分支，统一先小页按实际量决定分页/分段；完整1,260 passed/1 skipped（27.78s）、Ruff/mypy通过。ca01b86冻结temporal-volume-series已启动，顺序验证密集两天、完整空日、14天，运行中不改HEAD/源码；不把上一轮两天的诚实披露误报为覆盖修复完成。
 
