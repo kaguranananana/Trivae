@@ -247,3 +247,14 @@
 - 真实SDK小库慢SQL在5秒显式SQL_EXECUTION_TIMEOUT，但20ms定时回调额外迟到约4.98秒；快查询约1ms、回调约21ms。证明同步计算阻塞事件循环，未冒充真实浏览器并发压测；SQL原5秒期限修复仍有效。两项独立probe门禁实际exit1，原观察保存，未修改产品或测试掩盖失败。
 - 当前只读检索“github.com 荐”0命中，对照主表字面19条。不存在词零命中因244转发缺口coverage partial，no_result被拒、无来源claims可degraded保留，明确区分正常结果形态缺口与完全无法回答。原Plan笔试110条材料仍漏已知经历；当前构造91命中目标rank41、笔试测试40命中rank8，不把跨快照排名当旧运行精确重放。复核旧逐题来源绑定失败及解析坏正文缺失，保留当前模型尚未复验的边界。
 - 本轮实际后端1269 passed/1 skipped（33.53秒）、前端13文件80项通过；Ruff src/tests/scripts及新增脚本检查、mypy129源文件通过，报告相对链接检查通过。在线只读readiness仍库/语义829397、revision63617对齐、Plan ready。0新增模型生成/Judge，未复制大库、重算向量或重启Web。本地证据data/evaluation/failure-audit-20261023/；下一步优先两项工程修复，再做当前原题检索与结论—来源绑定的小规模真实复验。
+
+## 2026-10-23 · 修复五项剩余工程 Failure 并复验历史质量题
+
+- 工作f9fc1dc：qq_forward.py复用正式树投影比较实质occurrence事实；sqlite.py只吸收保留全部旧事实的完整incoming，旧Canonical raw/source存superseded_forward，真实UPDATE推进原revision，新增批次enriched_count及已有库迁移。根层/嵌套、幂等、旧空版本、已知正文冲突和同文件自动双索引发布通过；不拼互补树、不从preview补正文、不覆盖冲突。
+- ExecuteSQLTool仅将计算放工作线程，连接在该线程内创建/关闭；_trace_invocation保留原线程Trace生命周期。正式SDK入口await异步Registry，原5秒VM期限不变；真实探针慢SQL5.0005秒显式超时，20ms回调约21ms执行。真实ASGI回归证明SQL未结束时readiness/Stop能返回、流aborted；不声称Stop即时终止底层计算。首次完整回归5个合法同步handler失败，修正Registry对既有同步invoke契约的处理，未放宽或改写原断言。
+- sqlite_read.py将常规词原FTS/BM25与单汉字索引按消息身份求交，多个独立单汉字执行AND；普通/转发/群/时间回归通过，未重建索引。当前github.com荐35命中含转发，原生主表字面20条；当前库834636与原审计829397不同，不把跨快照计数当严格A/B。
+- Evidence新增正式insufficient_evidence，Runtime每次工具返回后复用Host资格，Finalizer直接valid并保留partial/缺失限制；有候选、错误、未检索不能冒用，原no_result不放宽。真实Application→SDK→会话回归通过。AnswerDeltaParseError附加有界Unicode偏移/chunk/坏字符/前128后64字符/最多四层状态，经Collector原边界保存answer.parse.failed；非法流仍失败，无修复重试。旧DeepSeek坏正文未保存，不能声称重放修好。
+- 完整pytest1280 passed/1 skipped（31.26秒）、Ruff src/tests/scripts、mypy129源文件和diff检查通过；前端80项/typecheck/lint/build通过，取证不足限制有中文标签。两个原独立红门禁现均exit0、0模型请求；中途测试fixture补上原本必需的FTS构建并使用正确ExecutionOverride字段，没有放宽产品约束。
+- 新执行器run_failure_repair_validation.py只备份一次Canonical/语义配对，冻结f9fc1dc、834636条/revision68856、完整Prompt/配置及逐题账本。Plan/Sol medium、6轮/8turn/200k证据池/128k单次、全范围max5000、forced Standard；原笔试两次及Nanobot/Matt/Archify/owner/partial空结果共7次全部completed/valid，HTTP分别3/3/3/4/3/2/3，总21，Usage请求也21。输入500317、输出6318、cached input38656；无Judge/自动补跑/产品重试/索引重建。
+- 两次笔试已知目标均进入工具材料，答案引用同文直接经历并区分设想与效果。Matt短评的真实reply target回读确为目标仓库，未把同名人物混入；Archify概述直接绑定使用/缩减/耗时/额度，Nanobot区分功能与计划，owner不把另一抱怨强行当同案。82处引用实际切片/偏移/作者/时间/群范围核对通过，语义另逐段Assistant provisional审阅；Nanobot本次未输出旧数值，不能证明一般数值绑定。空结果自主选择新格式、保留partial。Host投影省略/投影截断/工具错误均0，不宣称检索穷尽或稳定成功率。
+- 本地Web正常SIGTERM后重启PID3015，HTTP200、数据库ready及语义completed，834636/834636、revision68856对齐、Plan ready，未重算在线向量。报告docs/FAILURE_REPAIR_20261023.md、原审计追加后续入口，现有spec更新对应持久契约；完整答案/Trace/同一快照/账本/回读与评审保留data/evaluation/failure-repair-20261023/。当前245个未展开转发节点仍需真实完整导出；全量语义召回、额外轮数/Planner一般收益及实体手机/读屏属于后续独立验证。

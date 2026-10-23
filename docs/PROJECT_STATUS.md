@@ -8,6 +8,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-23剩余Failure修复已落地（f9fc1dc）：转发树保留旧事实的单调补齐及旧raw溯源/enriched计数，原revision驱动双索引发布；SQL计算让出事件循环、Trace留原线程，ASGI慢SQL期间readiness/Stop通过；混合单汉字AND复用既有两索引求交；partial空检索新增正式insufficient_evidence且不放宽no_result；流式坏JSON保存有界偏移/正文/状态诊断，仍显式失败。原两个红探针现均exit0，5秒SQL期间20ms回调约21ms执行，补齐正文可检索。完整pytest1280 passed/1 skipped（31.26秒）、Ruff/mypy129、前端80项/typecheck/lint/build通过。冻结834636条/revision68856，同一配置7次自主查询、21HTTP全部completed/valid；笔试两次找到直接经历，Nanobot/Matt/Archify/owner及空结果逐段复核，82处引用Canonical核对通过，无Host投影省略/工具错误。小样本不证明稳定成功率、全量语义召回或额外轮数收益；源245个未展开转发仍需完整导出，旧解析坏正文不可追溯。Web已正常重启，库/语义834636及revision68856对齐、Plan ready。完整报告docs/FAILURE_REPAIR_20261023.md，原审计保持历史事实。
+
 - 2026-10-23剩余Failure审计完成（a6fdee4，0新增生成）：1,574条唯一Evaluation/200分组及近期独立工件复核，2个封存库排除。新增确定性复现：空转发后补齐正文仍被判equal duplicate且incoming raw不保存，重建FTS仍0命中，完整版本先导入控制为1；真实SDK同步SQL使20ms回调延迟约4.98秒，快查询控制正常。当前“github.com 荐”0命中但主表字面19条；部分覆盖空检索的no_result仍失败，空来源claims仅degraded。旧Plan笔试题110条材料漏目标，当前原词排名41、聚焦词排名8；当前完整配置未重跑，不能报为最新模型必现。全量pytest1269 passed/1 skipped（33.53秒）、前端80项、Ruff/mypy通过；两项独立审计门禁预期红，未修产品。具体优先级、根因、实验及边界见docs/FAILURE_AUDIT_20261023.md，探针scripts/audit_failure_boundaries.py。
 
 - 2026-10-23前端七项清单已落地：正式段落引用+来源侧面板/窄屏抽屉、原文主动重读及ordinal复用、接收确认后清草稿、按会话保存阅读位置、前进后退/范围URL/侧栏偏好、交错详情归属、范围内全历史正文搜索与分页、中文限制及44px触摸区。新增三项旧实现失败回归后修复；前端80项/typecheck/lint/build、完整后端1269 passed/1 skipped、Ruff/mypy通过。1280×720/390×844浏览器确认来源展开不改正文位置、引用定位返回、正文词搜索与后退184→184。Web已重启，库/语义829397、Plan ready，0新增推理；实体软键盘/读屏未验收，整页刷新不保存滚动。详见docs/FRONTEND_REVIEW_20261023.md修复段。
