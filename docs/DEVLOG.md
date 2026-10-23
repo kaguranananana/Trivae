@@ -222,3 +222,10 @@
 - bfa3118在limits.py提供DEFAULT_MAX_TOOL_ROUNDS=6，settings.py环境加载/直接构造与openai_adapter.py注入模型共用，.env.example和configuration.md同步。显式较小预算仍优先，8turn/证据预算公式不变；当前Web本来已显式6轮，本轮不额外重启或修改本机配置。
 - 新增真实SDK循环回归先在旧默认3下failed，修后配置/无配置两入口连续6轮工具，第7回合关闭工具并completed，最终答案保留、finalizing仅一次。定向100 passed；首次完整1265 passed/2 failed/1 skipped，两处旧Prompt测试隐含默认3，属于实体锚点/候选注入场景，显式固定原3轮并保留断言，避免把它们耦合到默认策略。
 - 最终完整pytest1267 passed/1 skipped（27.31秒）、Ruff src/tests/scripts、mypy129文件、diff --check通过。0新增真实模型请求/索引修改；原失败及最终日志保存在data/evaluation/default-six-rounds-20261023/。真实第4至6轮是否带来额外质量收益仍需另做单变量对照，未将SDK流程验证包装成质量提升。
+
+## 2026-10-23 · 前端体验与失败路径审查
+
+- 新增docs/FRONTEND_REVIEW_20261023.md，检查Vue聊天主链路、来源、草稿、历史搜索与导航；未修改产品代码，0新增模型请求。
+- 本地浏览器604×732窄屏复现：已有长回答底部展开25条来源会自动滚到末尾。根因为所有内容增高复用生成跟随逻辑。静态确认首次创建失败后草稿已被清空、来源失败state无法重新读取、历史搜索仅最近100条标题/摘要；报告明确区分已复现与未故障注入的发现。
+- 实际验证：12个前端测试文件、71项通过，typecheck/lint/build通过；JS gzip93.59kB、CSS gzip28.30kB。未执行宽屏/实体手机键盘/性能Trace或真实服务故障注入，不把构建体积当已证实性能瓶颈。
+- 下一步优先最小修复来源展开定位、创建失败草稿保留、用户主动重新读取原消息；之后推进引用定位、搜索范围透明和中文信息层级。
