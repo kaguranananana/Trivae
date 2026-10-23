@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import SourcesBlock from '@/components/chat/SourcesBlock.vue'
+import { api } from '@/api/client'
 import type { SourceItem } from '@/types/contracts'
 
 const messageSource: SourceItem = {
@@ -33,6 +34,48 @@ const structuredSource: SourceItem = {
 }
 
 describe('SourcesBlock', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('loads the full canonical source using the persisted message ordinal', async () => {
+    // 原文尾部不在引用摘录里，点击后必须通过正式接口完整显示。
+    const content = '原消息背景。'.repeat(220) + '尾部问题：岗位偏全栈还是前端？'
+    vi.spyOn(api, 'conversation').mockResolvedValue({
+      conversation_id: 'conversation-1', created_at: '', updated_at: '', scope: null,
+      messages: [{ message_id: 'message-7', ordinal: 7, role: 'assistant', content: '', created_at: '',
+        trace_id: 'trace-1', process_projection: null }],
+    })
+    const context = vi.spyOn(api, 'sourceContext').mockResolvedValue({ messages: [{
+      internal_message_id: 'original-1', session_id: 'session-1', session_display: '讨论组',
+      sender: 'Alice', timestamp: 1000, content, is_target: true,
+    }] })
+    const wrapper = mount(SourcesBlock, {
+      props: { sources: [messageSource], conversationId: 'conversation-1', traceId: 'trace-1' },
+    })
+    await wrapper.get('button').trigger('click')
+    const readButton = wrapper.findAll('button').find((button) => button.text() === '查看完整原消息')!
+    await readButton.trigger('click')
+    await flushPromises()
+
+    expect(context).toHaveBeenCalledWith('conversation-1', 7, 1, 0, 0)
+    expect(wrapper.get('[data-source-content]').text()).toBe(content)
+    await readButton.trigger('click')
+    expect(wrapper.find('[data-source-content]').exists()).toBe(false)
+    await readButton.trigger('click')
+    expect(context).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows an explicit error when the original source cannot be read', async () => {
+    vi.spyOn(api, 'conversation').mockRejectedValue(new Error('本地来源读取失败'))
+    const wrapper = mount(SourcesBlock, {
+      props: { sources: [messageSource], conversationId: 'conversation-1', traceId: 'trace-1' },
+    })
+    await wrapper.get('button').trigger('click')
+    await wrapper.findAll('button')[1]!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('本地来源读取失败')
+    expect(wrapper.find('[data-source-content]').exists()).toBe(false)
+  })
+
   it('starts collapsed, expands complete details, and collapses again', async () => {
     const wrapper = mount(SourcesBlock, { props: { sources: [messageSource, structuredSource] } })
     const button = wrapper.get('button')

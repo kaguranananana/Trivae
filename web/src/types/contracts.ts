@@ -41,6 +41,9 @@ export interface SourceSnapshot {
   timezone: string
   excerpt: string
   excerpt_truncated: boolean
+  // 摘录保留实际原文位置，完整消息由来源查看接口按需读取。
+  excerpt_offset?: number
+  content_total_chars?: number | null
   source_message_id: string | null
   urls: string[]
   forward?: ForwardProvenanceDTO

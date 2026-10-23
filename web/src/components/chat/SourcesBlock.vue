@@ -1,10 +1,41 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { SourceItem } from '@/types/contracts'
+import { api } from '@/api/client'
 
-const props = defineProps<{ sources: SourceItem[] }>()
+const props = defineProps<{ sources: SourceItem[]; conversationId?: string | null; traceId?: string | null }>()
 // 展开状态属于当前 SourcesBlock 实例，避免不同回答或历史 replay 共享 UI 状态。
 const expanded = ref(false)
+// 原文按来源独立展开；只在用户点击时读取本地Canonical消息，不触发模型推理。
+const originals = ref<Record<number, { open: boolean; loading: boolean; error: string | null; content: string | null }>>({})
+
+async function toggleOriginal(index: number): Promise<void> {
+  const prior = originals.value[index]
+  if (prior) {
+    prior.open = !prior.open
+    return
+  }
+  if (!props.conversationId || !props.traceId) return
+  const state = { open: true, loading: true, error: null as string | null, content: null as string | null }
+  originals.value[index] = state
+  try {
+    // 用服务器持久化ordinal定位这一轮，不能把前端列表索引或临时消息ID当成ordinal。
+    const conversation = await api.conversation(props.conversationId)
+    const message = conversation.messages.find((message) => message.role === 'assistant' && message.trace_id === props.traceId)
+    if (!message) throw new Error('这一轮回答尚未保存，无法定位原消息。')
+    const result = await api.sourceContext(props.conversationId, message.ordinal, index, 0, 0)
+    const target = result.messages.find((message) => message.is_target)
+    if (!target) throw new Error('来源读取结果中没有对应的原消息。')
+    // 保存完整正文，不能再次用引用摘录覆盖长消息尾部。
+    state.content = target.content
+  } catch (error) {
+    // 原文读取失败显式展示；现有引用摘录保留，不能假装它就是完整原文。
+    state.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    state.loading = false
+    originals.value[index] = { ...state }
+  }
+}
 
 function formatTimestamp(timestampMs?: number | null): string {
   if (timestampMs === null || timestampMs === undefined) return '未知'
@@ -70,8 +101,28 @@ function toggleExpanded(): void {
               <p v-for="path in item.snapshot.unexpanded_forward_paths" :key="path" class="break-all">{{ path }}</p>
             </div>
             <blockquote v-if="item.snapshot" class="mt-1 border-l-2 border-default pl-2 text-dimmed">
-              “{{ item.snapshot.excerpt }}”<span v-if="item.snapshot.excerpt_truncated">…</span>
+              “{{ item.snapshot.excerpt }}”
             </blockquote>
+            <p v-if="item.snapshot?.excerpt_truncated" class="mt-1 text-dimmed">以上为原消息摘录。</p>
+            <p v-if="item.snapshot?.excerpt_offset" class="mt-1 text-dimmed">
+              摘录从原文第 {{ item.snapshot.excerpt_offset + 1 }} 个字符开始。
+            </p>
+            <template v-if="item.kind === 'message' && conversationId && traceId">
+              <button
+                type="button"
+                class="mt-1 min-h-11 rounded px-2 text-primary underline focus-visible:outline focus-visible:outline-2"
+                :aria-expanded="originals[item.index]?.open ?? false"
+                :aria-busy="originals[item.index]?.loading ?? false"
+                :disabled="originals[item.index]?.loading"
+                @click="toggleOriginal(item.index)"
+              >
+                {{ originals[item.index]?.loading ? '正在读取原消息…' : originals[item.index]?.open ? '收起原消息' : '查看完整原消息' }}
+              </button>
+              <div v-if="originals[item.index]?.open" class="mt-1">
+                <p v-if="originals[item.index]?.error" class="text-error" role="alert">{{ originals[item.index]?.error }}</p>
+                <p v-else-if="originals[item.index]?.content !== null" data-source-content class="whitespace-pre-wrap break-words text-default">{{ originals[item.index]?.content }}</p>
+              </div>
+            </template>
             <div v-else-if="item.kind === 'structured'" class="mt-1 font-mono break-all text-dimmed">
               {{ JSON.stringify(item.value) }}
             </div>

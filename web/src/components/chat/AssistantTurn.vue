@@ -173,7 +173,7 @@ const statusLabel = computed(() => {
       限制：{{ item.limitations.join('; ') }}
     </div>
 
-    <SourcesBlock v-if="item.sources.length > 0" :sources="item.sources" />
+    <SourcesBlock v-if="item.sources.length > 0" :sources="item.sources" :conversation-id="conversationId" :trace-id="item.traceId" />
     <div v-if="showAnswer && !isStreaming" class="answer-actions">
       <button class="copy-answer" :aria-label="copied ? '已复制回答' : '复制回答'" @click="copyAnswer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M15 8V4H4v11h4" /></svg>{{ copied ? '已复制' : '复制回答' }}
