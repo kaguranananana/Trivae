@@ -215,3 +215,10 @@
 - 同题全范围新模型自行limit5000/0+0取8群167/167，再8次补读含3次尾页；3HTTP/2轮completed、Finalizer valid，1899字/8段。投影50,559/200000，剩149,441，0预算省略/0工具错误；旧/新22/28引用按Canonical、转发、作者、时间、实际偏移核对通过。核验脚本初版直接查主表失败，随后识别既有卡片1000字展示省略号；改为正式Canonical读取及明确展示契约，原失败日志保留，未改答案或产品。
 - 两次共6HTTP，累计输入181,792/输出4,090/总185,882；没有Judge/隐式重跑/语义索引重建。新模型没有用到额外第3至6轮或语义补查，不能把效果单归因大预算，亦不证明全库语义穷尽、每条全文或所有有用细节零遗漏；缺失转发仍partial。
 - 完整pytest1266 passed/1 skipped（30.43秒）、Ruff src/tests/scripts、mypy129文件、diff --check通过。Web已重启加载575460a及本机配置，PID85335，库/语义829,397、Plan/Sol ready。报告evaluation/experiments/broad-advice-20261023/report.md；本地完整数据及expanded/answer.md在data/evaluation/broad-advice-20261023/。后续按具体Trace定位剩余遗漏，保留有限预算与透明边界。
+
+## 2026-10-23 · 仓库默认工具轮数统一为六轮
+
+- 用户追问六轮是否改善质量、仓库默认是否应同步。明确已有反问同题两组实际均2工具轮，已观察到100/167→167/167与846→1899字，不能归因新增第4至6轮；按充分检索偏好统一默认，不宣称独立轮数质量收益。
+- bfa3118在limits.py提供DEFAULT_MAX_TOOL_ROUNDS=6，settings.py环境加载/直接构造与openai_adapter.py注入模型共用，.env.example和configuration.md同步。显式较小预算仍优先，8turn/证据预算公式不变；当前Web本来已显式6轮，本轮不额外重启或修改本机配置。
+- 新增真实SDK循环回归先在旧默认3下failed，修后配置/无配置两入口连续6轮工具，第7回合关闭工具并completed，最终答案保留、finalizing仅一次。定向100 passed；首次完整1265 passed/2 failed/1 skipped，两处旧Prompt测试隐含默认3，属于实体锚点/候选注入场景，显式固定原3轮并保留断言，避免把它们耦合到默认策略。
+- 最终完整pytest1267 passed/1 skipped（27.31秒）、Ruff src/tests/scripts、mypy129文件、diff --check通过。0新增真实模型请求/索引修改；原失败及最终日志保存在data/evaluation/default-six-rounds-20261023/。真实第4至6轮是否带来额外质量收益仍需另做单变量对照，未将SDK流程验证包装成质量提升。

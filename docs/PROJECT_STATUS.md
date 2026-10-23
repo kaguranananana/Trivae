@@ -8,6 +8,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-23仓库默认轮数已与本机统一为6（bfa3118）：limits.py提供唯一默认值，环境加载/ModelSettings/注入Runtime及.env.example同步；显式较小轮数仍优先，8turn/证据公式不变。新增真实SDK循环回归先在旧默认3下failed，修后允许六轮工具、第七回合无工具综合completed；两处旧Prompt测试显式固定原3轮，保留原断言。完整pytest1267 passed/1 skipped（27.31秒）、Ruff/mypy通过。0新增真实模型请求，Web原本已显式6轮，本轮无需重启。此次统一是用户偏好的产品配置选择；前一轮同题两组均只用2轮，尚无第4至6轮独立质量收益证据。
+
 - 2026-10-23全部范围综合已调整（575460a）：主题建议/技巧/经验/观点先按Schema最大词法召回、初始0/0邻居，再补长文/回复及具体概念缺口；默认展开问法、用途、条件和注意事项，不需每题声明详细。本机显式证据池125k→200k、工具轮3→6，8turn/128k单次及通用默认公式保留。全范围同题旧首取100/167、846字/6段，新首取8群167/167、1899字/8段；各3HTTP/2工具轮completed/valid，投影23,852→50,559，新余149,441，0预算省略/0工具错误，22/28来源Canonical核对通过。不把改善单归因大预算，未声称语义穷尽/零遗漏；缺失转发仍partial。完整pytest1266 passed/1 skipped、Ruff/mypy通过，Web已重启加载工作提交及本机新预算，库/语义829,397、Plan ready。报告evaluation/experiments/broad-advice-20261023/report.md，完整新回答在本地data/evaluation/broad-advice-20261023/expanded/answer.md。
 
 - 2026-10-23长消息读取已修复（8d74aa8）：get_message_context按原文content_offset/content_limit分页，默认/最大8000字符，公开真实总长与实际投影续读位置；搜索600字预览不变，Host正文页与1000字引用摘录分离，尾页引用位置随codec/Web保存。98dd02b接通来源面板“查看完整原消息”，只读本地Canonical。真实1103字尾段599起504字零生成重放通过；同题自主3HTTP/2轮completed、1555字/8段、30来源切片/时间/范围核对通过，前端/全栈定位、强需求和跨场复盘实际进入答案；证据32,270/125k、余额92,730。后端1266 passed/1 skipped、Ruff/mypy通过，前端71 passed/typecheck/lint/build通过，真实浏览器原文展开可见。Web重启前后当前库/语义均829,397、Plan ready，任务期间库已更新，非冻结语料A/B；不报一般稳定收益或有用信息零遗漏。报告evaluation/experiments/long-message-read-20261023/report.md；最终正文20k/20条Evidence、3轮等未触顶，缺失转发正文/图片/OCR和综合选择仍有边界，总预算不扩大。
