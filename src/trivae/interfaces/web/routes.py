@@ -6,7 +6,7 @@ frontend 不被允许直接访问 SQLite、Retrieval 或 provider。
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from trivae.bootstrap.application import TrivaeApplication
 from trivae.observability.contracts import TraceProjection
@@ -49,8 +49,10 @@ def create_api_router(
         scope_mode: str | None = None,
         session_id: str | None = None,
         limit: int = 50,
+        query: str = "",
+        offset: int = Query(default=0, ge=0),
     ) -> list[dict[str, object]]:
-        # 只接受 scope_mode/session_id/limit；其他 query params 不被读取，
+        # 列表只接受范围、文本搜索与分页；其他 query params 不被读取，
         # ExecutionScope 的时间/容量字段无法从列表接口穿透。
         bounded = max(1, min(limit, MAX_CONVERSATION_LIST_LIMIT))
         return conversation_routes.list_conversations(
@@ -58,6 +60,8 @@ def create_api_router(
             scope_mode=scope_mode,
             session_id=session_id,
             limit=bounded,
+            query=query,
+            offset=offset,
         )
 
     @router.post("/conversations", status_code=201)

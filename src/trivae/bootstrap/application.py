@@ -388,6 +388,9 @@ class TrivaeApplication:
         self,
         limit: int = 20,
         selector: ConversationScopeSelector | None = None,
+        *,
+        query: str = "",
+        offset: int = 0,
     ) -> tuple[ConversationSummary, ...]:
         """通过 Application facade 读取 bounded conversation history metadata。
 
@@ -396,7 +399,7 @@ class TrivaeApplication:
         """
 
         self._ensure_open()
-        return self.conversation_store.list_summaries(limit, selector=selector)
+        return self.conversation_store.list_summaries(limit, selector=selector, query=query, offset=offset)
 
     def rename_conversation(self, conversation_id: str, title: str) -> Conversation:
         """通过 Application facade 显式 rename 一个 AI conversation。"""

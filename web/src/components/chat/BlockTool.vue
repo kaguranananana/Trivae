@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { toolLabel } from '@/utils/presentation'
 import type { ProcessBlock } from '@/stores/chat'
 import type { ToolResultItem, ToolResultProjection } from '@/types/contracts'
 
@@ -14,21 +15,21 @@ const projection = computed<ToolResultProjection | null>(() => props.block.resul
 const result = computed(() => projection.value?.result ?? null)
 
 const statusLabel = computed(() => {
-  if (props.block.status === 'running') return 'running…'
-  if (props.block.status === 'failed') return 'failed'
+  if (props.block.status === 'running') return '执行中…'
+  if (props.block.status === 'failed') return '失败'
   const summaryStatus = (props.block.resultSummary?.['status'] as string | undefined) ?? null
   // partial/truncated 必须如实展示，不全部染绿。
   if (props.block.retrieval) {
     const partial = props.block.retrieval['partial'] === true
     const truncated = props.block.retrieval['truncated'] === true
-    if (partial || truncated) return 'completed with partial result'
+    if (partial || truncated) return '已完成（部分结果）'
   }
-  if (summaryStatus === 'partial') return 'completed with partial result'
-  return props.block.status === 'completed' ? 'completed' : String(props.block.status)
+  if (summaryStatus === 'partial') return '已完成（部分结果）'
+  return props.block.status === 'completed' ? '已完成' : String(props.block.status)
 })
 
 const statusTone = computed(() =>
-  props.block.status === 'failed' || statusLabel.value.includes('partial')
+  props.block.status === 'failed' || statusLabel.value.includes('部分')
     ? 'text-warning'
     : props.block.status === 'running'
       ? 'text-primary'
@@ -53,16 +54,16 @@ const displayLine = computed(() => {
 const retrievalRows = computed(() => {
   if (!props.block.retrieval) return []
   const labels: Record<string, string> = {
-    query: 'Query',
-    candidate_count: 'Candidates',
-    total_hits: 'Total hits',
-    returned_messages: 'Returned',
-    expanded_count: 'Context expanded',
-    coverage: 'Coverage',
-    partial: 'Partial',
-    truncated: 'Truncated',
-    latency_ms: 'Duration',
-    duration_ms: 'Duration',
+    query: '查询',
+    candidate_count: '候选数',
+    total_hits: '命中数',
+    returned_messages: '返回消息',
+    expanded_count: '上下文消息',
+    coverage: '覆盖情况',
+    partial: '部分结果',
+    truncated: '截断',
+    latency_ms: '耗时',
+    duration_ms: '耗时',
   }
   return Object.entries(props.block.retrieval)
     .filter(([key]) => labels[key] !== undefined)
@@ -77,9 +78,9 @@ function formatTimestamp(timestamp?: number): string {
 
 <template>
   <div class="rounded-lg border border-default px-3 py-2 text-xs">
-    <button class="flex w-full items-center gap-2 text-left" @click="expanded = !expanded">
+    <button class="flex w-full items-center gap-2 text-left" :aria-expanded="expanded" @click="expanded = !expanded">
       <span class="font-mono text-dimmed">{{ expanded ? '▼' : '▶' }}</span>
-      <span class="font-mono font-semibold text-default">{{ block.toolName ?? 'tool' }}</span>
+      <span class="font-mono font-semibold text-default">{{ toolLabel(block.toolName ?? '工具') }}</span>
       <span :class="statusTone">{{ statusLabel }}</span>
       <span v-if="block.errorCode" class="font-mono text-error">[{{ block.errorCode }}]</span>
       <span v-if="block.durationMs !== null && block.durationMs !== undefined" class="ml-auto text-dimmed">
@@ -90,13 +91,13 @@ function formatTimestamp(timestamp?: number): string {
     <div v-if="expanded" class="mt-2 space-y-2">
       <!-- Arguments -->
       <div v-if="block.arguments">
-        <div class="mb-1 text-dimmed">Arguments</div>
+        <div class="mb-1 text-dimmed">工具参数 · {{ block.toolName }}</div>
         <pre class="max-h-48 overflow-auto rounded bg-elevated p-2 font-mono">{{ JSON.stringify(block.arguments, null, 2) }}</pre>
       </div>
 
       <!-- Retrieval stats -->
       <div v-if="retrievalRows.length > 0" class="rounded border border-default/60 p-2">
-        <div class="mb-1 text-dimmed">Retrieval</div>
+        <div class="mb-1 text-dimmed">检索详情</div>
         <div class="grid grid-cols-2 gap-x-4 gap-y-0.5">
           <div v-for="row in retrievalRows" :key="row.key" class="flex justify-between gap-2">
             <span class="text-dimmed">{{ row.label }}</span>
@@ -108,7 +109,7 @@ function formatTimestamp(timestamp?: number): string {
       <!-- 结构化 Result -->
       <div v-if="result && result.item_kind !== 'none'">
         <div class="mb-1 flex items-center justify-between">
-          <span class="text-dimmed">Result</span>
+          <span class="text-dimmed">结果</span>
           <span v-if="items.length > 0" class="text-dimmed">{{ displayLine }}</span>
         </div>
 

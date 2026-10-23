@@ -69,6 +69,22 @@ const streamLines: object[] = [
 ]
 
 describe('chat store stream routing', () => {
+  it('keeps the latest navigation when earlier detail responses arrive late', async () => {
+    setActivePinia(createPinia())
+    // A先请求、B后请求，但B先完成；最终仍应显示B。
+    let resolveA!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const id = String(input).split('/').pop()
+      if (id === 'a') return new Promise<Response>((resolve) => { resolveA = resolve })
+      return Promise.resolve(new Response(JSON.stringify({ ...createdConversation, conversation_id: id, messages: [] })))
+    }))
+    const chat = useChatStore()
+    const first = chat.openConversation('a')
+    await chat.openConversation('b')
+    resolveA(new Response(JSON.stringify({ ...createdConversation, conversation_id: 'a', messages: [] })))
+    await first
+    expect(chat.currentKey).toBe('b')
+  })
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {

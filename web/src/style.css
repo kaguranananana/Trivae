@@ -160,3 +160,46 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .trace-content code { overflow-wrap: anywhere; }
 .trace-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .trace-actions button { background: #fff; border: 1px solid var(--chat-border); border-radius: 6px; padding: 5px 8px; }
+
+/* 来源在独立面板内核对，关闭后正文位置与键盘焦点都保持。 */
+.source-dialog { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(540px, 100vw); max-width: none; height: 100dvh; max-height: 100dvh; padding: 0; border: 0; border-left: 1px solid var(--chat-border); background: #fff; color: var(--chat-ink); overflow: hidden; box-shadow: -12px 0 48px #20252b15; }
+.source-dialog[open] { display: flex; flex-direction: column; }
+.source-dialog::backdrop { background: #20252b55; }
+.source-panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 12px; flex-shrink: 0; }
+.source-panel-header h2 { font-size: 18px; font-weight: 600; margin: 0; }
+.source-panel-header h2 span { color: var(--chat-muted); font-size: 14px; margin-left: 5px; }
+.source-panel-header p { font-size: 12px; color: var(--chat-muted); margin-top: 6px; }
+.source-close, .source-reread, .retry-list, .load-more { min-height: 44px; border: 1px solid var(--chat-border); background: #fff; border-radius: 8px; padding: 8px 12px; font-size: 13px; flex-shrink: 0; }
+.source-close:hover, .source-reread:hover, .retry-list:hover, .load-more:hover { background: var(--chat-sidebar); }
+.source-search { padding: 0 20px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--chat-muted); }
+.source-search input { border: 1px solid var(--chat-border); border-radius: 8px; padding: 10px; font-size: 14px; color: var(--chat-ink); }
+.source-panel-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px max(20px, env(safe-area-inset-bottom)); flex: 1; min-height: 0; }
+.source-card { border: 1px solid var(--chat-border); border-radius: 12px; padding: 14px; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; scroll-margin: 8px; }
+.source-selected { border-color: var(--ui-primary); background: #f7faf8; }
+.source-excerpt { font-size: 14px; line-height: 1.85; white-space: pre-wrap; border-left: 2px solid #b7d7cd; padding-left: 10px; margin: 12px 0 4px; }
+.source-card [data-source-content] { font-size: 14px; line-height: 1.85; }
+.source-error { margin-top: 8px; }
+.source-reread { margin-top: 6px; }
+.citation-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--chat-muted); font-size: 12px; margin: 6px 0 16px; }
+.citation-links button { color: var(--ui-primary); border: 1px solid #d5e5df; background: #f7faf8; border-radius: 6px; padding: 4px 8px; min-width: 34px; min-height: 34px; }
+.citation-links button:hover { background: #e8f3ef; border-color: var(--ui-primary); }
+.answer-limitations { font-size: 13px; line-height: 1.75; margin-top: 20px; border-left: 2px solid #cbd3da; padding-left: 12px; color: #58636f; }
+.answer-limitations > span { font-weight: 550; }
+.answer-limitations ul { padding-left: 18px; list-style: disc; }
+.load-more { width: 100%; margin-top: 8px; }
+.retry-list { display: block; margin-top: 6px; }
+/* 触摸热区优先保证常用导航和发送操作，正文不被紧凑按钮挤压。 */
+.icon-button, .send-button { width: 44px; height: 44px; }
+.scope-option, .copy-answer, .trace-actions button { min-height: 44px; }
+.chat-scroll, .scope-list, .history-list { overscroll-behavior: contain; }
+@media (max-width: 760px) {
+  .source-dialog { inset: auto 0 0; width: 100%; height: 90dvh; border-radius: 18px 18px 0 0; }
+  .source-panel-header { padding: 16px 16px 10px; }
+  .source-panel-scroll { padding-left: 12px; padding-right: 12px; }
+  .source-search { padding-left: 16px; padding-right: 16px; }
+  .source-search input { font-size: 16px; }
+  .citation-links button, .conversation-actions button { min-height: 44px; min-width: 44px; }
+  .composer-hint { font-size: 11px; }
+  .composer-context { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .animate-pulse { animation: none; } }

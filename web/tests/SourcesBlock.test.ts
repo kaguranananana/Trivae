@@ -36,6 +36,44 @@ const structuredSource: SourceItem = {
 describe('SourcesBlock', () => {
   afterEach(() => vi.restoreAllMocks())
 
+  it('uses the known ordinal for multiple sources without refetching conversation history', async () => {
+    const conversation = vi.spyOn(api, 'conversation')
+    vi.spyOn(api, 'sourceContext').mockResolvedValue({ messages: [{ internal_message_id: 'm', session_id: 's', session_display: '群', sender: '作者', timestamp: 1, content: '原文', is_target: true }] })
+    const wrapper = mount(SourcesBlock, { props: { sources: [messageSource, { ...messageSource, index: 2 }], conversationId: 'c', traceId: 't', messageOrdinal: 7 } })
+    await wrapper.get('button').trigger('click')
+    for (const button of wrapper.findAll('button').filter((button) => button.text() === '查看完整原消息')) {
+      await button.trigger('click')
+      await flushPromises()
+    }
+    expect(conversation).not.toHaveBeenCalled()
+    expect(api.sourceContext).toHaveBeenCalledWith('c', 7, 1, 0, 0)
+    expect(api.sourceContext).toHaveBeenCalledWith('c', 7, 2, 0, 0)
+    wrapper.unmount()
+  })
+
+  it('allows an explicit reread after a source request fails', async () => {
+    // 已观察到的失败状态不能永久缓存；只由用户点击重读，不自动重试。
+    vi.spyOn(api, 'conversation').mockResolvedValue({
+      conversation_id: 'c1', created_at: '', updated_at: '', scope: null,
+      messages: [{ message_id: 'm1', ordinal: 7, role: 'assistant', content: '', created_at: '', trace_id: 't1', process_projection: null }],
+    })
+    const context = vi.spyOn(api, 'sourceContext').mockRejectedValueOnce(new Error('读取中断')).mockResolvedValue({
+      messages: [{ internal_message_id: 'm', session_id: 's', session_display: '群', sender: '作者', timestamp: 1, content: '重读成功的原文', is_target: true }],
+    })
+    const wrapper = mount(SourcesBlock, { props: { sources: [messageSource], conversationId: 'c1', traceId: 't1' } })
+    await wrapper.get('button').trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === '查看完整原消息')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('读取中断')
+    const retry = wrapper.findAll('button').find((button) => button.text() === '重新读取')
+    expect(retry).toBeDefined()
+    await retry!.trigger('click')
+    await flushPromises()
+    expect(context).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-source-content]').text()).toBe('重读成功的原文')
+    wrapper.unmount()
+  })
+
   it('loads the full canonical source using the persisted message ordinal', async () => {
     // 原文尾部不在引用摘录里，点击后必须通过正式接口完整显示。
     const content = '原消息背景。'.repeat(220) + '尾部问题：岗位偏全栈还是前端？'
@@ -70,7 +108,7 @@ describe('SourcesBlock', () => {
       props: { sources: [messageSource], conversationId: 'conversation-1', traceId: 'trace-1' },
     })
     await wrapper.get('button').trigger('click')
-    await wrapper.findAll('button')[1]!.trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === '查看完整原消息')!.trigger('click')
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('本地来源读取失败')
     expect(wrapper.find('[data-source-content]').exists()).toBe(false)
@@ -82,12 +120,12 @@ describe('SourcesBlock', () => {
 
     expect(button.attributes('type')).toBe('button')
     expect(button.attributes('aria-expanded')).toBe('false')
-    expect(button.text()).toBe('▶ Sources · 2')
+    expect(button.text()).toBe('▶ 来源 · 2')
     expect(wrapper.find('ol').exists()).toBe(false)
 
     await button.trigger('click')
     expect(button.attributes('aria-expanded')).toBe('true')
-    expect(button.text()).toBe('▼ Sources · 2')
+    expect(button.text()).toBe('▼ 来源 · 2')
     expect(wrapper.find('ol').text()).toContain('Alice')
     expect(wrapper.find('ol').text()).toContain('GitHub 讨论组')
     expect(wrapper.find('ol').text()).toContain('canonical source excerpt')

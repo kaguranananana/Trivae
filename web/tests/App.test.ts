@@ -38,6 +38,8 @@ function detail(summaryDto: ConversationSummaryDTO) {
 // 输入框现在提供聚焦接口，集成测试使用真实组件验证导航后的启用与聚焦。
 describe('App source scope navigation', () => {
   beforeEach(() => {
+    // 导航现在真实写入历史，测试间隔离URL，刷新恢复测试自行设置目标。
+    window.history.replaceState(null, '', '/')
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url === '/api/source-sessions') return new Response(JSON.stringify(catalog))
@@ -54,6 +56,46 @@ describe('App source scope navigation', () => {
   })
 
   afterEach(() => vi.unstubAllGlobals())
+
+  it('restores scope drafts on browser history navigation without pushing another entry', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    await flushPromises()
+    await wrapper.get('[data-testid="welcome-start"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('.conversation-link').trigger('click')
+    await flushPromises()
+    expect(useChatStore(pinia).currentKey).toBe('conv-all')
+    const length = window.history.length
+    // 模拟浏览器popstate携带的目标URL；处理程序不得额外pushState。
+    window.history.replaceState(null, '', '/?scope=all')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    await flushPromises()
+    expect(useChatStore(pinia).currentKey).toBe(draftBufferKey({ mode: 'all' }))
+    expect(window.history.length).toBe(length)
+    wrapper.unmount()
+  })
+
+  it('keeps the first question when conversation creation fails', async () => {
+    // 走真实 App→Composer→Store，故障只注入正式创建接口。
+    const originalFetch = fetch
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/conversations' && init?.method === 'POST') {
+        return Promise.resolve(new Response(JSON.stringify({ detail: '创建失败，请稍后再试' }), { status: 500 }))
+      }
+      return originalFetch(input, init)
+    }))
+    const wrapper = mount(App, { global: { plugins: [createPinia()] } })
+    await flushPromises()
+    await wrapper.get('[data-testid="welcome-start"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('textarea').setValue('不能丢失的长问题')
+    await wrapper.get('textarea').trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('创建失败')
+    expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('不能丢失的长问题')
+    wrapper.unmount()
+  })
 
   it('starts unselected: no conversation list request, empty state, and disabled composer', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

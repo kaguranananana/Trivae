@@ -3,7 +3,8 @@
  * AI Conversation 侧栏：只展示当前 Source Scope 下的对话（today/yesterday/earlier）。
  * 列表已由后端按 scope 过滤；这里不再做 scope 分组或客户端过滤。
  */
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
@@ -19,7 +20,7 @@ const chat = useChatStore()
 const conversationsStore = useConversationsStore()
 const scopeStore = useScopeStore()
 const { currentKey } = storeToRefs(chat)
-const { dateGroups, conversations, loaded, loading } = storeToRefs(conversationsStore)
+const { dateGroups, conversations, loaded, loading, query, error, hasMore } = storeToRefs(conversationsStore)
 const { scope, selectedSourceScope } = storeToRefs(scopeStore)
 
 /** 未选择 Source Scope 时列表区显示引导，而不是空的对话列表。 */
@@ -32,14 +33,12 @@ const renameInput = ref<HTMLInputElement[] | null>(null)
 const renameSaving = ref(false)
 const search = ref('')
 const actionError = ref('')
-/** 只搜索当前范围下已加载的对话，不请求或混入其他范围历史。 */
-const filteredGroups = computed(() => {
-  const query = search.value.trim().toLocaleLowerCase()
-  return dateGroups.value.map((group) => ({
-    ...group,
-    conversations: group.conversations.filter((item) => `${item.title} ${item.preview ?? ''}`.toLocaleLowerCase().includes(query)),
-  })).filter((group) => group.conversations.length > 0)
-})
+// 输入停顿后请求正式全文搜索，范围/刷新后的查询条件也同步回输入框。
+watch(query, (value) => { search.value = value })
+watchDebounced(search, (value) => {
+  if (value.trim() !== query.value) void conversationsStore.search(value)
+}, { debounce: 250 })
+const filteredGroups = dateGroups
 
 async function confirmRename(conversationId: string): Promise<void> {
   // Enter 成功后再触发 blur 时不重复请求。
@@ -89,8 +88,8 @@ function startRename(conversationId: string, title: string): void {
   <section class="history-section" data-testid="conversation-sidebar" aria-label="AI 对话">
     <div class="new-chat-wrap"><button class="new-chat-button" :disabled="!composerReady" data-testid="new-chat" @click="emit('newChat')"><span aria-hidden="true">＋</span> 新建对话<span class="ml-auto" aria-hidden="true">↗</span></button></div>
     <div class="sidebar-section-heading">你的对话</div>
-    <label v-if="hasSelection" class="sidebar-search"><span aria-hidden="true">⌕</span><input v-model="search" aria-label="搜索当前范围内的对话" placeholder="搜索当前范围内的对话" /></label>
-    <div v-if="actionError" class="sidebar-hint text-error" role="alert">{{ actionError }}</div>
+    <label v-if="hasSelection" class="sidebar-search"><span aria-hidden="true">⌕</span><input v-model="search" aria-label="搜索当前范围内的对话" placeholder="搜索全部历史标题和正文…" autocomplete="off" /></label>
+    <div v-if="actionError || error" class="sidebar-hint text-error" role="alert">{{ actionError || error }}<button v-if="error" class="retry-list" @click="conversationsStore.search(search)">重新加载</button></div>
     <nav class="history-list" aria-label="历史对话">
       <template v-if="hasSelection">
         <div v-for="dateGroup in filteredGroups" :key="dateGroup.label" class="date-group" data-testid="date-group">
@@ -108,9 +107,10 @@ function startRename(conversationId: string, title: string): void {
             </template>
           </div>
         </div>
-        <div v-if="loaded && conversations.length === 0" class="sidebar-hint" data-testid="empty-list">该范围下还没有 AI 对话记录。</div>
+        <div v-if="loaded && conversations.length === 0 && !query" class="sidebar-hint" data-testid="empty-list">该范围下还没有 AI 对话记录。</div>
         <div v-else-if="loading" class="sidebar-hint" data-testid="list-loading">加载中…</div>
-        <div v-else-if="search.trim() && !filteredGroups.length" class="sidebar-hint">没有匹配的对话</div>
+        <div v-else-if="query && !filteredGroups.length && !loading && !error" class="sidebar-hint">没有匹配的对话</div>
+        <button v-if="hasMore" class="load-more" :disabled="loading" @click="conversationsStore.loadMore()">{{ loading ? '加载中…' : '加载更多对话' }}</button>
       </template>
       <div v-else class="sidebar-hint" data-testid="unselected-hint">选择一个聊天范围以查看 AI 对话。</div>
     </nav>

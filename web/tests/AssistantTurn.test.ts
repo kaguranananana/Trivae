@@ -27,6 +27,22 @@ function assistantItem(sources: AssistantItem['sources']): AssistantItem {
 
 describe('AssistantTurn trusted URL wiring', () => {
   afterEach(() => vi.restoreAllMocks())
+
+  it('opens the bound source and returns focus to the paragraph citation', async () => {
+    const item = assistantItem([{ index: 2, kind: 'structured', evidence_ids: ['e2'], relations: ['supports'], locator_kind: 'aggregate', locator: 'count', value: 2 }])
+    item.answer = '两条消息。'
+    item.answerBlocks = [{ block_id: 'b1', text: item.answer, source_indices: [2] }]
+    const wrapper = mount(AssistantTurn, { attachTo: document.body, props: { item, conversationId: null } })
+    const citation = wrapper.get('[aria-label="查看来源 2"]')
+    await citation.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('dialog').attributes('open')).toBeDefined()
+    expect(wrapper.get('.source-selected').text()).toContain('[2]')
+    await wrapper.get('[aria-label="关闭来源面板，返回正文"]').trigger('click')
+    expect(document.activeElement).toBe(citation.element)
+    expect(wrapper.get('dialog').attributes('open')).toBeUndefined()
+    wrapper.unmount()
+  })
   it('derives trusted URLs from source snapshots instead of answer text', () => {
     const wrapper = mount(AssistantTurn, {
       props: {

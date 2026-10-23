@@ -21,6 +21,7 @@ import BlockTool from '@/components/chat/BlockTool.vue'
 import SourcesBlock from '@/components/chat/SourcesBlock.vue'
 import TraceFooter from '@/components/chat/TraceFooter.vue'
 import { renderMarkdown } from '@/utils/markdown'
+import { readableLimitations } from '@/utils/presentation'
 
 const props = defineProps<{
   item: AssistantItem
@@ -84,6 +85,9 @@ const trustedUrls = computed(() => {
 
 const answerHtml = computed(() => renderMarkdown(props.item.answer, trustedUrls.value))
 const showAnswer = computed(() => props.item.answer.length > 0)
+const sourcesPanel = ref<InstanceType<typeof SourcesBlock> | null>(null)
+const renderedBlocks = computed(() => props.item.answerBlocks?.map((block) => ({ ...block, html: renderMarkdown(block.text, trustedUrls.value) })) ?? [])
+const limitations = computed(() => readableLimitations(props.item.limitations))
 const copied = ref(false)
 const copyError = ref('')
 // 回答流式更新后取消旧复制提示，避免声称新内容已被复制。
@@ -163,23 +167,31 @@ const statusLabel = computed(() => {
     </template>
 
     <!-- 最终回答始终位于过程分组之外，方便阅读和复制。 -->
-    <div v-if="showAnswer" class="md-body mt-3" v-html="answerHtml" />
+    <div v-if="showAnswer && !isStreaming && renderedBlocks.length" class="answer-blocks">
+      <section v-for="block in renderedBlocks" :key="block.block_id" class="answer-block">
+        <div class="md-body mt-3" v-html="block.html" />
+        <div v-if="block.source_indices.length" class="citation-links" aria-label="本段来源">
+          <span>来源</span><button v-for="index in block.source_indices" :key="index" :aria-label="`查看来源 ${index}`" @click="sourcesPanel?.openSource(index, $event.currentTarget as HTMLElement)">[{{ index }}]</button>
+        </div>
+      </section>
+    </div>
+    <div v-else-if="showAnswer" class="md-body mt-3" v-html="answerHtml" />
 
     <div v-if="statusLabel" class="mt-2 text-xs text-error">
       {{ statusLabel }}
       <span v-if="item.interrupted">（页面刷新导致执行中断）</span>
     </div>
-    <div v-if="item.limitations.length > 0" class="mt-1 text-xs text-dimmed">
-      限制：{{ item.limitations.join('; ') }}
+    <div v-if="limitations.length" class="answer-limitations">
+      <span>阅读提示</span><ul><li v-for="limitation in limitations" :key="limitation">{{ limitation }}</li></ul>
     </div>
 
-    <SourcesBlock v-if="item.sources.length > 0" :sources="item.sources" :conversation-id="conversationId" :trace-id="item.traceId" />
+    <SourcesBlock v-if="item.sources.length > 0" ref="sourcesPanel" :sources="item.sources" :conversation-id="conversationId" :trace-id="item.traceId" :message-ordinal="item.messageOrdinal" />
     <div v-if="showAnswer && !isStreaming" class="answer-actions">
       <button class="copy-answer" :aria-label="copied ? '已复制回答' : '复制回答'" @click="copyAnswer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M15 8V4H4v11h4" /></svg>{{ copied ? '已复制' : '复制回答' }}
       </button>
       <span v-if="copyError" class="text-xs text-error" role="alert">{{ copyError }}</span>
     </div>
-    <TraceFooter v-if="item.traceId" :trace-id="item.traceId" :duration-ms="item.durationMs" />
+    <TraceFooter v-if="item.traceId" :trace-id="item.traceId" :duration-ms="item.durationMs" :limitations="item.limitations" />
   </article>
 </template>

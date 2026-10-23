@@ -4,32 +4,32 @@ import { storeToRefs } from 'pinia'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import { useScopeStore } from '@/stores/scope'
-import { onKeyStroke, useMediaQuery, useResizeObserver } from '@vueuse/core'
+import { onKeyStroke, useMediaQuery, useStorage, useEventListener } from '@vueuse/core'
 import AssistantTurn from '@/components/chat/AssistantTurn.vue'
 import ChatComposer from '@/components/composer/ChatComposer.vue'
 import ConversationSidebar from '@/components/sidebar/ConversationSidebar.vue'
 import SourceScopeSidebar from '@/components/sidebar/SourceScopeSidebar.vue'
 import { useFollowTail } from '@/composables/useFollowTail'
 import { describeScope, navigationSelectionsEqual, type SelectedSourceScope } from '@/utils/scope'
-import { readConversationIdFromUrl, writeConversationIdToUrl } from '@/utils/url'
+import { readConversationIdFromUrl, readScopeFromUrl, writeConversationIdToUrl, writeNavigationToUrl } from '@/utils/url'
 
 const chat = useChatStore()
 const conversationsStore = useConversationsStore()
 const scopeStore = useScopeStore()
-const { currentBuffer, currentKey } = storeToRefs(chat)
+const { currentBuffer } = storeToRefs(chat)
 const { selectedSourceScope } = storeToRefs(scopeStore)
 
 const scrollContainer = ref<HTMLElement | null>(null)
-const { following, scrollToBottom, onContentMutated } = useFollowTail(scrollContainer)
+const { following, scrollToBottom, onContentMutated } = useFollowTail(scrollContainer, currentBuffer)
 
-const conversationContent = ref<HTMLElement | null>(null)
-// 跟随真实内容高度，思考文本、工具详情和回答展开都能触发，而非只观察消息数量。
-useResizeObserver(conversationContent, () => onContentMutated())
+// 只观察模型写入的数据，用户展开过程或原文不会触发滚到底部。
+watch(() => currentBuffer.value?.items, () => onContentMutated(), { deep: true, flush: 'post' })
 
 const readinessText = ref('')
 const navigationError = ref('')
 const sidebarOpen = ref(false)
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = useStorage('trivae:sidebar-collapsed', false)
+let navigationGeneration = 0
 const isMobile = useMediaQuery('(max-width: 760px)')
 const navigation = ref<HTMLElement | null>(null)
 const sidebarClose = ref<HTMLButtonElement | null>(null)
@@ -50,7 +50,7 @@ function fillSuggestion(query: string): void {
 async function focusComposer(): Promise<void> {
   sidebarOpen.value = false
   await nextTick()
-  composer.value?.focus()
+  if (!isMobile.value) composer.value?.focus()
 }
 
 /** 手机抽屉打开后把键盘焦点交给关闭按钮，避免停留在被遮住的主区。 */
@@ -61,6 +61,11 @@ watch(sidebarOpen, async (open) => {
   }
 })
 /** 手动关闭导航才恢复开关焦点，选择范围完成后由输入框接管焦点。 */
+function collapseSidebar(): void {
+  // 手机抽屉关闭不改写桌面折叠偏好。
+  if (!isMobile.value) sidebarCollapsed.value = true
+  closeSidebar()
+}
 function closeSidebar(): void {
   sidebarOpen.value = false
   void nextTick(() => sidebarToggle.value?.focus())
@@ -77,9 +82,6 @@ onKeyStroke('Tab', (event) => {
   }
 })
 
-/** 主区切换在 DOM 更新后滚到底部，不影响后台会话的 stream。 */
-watch(currentKey, () => scrollToBottom(), { flush: 'post' })
-
 /**
  * Header 只读摘要：读取当前 buffer 的 immutable scope（包括 legacy null 的
  * 「未标记范围」）；无 buffer 时投影 navigation selection。
@@ -91,34 +93,45 @@ const currentScopeDisplay = computed(() => {
 })
 
 /** Composer 只在绑定合法 scope 的 buffer 上可用；unselected 与 legacy/未知历史都禁用。 */
-const composerEnabled = computed(() => currentKey.value !== null && currentBuffer.value?.scope != null)
+const composerEnabled = computed(() => currentBuffer.value?.scope != null)
+
+/** 刷新和前进/后退共用同一恢复路径，不产生新的历史记录。 */
+async function restoreUrl(): Promise<void> {
+  const conversationId = readConversationIdFromUrl()
+  if (conversationId) {
+    await handleOpen(conversationId, true)
+    return
+  }
+  const generation = ++navigationGeneration
+  navigationError.value = ''
+  try {
+    chat.clearDisplayed()
+    const selection = readScopeFromUrl()
+    scopeStore.select(selection)
+    const scope = scopeStore.scope
+    if (scope) chat.newChat(scope)
+    await conversationsStore.refresh(selection)
+  } catch (error) {
+    // URL指向不存在的会话时保留错误和地址，便于用户纠正或后退。
+    if (generation === navigationGeneration) navigationError.value = error instanceof Error ? error.message : String(error)
+  }
+}
 
 onMounted(async () => {
   await scopeStore.load()
-  if (scopeStore.catalogError) {
-    readinessText.value = `聊天范围加载失败：${scopeStore.catalogError}`
-  }
-  // 刷新恢复：先读 URL conversation detail、恢复合法 navigation scope，
-  // 再请求对应 scope 的列表；无 conversation id 时保持未选择，不自动打开最近项。
-  const conversationId = readConversationIdFromUrl()
-  if (conversationId) {
-    try {
-      await openConversation(conversationId, { markInterrupted: true })
-      return
-    } catch (error) {
-      readinessText.value = error instanceof Error ? error.message : String(error)
-      writeConversationIdToUrl(null)
-    }
-  }
-  await conversationsStore.refresh(scopeStore.selectedSourceScope)
+  if (scopeStore.catalogError) readinessText.value = `聊天范围加载失败：${scopeStore.catalogError}`
+  await restoreUrl()
 })
+useEventListener(window, 'popstate', () => { void restoreUrl() })
 
-onKeyStroke('Escape', () => {
+onKeyStroke('Escape', (event) => {
+  // 原生来源对话框自行处理Esc，不能顺带终止后台生成。
+  if ((event.target as HTMLElement)?.closest('dialog')) return
   if (sidebarOpen.value) closeSidebar()
   else if (chat.activeStreamRequestId) void chat.stopCurrent()
 })
 
-async function handleSend(query: string): Promise<void> {
+async function handleSend(query: string, accepted: () => void): Promise<void> {
   // 请求处理中及当前回答生成中保留草稿，阻止重复提交。
   if (chat.busy || chat.activeStreamRequestId) return
   await chat.send(
@@ -130,7 +143,11 @@ async function handleSend(query: string): Promise<void> {
         navigationError.value = error instanceof Error ? error.message : String(error)
       })
     },
-    (conversationId) => writeConversationIdToUrl(conversationId),
+    (conversationId) => {
+      // 创建期间可能已切换范围，旧请求不能改写当前URL。
+      if (chat.currentBuffer?.conversationId === conversationId) writeConversationIdToUrl(conversationId)
+    },
+    accepted,
   )
 }
 
@@ -140,59 +157,68 @@ async function handleScopeSelect(selection: SelectedSourceScope): Promise<void> 
     await focusComposer()
     return
   }
+  const generation = ++navigationGeneration
   navigationError.value = ''
   scopeStore.select(selection)
   chat.clearDisplayed()
-  writeConversationIdToUrl(null)
+  writeNavigationToUrl(null, selection)
+  const scope = scopeStore.scope
+  if (scope !== null) chat.newChat(scope)
   try {
     await conversationsStore.refresh(selection)
   } catch (error) {
     // 列表失败显式提示；已选择的范围仍可用于创建新对话。
-    navigationError.value = error instanceof Error ? error.message : String(error)
+    if (generation === navigationGeneration) navigationError.value = error instanceof Error ? error.message : String(error)
   }
-  // 进入新范围的 draft 空状态；A 的后台 stream 继续写 A buffer。
-  const scope = scopeStore.scope
-  if (scope !== null) chat.newChat(scope)
-  await focusComposer()
+  if (generation === navigationGeneration) await focusComposer()
 }
 
 async function openConversation(
   conversationId: string,
-  options?: { markInterrupted?: boolean },
-): Promise<void> {
+  options?: { markInterrupted?: boolean; fromHistory?: boolean },
+): Promise<boolean> {
+  const generation = ++navigationGeneration
   const previousSelection = selectedSourceScope.value
-  await chat.openConversation(conversationId)
+  const opened = await chat.openConversation(conversationId)
+  if (!opened || generation !== navigationGeneration) return false
   if (options?.markInterrupted) chat.markInterrupted(conversationId)
   // 按 immutable scope 恢复合法导航；legacy null / multi / 未知 session 恢复为 null。
   const restored = scopeStore.restoreFromConversationScope(chat.currentBuffer?.scope ?? null)
-  writeConversationIdToUrl(conversationId)
+  if (!options?.fromHistory) writeNavigationToUrl(conversationId, restored)
   if (!navigationSelectionsEqual(previousSelection, restored)) {
     await conversationsStore.refresh(restored)
   }
+  return generation === navigationGeneration
 }
 
 /** 从侧栏打开失败时显示真实错误，保留当前对话供用户继续操作。 */
-async function handleOpen(conversationId: string): Promise<void> {
+async function handleOpen(conversationId: string, fromHistory = false): Promise<void> {
+  const generation = navigationGeneration + 1
   navigationError.value = ''
   try {
-    await openConversation(conversationId)
-    await focusComposer()
+    if (await openConversation(conversationId, { fromHistory })) {
+      sidebarOpen.value = false
+      // 历史恢复保持原阅读位置，不主动唤起手机键盘。
+      if (!fromHistory) await focusComposer()
+    }
   } catch (error) {
-    navigationError.value = error instanceof Error ? error.message : String(error)
+    if (generation === navigationGeneration) navigationError.value = error instanceof Error ? error.message : String(error)
   }
 }
 
 function handleNewChat(): void {
+  navigationGeneration += 1
   const scope = scopeStore.scope
   if (scope === null) return
   chat.newChat(scope)
-  writeConversationIdToUrl(null)
+  writeNavigationToUrl(null, selectedSourceScope.value)
   void focusComposer()
 }
 
 function handleDeleted(conversationId: string): void {
+  navigationGeneration += 1
   if (chat.currentKey === conversationId) chat.closeBuffer(conversationId)
-  writeConversationIdToUrl(null)
+  writeNavigationToUrl(null, selectedSourceScope.value)
   const scope = scopeStore.scope
   if (scope !== null) chat.newChat(scope)
 }
@@ -205,7 +231,7 @@ function handleDeleted(conversationId: string): void {
       <div class="sidebar-brand">
         <span class="brand-mark" aria-hidden="true">T</span>
         <span class="font-semibold">Trivae</span>
-        <button ref="sidebarClose" class="icon-button ml-auto" aria-label="收起侧栏" title="收起侧栏" @click="sidebarCollapsed = true; closeSidebar()">
+        <button ref="sidebarClose" class="icon-button ml-auto" aria-label="收起侧栏" title="收起侧栏" @click="collapseSidebar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16m7-11-3 3 3 3" /></svg>
         </button>
       </div>
@@ -216,17 +242,17 @@ function handleDeleted(conversationId: string): void {
 
     <main class="chat-main" :inert="sidebarOpen && isMobile">
       <header class="chat-header">
-        <button ref="sidebarToggle" class="icon-button sidebar-toggle" aria-label="展开侧栏" aria-controls="chat-navigation" :aria-expanded="isMobile ? sidebarOpen : !sidebarCollapsed" @click="sidebarCollapsed = false; sidebarOpen = !sidebarOpen">
+        <button ref="sidebarToggle" class="icon-button sidebar-toggle" aria-label="展开侧栏" aria-controls="chat-navigation" :aria-expanded="isMobile ? sidebarOpen : !sidebarCollapsed" @click="sidebarCollapsed = false; sidebarOpen = isMobile ? !sidebarOpen : false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
         </button>
         <div class="header-identity"><span class="font-semibold">Trivae</span><span class="header-subtitle">群聊知识助手</span></div>
-        <button class="scope-chip" data-testid="current-scope" :title="currentScopeDisplay.title" @click="sidebarCollapsed = false; sidebarOpen = true">
+        <button class="scope-chip" data-testid="current-scope" :title="currentScopeDisplay.title" @click="sidebarCollapsed = false; sidebarOpen = isMobile">
           <span class="status-dot" /><span>{{ currentScopeDisplay.label }}</span><span aria-hidden="true">⌄</span>
         </button>
       </header>
 
       <div ref="scrollContainer" class="chat-scroll">
-        <div ref="conversationContent" class="conversation-content" :class="{ 'is-empty': !currentBuffer?.items.length }">
+        <div class="conversation-content" :class="{ 'is-empty': !currentBuffer?.items.length }">
           <div v-if="readinessText || navigationError || chat.sendingError" class="chat-error" role="alert">
             {{ readinessText || navigationError || chat.sendingError }}
           </div>

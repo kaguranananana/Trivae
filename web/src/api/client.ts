@@ -48,11 +48,13 @@ export const api = {
   sessions: () => request<SessionDTO[]>('/api/source-sessions'),
 
   /** scope 过滤后的 conversation 列表：后端先过滤再排序、limit。 */
-  conversations: (selector: ConversationListSelector, limit = 100) => {
+  conversations: (selector: ConversationListSelector, limit = 100, query = '', offset = 0) => {
     const params = new URLSearchParams()
     params.set('scope_mode', selector.scopeMode)
     if (selector.sessionId) params.set('session_id', selector.sessionId)
     params.set('limit', String(limit))
+    if (query.trim()) params.set('query', query.trim())
+    if (offset > 0) params.set('offset', String(offset))
     return request<ConversationSummaryDTO[]>(`/api/conversations?${params.toString()}`)
   },
 

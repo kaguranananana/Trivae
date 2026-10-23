@@ -119,12 +119,16 @@ class SQLiteConversationStore:
         self,
         limit: int = 20,
         selector: ConversationScopeSelector | None = None,
+        *,
+        query: str = "",
+        offset: int = 0,
     ) -> tuple[ConversationSummary, ...]:
         """读取最近 conversation 的 bounded title/count/scope metadata。
 
         ``selector`` 是正式 scope identity selector：scope 过滤必须在 SQL ``WHERE``
         中先于 ``ORDER BY``/``LIMIT`` 完成，否则属于当前 scope、但排在全局 limit
         之后的历史会被错误丢给客户端。``selector=None`` 保留既有全局列表行为。
+        query搜索标题和全部消息正文；offset在过滤后分页，不改变范围身份。
         """
 
         self._ensure_open()
@@ -132,16 +136,30 @@ class SQLiteConversationStore:
             raise ConversationPersistenceError("conversation history limit must be between 1 and 100")
         if selector is not None and not isinstance(selector, ConversationScopeSelector):
             raise ConversationPersistenceError("conversation scope selector has an unexpected type")
+        if offset < 0:
+            raise ConversationPersistenceError("conversation history offset must be non-negative")
         where_clause, selector_params = self._scope_identity_predicate(selector)
+        # 全文搜索在范围过滤后、排序与分页前完成；参数绑定保持搜索词为字面文本。
+        if query.strip():
+            conjunction = " AND " if where_clause else "WHERE "
+            where_clause += conjunction + """(
+                instr(lower(coalesce(title_override, '')), lower(?)) > 0
+                OR EXISTS (
+                    SELECT 1 FROM conversation_messages AS message
+                    WHERE message.conversation_id = conversations.conversation_id
+                    AND instr(lower(message.content), lower(?)) > 0
+                )
+            )"""
+            selector_params = (*selector_params, query.strip(), query.strip())
         rows = self.connection.execute(
             f"""
             SELECT conversation_id, created_at, updated_at, scope_snapshot_json, title_override
             FROM conversations
             {where_clause}
             ORDER BY updated_at DESC, conversation_id ASC
-            LIMIT ?
+            LIMIT ? OFFSET ?
             """,
-            (*selector_params, limit),
+            (*selector_params, limit, offset),
         ).fetchall()
         summaries: list[ConversationSummary] = []
         for row in rows:
@@ -159,7 +177,7 @@ class SQLiteConversationStore:
             count = 0 if message_row is None else int(message_row["message_count"])
             first_user_ordinal = None if message_row is None else message_row["first_user_ordinal"]
             last_ordinal = None if message_row is None else message_row["last_ordinal"]
-            title = "New conversation"
+            title = "新对话"
             if first_user_ordinal is not None:
                 title_row = self.connection.execute(
                     """

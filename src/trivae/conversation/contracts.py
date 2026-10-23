@@ -313,6 +313,9 @@ class ConversationStore(Protocol):
         self,
         limit: int = 20,
         selector: ConversationScopeSelector | None = None,
+        *,
+        query: str = "",
+        offset: int = 0,
     ) -> tuple[ConversationSummary, ...]:
         """按更新时间读取 bounded history metadata。
 

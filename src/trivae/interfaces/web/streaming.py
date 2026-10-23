@@ -23,7 +23,7 @@ from trivae.query.evidence import answer_source_summaries
 from trivae.query.streaming import QueryStreamEvent
 
 from .contracts import QueryStreamRequest, WebScopeError
-from .projection import project_source_summary
+from .projection import project_answer_blocks, project_source_summary
 
 NDJSON_MEDIA_TYPE = "application/x-ndjson"
 _DISCONNECT_POLL_SECONDS = 0.2
@@ -261,6 +261,7 @@ async def _finish_stream(
                 project_source_summary(summary) for summary in answer_source_summaries(result.answer_artifact)
             ]
             end["limitations"] = list(result.answer_artifact.limitations)
+            end["answer_blocks"] = project_answer_blocks(result.answer_artifact)
     if error_code is not None:
         end["error_code"] = error_code
     if error_message is not None:

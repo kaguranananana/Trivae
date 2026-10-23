@@ -63,6 +63,8 @@ def list_conversations(
     scope_mode: str | None,
     session_id: str | None,
     limit: int,
+    query: str = "",
+    offset: int = 0,
 ) -> list[dict[str, object]]:
     """当前 scope 的侧栏 conversation 列表（filter → order → limit）。"""
 
@@ -88,7 +90,7 @@ def list_conversations(
                 },
             )
     try:
-        summaries = application.list_conversations(limit, selector=selector)
+        summaries = application.list_conversations(limit, selector=selector, query=query, offset=offset)
     except ConversationPersistenceError as exc:
         raise _conversation_http_error(exc, 500, "CONVERSATION_STORE_ERROR") from exc
     return [project_conversation_summary(summary) for summary in summaries]

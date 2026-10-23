@@ -17,6 +17,7 @@ import type {
   StreamEnvelope,
   StreamEvent,
   ToolResultProjection,
+  AnswerBlockDTO,
 } from '@/types/contracts'
 
 export const DRAFT_PREFIX = '__draft__:'
@@ -98,6 +99,9 @@ export interface AssistantItem {
   durationMs?: number | null
   processProjection: ProcessProjection | null
   interrupted: boolean
+  // 正式引用绑定随历史和终态投影传入；运行中正文保持原有流式体验。
+  answerBlocks?: AnswerBlockDTO[]
+  messageOrdinal?: number
 }
 
 export type ChatItem = UserItem | AssistantItem
@@ -139,6 +143,7 @@ export const useChatStore = defineStore('chat', () => {
   const currentKey = ref<string | null>(null)
   const sendingError = ref<string | null>(null)
   const busy = ref(false)
+  let navigationGeneration = 0
 
   /** stream 事件按 request_id 找到 owner buffer；不依赖"当前 conversation"全局变量。 */
   const streamOwners = new Map<string, string>()
@@ -175,6 +180,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function newChat(scope: ScopeRequest | null): void {
+    navigationGeneration += 1
     // 未选择合法 Source Scope 时不产生 draft；显式失败，不回退到 all。
     if (scope === null) {
       throw new Error('cannot open a draft without a selected source scope')
@@ -185,6 +191,7 @@ export const useChatStore = defineStore('chat', () => {
 
   /** 切换 Source Scope 时只清除主区显示；buffer 与后台 stream context 全部保留。 */
   function clearDisplayed(): void {
+    navigationGeneration += 1
     currentKey.value = null
   }
 
@@ -205,11 +212,13 @@ export const useChatStore = defineStore('chat', () => {
     return buffer
   }
 
-  async function openConversation(conversationId: string): Promise<void> {
+  async function openConversation(conversationId: string): Promise<boolean> {
+    // 详情请求与导航意图绑定，旧请求只缓存数据，不抢回当前页面。
+    const generation = ++navigationGeneration
     // 同一 conversation 已在内存：直接切换显示，后台 stream 继续写自己的 buffer。
     if (buffers[conversationId]) {
       currentKey.value = conversationId
-      return
+      return true
     }
     const detail = await api.conversation(conversationId)
     const buffer = createBuffer(conversationId, detail.scope, conversationTitle(detail))
@@ -227,7 +236,9 @@ export const useChatStore = defineStore('chat', () => {
     }
     buffer.loaded = true
     buffers[conversationId] = buffer
+    if (generation !== navigationGeneration) return false
     currentKey.value = conversationId
+    return true
   }
 
   function conversationTitle(detail: { messages: { role: string; content: string }[] }): string {
@@ -244,6 +255,8 @@ export const useChatStore = defineStore('chat', () => {
     process_projection: ProcessProjection | null
     sources?: SourceItem[]
     limitations?: string[]
+    answer_blocks?: AnswerBlockDTO[]
+    ordinal?: number
   }): AssistantItem {
     const blocks: ProcessBlock[] = []
     const projection = message.process_projection
@@ -327,6 +340,8 @@ export const useChatStore = defineStore('chat', () => {
       startedAt: Date.parse(message.created_at),
       processProjection: projection,
       interrupted: false,
+      answerBlocks: message.answer_blocks,
+      messageOrdinal: message.ordinal,
     }
   }
 
@@ -335,6 +350,7 @@ export const useChatStore = defineStore('chat', () => {
     scope: ScopeRequest | null,
     onFinished?: () => void,
     onCreated?: (conversationId: string) => void,
+    onAccepted?: () => void,
   ): Promise<void> {
     const trimmed = query.trim()
     if (!trimmed || busy.value) return
@@ -400,6 +416,8 @@ export const useChatStore = defineStore('chat', () => {
       interrupted: false,
     }
     targetBuffer.items.push(assistant)
+    // 从此问题已在所属会话中可见，通知输入框接收完成。
+    onAccepted?.()
 
     const requestId = nextId('request')
     const controller = new AbortController()
@@ -447,6 +465,7 @@ export const useChatStore = defineStore('chat', () => {
       const envelope = event as StreamEnvelope
       if (assistant) {
         assistant.sources = envelope.sources ?? assistant.sources
+        assistant.answerBlocks = envelope.answer_blocks
         assistant.limitations = envelope.limitations ?? assistant.limitations
         assistant.traceId = envelope.trace_id ?? assistant.traceId
         assistant.status =

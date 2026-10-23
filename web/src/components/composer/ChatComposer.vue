@@ -8,7 +8,7 @@ const props = defineProps<{
   running: boolean
   contextKey?: string | object | null
 }>()
-const emit = defineEmits<{ send: [query: string]; stop: [] }>()
+const emit = defineEmits<{ send: [query: string, accepted: () => void]; stop: [] }>()
 const draft = ref('')
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const composing = ref(false)
@@ -50,10 +50,15 @@ function submit(): void {
   const query = draft.value.trim()
   // 空问题不触发请求。
   if (!query) return
-  // 通过门禁后才清空已提交的内容。
-  draft.value = ''
-  // 向父组件提交问题，后端调用仍由现有 store 负责。
-  emit('send', query)
+  // 创建成功且问题进入消息列表后才清空，创建失败仍可编辑和再次提交。
+  const submittedDraft = draft.value
+  const submittedContext = props.contextKey
+  emit('send', query, () => {
+    // 等待创建期间的新输入属于用户，不能被旧提交的确认覆盖。
+    if (props.contextKey === submittedContext && draft.value === submittedDraft) draft.value = ''
+    // 用户已切走时，只清理原对话中仍未修改的已接收草稿。
+    else if (submittedContext && drafts.get(submittedContext) === submittedDraft) drafts.set(submittedContext, '')
+  })
   focus()
 }
 function onKeydown(event: KeyboardEvent): void {

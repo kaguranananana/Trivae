@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { api } from '@/api/client'
 
-const props = defineProps<{ traceId: string; durationMs?: number | null }>()
+const props = defineProps<{ traceId: string; durationMs?: number | null; limitations?: string[] }>()
 
 const copied = ref<string | null>(null)
 const revealError = ref<string | null>(null)
@@ -44,6 +44,7 @@ async function copyPath(): Promise<void> {
     <summary>运行详情<span v-if="durationMs != null"> · {{ (durationMs / 1000).toFixed(1) }} 秒</span></summary>
     <div class="trace-content">
       <code>{{ traceId }}</code>
+      <div v-if="limitations?.length"><span>原始限制字段</span><ul><li v-for="limitation in limitations" :key="limitation">{{ limitation }}</li></ul></div>
       <div class="trace-actions">
         <button @click="copy(traceId, 'id')">复制 Trace ID</button>
         <button @click="copyPath">复制文件路径</button>

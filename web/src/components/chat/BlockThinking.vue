@@ -8,9 +8,9 @@ const props = defineProps<{ block: Extract<ProcessBlock, { kind: 'thinking' }> }
 
 const html = computed(() => renderMarkdown(props.block.text))
 const label = computed(() => {
-  if (props.block.running) return 'Thinking…'
+  if (props.block.running) return '正在思考…'
   const duration = props.block.durationMs ? ` · ${formatProcessDuration(props.block.durationMs)}` : ''
-  const tag = props.block.visibility === 'provider_reasoning' ? 'Reasoning' : 'Thinking'
+  const tag = props.block.visibility === 'provider_reasoning' ? '模型推理' : '思考摘要'
   return `${tag}${duration}`
 })
 </script>

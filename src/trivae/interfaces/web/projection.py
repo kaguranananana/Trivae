@@ -12,6 +12,7 @@ from trivae.capabilities.contracts import ExecutionScope, format_timestamp_utc
 from trivae.conversation.contracts import Conversation, ConversationMessage, ConversationSummary
 from trivae.data.model import ChatSession
 from trivae.query.evidence import (
+    AnswerArtifact,
     AnswerSourceSummary,
     MessageDisplaySnapshot,
     MessageSource,
@@ -127,6 +128,27 @@ def project_source_summary(summary: AnswerSourceSummary) -> dict[str, object]:
     return base
 
 
+def project_answer_blocks(artifact: AnswerArtifact) -> list[dict[str, object]]:
+    """按正式证据绑定投影段落引用，绝不从正文或列表顺序猜测。"""
+
+    # 去重来源编号与 Sources 面板使用同一个公共函数。
+    summaries = answer_source_summaries(artifact)
+    # 每段只关联其显式绑定的 Evidence。
+    bindings = {binding.content_block_id: set(binding.evidence_ids) for binding in artifact.citation_bindings}
+    return [
+        {
+            "block_id": block.block_id,
+            "text": block.text,
+            "source_indices": [
+                summary.index
+                for summary in summaries
+                if bindings.get(block.block_id, set()).intersection(summary.evidence_ids)
+            ],
+        }
+        for block in artifact.content_blocks
+    ]
+
+
 def project_message(message: ConversationMessage) -> dict[str, object]:
     """一条 conversation message 的完整 UI projection（含 sources/trace/过程摘要）。"""
 
@@ -145,6 +167,7 @@ def project_message(message: ConversationMessage) -> dict[str, object]:
             for summary in answer_source_summaries(message.answer_artifact)
         ]
         payload["limitations"] = list(message.answer_artifact.limitations)
+        payload["answer_blocks"] = project_answer_blocks(message.answer_artifact)
     return payload
 
 

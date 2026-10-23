@@ -164,6 +164,14 @@ export interface MessageDTO {
   process_projection: ProcessProjection | null
   sources?: SourceItem[]
   limitations?: string[]
+  answer_blocks?: AnswerBlockDTO[]
+}
+
+/** 后端正式内容块与去重来源编号的绑定，不解析正文猜引用。 */
+export interface AnswerBlockDTO {
+  block_id: string
+  text: string
+  source_indices: number[]
 }
 
 export interface ConversationDTO {
@@ -183,6 +191,7 @@ export interface StreamEnvelope {
   trace_id?: string | null
   sources?: SourceItem[]
   limitations?: string[]
+  answer_blocks?: AnswerBlockDTO[]
   error_code?: string | null
   error_message?: string | null
 }

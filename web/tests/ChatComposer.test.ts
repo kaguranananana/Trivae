@@ -13,7 +13,11 @@ describe('ChatComposer interaction', () => {
     await input.trigger('keydown', { key: 'Enter', shiftKey: true })
     expect(wrapper.emitted('send')).toBeUndefined()
     await input.trigger('keydown', { key: 'Enter' })
-    expect(wrapper.emitted('send')).toEqual([['总结近期讨论']])
+    expect(wrapper.emitted('send')).toEqual([['总结近期讨论', expect.any(Function)]])
+    // 发送接收确认以前保留输入，确认以后才清空。
+    expect((input.element as HTMLTextAreaElement).value).toBe('  总结近期讨论  ')
+    ;(wrapper.emitted('send')![0]![1] as () => void)()
+    await wrapper.vm.$nextTick()
     expect((input.element as HTMLTextAreaElement).value).toBe('')
   })
 
@@ -39,7 +43,19 @@ describe('ChatComposer interaction', () => {
     await input.trigger('keydown', { key: 'Enter', isComposing: true })
     expect(wrapper.emitted('send')).toBeUndefined()
     await input.trigger('keydown', { key: 'Enter' })
-    expect(wrapper.emitted('send')).toEqual([['中文问题']])
+    expect(wrapper.emitted('send')).toEqual([['中文问题', expect.any(Function)]])
+  })
+
+  it('keeps new input typed while the previous question is being accepted', async () => {
+    const wrapper = mount(ChatComposer, { props: { running: false, contextKey: 'a' } })
+    await wrapper.get('textarea').setValue('旧问题')
+    await wrapper.get('textarea').trigger('keydown', { key: 'Enter' })
+    const accepted = wrapper.emitted('send')![0]![1] as () => void
+    await wrapper.get('textarea').setValue('等待期间编辑的新问题')
+    accepted()
+    await wrapper.vm.$nextTick()
+    expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('等待期间编辑的新问题')
+    wrapper.unmount()
   })
 
   it('restores each conversation draft when switching contexts', async () => {

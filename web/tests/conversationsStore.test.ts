@@ -31,6 +31,25 @@ function conversationsResponse(items: ConversationSummaryDTO[]): Response {
 }
 
 describe('conversations store scoped fetch', () => {
+  it('loads additional matching history without losing scope or search', async () => {
+    setActivePinia(createPinia())
+    const page = Array.from({ length: 100 }, (_, index) => ({ ...allSummary, conversation_id: `c${index}` }))
+    const requests: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      requests.push(String(input))
+      return new Response(JSON.stringify(requests.length === 1 ? page : [{ ...allSummary, conversation_id: 'old-match' }]))
+    }))
+    const store = useConversationsStore()
+    await store.refresh({ kind: 'all' }, '尾部词')
+    expect(store.hasMore).toBe(true)
+    await store.loadMore()
+    expect(store.conversations).toHaveLength(101)
+    expect(requests[1]).toContain('scope_mode=all')
+    expect(requests[1]).toContain('offset=100')
+    expect(new URL(requests[1]!, 'http://test').searchParams.get('query')).toBe('尾部词')
+    expect(store.hasMore).toBe(false)
+    vi.unstubAllGlobals()
+  })
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.useFakeTimers()
