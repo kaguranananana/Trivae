@@ -8,11 +8,53 @@ import json
 from agents.tool_context import ToolContext
 
 from tests import test_stage_b_tools as fixtures
+from tests.test_ingestion import make_message, write_export
+from trivae.bootstrap.application import create_application
 from trivae.capabilities import ExecutionScope
 from trivae.observability.collector import TraceCollector
 from trivae.query.runtime.contracts import RuntimeContext
 from trivae.query.runtime.openai_tools import GetMessageContextSDKToolAdapter, LexicalSearchSDKToolAdapter
 from trivae.query.runtime.prompt import SYSTEM_PROMPT
+
+
+def test_explicit_context_restores_long_message_tail_through_sdk(tmp_path):
+    """搜索短预览看不到的清单尾部，显式补读必须在原预算内送达模型。"""
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    text = "项目经历与面试经过。" * 75 + "\n具体提问：团队未来三个月希望交付什么成果？"
+    write_export(raw, "long(100).json", [make_message("long", 1, 1000, text)],
+                 chat_name="长消息补读", peer_uid=None, version="5.5.64")
+    app = create_application(tmp_path / "long.sqlite3")
+    try:
+        app.import_directory(raw)
+        app.rebuild_lexical_index()
+        context = RuntimeContext(scope=ExecutionScope(max_results=10), capability_registry=app.capability_registry,
+            available_capabilities=("lexical_search", "get_message_context"), run_id="long-context")
+
+        async def check():
+            context.allocate_tool_call_id("search")
+            wrapper = ToolContext(context=context, tool_name="lexical_search", tool_call_id="search",
+                                  tool_arguments="{}")
+            search = LexicalSearchSDKToolAdapter(app.capability_registry).as_sdk_tool(trusted_max_results=10)
+            found = await search.on_invoke_tool(wrapper, json.dumps({"keyword": "具体提问", "limit": 10,
+                                                                    "context_before": 0, "context_after": 0}))
+            preview = found["data"]["hits"][0]["message"]
+            assert preview["content_truncated"]
+            assert "三个月" not in preview["content"]
+            context.allocate_tool_call_id("read")
+            wrapper.tool_name, wrapper.tool_call_id = "get_message_context", "read"
+            read = GetMessageContextSDKToolAdapter(app.capability_registry).as_sdk_tool()
+            payload = await read.on_invoke_tool(wrapper, json.dumps({"source_id": preview["source_id"],
+                                                                   "context_before": 0, "context_after": 0}))
+            message = payload["data"]["messages"][0]
+            assert message["content"] == text
+            assert not message.get("content_truncated", False)
+            assert context.resolve_message_source_handle(message["source_id"]) == "qq:100:long"
+            assert payload["model_projection"]["estimated_tokens"] <= payload["model_projection"]["token_budget"]
+
+        asyncio.run(check())
+    finally:
+        app.close()
 
 
 def test_generated_context_schema_explains_both_identities():

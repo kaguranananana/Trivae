@@ -1775,11 +1775,13 @@ def _model_message_projection(
     item: ToolMessageItem,
     source_id: str,
     reply_handles: Mapping[tuple[str, str | None, str | None, str], str | None],
+    *,
+    maximum_chars: int = MAX_MODEL_MESSAGE_CHARS,
 ) -> tuple[dict[str, object], tuple[dict[str, object], bool, str, bool]]:
     """生成正文与必要转发来源 projection，并返回 budget trimming slot。"""
 
     message = item.message
-    content, model_content_truncated = _model_content(message.normalized_content)
+    content, model_content_truncated = _model_content(message.normalized_content, maximum_chars)
     entry: dict[str, object] = {
         "source_id": source_id,
         "timestamp": message.timestamp,
@@ -1966,11 +1968,17 @@ def _project_model_data(
             # Host record 已保留真实命中优先序；模型正文与 trimming slots 必须使用同一顺序。
             indexed_messages.sort(key=lambda indexed: indexed[0])
         for message_index, item in indexed_messages:
+            # 显式读取的锚点需要补足搜索短预览；仍受原有1000字record及本次Token预算约束。
+            is_context_anchor = projected.get("strategy") == "context" and (
+                item.message.internal_message_id == projected.get("message_id")
+            )
             entry, slot = _model_message_projection(
                 record,
                 item,
                 f"m{record.model_scope_id}-{message_index + 1}",
                 reply_handles,
+                # 普通邻居沿用600字，只有用户/模型点名读取的原消息恢复有界正文。
+                maximum_chars=MAX_SAFE_EXCERPT_CHARS if is_context_anchor else MAX_MODEL_MESSAGE_CHARS,
             )
             projected_messages.append(entry)
             slots.append((projected_messages, entry, entry, *slot[1:]))

@@ -12,7 +12,7 @@ ContextWindowSource = Literal[
     "not_used",
 ]
 ReasoningEffort = Literal["low", "high", "max"]
-# 按当前账号模型目录登记已确认的 effort；Medium 另经真实请求验收，不据此推导 context 容量。
+# 按当前账号模型目录登记已确认的 effort；context容量单独按目录明确字段登记。
 CHATGPT_REASONING_EFFORTS = {("chatgpt-plan", "gpt-6.1-sol"): frozenset({"medium", "high"})}
 
 
@@ -111,6 +111,13 @@ class ContextWindowResolution:
 
 DEFAULT_MODEL_CAPABILITY_REGISTRY = ModelCapabilityRegistry(
     (
+        # 2026-10-23官方订阅/models目录明确返回context_window=500000；不由effort或型号猜测。
+        # 仅登记此provider/model，令既有动态公式分配125000证据池，未知模型仍沿用原边界。
+        VerifiedModelMetadata(
+            provider="chatgpt-plan",
+            model_name="gpt-6.1-sol",
+            context_window_tokens=500_000,
+        ),
         # 官方 DeepSeek 文档确认当前 deepseek-flash 支持 1M context；low 是本项目为
         # 保留最终 JSON 输出预算而显式选择的请求档位，不把 provider 默认 high 带入 Runtime。
         VerifiedModelMetadata(

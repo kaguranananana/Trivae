@@ -91,6 +91,18 @@ def _dynamic_settings(context_window_tokens: int = 64_000) -> ModelSettings:
 class ToolResultBudgetPolicyTests(unittest.TestCase):
     """覆盖公式、来源、累计扣减和 fixed compatibility。"""
 
+    def test_verified_plan_capacity_reaches_runtime_evidence_budget(self) -> None:
+        """官方已知容量必须进入真实Runtime，不能仍按未知容量压到16k。"""
+        runtime = OpenAIAgentsRuntimeAdapter(
+            CapabilityRegistry(), model=ScriptedModel([]),
+            provider_name="chatgpt-plan", model_name="gpt-6.1-sol",
+        )
+        config = runtime._tool_result_budget_config
+        self.assertEqual(config.context_window_tokens, 500_000)
+        self.assertEqual(config.context_window_source, "verified_model_registry")
+        self.assertEqual(config.run_tool_evidence_budget, 125_000)
+        self.assertEqual(config.per_call_ceiling, 128_000)
+
     def test_dynamic_pool_formula_and_absolute_cap(self) -> None:
         expected_run = {
             32_000: 8_000,

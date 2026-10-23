@@ -721,6 +721,8 @@ class GetMessageContextSDKToolAdapter:
             "context_after parameters are message counts, not minutes or seconds; a small window cannot "
             "prove that nobody replied. It never crosses the trusted session/time scope and may return "
             "truncated=true."
+            " For content_truncated search previews, context_before=0 and context_after=0 recover "
+            "the anchor's longer bounded text without ordinary neighbors; the shared token budget still applies."
             " Set include_replies=true to retrieve explicit direct replies even when they are far outside "
             "the neighbor window; replies take priority within the same total result bound. "
             "With context_before=0 and context_after=0, return only the anchor and its direct replies. "
