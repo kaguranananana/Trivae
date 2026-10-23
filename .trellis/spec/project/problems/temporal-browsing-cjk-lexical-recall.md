@@ -139,3 +139,7 @@ unigram/LIKE/fallback 改变索引形态；如未来出现真实 Failure Case（
 独立索引使4个单字题字面覆盖20/44,703→44,703/44,703，60非单字题全深度身份/顺序不变，
 生产重建后64题count/top10与候选一致。旧快照单字FTS增加142.61MiB，必须同时报告空间代价。
 详细边界与实际验证见[持续迭代报告](../../../../evaluation/experiments/quality-repair-20261022/report.md)。
+
+## 混合独立单字项（2026-10-23）
+
+已复现 `github.com 荐` 为0，而原生主表有字面同时命中。当前按 term 分开执行：常规词在原 `messages_fts` 匹配与排序，独立 Han 单字项在既有 `messages_han_fts` 求交；全为单字项时直接在 Han 索引执行 AND。未改索引格式、未新增空间或重建要求；无单字的查询路径与 BM25 保持原样。普通/转发 occurrence、多个单字、群与时间过滤回归通过，ASCII 词内子串仍不扩大契约。修复报告见 [FAILURE_REPAIR_20261023.md](../../../../docs/FAILURE_REPAIR_20261023.md)。

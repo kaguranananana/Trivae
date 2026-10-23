@@ -68,6 +68,8 @@
 - 当前 2775 个 conflict 与 18617 个 `duplicate_equal` 的 projection 对比中，没有发现“结构化语义不同但 projection 相等”的真实样本。已观察到的 equal 差异集中在导出器表示层：文本占位符空白、`at` 元素拆分/顺序、图片占位符与尺寸元数据、空 URL 与缺失 URL。
 - 因此 M1 不扩大 `canonical_projection()`；若未来出现 mention identity、reply target 或附件 identity 不同而 projection 仍相等，必须先增加可复现 Failure Case，再最小化扩展 projection 并重跑全量统计。
 
+2026-10-23 后续：已复现相同根消息的空转发→完整转发 false equal。当前保留普通 invariant projection，另对实质转发树做单调补齐比较，新增 `enriched_count`，保存旧 raw/source 并推进 revision；已知事实冲突仍不覆盖。上面的 M1 统计是历史校准，不再作为转发正文可以不比较的依据，具体边界见 [forwarded-message-guidelines.md](forwarded-message-guidelines.md)。
+
 ### 6. Tests Required
 
 - Adapter unit tests：V5 文件名群号、0.1.0 `peerUid`、两种 message type、timestamp、reply、结构化 fallback。

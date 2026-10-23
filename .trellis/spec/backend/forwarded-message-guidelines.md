@@ -2,7 +2,13 @@
 
 ## 范围与所有权
 
-`qq_forward.py` 是 QQ 已保存嵌套 JSON 的解析边界；`sqlite_read.py` 从 Canonical root 恢复 projection。`forwarded_messages`、FTS 与向量均为可重建派生数据。子消息不进入 `messages`、`users` 或 `memberships`，不改变普通群消息统计、去重、时间边界和 SQL 聚合。
+`qq_forward.py` 是 QQ 已保存嵌套 JSON 的解析边界；`sqlite_read.py` 从 Canonical root 恢复 projection。`forwarded_messages`、FTS 与向量均为可重建派生数据。子消息不进入 `messages`、`users` 或 `memberships`，不改变普通群消息统计、身份、时间边界和 SQL 聚合。
+
+## 重复导出的正文补齐（2026-10-23）
+
+真实空节点后补全文的回归证明，仅比较根消息 `canonical_projection` 会 false equal 并丢掉 incoming raw。当前在根稳定事实一致时复用 `project_forward_tree`，按同一 occurrence 比较正文、稳定发送者、原始时间、类型和回复等事实；预览、显示名和 DFS ordinal 不参与实质比较。
+
+只有 incoming 保留全部旧事实并新增 occurrence 时，整份 incoming 才成为 Canonical，旧 raw/source 保存为 `superseded_forward`；批次单独增加 `enriched_count`，真实 UPDATE 推进原 revision，由既有自动导入队列更新 FTS/语义。重复补齐幂等，较旧空导出不能擦掉已知正文；改写已知事实或各自缺事实的互补版本保留 conflict，不拼树或采取最后写入覆盖。回归见 `test_forward_enrichment.py`，含实际两索引发布。
 
 ## Signatures
 
@@ -52,6 +58,8 @@ Host 对已确认 literal 的初始有界原文不再统一缩至 32 字，再�
 内部有效短正文不受原生 24 字符 skip threshold 限制。QCE 将图片加文字优先分类为 image，转发分支须去掉已知媒体占位符后检查真实文字，不能按 image 类型丢弃 caption；原生规则保持既有行为。语义输入仍受已确认 `embedding_max_chars=6000` 上限约束，超过上限的正文需要新的真实 case 再决定分段策略，不能声称无界覆盖。
 
 源文件缺失与索引状态分开表达：完成索引仍可能具有 `coverage.status=partial`、`known_gaps=unexpanded_forward_content`。范围内空节点的数量及有界位置摘要进入工具结果，即使没有命中也不能声称完整穷举。错误不静默降级或改用 LIKE。
+
+成功检索当前可恢复材料却没有事实、覆盖不完整且没有工具错误时，可输出正式 `insufficient_evidence`；Host/Finalizer 共用资格判断，保留缺失限制。它不放宽完整 `no_result` 的资格，也不能用于有候选或执行失败的历史。
 
 长跑实际中断后，`semantic rebuild --resume` 只接受相同 identity、Canonical revision/count 和 forwarded count 的 building/failed/partial 索引。metadata/vector 必须一一对应，块 metadata 必须与确定性重放逐字段一致。合法强停可使 progress 落后已提交块，续建通过重放恢复未完成 Parent；`reused_chunk_count` 和本次实际 `embedding_count` 分开报告。missing/completed/stale 或损坏直接报错；没有自动续建、重试或跨版本缓存。
 

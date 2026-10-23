@@ -249,6 +249,8 @@ Canonicalization 必须保持查询、证据追溯和未来重新处理所需的
 
 M1 落地校准：`seq` 是可缺省的排序提示，不是 Canonical Message 的必需事实；缺失时由 `timestamp` 与 `internal_message_id` 提供确定性排序，非空非法值仍按记录错误处理。M1 对 `canonical_projection()` 的字段保持最小集合：真实 14 文件的 duplicate/conflict 样本尚未证明 structured content 存在 false equal，因此不因表示层差异扩大 projection；未来若出现 mention、reply 或附件 identity 的真实 false equal，再由 Failure Case 驱动最小扩展。
 
+2026-10-23：空转发后补全文已证明实质树正文 false equal。普通 projection 保持原字段，导入额外复用正式转发树做保留旧事实的单调补齐，保存旧来源并推进原 revision；已知事实冲突仍不覆盖，详见 [合并转发契约](../backend/forwarded-message-guidelines.md)。
+
 Canonical timestamp 必须能够表达一个确定的时间点，且不因 Source 的 timezone、timestamp precision 或转换规则导致跨 Source 时间语义不一致。具体数据库类型与存储格式（UTC datetime / Unix 毫秒 / TIMESTAMPTZ 等）保持 Pending。
 
 后续 Evidence / Citation 应能够通过 Message 追溯到原始聊天记录：

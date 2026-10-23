@@ -6,6 +6,14 @@ Runtime动态instructions在存在工具历史时，直接复用Evidence/Finaliz
 
 资格提示不会改写候选答案、放宽Finalizer或触发自动重试。完整空窗可与符合现有契约的数值聚合并存；日期分组/普通结构化行仍可能使no_result不可用，应以原判定为准。SQL COUNT本身不能代替完整空检索证明。回归须走实际SQLite和SDK，验证资格变化及错误输出仍被拒绝；模型是否遵从须另记真实综合或自主查询的验证边界。
 
+2026-10-23：成功的部分覆盖空检索可使用独立的 `kind=insufficient_evidence`。动态 instructions 与 Finalizer 复用 `has_incomplete_empty_result_evidence`，要求真实检索、无可引用消息/普通结构化事实且无工具错误；只表达可恢复材料未命中与未知范围，不能冒充完整零结果或正面主题结论。Artifact 直接 valid，不依赖空来源 claims 的 graceful 路径。
+
+## SQL 调度与流式失败诊断（2026-10-23）
+
+SQL SDK 入口 await Registry 的显式异步调用。正式 `ExecuteSQLTool` 仅把计算移入工作线程，SQL adapter 在该线程内创建/关闭连接；Trace 生命周期留在调用线程。原 5 秒 VM 超时和错误分类不变，Stop 能送达不等于已即时终止底层计算。合法同步 ToolHandler 继续在原线程调用，不把整个共享 Registry/SQLite Trace 搬到线程。回归包含真实 SDK 与 ASGI 慢 SQL 期间的 readiness、Stop 和 aborted 终态。
+
+`AnswerDeltaParseError` 保存有界公开正文诊断：Unicode 字符偏移、chunk 序号、坏字符、前128/后64字符和最多四层容器状态；Collector 经原限长/脱敏边界写 `answer.parse.failed`，随后仍返回失败终态。不能借诊断引入宽松解析、JSON 修复、隐藏推理记录或自动重试。
+
 ## Planner capability summary contract (2026-09-27)
 
 ### 1. Scope / Trigger
@@ -926,7 +934,7 @@ Wrong：窗口没看到回复就写“未解决”，连续对话都归于一个
 
 分层候选使用 Core、Retrieval、Time/constraints、Evidence、Output 的 Markdown 层级，稳定策略各有一个主位置；本轮真实回归未通过，运行 `prompt.py` 保留原版。讨论/清单意图先于通用精确/概念查找默认。讨论锚点与选窗、清单 lexical 最大值、证据强度和完整正文仍是模型决策，不能因 Schema 已有参数类型或上界而删掉。
 
-当前 Provider 使用 JSON mode，未提供完整 Structured Output Schema。claims/no_result 生成形状及尚未由工具 Schema 表述的必要参数指导继续保留。Host 校验负责输入合法性和 trusted scope；Finalizer 通过只证明形状、来源与既有证据契约，不证明作者、日期、回复关系或穷尽性正确。
+当前 Provider 使用 JSON mode，未提供完整 Structured Output Schema。claims/no_result/insufficient_evidence 生成形状及尚未由工具 Schema 表述的必要参数指导继续保留。Host 校验负责输入合法性和 trusted scope；Finalizer 通过只证明形状、来源与既有证据契约，不证明作者、日期、回复关系或穷尽性正确。
 
 Prompt 修改须保留原 Policy 映射；纯措辞断言可同步，参数、来源与结果断言不能放宽。真实配对固定快照、query/scope、模型、预算和路由，保存完整实际请求，核对首次 HTTP body 除 system 外一致。重构后再次出现已知漏召回或错误关系时如实记录，不因 Prompt 更短或 Finalizer valid 就宣布质量等价。版本修订的重复实验与原样重复须分别标明，不能合并为同一候选的成功率。
 
