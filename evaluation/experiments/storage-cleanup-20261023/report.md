@@ -32,3 +32,27 @@
 - 旧离线脚本不能直接使用已移除的数据库路径；重跑前需按原协议、对应源码及实验索引配置重新准备。共享快照保留源语料，不承诺其派生索引与历史实验候选逐字一致。
 
 本次未修改产品代码、模型配置、历史实验结论或真实请求计数，也未发起模型请求。验证以实际文件保留、共享快照身份、索引readiness及在线健康检查为准，不重复完整产品测试。
+
+## 第二轮：合并真实运行副本并压缩共享历史快照
+
+用户认为第一轮释放量不足，明确要求进一步清理。本轮扩大到已结束真实运行的重复数据库；下列结果更新当前存储状态，前文“真实运行快照保留”仅描述第一轮当时的操作边界。
+
+- 删除55份重复数据库，逻辑体积81.37GiB，并删除3个指向已清理数据库的符号链接。覆盖最终格式、首轮预算、回复修复、观点覆盖、长窗及空日等已结束实验的运行副本；每次运行的独立结果库、答案、Trace、协议、请求账本和失败记录继续保留。
+- 逐库只读核对Canonical版本、消息数、来源数及内嵌会话/Trace数量：811,892条语料的重复运行副本具有相同冻结来源和内嵌证据数量。809,850条、473,236条两个历史语料版本单独保留，不用新语料替代。
+- 六份代表数据库原9.82GiB，无损gzip压缩后共1.91GiB。包括811,892条语料的旧bigram、新单字索引两个版本及共享语义库，809,850条Canonical，以及473,236条Canonical和语义库。每份压缩完成并落盘后，完整解压流逐块与原文件比较相等，才移除未压缩文件。
+- 本轮实测可用空间2.47→15.88GiB，增加13.41GiB；结束时`df`显示约16GiB。整个测评目录`du`约2.9GiB，不能与APFS物理回收量混算。系统其他活动会影响之后的可用空间读数。
+- 更新收据前2,770个原有非目标文件大小、修改时间保持；随后只更新61份存储说明。完整操作与失败记录在`data/evaluation/storage-cleanup-20261023/round2-manifest.json`，共享版本清单在同目录`shared-snapshots.json`。
+- 清理入口最初将CJK目录3个符号链接按目标大小统计；删除原A/B后，跟随链接的stat明确失败。确认根因为别名后，改用lstat区分文件与链接，修正逻辑体积和文件数，并逐项保存删除状态。没有把链接统计为独立回收空间，原错误与已完成两项均保留在清单。
+- 在线`/api/readiness`实际返回数据库ready/827,614、语义completed/827,614、Plan/Sol ready；0新增模型请求。线上数据库、原始导出及Trellis历史实验不在本轮清理范围。
+
+### 当前共享归档与恢复
+
+| 语料/索引 | 保留的归档路径 |
+| --- | --- |
+| 811,892条，旧bigram | `data/evaluation/quality-optimization-20261020/trivae.sqlite3.gz` |
+| 811,892条，当前单字索引 | `data/evaluation/quality-repair-20261022/current-production-validation/snapshot/trivae.sqlite3.gz` |
+| 上述语料共享语义库 | `data/evaluation/quality-repair-20261022/current-production-validation/snapshot/trivae.semantic.sqlite3.gz` |
+| 809,850条历史Canonical | `data/evaluation/cjk-bigram-v1/snapshot.sqlite3.gz` |
+| 473,236条历史Canonical及语义库 | `data/evaluation/gpt-high-ablation-20261018/resume-snapshot/trivae.sqlite3.gz`、同目录`trivae.semantic.sqlite3.gz` |
+
+共享快照现在为压缩归档，旧脚本不能直接运行原数据库路径。重跑前先将对应`.sqlite3.gz`解压为原`.sqlite3`文件，再按原协议和源码创建各次独立运行副本；CJK候选A/B索引需按保存的输入和实验源码重建。不要让多个实验直接写入同一共享数据库。转发修复前的唯一语义索引另行原样保留。
