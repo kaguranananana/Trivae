@@ -4,6 +4,9 @@ from typing import Literal
 
 ToolResultBudgetMode = Literal["fixed", "dynamic"]
 
+# 工具轮次按需使用；默认八个模型回合可容纳六轮检索和一次最终综合。
+DEFAULT_MAX_TOOL_ROUNDS = 6
+
 # lexical candidate 服务 inventory/broad recall；hard cap 仍阻止无界 FTS 读取。
 DEFAULT_LEXICAL_RESULT_LIMIT = 1_000
 MAX_LEXICAL_RESULT_LIMIT = 5_000

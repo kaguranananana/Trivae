@@ -597,6 +597,35 @@ class RuntimeExecutionTests(unittest.TestCase):
         self.assertIn("1 consumed, 0 remaining", finalizing_system)
         self.assertIn("finalizing synthesis turn uses no tools and consumes no additional round", finalizing_system)
 
+    def test_default_six_tool_rounds_leave_a_final_synthesis_turn(self) -> None:
+        """真实SDK循环必须允许六轮工具，再在默认八回合内完成无工具综合。"""
+        configured = load_settings({
+            "DEEPSEEK_API_KEY": "test-key",
+            "TRIVAE_MODEL_NAME": "deepseek-chat-test",
+        })
+        for settings in (None, configured):
+            with self.subTest(settings_provided=settings is not None):
+                # 两条入口分别覆盖无配置的注入模型，以及环境加载得到的真实默认配置。
+                steps = [ModelStep(output=[function_call(
+                    "search_messages", {"keyword": f"topic-{number}"}, call_id=f"c{number}",
+                )]) for number in range(1, 7)]
+                # 第七个模型回合只生成答案，不能因轮次耗尽而丢失最终综合。
+                steps.append(ModelStep(output=[assistant_message("six-round final")]))
+                model = ScriptedModel(steps)
+                runtime = OpenAIAgentsRuntimeAdapter(self.registry, model=model, settings=settings)
+                events = asyncio.run(self._collect(runtime.stream(AgentRunRequest("q", self.scope))))
+                result = events[-1].result
+                self.assertEqual(result.termination, "completed")
+                self.assertEqual(result.tool_rounds, 6)
+                self.assertEqual(result.tool_count, 6)
+                self.assertEqual(result.final_answer, "six-round final")
+                # 前六次请求有工具，第七次关闭工具；每轮剩余预算来自真实Runtime状态。
+                self.assertEqual([len(call.tools) for call in model.calls], [1] * 6 + [0])
+                turns = [event for event in events if event.type == "turn_started"]
+                self.assertIn("0 consumed, 6 remaining", turns[0].model_visible_context[0]["content"])
+                self.assertIn("6 consumed, 0 remaining", turns[-1].model_visible_context[0]["content"])
+                self.assertEqual([event.type for event in events].count("finalizing"), 1)
+
     def test_sdk_absolute_backstop_is_not_normal_budget_completion(self) -> None:
         model = ScriptedModel(
             [

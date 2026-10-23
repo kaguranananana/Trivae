@@ -127,7 +127,8 @@ def test_first_tool_probe_uses_application_and_executes_no_tool_or_second_model_
 def test_candidate_injection_preserves_dynamic_suffix_and_production_prompt(tmp_path):
     """候选只替换 Base，原始 production 常量和动态预算保持不变。"""
     model = ScriptedModel([ModelStep(output=[assistant_message(json.dumps({"claims": []}))])])
-    runtime = ScreeningRuntime(model=model, prompt="test candidate")
+    # 固定本例原有三轮，检查候选注入不覆盖显式预算；不把Prompt替换测试耦合到默认策略。
+    runtime = ScreeningRuntime(model=model, prompt="test candidate", max_tool_rounds=3)
     application = create_application(tmp_path / "injection.sqlite3", agent_runtime=runtime)
     runtime.capability_registry = application.capability_registry
     from trivae.query.runtime.openai_adapter import _RunState

@@ -20,6 +20,7 @@ from agents.tool import tool_namespace
 from openai import AsyncOpenAI
 
 from trivae.capabilities.registry import CapabilityRegistry
+from trivae.config.limits import DEFAULT_MAX_TOOL_ROUNDS
 from trivae.config.model_capabilities import ReasoningEffort, resolve_context_window, resolve_reasoning_effort
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
@@ -1090,7 +1091,8 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             self._model_name = model_name or (settings.model_name if settings is not None else "injected-model")
             self._secret = settings.api_key if settings is not None else ""
             configured_max_turns = settings.max_turns if settings is not None else 8
-            configured_max_tool_rounds = settings.max_tool_rounds if settings is not None else 3
+            # 注入模型与真实Provider共用轮次默认值，避免测试或其他入口仍停留在旧的三轮。
+            configured_max_tool_rounds = settings.max_tool_rounds if settings is not None else DEFAULT_MAX_TOOL_ROUNDS
             configured_max_output_tokens = (
                 settings.max_output_tokens if settings is not None else _DEFAULT_MAX_OUTPUT_TOKENS
             )

@@ -103,7 +103,8 @@ class AgentToolSurfaceTests(unittest.TestCase):
         registry = CapabilityRegistry()
         registry.register(_RecordingTool("lexical_search"))
         registry.register(_RecordingTool("get_message_context"))
-        runtime = OpenAIAgentsRuntimeAdapter(registry, model=ScriptedModel([]))
+        # 本例验证实体锚点与动态预算共存，显式固定三轮；六轮默认由完整SDK循环另行覆盖。
+        runtime = OpenAIAgentsRuntimeAdapter(registry, model=ScriptedModel([]), max_tool_rounds=3)
         request = AgentRunRequest(
             "Investigate the named resource and its later user feedback",
             ExecutionScope(max_results=5),

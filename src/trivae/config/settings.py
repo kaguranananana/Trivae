@@ -8,6 +8,7 @@ from typing import Mapping, cast
 from urllib.parse import urlsplit
 
 from trivae.config.limits import (
+    DEFAULT_MAX_TOOL_ROUNDS,
     DEFAULT_PER_CALL_TOOL_RESULT_CAP,
     DEFAULT_PER_CALL_TOOL_RESULT_PERCENT,
     DEFAULT_RUN_TOOL_EVIDENCE_CAP,
@@ -21,7 +22,6 @@ CHATGPT_PLAN_BASE_URL = "https://api.openai.com/v1"
 _DEFAULT_PROVIDER = "deepseek"
 _SUPPORTED_PROVIDERS = frozenset({"deepseek", "opencode-go", "chatgpt-plan"})
 _DEFAULT_MAX_TURNS = 8
-_DEFAULT_MAX_TOOL_ROUNDS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 16384
 _DEFAULT_COMPLETION_MAX_TOKENS = 2048
 _DEFAULT_ROUTER_JEV_ENABLED = True
@@ -43,7 +43,7 @@ class ModelSettings:
     provider: str
     model_name: str
     max_turns: int
-    max_tool_rounds: int = _DEFAULT_MAX_TOOL_ROUNDS
+    max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS
     max_output_tokens: int = _DEFAULT_MAX_OUTPUT_TOKENS
     completion_max_tokens: int = _DEFAULT_COMPLETION_MAX_TOKENS
     tool_result_budget_mode: ToolResultBudgetMode = "dynamic"
@@ -233,7 +233,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
     )
 
     max_turns = _positive_integer(values, "TRIVAE_MAX_TURNS", _DEFAULT_MAX_TURNS)
-    max_tool_rounds = _positive_integer(values, "TRIVAE_MAX_TOOL_ROUNDS", _DEFAULT_MAX_TOOL_ROUNDS)
+    max_tool_rounds = _positive_integer(values, "TRIVAE_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS)
     max_output_tokens = _positive_integer(values, "TRIVAE_MAX_OUTPUT_TOKENS", _DEFAULT_MAX_OUTPUT_TOKENS)
     completion_max_tokens = _positive_integer(
         values,
