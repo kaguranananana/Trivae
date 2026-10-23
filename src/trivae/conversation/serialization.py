@@ -90,6 +90,8 @@ def _snapshot_to_dict(snapshot: MessageDisplaySnapshot | None) -> dict[str, obje
         "timezone": snapshot.timezone,
         "excerpt": snapshot.excerpt,
         "excerpt_truncated": snapshot.excerpt_truncated,
+        "excerpt_offset": snapshot.excerpt_offset,
+        "content_total_chars": snapshot.content_total_chars,
         "source_message_id": snapshot.source_message_id,
         "urls": list(snapshot.urls),
     }
@@ -241,6 +243,15 @@ def _parse_snapshot(value: object, path: str) -> MessageDisplaySnapshot | None:
         raise ConversationCodecError(f"{path}.timestamp_ms must be an integer")
     if not isinstance(excerpt_truncated, bool):
         raise ConversationCodecError(f"{path}.excerpt_truncated must be a boolean")
+    excerpt_offset = raw.get("excerpt_offset", 0)
+    content_total_chars = raw.get("content_total_chars")
+    # 先解析持久化整数，再由领域对象校验偏移范围。
+    if isinstance(excerpt_offset, bool) or not isinstance(excerpt_offset, int):
+        raise ConversationCodecError(f"{path}.excerpt_offset must be an integer")
+    if content_total_chars is not None and (
+        isinstance(content_total_chars, bool) or not isinstance(content_total_chars, int)
+    ):
+        raise ConversationCodecError(f"{path}.content_total_chars must be an integer or null")
     raw_urls = raw.get("urls", [])
     if not isinstance(raw_urls, list):
         raise ConversationCodecError(f"{path}.urls must be an array")
@@ -255,6 +266,8 @@ def _parse_snapshot(value: object, path: str) -> MessageDisplaySnapshot | None:
         timezone=_text(f"{path}.timezone", _required(raw, "timezone")),
         excerpt=_text(f"{path}.excerpt", _required(raw, "excerpt")),
         excerpt_truncated=excerpt_truncated,
+        excerpt_offset=excerpt_offset,
+        content_total_chars=content_total_chars,
         source_message_id=(
             None
             if raw.get("source_message_id") is None

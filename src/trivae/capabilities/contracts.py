@@ -12,6 +12,7 @@ from trivae.config.limits import (
     DEFAULT_RECENT_MESSAGES_LIMIT,
     DEFAULT_SEMANTIC_RESULT_LIMIT,
     DEFAULT_TRUSTED_RESULT_LIMIT,
+    MAX_MESSAGE_CONTENT_PAGE_CHARS,
     MAX_RECENT_MESSAGES_LIMIT,
     MAX_TRUSTED_RESULT_LIMIT,
     RECENT_MESSAGES_DEFAULT_AMOUNT,
@@ -416,6 +417,9 @@ class GetMessageContextInput:
     context_before: int = 8
     context_after: int = 8
     include_replies: bool = False
+    # 偏移按Python/JSON字符串字符计数，页长不扩大邻居/回复窗口。
+    content_offset: int = 0
+    content_limit: int = MAX_MESSAGE_CONTENT_PAGE_CHARS
 
     def __post_init__(self) -> None:
         """拒绝空 locator、负窗口和超过 transport bound 的请求。"""
@@ -427,6 +431,7 @@ class GetMessageContextInput:
         for name, value in (
             ("context_before", self.context_before),
             ("context_after", self.context_after),
+            ("content_offset", self.content_offset),
         ):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise CapabilityContractError(f"{name} must be non-negative")
@@ -434,6 +439,10 @@ class GetMessageContextInput:
             raise CapabilityContractError(
                 f"requested context exceeds {MAX_CONTEXT_EXPANSION_MESSAGES} message bound"
             )
+        if isinstance(self.content_limit, bool) or not isinstance(self.content_limit, int):
+            raise CapabilityContractError("content_limit must be an integer")
+        if not 1 <= self.content_limit <= MAX_MESSAGE_CONTENT_PAGE_CHARS:
+            raise CapabilityContractError(f"content_limit must be between 1 and {MAX_MESSAGE_CONTENT_PAGE_CHARS}")
 
 
 @dataclass(frozen=True)

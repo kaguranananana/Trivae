@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from time import perf_counter
 
 from trivae.capabilities.contracts import (
@@ -40,7 +41,8 @@ class GetMessageContextCapability:
         ),
         bounded=True,
         # SDK adapter 可把当前 Tool Result 的 source_id 解析成同一个 canonical message_id。
-        input_fields=("message_id", "source_id", "context_before", "context_after", "include_replies"),
+        input_fields=("message_id", "source_id", "context_before", "context_after", "include_replies",
+                      "content_offset", "content_limit"),
     )
 
     def __init__(
@@ -114,6 +116,18 @@ class GetMessageContextCapability:
             # repository 跨 conversation boundary 是主链路错误，不能把它投影成正常结果。
             raise RuntimeError("context expansion crossed conversation boundary")
 
+        # 从同一个已校验作用域的Canonical锚点切页，不对搜索预览再切片。
+        total_chars = len(anchor.normalized_content)
+        if request.content_offset > total_chars:
+            raise CapabilityContractError("content_offset is beyond the message content")
+        content_end = min(total_chars, request.content_offset + request.content_limit)
+        # 只有点名锚点应用正文分页，普通邻居与显式回复仍保持原消息语义。
+        messages = tuple(
+            replace(message, normalized_content=message.normalized_content[request.content_offset:content_end])
+            if message.internal_message_id == anchor.internal_message_id else message
+            for message in messages
+        )
+
         return MessageContextResult(
             strategy="context",
             message_id=anchor.internal_message_id,
@@ -130,6 +144,8 @@ class GetMessageContextCapability:
                     "context_before": request.context_before,
                     "context_after": request.context_after,
                     "include_replies": request.include_replies,
+                    "content_offset": request.content_offset,
+                    "content_limit": request.content_limit,
                     "scope": scope_filters(scope).scope_dict(),
                 },
                 ordering="timestamp ASC, present seq ASC, missing seq after present seq, internal_message_id ASC",
@@ -141,6 +157,9 @@ class GetMessageContextCapability:
                     "candidate_count": candidate_count,
                     "result_limit": result_limit,
                     "conversation_boundary": anchor.session_id,
+                    "content_page": {"message_id": anchor.internal_message_id,
+                        "offset": request.content_offset, "end": content_end, "total_chars": total_chars,
+                        "next_offset": content_end if content_end < total_chars else None},
                     **reply_details,
                 },
             ),

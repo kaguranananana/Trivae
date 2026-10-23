@@ -677,6 +677,8 @@ class _CapabilityTool:
                 "context_before": request.context_before,
                 "context_after": request.context_after,
                 "include_replies": request.include_replies,
+                "content_offset": request.content_offset,
+                "content_limit": request.content_limit,
             }
         if isinstance(request, GetRecentMessagesInput):
             # __post_init__ 已把 time_range 归一化为 RelativeTimeRange；保留运行时防线。
@@ -739,6 +741,7 @@ class _CapabilityTool:
                 "include_replies": result.metadata.details.get("include_replies", False),
                 "returned_replies": result.metadata.details.get("returned_replies"),
                 "has_more_replies": result.metadata.details.get("has_more_replies"),
+                "content_page": result.metadata.details.get("content_page"),
             }
         if isinstance(result, FindMembersResult):
             return {

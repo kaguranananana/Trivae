@@ -31,6 +31,7 @@ from trivae.config.limits import (
     DEFAULT_SEMANTIC_RESULT_LIMIT,
     MAX_LEXICAL_RESULT_LIMIT,
     MAX_MEMBER_RESULT_LIMIT,
+    MAX_MESSAGE_CONTENT_PAGE_CHARS,
     MAX_RECENT_MESSAGES_LIMIT,
     MAX_SEMANTIC_RESULT_LIMIT,
 )
@@ -722,7 +723,9 @@ class GetMessageContextSDKToolAdapter:
             "prove that nobody replied. It never crosses the trusted session/time scope and may return "
             "truncated=true."
             " For content_truncated search previews, context_before=0 and context_after=0 recover "
-            "the anchor's longer bounded text without ordinary neighbors; the shared token budget still applies."
+            "the anchor's text page without ordinary neighbors. content_offset is a zero-based character "
+            "offset in the original message; use the returned next_content_offset to continue. "
+            "content_limit bounds each page, not the whole message. The shared token budget still applies."
             " Set include_replies=true to retrieve explicit direct replies even when they are far outside "
             "the neighbor window; replies take priority within the same total result bound. "
             "With context_before=0 and context_after=0, return only the anchor and its direct replies. "
@@ -765,6 +768,15 @@ class GetMessageContextSDKToolAdapter:
                 "Retrieve explicit direct replies to the anchor in the trusted session/time scope, "
                 "regardless of distance. Does not recursively follow replies. Default false."
             ))] = False,
+            # 页偏移直接进入Canonical读取，不能在已截断的预览上继续切片。
+            content_offset: Annotated[int, Field(strict=True, ge=0, description=(
+                "Zero-based character offset in the original anchor message. Copy next_content_offset "
+                "from the prior projection to continue reading; 0 starts from the beginning."
+            ))] = 0,
+            # 单页正文和引用摘录分别受限；大消息通过续页读取，而非悄悄截成1000字。
+            content_limit: Annotated[int, Field(strict=True, ge=1, le=MAX_MESSAGE_CONTENT_PAGE_CHARS,
+                description="Maximum original characters in this anchor page; defaults to 8000."
+            )] = MAX_MESSAGE_CONTENT_PAGE_CHARS,
         ) -> dict[str, object]:
             """恢复由 Search 结果公开的 source handle，兼容旧的 canonical message_id。"""
 
@@ -787,6 +799,8 @@ class GetMessageContextSDKToolAdapter:
                     context_before=context_before,
                     context_after=context_after,
                     include_replies=include_replies,
+                    content_offset=content_offset,
+                    content_limit=content_limit,
                 )
             except CapabilityContractError as exc:
                 envelope = _contract_error_envelope(exc)

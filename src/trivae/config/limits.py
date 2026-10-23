@@ -33,6 +33,9 @@ MAX_MEMBER_RESULT_LIMIT = MAX_STRUCTURED_RESULT_ITEMS
 # 自动 context 只允许有限数量的 direct hit 读取邻居，避免 broad query 的 N+1 放大。
 MAX_AUTOMATIC_CONTEXT_SOURCE_HITS = 20
 
+# 显式原文读取按字符分页；它独立于引用卡片的1000字摘录，超长消息可继续读取。
+MAX_MESSAGE_CONTENT_PAGE_CHARS = 8_000
+
 # Tool Result 的模型投影有独立 token 预算，不等同于任何 Retrieval candidate 数量上限。
 # 未知 context 时 per-call 和 run-level 都回到这个 16k 安全边界。
 DEFAULT_TOOL_RESULT_TOKEN_BUDGET = 16_000

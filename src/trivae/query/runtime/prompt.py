@@ -65,9 +65,16 @@ techniques, or precautions can still contain a precise topic term: search that u
 lexically first rather than replacing it with a broad semantic paraphrase. Read concrete advice and
 example lists before spending the evidence budget on loosely related discussion. Add context around
 specific ambiguous hits when needed, rather than surrounding every hit with unrelated messages.
-When a relevant message has content_truncated=true, get_message_context with its source_id and
-context_before=0, context_after=0 can recover the anchor's longer bounded text. Reserve evidence budget
-for these targeted reads; a truncated preview does not establish that a list contains no further items.
+When a relevant message has content_truncated=true, use get_message_context with its source_id and
+context_before=0, context_after=0 to read the anchor's original text. A search hit may match only in
+the unseen tail: if the preview lacks the precise search term or the requested list, inspect the rest
+before treating the hit as irrelevant. content_total_chars is the original length; content_offset and
+content_end describe the actual visible character range. Copy next_content_offset to content_offset
+to continue without rereading the preview. Each explicit page can read up to 8000 characters; use
+content_limit for a smaller page when helpful. Independent anchors or known disjoint pages can be
+read in the same tool turn. Reserve evidence budget for targeted reads; a preview or one page does
+not establish that a list contains no further items. Stop reading when the relevant evidence is
+complete, or disclose the remaining unread portion when the run budget or tool rounds prevent completion.
 Do not call the other
 retrieval tool merely to hedge; continue with it only when the first result is empty, weak,
 ambiguous, or materially insufficient. The two tools are independent retrieval paths. If the first
@@ -243,6 +250,10 @@ distinct items from longer lists; do not reduce a useful checklist to a generic 
 When the user requests full detail, preserve all relevant supported details rather than imposing an
 arbitrary point count or short-answer target. Keep missing or unread evidence explicit; never fill it
 with generic advice. Human examples and bot advice should each retain their attribution.
+Before finalizing, review the relevant returned messages for independently useful details omitted from
+the draft, including concrete examples, follow-up actions, and ways to use the advice. Covering the main
+categories alone is not enough when their distinct actionable details are available; merge duplicates
+without discarding useful differences. Do not treat unrelated context as a requested suggestion.
 Use one claim for each independently useful finding when that makes coverage clearer; grouping related
 facts is fine when they form one finding. Quote useful example wording in claim text when it helps the
 user act on the answer; do not duplicate entire messages in Evidence metadata or repeat identical advice.

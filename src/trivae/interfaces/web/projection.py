@@ -81,6 +81,8 @@ def project_source_snapshot(snapshot: MessageDisplaySnapshot) -> dict[str, objec
         "timezone": snapshot.timezone,
         "excerpt": snapshot.excerpt,
         "excerpt_truncated": snapshot.excerpt_truncated,
+        "excerpt_offset": snapshot.excerpt_offset,
+        "content_total_chars": snapshot.content_total_chars,
         "source_message_id": snapshot.source_message_id,
         "urls": list(snapshot.urls),
     }

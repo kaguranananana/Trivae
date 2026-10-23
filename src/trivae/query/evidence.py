@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope, format_timestamp_utc
 from trivae.config.limits import (
     DEFAULT_TOOL_RESULT_TOKEN_BUDGET,
+    MAX_MESSAGE_CONTENT_PAGE_CHARS,
     MAX_STRUCTURED_RESULT_ITEMS,
     MAX_TOOL_RESULT_MESSAGE_ITEMS,
 )
@@ -454,6 +455,16 @@ def scope_snapshot(scope: ExecutionScope) -> dict[str, object]:
     }
 
 
+def _validate_content_range(offset: int, total_chars: int | None) -> None:
+    """字符范围是公开续读契约，拒绝非整数和负位置。"""
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise AnswerContractError("content offset must be a non-negative integer")
+    if total_chars is not None and (
+        isinstance(total_chars, bool) or not isinstance(total_chars, int) or total_chars < offset
+    ):
+        raise AnswerContractError("content total chars must be an integer no smaller than offset")
+
+
 @dataclass(frozen=True)
 class MessageDisplaySnapshot:
     """由可信 Canonical projection hydrate 的人工复核信息。"""
@@ -472,6 +483,9 @@ class MessageDisplaySnapshot:
     # 昵称可重复，内部发送者的导出身份必须随可信快照一起持久化。
     sender_platform_id: str | None = None
     sender_uin: str | None = None
+    # 引用卡片仍是短摘录，但必须定位到实际读到的正文段，而不是总回到开头。
+    excerpt_offset: int = 0
+    content_total_chars: int | None = None
 
     def __post_init__(self) -> None:
         # session display、timezone 和 excerpt 都来自 trusted projection，仍需限制长度。
@@ -508,6 +522,7 @@ class MessageDisplaySnapshot:
             raise AnswerContractError("unexpanded_forward_paths must contain non-empty paths")
         for name in ("sender_platform_id", "sender_uin"):
             object.__setattr__(self, name, _optional_text(name, getattr(self, name), max_chars=512))
+        _validate_content_range(self.excerpt_offset, self.content_total_chars)
 
 
 @dataclass(frozen=True)
@@ -1117,16 +1132,19 @@ class ToolMessageItem:
     content_truncated: bool = False
     urls: tuple[str, ...] = ()
     is_hit: bool = True
+    content_offset: int = 0
+    content_total_chars: int | None = None
 
     def __post_init__(self) -> None:
-        # Tool Result 只保留有界 canonical projection；过长正文必须在建 record 时显式截断。
+        # 读取页与引用摘录分离；record允许有界正文页，搜索仍由builder保留短预览。
         object.__setattr__(self, "result_item_id", _text("result_item_id", self.result_item_id, max_chars=512))
         if not isinstance(self.message, MessageProjection):
             raise AnswerContractError("message must be a MessageProjection")
         if not isinstance(self.message.normalized_content, str):
             raise AnswerContractError("message normalized_content must be text")
-        if len(self.message.normalized_content) > MAX_SAFE_EXCERPT_CHARS:
+        if len(self.message.normalized_content) > MAX_MESSAGE_CONTENT_PAGE_CHARS:
             raise AnswerContractError("tool message content must be bounded")
+        _validate_content_range(self.content_offset, self.content_total_chars)
         if not isinstance(self.content_truncated, bool):
             raise AnswerContractError("content_truncated must be a boolean")
         if not isinstance(self.is_hit, bool):
@@ -1306,6 +1324,7 @@ def _message_items(
     messages: tuple[MessageProjection, ...],
     *,
     hit_ids: set[str] | None = None,
+    content_page: Mapping[str, Any] | None = None,
 ) -> tuple[ToolMessageItem, ...]:
     """按 internal identity 去重，并保留 hit/context 角色供模型预算 trimming 使用。"""
 
@@ -1317,28 +1336,19 @@ def _message_items(
         seen.add(message.internal_message_id)
         content = message.normalized_content
         urls = extract_urls(content)
-        if len(content) > MAX_SAFE_EXCERPT_CHARS:
-            # Record 内只留可供人工复核的 bounded excerpt，并用标记保留“发生过截断”的事实。
-            bounded_message = replace(message, normalized_content=content[: MAX_SAFE_EXCERPT_CHARS - 1] + "…")
-            items.append(
-                ToolMessageItem(
-                    f"message/{message.internal_message_id}",
-                    bounded_message,
-                    True,
-                    urls,
-                    hit_ids is None or message.internal_message_id in hit_ids,
-                )
-            )
-        else:
-            items.append(
-                ToolMessageItem(
-                    f"message/{message.internal_message_id}",
-                    message,
-                    False,
-                    urls,
-                    hit_ids is None or message.internal_message_id in hit_ids,
-                )
-            )
+        # 显式锚点的页边界由Capability从原文计算；其他消息保持搜索record的1000字边界。
+        maximum, offset, total_chars = MAX_SAFE_EXCERPT_CHARS, 0, len(content)
+        if content_page is not None and message.internal_message_id == content_page["message_id"]:
+            maximum = MAX_MESSAGE_CONTENT_PAGE_CHARS
+            offset, total_chars = content_page["offset"], content_page["total_chars"]
+        # record只保存原文字符，省略号只在展示层生成，保证下一页偏移不会跨过一个未读字符。
+        bounded_message = replace(message, normalized_content=content[:maximum])
+        items.append(ToolMessageItem(
+            f"message/{message.internal_message_id}", bounded_message,
+            offset + len(bounded_message.normalized_content) < total_chars,
+            urls, hit_ids is None or message.internal_message_id in hit_ids,
+            content_offset=offset, content_total_chars=total_chars,
+        ))
     return tuple(items)
 
 
@@ -1655,7 +1665,8 @@ def build_tool_result_record(
         }
     elif isinstance(data, MessageContextResult):
         # Explicit context 的所有消息都属于当前 Tool Result，可继续使用 MessageSource citation。
-        message_items = _message_items(data.messages)
+        content_page = data.metadata.details.get("content_page")
+        message_items = _message_items(data.messages, content_page=content_page if isinstance(content_page, Mapping) else None)
         raw_scope = data.metadata.filters.get("scope", {})
         query_snapshot = {
             "message_id": data.message_id,
@@ -1663,6 +1674,7 @@ def build_tool_result_record(
             "requested_before": data.requested_before,
             "requested_after": data.requested_after,
             "include_replies": data.metadata.details.get("include_replies", False),
+            "content_page": content_page,
             "scope": dict(raw_scope) if isinstance(raw_scope, Mapping) else {},
         }
     elif isinstance(data, FindMembersResult):
@@ -1758,6 +1770,28 @@ def _model_content(content: str, maximum: int = MAX_MODEL_MESSAGE_CHARS) -> tupl
     return content[: maximum - 1] + "…", True
 
 
+def _set_model_message_content(
+    entry: dict[str, object], full_content: str, maximum: int, canonical_truncated: bool,
+) -> None:
+    """按实际送达字符更新续读位置；预算进一步压缩正文时也不能跳过未读内容。"""
+    content, shortened = _model_content(full_content, maximum)
+    entry["content"] = content
+    if shortened and "content_total_chars" not in entry:
+        # 原本短消息也可能因本次预算被缩短，此时同样公开续读位置。
+        entry["content_offset"] = 0
+        entry["content_total_chars"] = len(full_content)
+    offset = entry.get("content_offset", 0)
+    entry["content_truncated"] = canonical_truncated or shortened or offset != 0
+    if "content_total_chars" in entry:
+        assert isinstance(offset, int)
+        total_chars = entry["content_total_chars"]
+        assert isinstance(total_chars, int)
+        # 模型预览末尾的省略号不是原文字符，不计入下一页偏移。
+        end = offset + len(content) - int(shortened)
+        entry["content_end"] = end
+        entry["next_content_offset"] = end if end < total_chars else None
+
+
 def _reply_identity(message: MessageProjection, source_message_id: str) -> tuple[str, str | None, str | None, str]:
     """平台回复 ID 只能在同会话、同一个直接转发容器内关联。"""
 
@@ -1777,24 +1811,29 @@ def _model_message_projection(
     reply_handles: Mapping[tuple[str, str | None, str | None, str], str | None],
     *,
     maximum_chars: int = MAX_MODEL_MESSAGE_CHARS,
+    include_content_range: bool = False,
 ) -> tuple[dict[str, object], tuple[dict[str, object], bool, str, bool]]:
     """生成正文与必要转发来源 projection，并返回 budget trimming slot。"""
 
     message = item.message
-    content, model_content_truncated = _model_content(message.normalized_content, maximum_chars)
     entry: dict[str, object] = {
         "source_id": source_id,
         "timestamp": message.timestamp,
         # 模型可直接读取 Host 派生的 UTC 日期；canonical 毫秒时间仍保留供契约校验。
         "timestamp_utc": format_timestamp_utc(message.timestamp),
         "author": message.sender_name or message.sender_user_id,
-        "content": content,
         "session": message.session_display or message.session_id,
         "message_type": message.message_type,
         "urls": item.urls,
-        "content_truncated": item.content_truncated or model_content_truncated,
         "hit": item.is_hit,
     }
+    # 短普通消息不搬运额外元数据；长消息预览和显式正文页公开准确长度及续读位置。
+    if include_content_range or item.content_truncated or len(message.normalized_content) > maximum_chars:
+        entry["content_offset"] = item.content_offset
+        entry["content_total_chars"] = (
+            item.content_total_chars if item.content_total_chars is not None else len(message.normalized_content)
+        )
+    _set_model_message_content(entry, message.normalized_content, maximum_chars, item.content_truncated)
     # 只给真实回复增加关系字段，避免给所有普通命中重复搬运平台 ID、挤占调查预算。
     if message.reply_to_source_message_id is not None:
         entry["reply_to_source_message_id"] = message.reply_to_source_message_id
@@ -1837,6 +1876,11 @@ def _compact_model_message_fields(projected: dict[str, Any], entries: list[dict[
         for hit in projected.get("hits", []):
             for key in ("matched_terms", "score", "score_type"):
                 hit.pop(key)
+    if projected.get("strategy") == "context":
+        metadata = projected.get("metadata")
+        if isinstance(metadata, dict) and isinstance(metadata.get("details"), dict):
+            # Canonical抓取页与模型实际投影可能因预算不同；只让逐消息范围指导模型续读。
+            metadata["details"].pop("content_page", None)
 
 
 def _project_model_data(
@@ -1968,7 +2012,7 @@ def _project_model_data(
             # Host record 已保留真实命中优先序；模型正文与 trimming slots 必须使用同一顺序。
             indexed_messages.sort(key=lambda indexed: indexed[0])
         for message_index, item in indexed_messages:
-            # 显式读取的锚点需要补足搜索短预览；仍受原有1000字record及本次Token预算约束。
+            # 显式读取的锚点按正文页送达；引用卡片的1000字边界不再截断阅读内容。
             is_context_anchor = projected.get("strategy") == "context" and (
                 item.message.internal_message_id == projected.get("message_id")
             )
@@ -1977,8 +2021,9 @@ def _project_model_data(
                 item,
                 f"m{record.model_scope_id}-{message_index + 1}",
                 reply_handles,
-                # 普通邻居沿用600字，只有用户/模型点名读取的原消息恢复有界正文。
-                maximum_chars=MAX_SAFE_EXCERPT_CHARS if is_context_anchor else MAX_MODEL_MESSAGE_CHARS,
+                # 普通邻居沿用600字；点名原文按单页边界读取，继续受本轮Token预算控制。
+                maximum_chars=MAX_MESSAGE_CONTENT_PAGE_CHARS if is_context_anchor else MAX_MODEL_MESSAGE_CHARS,
+                include_content_range=is_context_anchor,
             )
             projected_messages.append(entry)
             slots.append((projected_messages, entry, entry, *slot[1:]))
@@ -2217,9 +2262,7 @@ def project_tool_result_for_model(
                 # 优先来源已受既有 excerpt 上限约束；预算不足时继续省略后面的其他 hit。
                 if entry["source_id"] in protected_source_ids:
                     continue
-                content, content_truncated = _model_content(full_content, maximum)
-                entry["content"] = content
-                entry["content_truncated"] = canonical_truncated or content_truncated
+                _set_model_message_content(entry, full_content, maximum, canonical_truncated)
             truncated = True
             if fits():
                 break
@@ -2619,6 +2662,8 @@ def _hydrate_snapshot(
     *,
     content_truncated: bool = False,
     source_urls: tuple[str, ...] = (),
+    content_offset: int = 0,
+    content_total_chars: int | None = None,
 ) -> MessageDisplaySnapshot:
     """从 canonical projection 生成 bounded snapshot；不使用模型提供的 author/time/session。"""
 
@@ -2636,7 +2681,9 @@ def _hydrate_snapshot(
         timestamp_ms=message.timestamp,
         timezone="UTC",
         excerpt=excerpt,
-        excerpt_truncated=truncated,
+        excerpt_truncated=truncated or content_offset > 0,
+        excerpt_offset=content_offset,
+        content_total_chars=content_total_chars,
         source_message_id=message.source_message_id,
         urls=source_urls or extract_urls(content),
         forward=message.forward,
@@ -2744,6 +2791,8 @@ def _finalize_source(
                     message,
                     content_truncated=matched_message_item.content_truncated,
                     source_urls=matched_message_item.urls,
+                    content_offset=matched_message_item.content_offset,
+                    content_total_chars=matched_message_item.content_total_chars,
                 ),
             ),
         )
