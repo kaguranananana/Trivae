@@ -239,3 +239,11 @@
 - 最终前端13文件80项通过，typecheck/lint/build通过；后端1269 passed/1 skipped（33.35秒），Ruff src/tests/scripts、mypy129文件通过。旧测试因接收回调、模态按钮、中文化、服务端搜索及URL历史而调整对应契约和测试隔离，未放宽原始错误或来源断言。JS gzip97.55kB/CSS gzip28.96kB，不宣称性能基准收益。
 - 浏览器1280×720/390×844：来源首条打开，正文1084在展开/原文读取/关闭前后不变；窄屏引用25定位且1709返回保持、无横向溢出；切换后退184→184；侧栏刷新保持；正文词structured output实际命中2条历史。截图仅存本地/tmp/trivae-frontend-review/，未提交私人聊天截图。
 - Web已重启加载接口，库/语义829397、Plan ready；0新增推理、未重算语义索引。实体软键盘和屏幕阅读器未验收；阅读位置属于页面内buffer，整页刷新不承诺恢复。报告更新docs/FRONTEND_REVIEW_20261023.md；无未完成的清单实现项。
+
+## 2026-10-23 · 深度审计剩余 Failure Case 与验证缺口
+
+- 按用户要求审计现有运行暴露的未闭合问题；工作提交a6fdee4新增docs/FAILURE_AUDIT_20261023.md与scripts/audit_failure_boundaries.py，未修改产品实现、Prompt、预算或在线数据。复用库存脚本核对1,574条唯一Evaluation、200分组、全部Trace可读，2个封存库排除；近期Application独立运行另查，不混作同一统计分母。
+- 隔离Importer→Canonical→FTS明确复现空转发后补齐正文仍被判duplicate_equal，incoming raw不保留，重建索引后0命中；相反顺序控制1命中。根因是稳定projection未比较实质转发正文。当前Canonical244个空节点/143根消息，242嵌套、2根层；检查11次其他来源出现/7文件仍不足以确认可恢复量，未把244都归因此缺陷。
+- 真实SDK小库慢SQL在5秒显式SQL_EXECUTION_TIMEOUT，但20ms定时回调额外迟到约4.98秒；快查询约1ms、回调约21ms。证明同步计算阻塞事件循环，未冒充真实浏览器并发压测；SQL原5秒期限修复仍有效。两项独立probe门禁实际exit1，原观察保存，未修改产品或测试掩盖失败。
+- 当前只读检索“github.com 荐”0命中，对照主表字面19条。不存在词零命中因244转发缺口coverage partial，no_result被拒、无来源claims可degraded保留，明确区分正常结果形态缺口与完全无法回答。原Plan笔试110条材料仍漏已知经历；当前构造91命中目标rank41、笔试测试40命中rank8，不把跨快照排名当旧运行精确重放。复核旧逐题来源绑定失败及解析坏正文缺失，保留当前模型尚未复验的边界。
+- 本轮实际后端1269 passed/1 skipped（33.53秒）、前端13文件80项通过；Ruff src/tests/scripts及新增脚本检查、mypy129源文件通过，报告相对链接检查通过。在线只读readiness仍库/语义829397、revision63617对齐、Plan ready。0新增模型生成/Judge，未复制大库、重算向量或重启Web。本地证据data/evaluation/failure-audit-20261023/；下一步优先两项工程修复，再做当前原题检索与结论—来源绑定的小规模真实复验。
