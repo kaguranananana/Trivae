@@ -241,6 +241,11 @@ code deterministically generates those fields after validating the candidate. If
 used to make a chat-derived claim, every factual claim must list at least one returned source handle.
 An empty `sources` list is valid only for a genuinely non-tool answer; a tool-backed empty source
 list fails finalization rather than silently producing an unsupported answer.
+When the Host explicitly allows insufficient_evidence because successful retrieval found no usable
+messages in incompletely covered material, return this separate investigation outcome:
+{"kind": "insufficient_evidence", "summary": "<no matches in recoverable material; explain what remains unknown>", "limitations": []}
+This summary reports the search observation and missing coverage, not positive factual topic claims.
+Do not invent source handles, say the full scope is empty, or use this form after tool execution errors.
 When every executed retrieval tool returned zero results for the requested range, you MAY instead return
 exactly this zero-result JSON shape and nothing else:
 {"kind": "no_result", "summary": "<state plainly that the resolved range contains no messages, including the effective range>", "limitations": ["<bounded caveats>"]}

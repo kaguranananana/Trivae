@@ -15,7 +15,7 @@ Recall 契约（精确表述）：
 - 长度 ≥2 的 Han 子串 ⇔ doc tokens 以保序短语包含查询归一化 bigram 序列（完整召回）；
 - 整个keyword为一个Han字符时，原bigram无法命中内部字符，故使用独立unigram主索引，
   完整召回该字符，不改变既有bigram正文、短语和BM25；不在零命中后追加LIKE补查。
-- 多词AND仍沿用原bigram契约，包含单字term的多词查询不承诺字符子串完整召回。
+- 多词 AND 的独立单字 term 在单字索引求交；其他 term 保留原 bigram 短语和排序。
 """
 
 from __future__ import annotations

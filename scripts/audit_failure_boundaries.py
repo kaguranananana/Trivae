@@ -74,6 +74,7 @@ def audit_retrieval(database: Path) -> dict[str, object]:
         text = "当前可恢复文本未命中；部分转发正文缺失，不能判断全范围是否存在。"
         candidates = {
             "no_result": {"kind": "no_result", "summary": text, "limitations": []},
+            "insufficient_evidence": {"kind": "insufficient_evidence", "summary": text, "limitations": []},
             "empty_source_claim": {"claims": [{
                 "text": text, "finding": "当前可恢复文本未命中", "criterion": "仅陈述当前检索观察",
                 "sufficiency": "insufficient", "sources": [], "limitations": [],
@@ -202,6 +203,7 @@ def audit_forward_enrichment() -> dict[str, object]:
                 observations[name] = {
                     "second_import_duplicates": imported.duplicate_count,
                     "second_import_conflicts": imported.conflict_count,
+                    "second_import_enriched": imported.enriched_count,
                     "content_hits_after_rebuild": hits, "remaining_gaps": gaps,
                     "variant_kind": variant[0], "variant_has_raw": variant[1] is not None,
                 }

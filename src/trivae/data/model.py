@@ -112,8 +112,8 @@ class CanonicalMessage:
 
         同一条消息在不同导出器中的 display name 可能变化；这些字段属于
         Membership 事实，不应因为名称变化就把消息判成另一条逻辑消息。
-        content_json/raw_payload_json 继续保留在 Canonical Store 和冲突 provenance
-        中，但不参与当前已用真实数据校准过的 invariant projection。
+        content_json/raw_payload_json 保存在 Canonical Store 和版本 provenance；
+        实质转发正文另外复用正式树投影比较，只接受保留全部旧事实的单调补齐。
         """
 
         return {
@@ -145,6 +145,8 @@ class ImportBatchSummary:
     error_count: int
     status: str
     error_message: str | None = None
+    # 已有消息补齐转发正文单独计数，不混入普通重复或新增消息。
+    enriched_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """转换成 CLI 和测试共同使用的普通字典。"""
@@ -165,6 +167,7 @@ class ImportRunSummary:
             "files": len(self.batches),
             "received_count": sum(batch.received_count for batch in self.batches),
             "inserted_count": sum(batch.inserted_count for batch in self.batches),
+            "enriched_count": sum(batch.enriched_count for batch in self.batches),
             "duplicate_count": sum(batch.duplicate_count for batch in self.batches),
             "conflict_count": sum(batch.conflict_count for batch in self.batches),
             "error_count": sum(batch.error_count for batch in self.batches),

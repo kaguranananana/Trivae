@@ -398,7 +398,7 @@ def _row_to_projection(row: sqlite3.Row) -> MessageProjection:
     return _row_to_forward_tree(row).root
 
 
-def _fts_match_expression(query: LexicalQuery) -> str:
+def _fts_match_expression(query: LexicalQuery, *, terms: tuple[str, ...] | None = None) -> str:
     """把关键词转换为 literal AND 查询，禁止用户输入改变 SQL 结构。
 
     每个 term 先经过与 rebuild 一致的 CJK bigram 归一化，再把归一化结果整体
@@ -409,7 +409,7 @@ def _fts_match_expression(query: LexicalQuery) -> str:
     # FTS5 的 MATCH 文本仍作为参数绑定；双引号只用于 literal token 语义。
     return " AND ".join(
         f'"{normalize_lexical_query_term(term).replace(chr(34), chr(34) * 2)}"'
-        for term in query.terms
+        for term in (query.terms if terms is None else terms)
     )
 
 
@@ -1183,9 +1183,20 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
     def _lexical_match_union(self, query: LexicalQuery, *, scored: bool) -> tuple[str, list[object]]:
         """按查询形态选择主索引；普通/转发共用既有Scope SQL与事实恢复。"""
 
-        # 仅完整查询为一个Han字符时选单字索引；其他查询的BM25和候选序列保持原样。
-        index_table = ("messages_han_fts" if len(query.terms) == 1 and is_single_han_term(query.terms[0])
-                       else "messages_fts")
+        # 每个独立单字 term 都在既有 Han 索引匹配；其他词仍使用原短语及 BM25。
+        han_terms = tuple(term for term in query.terms if is_single_han_term(term))
+        regular_terms = tuple(term for term in query.terms if not is_single_han_term(term))
+        index_table = "messages_fts" if regular_terms else "messages_han_fts"
+        match = _fts_match_expression(query, terms=regular_terms or han_terms)
+        han_filter = ""
+        match_parameters: list[object] = [match]
+        if regular_terms and han_terms:
+            # 先按常规词排序，再用同一消息身份求交；不在零命中后补查或改变其他词的排序。
+            han_filter = (
+                "AND f.internal_message_id IN (SELECT internal_message_id FROM messages_han_fts "
+                "WHERE messages_han_fts MATCH ?)"
+            )
+            match_parameters.append(_fts_match_expression(query, terms=han_terms))
         where_sql, parameters = _where_clause(query)
         columns = "m.internal_message_id AS internal_message_id, m.session_id AS session_id"
         if scored:
@@ -1202,10 +1213,10 @@ class SQLiteCanonicalReadRepository(CanonicalReadRepository):
                 FROM {index_table} AS f
                 INNER JOIN {table} AS m
                   ON m.internal_message_id = f.internal_message_id AND m.session_id = f.session_id
-                WHERE {index_table} MATCH ? AND {where_sql}
+                WHERE {index_table} MATCH ? {han_filter} AND {where_sql}
                 """
             )
-        bound = [_fts_match_expression(query), *parameters]
+        bound = [*match_parameters, *parameters]
         return " UNION ALL ".join(branches), [*bound, *bound]
 
     def count_lexical_hits(self, query: LexicalQuery) -> int:

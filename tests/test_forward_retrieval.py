@@ -159,6 +159,16 @@ def test_time_scope_uses_forwarded_at_and_keeps_original_time_separate(forward_f
     assert by_sender.total_hits == 6
 
 
+def test_single_han_and_regular_term_preserve_forward_occurrences_and_scope(forward_fixture: ForwardFixture) -> None:
+    """组合词仍逐转发位置恢复正文，单字条件不能扩大外层群聊和转发时间范围。"""
+    result = search(forward_fixture, "远程 连", session_ids=("qq:100",),
+                    start_timestamp=10_000, end_timestamp=10_001, context_before=0, context_after=0)
+    assert result.total_hits == 2
+    assert {hit.message.internal_message_id for hit in result.hits} == {
+        "qq:100:outer-a#forward:0.0", "qq:100:outer-a#forward:0.4",
+    }
+
+
 def test_empty_forward_never_indexes_preview_and_reports_scope_gaps(forward_fixture: ForwardFixture) -> None:
     fixture = forward_fixture
     missing = search(fixture, "预览秘密", session_ids=("qq:100",))

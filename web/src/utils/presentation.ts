@@ -6,6 +6,7 @@ const limitationLabels: Record<string, string> = {
   'coverage:partial': '检索未覆盖全部相关消息。',
   'coverage:unknown': '本次检索的完整覆盖情况尚不明确。',
   unexpanded_forward_content: '部分转发正文缺失，无法核对完整内容。',
+  insufficient_evidence: '可恢复文本中未命中，现有材料不足以判断完整范围。',
 }
 
 export function readableLimitations(values: readonly string[]): string[] {

@@ -515,6 +515,19 @@ class TraceableAgentRuntime(AgentRuntime):
             # 模型输出解析失败是 Runtime 的已知行为错误：保留稳定 type，转换为失败 terminal，禁止裸异常穿透 Query。
             if last_event is None:
                 raise
+            from trivae.query.streaming import AnswerDeltaParseError
+
+            if isinstance(exc, AnswerDeltaParseError):
+                # 在失败终态前持久化公开正文诊断；emit 仍经过原有边界、限长和密钥脱敏。
+                self.collector.emit(
+                    stage="runtime", operation="answer.parse.failed", phase="failed", outcome="error",
+                    operation_id=f"{self._run_operation_id}:answer-parse", parent_operation_id=self._run_operation_id,
+                    payload={"provider": last_event.provider, "model": last_event.model,
+                             "run_id": last_event.run_id, "runtime_event_sequence": last_event.sequence,
+                             "diagnostics": exc.diagnostics},
+                    failure=FailureInfo(error_code="ANSWER_DELTA_PARSE_ERROR", origin_stage="runtime",
+                                        observed_stage="runtime", category="model_behavior", handling="terminal"),
+                )
             result = RuntimeResult(
                 final_answer=None,
                 provider=last_event.provider,

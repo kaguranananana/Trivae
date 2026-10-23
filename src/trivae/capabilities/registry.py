@@ -74,6 +74,21 @@ class CapabilityRegistry:
 
         return tuple(sorted(self._tools))
 
+    async def invoke_async(
+        self, name: str, request: ToolRequest, scope: ExecutionScope, *, trace_context: object | None = None,
+    ) -> ToolEnvelope:
+        """优先显式异步入口，既有 ToolHandler 的同步 invoke 契约仍然有效。"""
+
+        tool = self._tools.get(name)
+        if tool is None:
+            raise KeyError(f"Unknown tool: {name}")
+        invoke = getattr(tool, "invoke_async", None)
+        if callable(invoke):
+            return await invoke(request, scope, trace_context=trace_context)
+        # 真实 SDK 参数/组合回归证明同步注册 handler 仍是合法接口，不能强制其新增方法。
+        # 只保持原线程的调用语义；正式 ExecuteSQLTool 提供显式异步入口，不走此分支。
+        return self.invoke(name, request, scope, trace_context=trace_context)
+
     def metadata(self) -> tuple[CapabilityMetadata, ...]:
         """从已注册 Tool 所持 Capability 读取 canonical 描述。"""
 

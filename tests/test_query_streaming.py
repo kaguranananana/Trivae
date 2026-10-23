@@ -261,6 +261,22 @@ class AnswerArtifactDeltaParserTests(unittest.TestCase):
         with self.assertRaises(AnswerDeltaParseError):
             incomplete.finish()
 
+    def test_parse_failure_keeps_exact_offset_and_bounded_public_context(self) -> None:
+        """跨 chunk 的非法转义仍失败，同时保留可定位坏字符的公开正文上下文。"""
+        raw = r'{"claims":[{"text":"坏\x尾部"}]}'
+        position = raw.index("\\x") + 1
+        parser = AnswerArtifactDeltaParser()
+        parser.feed(raw[:position])
+        with self.assertRaises(AnswerDeltaParseError) as failure:
+            parser.feed(raw[position:])
+        detail = failure.exception.diagnostics
+        self.assertEqual(detail["offset"], position)
+        self.assertEqual(detail["unexpected"], "x")
+        self.assertTrue(detail["context_before"].endswith("坏\\"))
+        self.assertTrue(detail["context_after"].startswith("尾部"))
+        self.assertLessEqual(len(detail["context_before"]), 128)
+        self.assertLessEqual(len(detail["context_after"]), 64)
+
 
 class QueryStreamProjectionTests(unittest.TestCase):
     """Runtime 与 normalized 两个真实来源共享一个 live sequence。"""

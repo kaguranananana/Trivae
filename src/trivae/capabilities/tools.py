@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any, Literal
 
@@ -35,6 +39,14 @@ from trivae.retrieval.structured import (
 )
 
 RetrievalToolData = RetrievalResult | SemanticRetrievalResult
+
+
+@dataclass
+class _ToolInvocation:
+    """把同步或异步计算结果交回同一调用线程上的 Trace 生命周期。"""
+
+    envelope: ToolEnvelope = field(init=False)
+    origin: Literal["tool", "capability"] | None = None
 
 
 class SearchMessagesTool:
@@ -508,6 +520,14 @@ class _CapabilityTool:
     ) -> ToolEnvelope:
         """记录 Tool 与 Context/Identity capability 的公开因果链。"""
 
+        with self._trace_invocation(request, trace_context) as invocation:
+            invocation.envelope, invocation.origin = self._invoke_with_origin(request, scope)
+        return invocation.envelope
+
+    @contextmanager
+    def _trace_invocation(self, request: Any, trace_context: object) -> Iterator[_ToolInvocation]:
+        """仅在调用线程写 Trace；计算可以让出事件循环，事件身份与错误归属保持一致。"""
+
         from trivae.observability.collector import TraceOperationContext
 
         if not isinstance(trace_context, TraceOperationContext):
@@ -533,7 +553,8 @@ class _CapabilityTool:
         )
         internal_started = perf_counter()
         try:
-            envelope, origin = self._invoke_with_origin(request, scope)
+            invocation = _ToolInvocation()
+            yield invocation
         except Exception as exc:
             # 未知异常必须原样上抛；Trace 只记录安全的异常类型和失败归属。
             self._emit_internal_failure(trace_context, internal_operation, tool_operation, internal_started, type(exc).__name__)
@@ -550,6 +571,7 @@ class _CapabilityTool:
             )
             raise
 
+        envelope, origin = invocation.envelope, invocation.origin
         if envelope.error is None:
             trace_context.emit(
                 stage=self.trace_stage,
@@ -617,8 +639,6 @@ class _CapabilityTool:
                 None,
             ),
         )
-        return envelope
-
     def _emit_internal_failure(
         self,
         trace_context: Any,
@@ -874,3 +894,16 @@ class ExecuteSQLTool(_CapabilityTool):
 
     def __init__(self, capability: Any) -> None:
         super().__init__(capability, ExecuteSQLInput)
+
+    async def invoke_async(
+        self, request: ExecuteSQLInput, scope: ExecutionScope, *, trace_context: object | None = None,
+    ) -> ToolEnvelope:
+        """SQL 在独立工作线程计算；其连接由现有 SQL adapter 在该线程创建并关闭。"""
+
+        if trace_context is None:
+            envelope, _ = await asyncio.to_thread(self._invoke_with_origin, request, scope)
+            return envelope
+        # 进入和退出 context 均在事件循环线程，SQLite Trace 不跨线程使用。
+        with self._trace_invocation(request, trace_context) as invocation:
+            invocation.envelope, invocation.origin = await asyncio.to_thread(self._invoke_with_origin, request, scope)
+        return invocation.envelope

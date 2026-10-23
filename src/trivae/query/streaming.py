@@ -292,6 +292,11 @@ def _bounded_detail_value(value: object) -> tuple[str, bool]:
 class AnswerDeltaParseError(ModelBehaviorError):
     """Provider 正文流不符合 final answer 的 JSON/plain-text lexical contract。"""
 
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        # 只在失败时填入有限的公开正文窗口；不缓存完整响应或任何推理内容。
+        self.diagnostics: dict[str, object] = {}
+
 
 _JsonPathPart = str | int
 _ObjectState = Literal["key_or_end", "key", "colon", "value", "comma_or_end"]
@@ -329,19 +334,53 @@ class AnswerArtifactDeltaParser:
         self._primitive = ""
         self._target_count = 0
         self._output: list[str] = []
+        self._received_chars = 0
+        self._chunk_number = 0
+        self._recent_public_text = ""
 
     def feed(self, chunk: str) -> str:
         """消费一个 provider chunk，并返回本 chunk 新解码出的用户正文。"""
 
         if not isinstance(chunk, str):
             raise TypeError("answer delta chunk must be a string")
+        self._chunk_number += 1
         self._output = []
-        for character in chunk:
-            self._feed_character(character)
+        for index, character in enumerate(chunk):
+            try:
+                self._feed_character(character)
+            except AnswerDeltaParseError as exc:
+                # offset 是已成功消费的 Unicode 字符数，跨 chunk 不重置，也不当作字节偏移。
+                self._capture_parse_failure(exc, character, chunk[index + 1:index + 65])
+                raise
+            self._received_chars += 1
+            self._recent_public_text = (self._recent_public_text + character)[-128:]
         return "".join(self._output)
 
     def finish(self) -> str:
         """在 Runtime completed 时验证 lexical stream，并丢弃 plain text 尾部空白。"""
+
+        try:
+            return self._finish_json()
+        except AnswerDeltaParseError as exc:
+            # EOF 没有坏字符；保留实际结束位置和未闭合容器状态，仍原样抛出根因。
+            self._capture_parse_failure(exc, "", "")
+            raise
+
+    def _capture_parse_failure(self, error: AnswerDeltaParseError, unexpected: str, after: str) -> None:
+        """记录足够定位非法转义/缺失边界的有界状态，随后交给既有 Trace 脱敏策略。"""
+
+        error.diagnostics = {
+            "message": str(error), "offset": self._received_chars, "offset_unit": "unicode_characters",
+            "chunk_number": self._chunk_number, "unexpected": unexpected,
+            "context_before": self._recent_public_text, "context_after": after,
+            "parser_mode": self._mode, "in_string": self._in_string,
+            "escape_pending": self._escape_pending,
+            "frames": [{"kind": frame.kind, "path": list(frame.path), "state": frame.state}
+                       for frame in self._frames[-4:]],
+        }
+
+    def _finish_json(self) -> str:
+        """执行原有 EOF 校验；诊断包装不改变任何合法或非法 JSON 的判定。"""
 
         if self._mode == "unknown":
             return ""

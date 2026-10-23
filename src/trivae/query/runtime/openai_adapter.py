@@ -24,7 +24,12 @@ from trivae.config.limits import DEFAULT_MAX_TOOL_ROUNDS
 from trivae.config.model_capabilities import ReasoningEffort, resolve_context_window, resolve_reasoning_effort
 from trivae.config.settings import ModelSettings, load_settings
 from trivae.query.completion import CompletionObservation, CompletionResult
-from trivae.query.evidence import ToolResultProjectionError, ToolResultRecord, has_verified_zero_result_evidence
+from trivae.query.evidence import (
+    ToolResultProjectionError,
+    ToolResultRecord,
+    has_incomplete_empty_result_evidence,
+    has_verified_zero_result_evidence,
+)
 from trivae.query.runtime.budget import (
     ToolResultBudgetConfig,
     ToolResultBudgetError,
@@ -1635,7 +1640,12 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
                 eligibility = "allowed" if zero_allowed else "unavailable"
                 # 只传递资格事实；最终输出仍必须通过原Finalizer，不替模型改写或兜底。
                 parts.append(f"\nHost-verified no_result eligibility: {eligibility}. ")
-                if not zero_allowed:
+                if has_incomplete_empty_result_evidence(tuple(context.tool_results)):
+                    # 明确提供正式出口；不要求模型为检索观察编造消息来源。
+                    parts.append("Host-verified insufficient_evidence eligibility: allowed. "
+                                 "Use kind=insufficient_evidence to report no matches in the recoverable material "
+                                 "and explain incomplete coverage; do not claim the full scope is empty. ")
+                elif not zero_allowed:
                     # 有可引用事实时采用正常claims；缺少证据时保持不确定，不能声称完整为空。
                     parts.append("Do not return kind=no_result for the current tool history. "
                                  "Use normal claims with returned source handles for available facts; "

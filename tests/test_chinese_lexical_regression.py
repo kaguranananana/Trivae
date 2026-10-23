@@ -151,6 +151,13 @@ class ChineseLexicalRetrievalTests(unittest.TestCase):
         self.assertEqual(set(ids), {"qq:900:c1", "qq:900:c2", "qq:900:c3", "qq:900:a5",
                                     "qq:900:mx1", "qq:900:mx2", "qq:900:mx3"})
 
+    def test_single_han_terms_can_filter_other_lexical_terms(self) -> None:
+        """多词 AND 的单字也须在 Han 索引中匹配，常规词排序仍由原 bigram 索引决定。"""
+        total, ids = self._search("abc 荐")
+        self.assertEqual(total, 2)
+        self.assertEqual(ids, self._search("abc")[1])
+        self.assertEqual(set(self._search("荐 这")[1]), {"qq:900:c2", "qq:900:a5", "qq:900:mx2", "qq:900:mx3"})
+
     def test_single_han_preserves_session_and_time_scope(self) -> None:
         # 单字主索引必须复用既有Scope SQL，不能用无范围的全文扫库替代。
         result = self.lexical.search(LexicalQuery(keyword="荐", session_ids=(SESSION,),

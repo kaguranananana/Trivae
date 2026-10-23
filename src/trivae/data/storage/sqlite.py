@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from trivae.data.ingestion.qq_forward import classify_forward_change
 from trivae.data.model import (
     CanonicalMessage,
     ChatSession,
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS import_batches (
     finished_at TEXT,
     received_count INTEGER NOT NULL DEFAULT 0,
     inserted_count INTEGER NOT NULL DEFAULT 0,
+    enriched_count INTEGER NOT NULL DEFAULT 0,
     duplicate_count INTEGER NOT NULL DEFAULT 0,
     conflict_count INTEGER NOT NULL DEFAULT 0,
     error_count INTEGER NOT NULL DEFAULT 0,
@@ -181,6 +183,7 @@ class MessageWriteResult:
 
     inserted: bool
     conflict: bool
+    enriched: bool = False
 
 
 def utc_now() -> str:
@@ -200,6 +203,10 @@ class SQLiteCanonicalStore:
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
         self.connection.executescript(SCHEMA_SQL)
+        # 新批次指标需要同步升级已有数据库；历史版本未做正文补齐，旧行的真实值为零。
+        batch_columns = {row[1] for row in self.connection.execute("PRAGMA table_info(import_batches)")}
+        if "enriched_count" not in batch_columns:
+            self.connection.execute("ALTER TABLE import_batches ADD COLUMN enriched_count INTEGER NOT NULL DEFAULT 0")
         # 单调派生版本与消息写入同事务推进，不修改 canonical payload 或身份语义。
         ensure_canonical_revision(self.connection)
         self.connection.commit()
@@ -261,6 +268,7 @@ class SQLiteCanonicalStore:
         error_count: int,
         status: str,
         error_message: str | None = None,
+        enriched_count: int = 0,
     ) -> ImportBatchSummary:
         """保存 batch 终态，并从同一条记录返回可序列化摘要。"""
 
@@ -268,7 +276,7 @@ class SQLiteCanonicalStore:
             """
             UPDATE import_batches
             SET finished_at = ?, received_count = ?, inserted_count = ?, duplicate_count = ?,
-                conflict_count = ?, error_count = ?, status = ?, error_message = ?
+                conflict_count = ?, error_count = ?, status = ?, error_message = ?, enriched_count = ?
             WHERE batch_id = ?
             """,
             (
@@ -280,13 +288,14 @@ class SQLiteCanonicalStore:
                 error_count,
                 status,
                 error_message,
+                enriched_count,
                 batch_id,
             ),
         )
         row = self.connection.execute(
             """
             SELECT batch_id, source_file, session_id, received_count, inserted_count,
-                   duplicate_count, conflict_count, error_count, status, error_message
+                   duplicate_count, conflict_count, error_count, status, error_message, enriched_count
             FROM import_batches
             WHERE batch_id = ?
             """,
@@ -305,6 +314,7 @@ class SQLiteCanonicalStore:
             error_count=row["error_count"],
             status=row["status"],
             error_message=row["error_message"],
+            enriched_count=row["enriched_count"],
         )
 
     def record_file_failure(
@@ -622,11 +632,47 @@ class SQLiteCanonicalStore:
             is_canonical=False,
         )
         conflict = existing["canonical_projection_json"] != projection_json
+        forward_change = "equal"
+        if existing["content_json"] != message.content_json and (
+            '"type":"forward"' in existing["content_json"] or '"type":"forward"' in message.content_json
+        ):
+            # 根消息稳定事实先一致，再比较真实转发正文；预览变化不能阻止已知空节点补齐。
+            previous_core, incoming_core = json.loads(existing["canonical_projection_json"]), message.canonical_projection()
+            previous_core.pop("content_text")
+            incoming_core.pop("content_text")
+            if previous_core == incoming_core:
+                forward_change = classify_forward_change(
+                    message, json.loads(existing["content_json"]), json.loads(message.content_json),
+                )
+        if forward_change == "enriched":
+            # 覆盖前保存旧 Canonical 的原始来源，之后仍可追溯首次不完整导出。
+            self._record_message_variant(
+                existing_message_id, existing["canonical_source_id"], existing["canonical_source_record_index"],
+                "superseded_forward", existing["canonical_projection_json"], existing["raw_payload_json"],
+            )
+            # 整份 incoming 保留全部已知事实，来源可以准确指向这一次完整度更高的导出。
+            self.connection.execute(
+                """UPDATE messages SET content_text=?, content_json=?, raw_payload_json=?,
+                   canonical_projection_json=?, canonical_source_id=?, canonical_source_record_index=?
+                   WHERE internal_message_id=?""",
+                (message.content_text, message.content_json, message.raw_payload_json, projection_json,
+                 message.canonical_source_id, message.canonical_source_record_index, existing_message_id),
+            )
+            # 真实 UPDATE 在原事务内推进 revision，既有索引队列据此发布转发和语义增量。
+            self.connection.execute("UPDATE message_sources SET is_canonical=0 WHERE internal_message_id=?",
+                                    (existing_message_id,))
+            self.connection.execute(
+                "UPDATE message_sources SET is_canonical=1 WHERE internal_message_id=? AND source_id=? "
+                "AND source_record_index=?",
+                (existing_message_id, message.canonical_source_id, message.canonical_source_record_index),
+            )
+            return MessageWriteResult(inserted=False, conflict=False, enriched=True)
+        conflict = conflict or forward_change == "conflict"
         is_same_canonical_occurrence = (
             existing["canonical_source_id"] == message.canonical_source_id
             and existing["canonical_source_record_index"] == message.canonical_source_record_index
         )
-        if not is_same_canonical_occurrence:
+        if not is_same_canonical_occurrence or forward_change == "conflict":
             if conflict:
                 # 冲突 variant 保留 incoming raw，便于定位旧/新版 exporter 的真实差异。
                 self._record_message_variant(
@@ -746,10 +792,15 @@ class SQLiteCanonicalStore:
 
         self.connection.execute(
             """
-            INSERT OR IGNORE INTO message_variants(
+            INSERT INTO message_variants(
                 internal_message_id, source_id, source_record_index, variant_kind,
                 canonical_projection_json, raw_payload_json
             ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(internal_message_id, source_id, source_record_index) DO UPDATE SET
+                variant_kind=excluded.variant_kind,
+                canonical_projection_json=excluded.canonical_projection_json,
+                raw_payload_json=excluded.raw_payload_json
+            WHERE message_variants.raw_payload_json IS NULL AND excluded.raw_payload_json IS NOT NULL
             """,
             (
                 message_internal_id,

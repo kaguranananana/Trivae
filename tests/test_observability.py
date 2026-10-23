@@ -496,6 +496,10 @@ class ObservabilityTests(unittest.TestCase):
             self.assertEqual(result.runtime_result.error.exception_type, "AnswerDeltaParseError")
             projection = application.read_trace(result.trace_id)
             self.assertEqual(projection.terminal_status, "failed")
+            # 持久化链路必须保留原失败位置，不能只有不可重放的异常类型名。
+            parse_failure = next(item for item in projection.timeline if item.operation == "answer.parse.failed")
+            self.assertEqual(parse_failure.payload["diagnostics"]["unexpected"], "}")
+            self.assertEqual(parse_failure.payload["run_id"], "malformed-run")
             self.assertTrue(any(item.failure.error_code == "RUNTIME_ERROR" for item in projection.failures))
             self.assertEqual(len(application.read_conversation(result.conversation_id).messages), 0)
             application.close()

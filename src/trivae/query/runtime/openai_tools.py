@@ -1161,7 +1161,7 @@ class ExecuteSQLSDKToolAdapter:
                 try:
                     if runtime_context.capability_registry is not self.registry:
                         raise RuntimeError("SDK local context registry does not match the registered tool adapter")
-                    envelope = runtime_context.capability_registry.invoke(
+                    envelope = await runtime_context.capability_registry.invoke_async(
                         "execute_sql",
                         request,
                         runtime_context.scope,

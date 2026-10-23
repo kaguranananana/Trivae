@@ -928,6 +928,7 @@ class ModelAnswerCandidate:
 
 
 NO_RESULT_KIND = "no_result"
+INSUFFICIENT_EVIDENCE_KIND = "insufficient_evidence"
 
 
 @dataclass(frozen=True)
@@ -1082,8 +1083,20 @@ def has_verified_zero_result_evidence(tool_results: tuple[ToolResultRecord, ...]
     )
 
 
-def parse_model_no_result_candidate(output: str) -> ModelAnswerNoResult:
-    """解析 kind=no_result 的显式 zero-result final contract。"""
+def has_incomplete_empty_result_evidence(tool_results: tuple[ToolResultRecord, ...]) -> bool:
+    """成功读取了可恢复材料但覆盖不完整且没有可引用事实时，可正式表达取证不足。"""
+
+    retrieval = tuple(record for record in tool_results if record.tool_name in _RETRIEVAL_TOOL_NAMES)
+    # 工具执行失败继续显式失败；这个结果形态只处理真实的部分覆盖空检索。
+    if not retrieval or any(record.status == "error" for record in tool_results):
+        return False
+    if tool_results_have_result_facts(tool_results):
+        return False
+    return any(not _is_complete_empty_retrieval_record(record) for record in retrieval)
+
+
+def _parse_empty_outcome(output: str, kind: str) -> ModelAnswerNoResult:
+    """解析两种无消息来源的调查摘要；是否允许提交由各自的 Host 事实判定。"""
 
     if not isinstance(output, str) or not output.strip():
         raise _model_error("INVALID_FINAL_OUTPUT", "final answer must be non-empty text")
@@ -1093,13 +1106,13 @@ def parse_model_no_result_candidate(output: str) -> ModelAnswerNoResult:
         raise _model_error("INVALID_MODEL_CANDIDATE", "no-result answer is not valid JSON") from exc
     if not isinstance(decoded, Mapping):
         raise _model_error("INVALID_MODEL_CANDIDATE", "no-result answer must be an object")
-    if decoded.get("kind") != NO_RESULT_KIND:
-        raise _model_error("INVALID_MODEL_CANDIDATE", f"answer kind must be {NO_RESULT_KIND}", "kind")
+    if decoded.get("kind") != kind:
+        raise _model_error("INVALID_MODEL_CANDIDATE", f"answer kind must be {kind}", "kind")
     if "claims" in decoded:
         # 不允许 no-result 与 claims 形态混合（即使空数组）：有数据时必须走正常 citation contract。
         raise _model_error(
             "INVALID_MODEL_CANDIDATE",
-            f"{NO_RESULT_KIND} answer must not carry a claims field",
+            f"{kind} answer must not carry a claims field",
             "claims",
         )
     summary_value = decoded.get("summary")
@@ -1112,6 +1125,12 @@ def parse_model_no_result_candidate(output: str) -> ModelAnswerNoResult:
         )
     except (AnswerContractError, TypeError) as exc:
         raise _model_error("INVALID_MODEL_CANDIDATE", str(exc)) from exc
+
+
+def parse_model_no_result_candidate(output: str) -> ModelAnswerNoResult:
+    """保留原完整空结果的公开解析入口与候选格式。"""
+
+    return _parse_empty_outcome(output, NO_RESULT_KIND)
 
 
 def compile_model_no_result_answer(candidate: ModelAnswerNoResult) -> AnswerArtifact:
@@ -2910,6 +2929,15 @@ def finalize_answer(
             decoded_output = json.loads(normalized_output)
         except json.JSONDecodeError:
             decoded_output = None
+        if isinstance(decoded_output, Mapping) and decoded_output.get("kind") == INSUFFICIENT_EVIDENCE_KIND:
+            # 当前可恢复文本未命中与全范围为空分开表达，禁止依靠丢引用的 graceful 路径。
+            candidate_outcome = _parse_empty_outcome(normalized_output, INSUFFICIENT_EVIDENCE_KIND)
+            if not has_incomplete_empty_result_evidence(tool_results):
+                raise _model_error("INVALID_FINAL_OUTPUT", "insufficient-evidence answer lacks incomplete empty retrieval")
+            return _attach_execution_facts(AnswerArtifact(
+                content_blocks=(AnswerContentBlock("insufficient-evidence", candidate_outcome.summary),),
+                limitations=(*candidate_outcome.limitations, INSUFFICIENT_EVIDENCE_KIND),
+            ), tool_results)
         if isinstance(decoded_output, Mapping) and decoded_output.get("kind") == NO_RESULT_KIND:
             # 显式 zero-result 契约：positive proof——必须存在成功且完整确定为空的
             # retrieval 记录，且全程无可引用数据；error/partial/incomplete 走原 failure。

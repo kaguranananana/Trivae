@@ -87,6 +87,9 @@ def _answer_form(artifact: AnswerArtifact | None) -> str | None:
 
     if artifact is None:
         return None
+    if len(artifact.content_blocks) == 1 and artifact.content_blocks[0].block_id == "insufficient-evidence":
+        # 不完整空检索不计为 verified-zero，也不误标为普通有据结论。
+        return "insufficient_evidence"
     if (
         len(artifact.content_blocks) == 1
         and artifact.content_blocks[0].block_id == _NO_RESULT_BLOCK_ID

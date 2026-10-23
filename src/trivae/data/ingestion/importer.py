@@ -86,6 +86,7 @@ class SharedImporter:
         batch_id: str | None = None
         received_count = 0
         inserted_count = 0
+        enriched_count = 0
         duplicate_count = 0
         conflict_count = 0
         error_count = 0
@@ -129,6 +130,8 @@ class SharedImporter:
                 result = self.store.write_message(message)
                 if result.inserted:
                     inserted_count += 1
+                elif result.enriched:
+                    enriched_count += 1
                 else:
                     duplicate_count += 1
                 if result.conflict:
@@ -139,6 +142,7 @@ class SharedImporter:
                 batch_id=batch_id,
                 received_count=received_count,
                 inserted_count=inserted_count,
+                enriched_count=enriched_count,
                 duplicate_count=duplicate_count,
                 conflict_count=conflict_count,
                 error_count=error_count,

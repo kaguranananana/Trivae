@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
-from typing import Any
+from typing import Any, Literal
 
 from trivae.data.ingestion.qq_export import QQExportParser
+from trivae.data.model import CanonicalMessage
 from trivae.retrieval.structured import ForwardProvenance, MessageProjection, RetrievalError
 
 # 数字定位链逐层记录 element 下标和 message 下标，可逆且不依赖内部消息 ID 唯一性。
@@ -21,6 +22,48 @@ class ForwardMessageTree:
 
     root: MessageProjection
     messages: tuple[MessageProjection, ...]
+
+
+def classify_forward_change(
+    message: CanonicalMessage, previous_content: dict[str, Any], incoming_content: dict[str, Any],
+) -> Literal["equal", "enriched", "less_complete", "conflict"]:
+    """按正式转发 occurrence 比较已知事实，只接受保留全部旧事实的单调补齐。"""
+
+    # 两棵树使用同一真实根身份；预览、显示名和 DFS 序号不属于内部正文的实质比较字段。
+    root = MessageProjection(
+        internal_message_id=message.internal_message_id, session_id=message.session_id,
+        source_message_id=message.source_message_id, sender_user_id=message.sender_user_id,
+        sender_platform_id=message.sender_platform_id, sender_uin=message.sender_uin,
+        sender_name=message.sender_name, timestamp=message.timestamp, seq=message.seq,
+        message_type=message.message_type, normalized_content=message.content_text,
+        reply_to_source_message_id=message.reply_to_source_message_id, recalled=message.recalled,
+        system=message.system,
+    )
+
+    def facts(content: dict[str, Any]) -> dict[str, tuple[object, ...]]:
+        """直接复用读取层的树解析和正文语义，避免导入比较与正式检索理解不同。"""
+        tree = project_forward_tree(root, content)
+        return {
+            item.internal_message_id: (
+                item.source_message_id, item.sender_platform_id, item.sender_uin,
+                item.message_type, item.normalized_content, item.reply_to_source_message_id,
+                item.recalled, item.system,
+                None if item.forward is None else item.forward.original_timestamp,
+            )
+            for item in (tree.root, *tree.messages)
+        }
+
+    previous, incoming = facts(previous_content), facts(incoming_content)
+    # 已知位置的正文或稳定身份被改写时必须保留冲突，不能用“更长”覆盖旧事实。
+    if any(previous[key] != incoming[key] for key in previous.keys() & incoming.keys()):
+        return "conflict"
+    if previous.keys() < incoming.keys():
+        # 新版包含所有旧 occurrence，并新增可恢复正文；整份 incoming 可成为可信来源。
+        return "enriched"
+    if incoming.keys() < previous.keys():
+        return "less_complete"
+    # 互补但各自缺失已知位置的版本不能直接互相覆盖；保留原始版本供明确归并。
+    return "equal" if previous.keys() == incoming.keys() else "conflict"
 
 
 def forward_message_id(root_message_id: str, positions: tuple[int, ...]) -> str:
