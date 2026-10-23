@@ -177,3 +177,13 @@
 - 本轮可用空间实测2.47→15.88GiB，增加13.41GiB，结束时df约16GiB，测评目录du约2.9GiB。2,770个原有非目标文件在说明更新前大小/修改时间保持，随后更新61份存储收据。版本位置在data/evaluation/storage-cleanup-20261023/shared-snapshots.json，完整清单在round2-manifest.json；旧脚本需先解压对应归档，再按原协议准备独立副本。
 - 首次执行因oracle-v2中A/B/snapshot实际为符号链接，删除原A/B后stat失败。按真实根因改用lstat区分文件与别名，修正计数/体积并逐项保存状态；错误、已完成两项与修正均保留，没有静默忽略缺失文件。
 - 在线/api/readiness实测数据库ready/827,614、语义completed/827,614、Plan/Sol ready。0新增模型请求、不改产品代码或线上数据；以归档完整字节比较、非目标证据保留和在线健康检查验证，没有重复全量产品测试。公开报告追加第二轮实际结果与恢复路径。
+
+
+## 2026-10-23 · 最新反问技巧回答覆盖与实际模型容量修复
+
+- 用户指出“搜到内容但答案过少”。定位07:56原Trace：479字、最终757输出Token正常stop，Host完整保留；首轮semantic13,839/16k，第二轮61词法命中仅9条模型可见、52hit/34context省略。四类真人细节在原参数真实SDK重放均不可见，不能仅加长Prompt解决。
+- 新回归经真实导入、lexical短handle、get_message_context先failed：911字面经反问从660字开始，显式读取仍截到600字。evidence.py仅恢复点名锚点到既有1000字record范围，普通搜索/邻居及预算控制保持；openai_tools.py说明补读方式，prompt.py要求精确主题优先及完整建议/具体问法/目的/条件，区分真人与bot。
+- 官方账号GET /v1/models安全字段收据实际context_window500000、max872000；model_capabilities.py只按前者精确登记Plan/Sol，不猜型号/effort，动态证据池由16k恢复至125k。真实Runtime预算回归通过；未知型号原合同保持。零生成重放registered+固定锚点四组目标4/4，仅证明能力，不冒充自主选源。
+- 只改Prompt/锚点的16k真实控制2HTTP预算失败仍保留；最终完整修复同题自主3HTTP/2轮completed，首轮lexical122条全部送达，三条锚点自主补读，无工具/预算错误、Finalizer valid。实际投影31,117/125000，输入82,680/输出2,057；最终1471字/8段，覆盖六类建议及对抗式提议未验证提醒。26来源绑定canonical摘录/时间/会话一致，最终模型上下文四类真人细节4/4；每类新增观点逐条人工核对原文支持。摘录比较初次因引用契约会strip首尾空白失败，核对原契约后按同一表示验证，未改产品绕过。
+- 完整pytest1,263 passed/1 skipped（31.08s），Ruff src/tests/scripts与mypy129文件通过；中途纯大小写Prompt断言失败恢复原非目标字面，脚本import排序修正，均在最终验证前完成。工作提交004bd20。Web已重启加载修复，数据库/语义827,614/827,614、Plan ready，无索引重建。
+- 新增独立诊断脚本audit_interview_answer_coverage.py、公开诊断报告及完整答案，面试目录README同步索引。本地data/evaluation/interview-answer-20261023保留原重放、官方容量收据、16k失败和最终Trace/账本/脚本/可见证据/来源核对。新增合计5真实请求（失败控制2、最终3），未重试/隐藏失败/Judge；未改旧对话、原始语料或GT。超过1000字record及未展开转发仍有边界，未宣称全历史穷尽或全局稳定质量提升。

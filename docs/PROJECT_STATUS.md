@@ -8,6 +8,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-23最新反问技巧Trace覆盖修复：旧479字回答正常stop，原语义13,839 Token挤占16k证据池，词法61命中仅9条送达、52条hit裁掉。官方账号/models明确context_window=500000，004bd20登记当前Plan/Sol容量，既有动态公式得到125k证据池；显式锚点补读恢复原1000字record范围，Prompt保留具体问法/适用条件与真人/bot区分。只改Prompt/补读的16k控制2HTTP仍预算失败，保留；最终同题3HTTP/2轮completed、1471字/8段、26来源原文时间范围核对通过，实际投影31,117、四类真人清单实际可见4/4。不是全历史穷尽或一般稳定收益；超过1000字record/未展开转发仍有限制。完整pytest1,263 passed/1 skipped（31.08s）、Ruff/mypy129文件通过。Web已重启加载004bd20，数据库/语义827,614及Plan ready；未重算索引。完整答案interview-docs/面试反问技巧-群聊证据整理.md，诊断evaluation/experiments/interview-answer-20261023/report.md；新增5真实请求，含2个失败请求，均独立保留。
+
 - 2026-10-23用户要求进一步清理后，将已结束真实运行的重复语料数据库合并：删除55份数据库及3个别名，六份历史代表数据库9.82GiB无损压缩为1.91GiB，完整解压流与原文件逐块比较通过。独立答案/Trace/失败/账本保留；2,770个原有非目标文件在更新存储收据前大小/修改时间保持，61份说明已更新。可用空间实测2.47→15.88GiB（约16GiB），本轮增加13.41GiB，测评目录约2.9GiB。当前共享快照改为gzip归档，旧脚本重跑前须解压并准备独立副本；版本位置见data/evaluation/storage-cleanup-20261023/shared-snapshots.json，完整操作见round2-manifest.json。在线readiness仍数据库/语义827,614、Plan/Sol ready；未改线上库/原始导出，0新增模型请求。
 
 - 2026-10-23用户授权清理重复测评数据库：14组零推理准备与12组离线重放/索引对照共删除57份数据库，逻辑90.28GiB；APFS共享块下实测可用约0.74→2.48GiB，实际增加约1.75GiB。2,805个原有非目标文件大小/修改时间保持，真实推理结果、失败及运行快照保留；历史语料与当前索引共享副本保留，后者811,892条身份/readiness只读核对通过。26份新存储收据及4份旧共享路径修正已落盘；旧离线脚本需按原协议重新准备已删除数据库。报告evaluation/experiments/storage-cleanup-20261023/report.md，本地完整清单data/evaluation/storage-cleanup-20261023/manifest.json。剩余空间仍紧张，不把逻辑体积当作实际释放量。
