@@ -1,12 +1,14 @@
 # Trivae 开发状态
 
-> 整理时间：2026-10-23。此页是跨 Agent 接手的快速入口；当前事实请以代码、测试和 Git 为准，不能仅凭较旧的记录推断。
+> 整理时间：2026-10-24。此页是跨 Agent 接手的快速入口；当前事实请以代码、测试和 Git 为准，不能仅凭较旧的记录推断。
 
 ## 项目目标
 
 Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原始消息的证据型回答的系统。完整背景参见 README.md 和 .trellis/spec/project/overview.md。
 
 ## 已记录的最近进度
+
+- 2026-10-24群聊邮件晚报已实现并启用：四方向筛选、Canonical修订增量、迟到/转发补齐、回复前情、全部文字分批阅读、主程序绑定引用、HTML/纯文本邮件及独立交付水位。全量pytest1307 passed/1 skipped（30.82秒）、Ruff与mypy137文件通过，最终编辑提示调整后22项日报回归通过。10-23真实6536根消息/6590文字片段、16批75候选，最终12主题；76处来源切片和80处摘录回读Canonical通过，5处未展开转发明确披露。样稿已由真实QQ SMTP接受，尚未通过IMAP确认落箱，已请用户确认；样稿不推进正式水位。独立worker与晚间导入dispatch均已注册，原10:30/22:30日历不变，安装后导入补查exit0；首个自然晚间触发尚未发生。HTTP520、ReadTimeout与旧54项综合删字错误均保留，显式续跑只重用同快照成功阅读批次；综合改选引用编号，未放宽原文匹配或新增产品自动重试。说明docs/daily-digest.md，本地样稿及验证data/digests/preview-20261024-180736-212743/。既有Web未重启。
 
 - 2026-10-23剩余Failure修复已落地（f9fc1dc）：转发树保留旧事实的单调补齐及旧raw溯源/enriched计数，原revision驱动双索引发布；SQL计算让出事件循环、Trace留原线程，ASGI慢SQL期间readiness/Stop通过；混合单汉字AND复用既有两索引求交；partial空检索新增正式insufficient_evidence且不放宽no_result；流式坏JSON保存有界偏移/正文/状态诊断，仍显式失败。原两个红探针现均exit0，5秒SQL期间20ms回调约21ms执行，补齐正文可检索。完整pytest1280 passed/1 skipped（31.26秒）、Ruff/mypy129、前端80项/typecheck/lint/build通过。冻结834636条/revision68856，同一配置7次自主查询、21HTTP全部completed/valid；笔试两次找到直接经历，Nanobot/Matt/Archify/owner及空结果逐段复核，82处引用Canonical核对通过，无Host投影省略/工具错误。小样本不证明稳定成功率、全量语义召回或额外轮数收益；源245个未展开转发仍需完整导出，旧解析坏正文不可追溯。Web已正常重启，库/语义834636及revision68856对齐、Plan ready。完整报告docs/FAILURE_REPAIR_20261023.md，原审计保持历史事实。
 
