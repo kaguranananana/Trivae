@@ -16,7 +16,7 @@ from trivae.data.ingestion.importer import SharedImporter
 from trivae.data.storage.sqlite import SQLiteCanonicalStore
 from trivae.data.storage.sqlite_digest import SQLiteDigestState, read_digest_snapshot
 from trivae.digest.contracts import TIMEZONE
-from trivae.digest.generator import DigestGenerator, make_batches, make_excerpts, parse_items
+from trivae.digest.generator import DigestGenerator, make_batches, make_excerpts, parse_items, parse_synthesis
 from trivae.digest.mail import MailSettings, send_digest_mail
 from trivae.digest.render import render_digest
 from trivae.interfaces.cli import main
@@ -118,7 +118,7 @@ def test_cross_group_synthesis_can_keep_opposite_feedback_and_real_links(tmp_pat
         {"items": [_item("m1", "支持使用")]},
         {"items": [_item("m2", "暂时不推荐")]},
         {"items": [{**_item("m1", "支持使用"), "summary": "存在不同意见 <script>bad()</script>",
-                    "sources": [{"id": "m1", "quote": "支持使用"}, {"id": "m2", "quote": "暂时不推荐"}]}]},
+                    "sources": ["r1", "r2"]}]},
     ])
     calls: list[str] = []
 
@@ -347,7 +347,7 @@ def test_explicit_resume_reuses_successful_batches_and_only_calls_failed_synthes
     directory = tmp_path / "report"
     with pytest.raises(CompletionProviderError):
         asyncio.run(DigestGenerator(complete).generate(snapshot, directory, run_id="one"))
-    resumed = Mock(return_value=json.dumps({"items": [_item("m1", "实际使用体验")]}))
+    resumed = Mock(return_value=json.dumps({"items": [{**_item("m1", "实际使用体验"), "sources": ["r1"]}]}))
     report = asyncio.run(DigestGenerator(resumed).generate(snapshot, directory, run_id="one", resume=True))
     assert resumed.call_count == 1 and report["batch_count"] == 2
     events = [json.loads(line) for line in (directory / "trace.jsonl").read_text().splitlines()]
@@ -371,3 +371,20 @@ def test_resume_does_not_mix_saved_batches_with_a_changed_snapshot(tmp_path: Pat
     with pytest.raises(ValueError, match="数据快照已经变化"):
         asyncio.run(DigestGenerator(complete).generate(changed, directory, run_id="one", resume=True))
     assert complete.call_count == 0
+
+
+def test_synthesis_binds_original_quote_and_rejects_model_rewritten_excerpt(tmp_path: Path) -> None:
+    """实际失败是综合丢了原文中的‘里’字；新契约只选编号，摘录由程序原样绑定。"""
+
+    database = tmp_path / "chat.sqlite3"
+    text = "默认不应该是存浏览器缓存里吗。"
+    _import(database, tmp_path, [make_message("one", 1, 1000, text)])
+    snapshot = read_digest_snapshot(database, start_timestamp=0, end_timestamp=2000)
+    sources = {item.handle: item for item in make_excerpts(snapshot)}
+    references = {"r1": {"id": "m1", "quote": text}}
+    content = json.dumps({"items": [{**_item("m1", text), "sources": ["r1"]}]}, ensure_ascii=False)
+    items = parse_synthesis(content, sources, references)
+    assert items[0]["sources"] == [{"id": "m1", "quote": text}]
+    old_output = json.dumps({"items": [_item("m1", text.replace("里", ""))]}, ensure_ascii=False)
+    with pytest.raises(ValueError, match="候选之外的编号"):
+        parse_synthesis(old_output, sources, references)

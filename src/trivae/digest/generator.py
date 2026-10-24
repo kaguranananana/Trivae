@@ -86,6 +86,12 @@ def parse_items(content: str | None, sources: dict[str, DigestExcerpt]) -> list[
     """校验输出形状与原文引用；坏JSON、未知来源及编造摘录均明确失败。"""
 
     raw = json.loads(content if content is not None else "")
+    return _validate_items(raw, sources)
+
+
+def _validate_items(raw: Any, sources: dict[str, DigestExcerpt]) -> list[dict[str, Any]]:
+    """批次与综合共用内容验证，综合先由主程序绑定已有摘录。"""
+
     if not isinstance(raw, dict) or not isinstance(raw.get("items"), list):
         raise ValueError("日报模型必须返回含 items 数组的 JSON 对象")
     items: list[dict[str, Any]] = []
@@ -112,6 +118,24 @@ def parse_items(content: str | None, sources: dict[str, DigestExcerpt]) -> list[
         items.append({key: item[key] for key in
                       ("category", "title", "summary", "why_it_matters", "action", "sources")})
     return items
+
+
+def parse_synthesis(content: str | None, sources: dict[str, DigestExcerpt],
+                    references: dict[str, dict[str, str]]) -> list[dict[str, Any]]:
+    """最终模型只选择引用编号；真实摘录由主程序绑定，不要求模型再抄一遍。"""
+
+    raw = json.loads(content if content is not None else "")
+    if not isinstance(raw, dict) or not isinstance(raw.get("items"), list):
+        raise ValueError("日报综合必须返回含items数组的JSON对象")
+    for item in raw["items"]:
+        if not isinstance(item, dict) or not isinstance(item.get("sources"), list):
+            raise ValueError("日报综合条目缺少引用编号数组")
+        chosen = item["sources"]
+        if any(not isinstance(reference, str) or reference not in references for reference in chosen):
+            raise ValueError("日报综合引用了候选之外的编号")
+        # 所选引用整体沿用通过验证的id与quote，模型不能改字、补字或替换标点。
+        item["sources"] = [dict(references[reference]) for reference in chosen]
+    return _validate_items(raw, sources)
 
 
 class DigestGenerator:
@@ -141,7 +165,7 @@ class DigestGenerator:
                 entry = json.loads(line)
                 if entry["event"] == "request":
                     requests[entry["stage"]] = entry["prompt"]
-                elif entry["event"] == "response":
+                elif entry["event"] == "response" and entry["stage"].startswith("batch-"):
                     observation = entry.get("observation")
                     if observation is not None and observation.get("finish_reason") == "length":
                         raise ValueError("旧阶段输出已达到长度上限，不能将截断响应作为成功批次重用")
@@ -162,15 +186,30 @@ class DigestGenerator:
         items = candidates
         if len(batches) > 1 and candidates:
             logger.info("日报综合：合并 %s 批的 %s 个候选主题", len(batches), len(candidates))
-            prompt = (f"{_INSTRUCTIONS}\n以下是完整分批阅读后保留的候选。合并跨群重复话题，保留具体经验与不同意见。"
-                      "按价值排序，前五项作为今日精选；其余值得保留的内容继续列出，不为缩短篇幅丢掉关键细节。"
-                      "引用id和quote只能使用候选中已有的配对，不得另造摘录。\n"
-                      + json.dumps({"items": candidates}, ensure_ascii=False))
-            # 综合只可沿用已核对过的候选引用，不能绑定到另一条虽存在但未支撑该候选的消息。
-            items = await self._complete(prompt, source_map, directory, stage="synthesis")
-            allowed = {(source["id"], source["quote"]) for item in candidates for source in item["sources"]}
-            if any((source["id"], source["quote"]) not in allowed for item in items for source in item["sources"]):
-                raise ValueError("日报综合新增了候选材料里不存在的引用配对")
+            references: dict[str, dict[str, str]] = {}
+            numbered_candidates = []
+            for candidate in candidates:
+                numbered_sources = []
+                for reference in candidate["sources"]:
+                    # 简单顺序编号是本期引用定位符，不是内容指纹。
+                    reference_id = f"r{len(references) + 1}"
+                    references[reference_id] = reference
+                    numbered_sources.append({"ref": reference_id, **reference})
+                numbered_candidates.append({**candidate, "sources": numbered_sources})
+            prompt = (
+                "你是用户的群聊晚报编辑。以下是完整分批阅读后保留的候选。合并跨群重复主题，保留具体经验、"
+                "条件和不同意见，区分个人说法与已有实践，不把未经核实的传闻写成事实。"
+                "邮件以约5至8分钟可读为目标，通常精选10个左右的高价值主题，数量可随实际内容调整；"
+                "最值得看的排在前五项，不要求各类凑数。原始候选和全文已完整保存在本地，邮件着重具体可复用的信息。"
+                "行动建议遵循根因优先、错误透明和最小修复；采集去重优先复用已有消息标识、revision或已处理位置，"
+                "不新增内容指纹，也不把未经验证的降级建议当作问题已经解决。"
+                "只输出JSON对象：{\"items\":[{\"category\":\"tools|practice|discussion|career\",\"title\":\"标题\","
+                "\"summary\":\"具体讨论与结论\",\"why_it_matters\":\"价值\",\"action\":\"可执行建议或空字符串\","
+                "\"sources\":[\"r1\",\"r2\"]}]}。sources只能选择候选中支持该条内容的ref编号，"
+                "不要重新输出quote或改写引用；主程序会绑定对应原文。用简体中文写清关键细节。\n"
+                + json.dumps({"items": numbered_candidates}, ensure_ascii=False)
+            )
+            items = await self._complete(prompt, source_map, directory, stage="synthesis", references=references)
         report = {
             "run_id": run_id, "revision": snapshot.revision,
             "window_start": local_time(snapshot.start_timestamp), "window_end": local_time(snapshot.end_timestamp),
@@ -185,7 +224,8 @@ class DigestGenerator:
         return report
 
     async def _complete(self, prompt: str, sources: dict[str, DigestExcerpt],
-                        directory: Path, *, stage: str) -> list[dict[str, Any]]:
+                        directory: Path, *, stage: str,
+                        references: dict[str, dict[str, str]] | None = None) -> list[dict[str, Any]]:
         """请求前先落输入，响应先落原文再解析；失败不自动重试或替换输出。"""
 
         trace = directory / "trace.jsonl"
@@ -216,4 +256,5 @@ class DigestGenerator:
                                     ensure_ascii=False) + "\n")
         if result.observation is not None and result.observation.finish_reason == "length":
             raise ValueError(f"日报模型输出达到长度上限：{stage}")
-        return parse_items(result.content, sources)
+        return (parse_items(result.content, sources) if references is None
+                else parse_synthesis(result.content, sources, references))
