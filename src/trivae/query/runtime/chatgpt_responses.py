@@ -550,12 +550,21 @@ class ChatGPTResponsesModel(Model):
 
         observations: list[Mapping[str, object]] = []
         final: Response | None = None
+        completed_items: dict[int, Any] = {}
         async for event in self._stream(payload, observations.append):
+            if event.type == "response.output_item.done":
+                # 完成事件携带完整输出项；实际订阅终态可能仅保留元数据和Usage。
+                completed_items[event.output_index] = event.item
             if event.type == "response.completed":
                 final = event.response
         if final is None:
             raise ChatGPTResponsesError("STREAM_INTERRUPTED", "missing completed response", {})
-        return final, dict(observations[-1])
+        observation = dict(observations[-1])
+        if not final.output and completed_items:
+            # 仅处理已实测的空output终态，原样复用同一流内已完成项，不拼接猜测或接受未完成响应。
+            final = final.model_copy(update={"output": [completed_items[index] for index in sorted(completed_items)]})
+            observation["completed_output_source"] = "response.output_item.done"
+        return final, observation
 
     async def close(self) -> None:
         """关闭推理与认证连接；凭证持久化由认证模块负责。"""

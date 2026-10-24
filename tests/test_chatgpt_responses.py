@@ -244,6 +244,28 @@ def test_get_response_and_completions_use_same_stream_json_transport():
         assert "temperature" not in payload
 
 
+@pytest.mark.parametrize("terminal_output", [[], [message('{"ok":true}')]])
+def test_completion_preserves_finished_items_when_terminal_has_only_metadata(terminal_output):
+    """真实订阅流已证实终态 output 为空，正文来自完成的 output_item.done。"""
+
+    async def run():
+        done = {"type": "response.output_item.done", "sequence_number": 0,
+                "output_index": 0, "item": message('{"ok":true}')}
+        model = ChatGPTResponsesModel(MODEL, FakeAuth(), client=httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _: httpx.Response(
+                200, headers={"content-type": "text/event-stream"}, text=sse(done, completed(terminal_output))))))
+        runtime = OpenAIAgentsRuntimeAdapter(model=model, settings=settings())
+        try:
+            result = await runtime.complete_text_with_observation("Return JSON.")
+            assert result.content == '{"ok":true}'
+            assert result.observation.transport["stream_completed"] is True
+            assert result.observation.usage["output_tokens"] == 5
+        finally:
+            await runtime.aclose()
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize(
     "body,code",
     [
