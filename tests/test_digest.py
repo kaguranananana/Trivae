@@ -106,19 +106,48 @@ def test_generator_exposes_invalid_model_output_and_keeps_raw_trace(tmp_path: Pa
     assert not (directory / "report.json").exists()
 
 
-def test_cross_group_synthesis_can_keep_opposite_feedback_and_real_links(tmp_path: Path) -> None:
-    """完整跑分群阅读和综合，来源可回读，邮件文字转义且只链接真实来源网址。"""
+def test_grouped_digest_preserves_discussion_and_prioritizes_related_links(tmp_path: Path) -> None:
+    """分群阅读和综合保留具体原文；群名和相关链接靠前，引用默认收起且不夹带无关网址。"""
+
+    from html.parser import HTMLParser
+
+    class DigestMarkup(HTMLParser):
+        """检查原始发言确实位于默认关闭的展开区域，而非仅换了一个标题。"""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.details_count = 0
+            self.in_details = False
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            if tag == "details":
+                assert "open" not in dict(attrs)
+                self.details_count += 1
+                self.in_details = True
+            if tag == "blockquote":
+                assert self.in_details
+
+        def handle_endtag(self, tag: str) -> None:
+            if tag == "details":
+                self.in_details = False
 
     database = tmp_path / "chat.sqlite3"
-    _import(database, tmp_path, [make_message("one", 1, 1000, "支持使用 https://example.com/project?a=1&b=2")])
-    _import(database, tmp_path, [make_message("two", 1, 1500, "暂时不推荐 <script>bad()</script>")],
+    link_quote = "支持使用 https://example.com/project?a=1&b=2"
+    original = link_quote + "\n实际参数是单进程，每次处理两百条。\n其他话题 https://example.com/unrelated"
+    _import(database, tmp_path, [make_message("one", 1, 1000, original),
+                                 make_message("reply", 2, 1200, "暂时不推荐 <script>bad()</script>", reply_to="one")])
+    _import(database, tmp_path, [make_message("two", 1, 1500, "另一群讨论了面试复盘")],
             group="67890", name="另一个群")
     snapshot = read_digest_snapshot(database, start_timestamp=0, end_timestamp=2000)
     responses = iter([
-        {"items": [_item("m1", "支持使用")]},
-        {"items": [_item("m2", "暂时不推荐")]},
-        {"items": [{**_item("m1", "支持使用"), "summary": "存在不同意见 <script>bad()</script>",
-                    "sources": ["r1", "r2"]}]},
+        {"items": [{**_item("m1", link_quote), "sources": [
+            {"id": "m1", "quote": link_quote}, {"id": "m2", "quote": "暂时不推荐"}]}]},
+        {"items": [{**_item("m3", "面试复盘"), "title": "面试复盘的讨论"}]},
+        {"items": [{**_item("m1", link_quote),
+                    "summary": "项目用来处理消息。支持使用，但也有暂时不推荐的不同意见 <script>bad()</script>。"
+                               "\n\n实际参数是单进程，每次处理两百条。仍需按具体条件判断。",
+                    "sources": ["r1", "r2"]},
+                   {**_item("m3", "面试复盘"), "title": "面试复盘的讨论", "sources": ["r3"]}]},
     ])
     calls: list[str] = []
 
@@ -126,18 +155,64 @@ def test_cross_group_synthesis_can_keep_opposite_feedback_and_real_links(tmp_pat
         """只替代模型边界，其余读取、引用校验及渲染均使用产品实现。"""
 
         calls.append(prompt)
+        if len(calls) == 3:
+            # 关键参数不在候选摘要或摘录里，最终综合必须真的收到对应原文及群身份。
+            material = json.loads(prompt.rsplit("\n", 1)[-1])
+            assert material["source_excerpts"][0]["text"] == original
+            assert material["items"][0]["group"] == "技术群"
+            assert material["items"][0]["session_id"] != material["items"][1]["session_id"]
         return json.dumps(next(responses), ensure_ascii=False)
 
     report = asyncio.run(DigestGenerator(complete).generate(snapshot, tmp_path / "report", run_id="test"))
     assert len(calls) == 3 and report["group_count"] == 2 and report["batch_count"] == 2
-    assert "暂时不推荐" in calls[1]
+    assert "暂时不推荐" in calls[0]
     subject, text, document = render_digest(report)
-    assert "1 条精选" in subject
+    assert "2 个话题" in subject
     assert "支持使用" in text and "暂时不推荐" in text
+    assert "每次处理两百条" in text
     assert "<script>" not in document and "&lt;script&gt;" in document
     assert "href='https://example.com/project?a=1&amp;b=2'" in document
-    for reference in report["items"][0]["sources"]:
-        assert reference["quote"] in report["sources"][reference["id"]]["text"]
+    assert "href='https://example.com/unrelated'" not in document
+    assert document.index("群聊：技术群") < document.index("具体的实战经验")
+    assert document.index("相关资源链接") < document.index("项目用来处理消息") < document.index("展开原始发言")
+    assert document.index("群聊：另一个群") < document.index("面试复盘的讨论")
+    assert "来源：" not in text
+    markup = DigestMarkup()
+    markup.feed(document)
+    assert markup.details_count == 2
+    for item in report["items"]:
+        for reference in item["sources"]:
+            assert reference["quote"] in report["sources"][reference["id"]]["text"]
+
+
+def test_synthesis_rejects_mixing_sources_from_different_groups(tmp_path: Path) -> None:
+    """一个群的标题不能笼罩另一群的观点；同题跨群材料也必须分别整理。"""
+
+    database = tmp_path / "chat.sqlite3"
+    _import(database, tmp_path, [make_message("one", 1, 1000, "支持这个方案")])
+    _import(database, tmp_path, [make_message("two", 2, 1500, "反对这个方案")], group="67890", name="另一个群")
+    snapshot = read_digest_snapshot(database, start_timestamp=0, end_timestamp=2000)
+    sources = {item.handle: item for item in make_excerpts(snapshot)}
+    references = {"r1": {"id": "m1", "quote": "支持这个方案"}, "r2": {"id": "m2", "quote": "反对这个方案"}}
+    response = json.dumps({"items": [{**_item("m1", "支持这个方案"), "sources": ["r1", "r2"]}]})
+    with pytest.raises(ValueError, match="混合了不同群"):
+        parse_synthesis(response, sources, references)
+
+
+def test_resource_url_stops_before_chinese_text_following_domain(tmp_path: Path) -> None:
+    """真实样稿里‘网址这是我的’被识别成中文域名；资源链接应保留网址本身。"""
+
+    database = tmp_path / "chat.sqlite3"
+    original = "https://vreport.tri4t.xyz这是我的"
+    _import(database, tmp_path, [make_message("one", 1, 1000, original)])
+    snapshot = read_digest_snapshot(database, start_timestamp=0, end_timestamp=2000)
+    report = asyncio.run(DigestGenerator(lambda prompt: json.dumps({"items": [_item("m1", original)]})).generate(
+        snapshot, tmp_path / "report", run_id="url"))
+    _, text, document = render_digest(report)
+    assert "href='https://vreport.tri4t.xyz'" in document
+    assert "href='https://vreport.tri4t.xyz这是我的'" not in document
+    assert "- https://vreport.tri4t.xyz\n" in text
+    assert report["items"][0]["sources"][0]["quote"] == original
 
 
 def test_empty_digest_makes_no_model_request(tmp_path: Path) -> None:

@@ -165,7 +165,7 @@ pnpm -C web build
 | [Evaluation](docs/evaluation.md) | Snapshot / Case / Variant、对照评测、质量轴与结论边界 |
 | [语义增量索引](docs/semantic-incremental-index.md) | 变更日志、向量复用、版本与更新验证 |
 | [QCE 自动导入](docs/qce-auto-import.md) | 文件稳定检查、macOS 调度、索引待办与恢复 |
-| [群聊邮件晚报](docs/daily-digest.md) | 分群完整阅读、四类精选、原文依据与晚间邮件交付 |
+| [群聊邮件晚报](docs/daily-digest.md) | 按群详细整理讨论、前置资源链接、折叠原始发言与晚间邮件交付 |
 | [第三方来源与许可](docs/third-party-notices.md) | 来源声明、上游许可及公开前待确认事项 |
 
 ## 隐私与许可证
