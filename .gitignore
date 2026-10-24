@@ -20,6 +20,7 @@ env/
 .env
 .env.*
 !.env.example
+!.env.digest.example
 
 # IDE / OS
 .idea/
@@ -44,6 +45,9 @@ data/*.sqlite3.import-once.lock
 data/evaluation/
 # TUI /export 产出包含会话与聊天内容，仅本地保存。
 data/exports/
+# 日报正文、模型输入及邮件状态包含私有群聊材料，只在本机保存。
+data/digests/
+data/*.digest.lock
 
 # Web frontend（构建产物按需 pnpm -C web build 生成；trivae web 自动探测 web/dist）
 web/node_modules/

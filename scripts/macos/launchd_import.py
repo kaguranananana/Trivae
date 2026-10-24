@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 
 DEFAULT_LABEL = "com.trivae.import-once"
+DEFAULT_DIGEST_LABEL = "com.trivae.daily-digest"
 PROJECT_DIRECTORY = Path(__file__).resolve().parents[2]
 LAUNCHCTL = "/bin/launchctl"
 
@@ -35,6 +36,7 @@ def build_plist(
     settle_seconds: float = 5,
     min_age_seconds: float = 60,
     update_indexes: bool = True,
+    digest_label: str | None = None,
 ) -> dict[str, object]:
     """构造只调用正式 import-once 入口的日历调度配置。"""
 
@@ -56,6 +58,9 @@ def build_plist(
         str(min_age_seconds),
     ]
     environment = {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
+    if digest_label:
+        # 只在正式导入成功后唤起独立日报，不再安排一个可能抢先运行的固定发信时间。
+        arguments.extend(("--digest-label", digest_label))
     # 正式调度同时补偿已提交批次的索引工作，避免只入库却持续无法检索。
     if update_indexes:
         arguments.append("--update-indexes")
@@ -78,6 +83,23 @@ def build_plist(
         "StandardOutPath": str(_absolute(log_dir) / f"{label}.stdout.log"),
         "StandardErrorPath": str(_absolute(log_dir) / f"{label}.stderr.log"),
         "EnvironmentVariables": environment,
+    }
+
+
+def build_digest_plist(*, project_dir: Path, python: Path, database: Path, log_dir: Path,
+                       mail_env_file: Path, label: str = DEFAULT_DIGEST_LABEL) -> dict[str, object]:
+    """日报按需启动，邮件失败保留状态和日志，不自动反复发送。"""
+
+    return {
+        "Label": label,
+        "ProgramArguments": [str(python.expanduser().absolute()), "-m", "trivae", "digest", "run",
+                             "--database", str(_absolute(database)), "--mail-env-file", str(_absolute(mail_env_file))],
+        "WorkingDirectory": str(_absolute(project_dir)),
+        # 安装和登录都不提前发信；只有晚间导入确认完成后才 kickstart。
+        "RunAtLoad": False,
+        "StandardOutPath": str(_absolute(log_dir) / f"{label}.stdout.log"),
+        "StandardErrorPath": str(_absolute(log_dir) / f"{label}.stderr.log"),
+        "EnvironmentVariables": {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"},
     }
 
 
@@ -151,7 +173,7 @@ def install(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError(f"Python environment is not executable: {python}; run uv sync in the project first")
     # --help 只校验可安装入口；这里不打开数据库，也不执行任何文件导入。
     preflight = subprocess.run(
-        [str(python), "-m", "trivae", "import-once", "--help"],
+        [str(python), "-m", "trivae", "digest" if args.job == "digest" else "import-once", "--help"],
         cwd=project_dir,
         text=True,
         capture_output=True,
@@ -161,7 +183,10 @@ def install(args: argparse.Namespace) -> dict[str, object]:
     raw_dir = _absolute(args.raw_dir) if args.raw_dir else project_dir / "data/raw"
     database = _absolute(args.database) if args.database else project_dir / "data/trivae.sqlite3"
     log_dir = _absolute(args.log_dir)
-    document = build_plist(
+    document = build_digest_plist(
+        project_dir=project_dir, python=python, database=database, log_dir=log_dir,
+        mail_env_file=Path(args.mail_env_file) if args.mail_env_file else project_dir / ".env.digest", label=args.label,
+    ) if args.job == "digest" else build_plist(
         project_dir=project_dir,
         python=python,
         raw_dir=raw_dir,
@@ -171,6 +196,7 @@ def install(args: argparse.Namespace) -> dict[str, object]:
         settle_seconds=args.settle_seconds,
         min_age_seconds=args.min_age_seconds,
         update_indexes=args.update_indexes,
+        digest_label=args.digest_label,
     )
     _write_plist(prepared, document)
     result: dict[str, object] = {
@@ -186,6 +212,11 @@ def install(args: argparse.Namespace) -> dict[str, object]:
         # 这里只说明是否装配索引 updater，不代表生产检索已经验收完成。
         "integration_required": not args.update_indexes,
     }
+    if args.job == "digest":
+        # 日报不承担文件导入或索引工作，准备结果只描述它实际使用的配置。
+        for key in ("raw_dir", "update_indexes", "integration_required"):
+            result.pop(key)
+        result["mail_env_file"] = str(_absolute(args.mail_env_file or project_dir / ".env.digest"))
     if not args.enable:
         return result
     # 仅显式启用才创建运行日志目录并变更 launchd；prepare 不留下自启动入口。
@@ -241,6 +272,7 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     for command in ("install", "status", "uninstall"):
         subparser = commands.add_parser(command)
+        subparser.add_argument("--job", choices=("import", "digest"), default="import")
         subparser.add_argument("--label", default=DEFAULT_LABEL)
         subparser.add_argument("--plist-dir", default=Path.home() / "Library/Application Support/Trivae/launchd")
         subparser.add_argument("--launch-agents-dir", default=Path.home() / "Library/LaunchAgents")
@@ -249,6 +281,8 @@ def _parser() -> argparse.ArgumentParser:
             subparser.add_argument("--python", help="default: PROJECT/.venv/bin/python")
             subparser.add_argument("--raw-dir")
             subparser.add_argument("--database")
+            subparser.add_argument("--digest-label", help="Wake the independent digest worker after evening import")
+            subparser.add_argument("--mail-env-file", help="Digest SMTP configuration file; default: PROJECT/.env.digest")
             subparser.add_argument("--log-dir", default=Path.home() / "Library/Logs/Trivae")
             subparser.add_argument("--settle-seconds", type=float, default=5)
             subparser.add_argument("--min-age-seconds", type=float, default=60)
@@ -268,6 +302,9 @@ def main(argv: list[str] | None = None) -> int:
     """输出可保存的 JSON；系统错误保留具体命令和原始错误内容。"""
 
     args = _parser().parse_args(argv)
+    if args.job == "digest" and args.label == DEFAULT_LABEL:
+        # 沿用原管理器的安装、状态和卸载逻辑，日报使用独立 label 与日志。
+        args.label = DEFAULT_DIGEST_LABEL
     try:
         if args.command == "install":
             result = install(args)

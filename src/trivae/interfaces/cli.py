@@ -79,6 +79,10 @@ def build_parser() -> argparse.ArgumentParser:
     from trivae.interfaces.import_once_cli import configure_import_once_parser
 
     configure_import_once_parser(subparsers)
+    # 日报复用现有模型配置，但拥有独立的数据选择和邮件交付入口。
+    from trivae.interfaces.digest_cli import configure_digest_parser
+
+    configure_digest_parser(subparsers)
     import_parser = subparsers.add_parser("import", help="Import QQ chat exports into the Canonical Store")
     import_parser.add_argument(
         "--raw-dir",
@@ -2190,6 +2194,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "digest":
+        from trivae.interfaces.digest_cli import run_digest_command
+
+        return run_digest_command(args)
     if args.command == "import-once":
         # 轻量 Composition Root 仍使用 SharedImporter，不初始化 Evaluation 或模型。
         from trivae.interfaces.import_once_cli import run_import_once_command

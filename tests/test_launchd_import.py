@@ -116,6 +116,44 @@ def test_calendar_invokes_virtual_environment_without_polling(manager: ModuleTyp
     assert loaded["EnvironmentVariables"]["HF_HUB_OFFLINE"] == "1"
 
 
+def test_digest_worker_is_demand_driven_without_sending_on_install(manager: ModuleType, tmp_path: Path) -> None:
+    """独立邮件任务只有收到晚间导入信号才启动，不与导入抢固定时间。"""
+
+    document = manager.build_digest_plist(
+        project_dir=tmp_path, python=tmp_path / ".venv/bin/python", database=tmp_path / "chat.sqlite3",
+        log_dir=tmp_path / "logs", mail_env_file=tmp_path / ".env.digest",
+    )
+    loaded = plistlib.loads(plistlib.dumps(document))
+    assert loaded["RunAtLoad"] is False
+    assert "KeepAlive" not in loaded and "StartCalendarInterval" not in loaded
+    assert loaded["ProgramArguments"][3:5] == ["digest", "run"]
+    assert "--mail-env-file" in loaded["ProgramArguments"]
+    assert "PASSWORD" not in repr(loaded)
+    importer = manager.build_plist(
+        project_dir=tmp_path, python=tmp_path / ".venv/bin/python", raw_dir=tmp_path / "raw",
+        database=tmp_path / "chat.sqlite3", log_dir=tmp_path / "logs", digest_label=loaded["Label"],
+    )
+    arguments = importer["ProgramArguments"]
+    assert arguments[arguments.index("--digest-label") + 1] == loaded["Label"]
+
+
+def test_digest_prepare_uses_digest_entry_without_registering_or_opening_database(
+    manager: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    """复用正式安装器准备日报，预检只执行help，不能误跑导入或立即发邮件。"""
+
+    preflight = _preflight(monkeypatch, manager)
+    launcher = Mock(side_effect=AssertionError("prepare must not register services"))
+    monkeypatch.setattr(manager, "_launchctl", launcher)
+    assert manager.main(_options(manager, tmp_path, "install", "--job", "digest")) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "prepared" and result["enabled"] is False
+    assert preflight.call_args.args[0][3:] == ["digest", "--help"]
+    assert not (tmp_path / "canonical.sqlite3").exists()
+    assert not (tmp_path / "LaunchAgents").exists()
+    assert "update_indexes" not in result and "raw_dir" not in result
+
+
 @pytest.mark.parametrize("update_indexes", [True, False])
 def test_prepare_does_not_register_launchd_or_touch_database(
     manager: ModuleType,

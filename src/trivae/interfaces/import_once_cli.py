@@ -5,11 +5,15 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import subprocess
+from datetime import datetime
 
 from trivae.bootstrap.import_indexes import create_import_index_updater
 from trivae.bootstrap.ingestion import read_import_status, run_import_once
 from trivae.data.ingestion.auto_import_contracts import ImportAlreadyRunning
 from trivae.data.model import IngestionError
+from trivae.digest.contracts import TIMEZONE
 
 
 def configure_import_once_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -27,6 +31,7 @@ def configure_import_once_parser(subparsers: argparse._SubParsersAction) -> None
         "--min-age-seconds", type=float, default=60, help="Required quiet period since last file change"
     )
     parser.add_argument("--status", action="store_true", help="Read persisted import/index status without writing")
+    parser.add_argument("--digest-label", help="Start this independent digest LaunchAgent after successful evening import")
     parser.add_argument(
         "--update-indexes",
         action="store_true",
@@ -66,5 +71,11 @@ def run_import_once_command(args: argparse.Namespace) -> int:
         # 未知异常绝不转换为成功，正常 Python traceback 保留真实失败位置。
         logging.getLogger(__name__).exception("import-once failed")
         raise
-    print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
+    result = report.to_dict()
+    if report.exit_code == 0 and args.digest_label and datetime.now(TIMEZONE).hour >= 22:
+        # 独立 LaunchAgent 拥有模型、邮件及自己的退出码；导入不等待长时间的日报生成。
+        target = f"gui/{os.getuid()}/{args.digest_label}"
+        subprocess.run(["/bin/launchctl", "kickstart", target], check=True, capture_output=True, text=True)
+        result["digest_dispatch"] = {"status": "started", "label": args.digest_label}
+    print(json.dumps(result, ensure_ascii=False, indent=2))
     return report.exit_code
