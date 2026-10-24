@@ -156,7 +156,8 @@ class SQLiteConversationStore:
             SELECT conversation_id, created_at, updated_at, scope_snapshot_json, title_override
             FROM conversations
             {where_clause}
-            ORDER BY updated_at DESC, conversation_id ASC
+            -- 同一毫秒内按实际插入顺序显示新会话，不能让随机UUID决定最近一页。
+            ORDER BY updated_at DESC, rowid DESC
             LIMIT ? OFFSET ?
             """,
             (*selector_params, limit, offset),

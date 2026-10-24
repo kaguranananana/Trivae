@@ -6,7 +6,9 @@ import asyncio
 import json
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
+from unittest.mock import patch
 
 from trivae.bootstrap.application import create_application
 from trivae.capabilities.contracts import ExecutionScope
@@ -628,6 +630,26 @@ class ApplicationConversationBoundaryTests(unittest.TestCase):
                 scope=scope,
             )
         self.assertEqual(context.exception.code, "INVALID_PROVENANCE")
+
+
+class ConversationTimestampOrderTests(unittest.TestCase):
+    """相同毫秒内创建的会话仍须按真实创建顺序显示最新记录。"""
+
+    def test_equal_timestamps_preserve_creation_order_before_pagination(self) -> None:
+        """固定时钟和UUID，复现旧会话随机进入最近100条的问题。"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteConversationStore(Path(directory) / "history.sqlite3")
+            try:
+                identities = [uuid.UUID(int=index) for index in range(1, 103)]
+                with patch("trivae.conversation.sqlite.utc_now", return_value="2026-10-24T10:00:00.000+00:00"), \
+                     patch("trivae.conversation.sqlite.uuid.uuid4", side_effect=identities):
+                    created = [store.create_conversation() for _ in identities]
+                summaries = store.list_summaries(limit=100)
+                self.assertEqual(summaries[0].conversation_id, created[-1].conversation_id)
+                self.assertNotIn(created[0].conversation_id, {item.conversation_id for item in summaries})
+            finally:
+                store.close()
 
 
 if __name__ == "__main__":
