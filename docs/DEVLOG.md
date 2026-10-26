@@ -289,3 +289,20 @@
 - 已将“【新版样稿·按群详述】Trivae 群聊晚报 · 2026-10-23 · 61 个话题”发送至用户确认的同一QQ邮箱，SMTP接受；回执、validation.json、Trace和截图位于本机preview-expanded-20261024-214822。已发起QQ客户端是否保留原生折叠的实收检查，尚待用户答复，不将浏览器交互通过等同邮箱已支持。正式定时入口、水位及既有Web均未改，样稿不占正式日期。
 
 - 用户随后在当前聊天明确回复QQ邮箱中的原始发言“能正常展开”，新版收件及客户端折叠验收完成；本地邮件回执和验证记录补充用户确认依据，未将其写成程序自动测试结果。正式晚报继续使用当前分群详述、链接前置及原文折叠格式。
+
+
+## 2026-10-26 · QCE 增量导出接入与定时并发修复
+
+- 用户提供的 qce-incremental 从临时目录移入 scripts，复用现有 launchd 管理器和 import-once，而非另外注册并行调度。实际已替换同一 com.trivae.import-once，日历10:00/22:00，保留 RunAtLoad、失败300秒节流及独立晚报参数。配置从 QCE 原8个定时群读取，本机 output_dir 明确指向 data/raw；首次起点10-16 00:00。真实群配置、水位、Token和日志不提交，Token仍只读取原本机文件。
+- 原脚本锁外读取游标、报告条数与JSON不一致仍通过先复现2 failed，再移至持锁后读取并精确核对。持久化已接受taskId，超时/进程退出后恢复原任务；明确failed/cancelled/partial才在后续重建，HTTP认证不等待，只有连接尚未恢复作有界等待。失败群不推进成功水位；成功文件仍可入库，缺群/旧在途窗口未赶上时不提前dispatch日报。保留资源链接，按本机QCE选项跳过附件下载。
+- 连通正式导入发现60秒静置若不先等待会持续产生新deferred，补上按实际文件mtime等待。真实首轮旧进程导出8群71964条，6文件入库新增9195/重复40734/冲突875/错误0，2文件deferred；双索引完成后实际exit75，launchd自动开启第二轮，按原水位导出196条并实际静置59.5秒，继续补偿原2文件。当时Canonical854818，相对842157新增12661，第二轮语义尚在计算；首轮pending已清但不能据此宣布所有文件完成。
+- 真实Web readiness在旧语义长事务中出现10秒请求超时及HTTP500，Trace明确sqlite3.OperationalError database is locked。正式FTS rebuild和vec0 incremental transaction分别用小页缓存稳定复现读锁失败，修改Canonical/semantic连接为WAL，保持FULL同步及原子发布/异常强停回滚，备份仍用SQLite backup API。旧DELETE读连接迁移回归通过。第二轮语义构建期间HTTP200/1.772秒，status明确stale（854818/851352、revision89038/85572），两个文件实际WAL；未重启Web或假造索引就绪。第一版阶段观察器误匹配历史日志，原观测标为before-current-phase；真实语义阶段另按本轮起点取证，未把旧观测当正确阶段验证。
+- 最终全量pytest1327 passed/1 skipped（42.97秒）、Ruff src/tests/scripts、mypy137及bash语法、diff检查通过。新测试覆盖多日水位、失败不推进、taskId超时恢复、资源链接、真实CLI两轮幂等、部分失败不发日报、静置等待、调度目录契约及两个存储并发。首轮875个冲突variant差异包括回复146/正文667/作者UIN37/正文及UIN2/正文及回复23，沿原契约保留incoming raw而不覆盖旧Canonical；并非导入错误或已统一历史内容。
+- 工作提交a973c8f。本地证据data/evaluation/qce-incremental-20261026，物理休眠/重启未强制实测；上游QQ历史及30分钟之外迟到同步不由completed保证。后续完成结果见下。
+
+### 同日最终收尾结果
+
+- 第二轮正式处理10个文件，received22231、inserted3466、duplicate18765、conflict237、error0，无failed/partial批次；累计新增12661（842157→854818），两轮冲突出现875+237次不冒充唯一消息数。全目录174文件completed，unfinished_files/pending_indexes均空；最后真实LaunchAgent为not running、runs2、last exit code0，成功后等待下个日历。8群导出水位一致至10-26 11:17:11 +08:00，无在途任务。
+- 第二轮FTS49.76秒，语义269.45秒，实际仅新算796个向量、复用102647，Canonical/semantic854818及revision89038对齐。首次积压语义562.13秒、新算2290，未用该历史补查成本冒充日常耗时或严格性能对照。真实词法工具按群和精确时间命中新导入消息；Web最终readiness HTTP200、semantic completed。未新增LLM推理或发送邮件，未重启既有Web。
+- 全链路验收后，通过QCE的update-batch API实际停用对应8个WebUI定时，updatedCount8；重新GET确认8个均enabled=false，原任务、设置及本机previous-qce-schedules.json保留。QCE/QQ/NapCat服务保持运行，由新的同一LaunchAgent负责定时导出→静置→入库→双索引→既有晚间dispatch。
+- 最终证据validation.json、两轮报告、进度/日志、状态/模式、真实词法命中、构建期间HTTP200和停用回执保留在本机data/evaluation/qce-incremental-20261026。最终测试1327 passed/1 skipped、Ruff、mypy137、bash及diff检查通过。物理睡眠/重启未强制测试；自然晚间邮件联动本轮白天未触发，上游迟到同步、266个未展开转发和历史内容冲突仍保留实际边界。
