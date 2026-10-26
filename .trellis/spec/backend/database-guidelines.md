@@ -278,3 +278,10 @@ Application 只把已完成、已 finalise、已 hydration 的 Artifact 交给 S
   `feedback_kind=user_experiential`；`(conversation_id, trace_id)` upsert，不写 canonical、Trace 或 Evaluation。
 - Conversation atomic turn contract 未改变：只有 validated `AnswerArtifact` 成功 commit 才追加
   User + Assistant；feedback 不参与 commit success。
+
+
+## 定时导入与 Web 并发（2026-10-26）
+
+- Canonical Store 初始化明确启用 WAL；FTS 重建和批量导入仍保持原事务边界，读端在提交前读取上次完整快照。不能用延长 busy timeout、吞掉 OperationalError 或假就绪掩盖长写事务锁读。
+- 独立 semantic 文件采用同样的 WAL 契约，原子发布与 revision freshness 不变。使用 SQLite backup API 做在线快照，主文件及其 `-wal`/`-shm` 是同一本机数据库的组成部分，不应单独复制主文件或提交到 Git。
+- 两个回归分别通过正式 FTS rebuild 和真实 sqlite-vec incremental transaction，压低页缓存触发实际 spill，验证已有读连接不再报 `database is locked`；事务失败和强停回滚继续由既有回归验证。依据：[SQLite WAL 文档](https://sqlite.org/wal.html)。

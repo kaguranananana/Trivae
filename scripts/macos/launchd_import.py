@@ -37,8 +37,9 @@ def build_plist(
     min_age_seconds: float = 60,
     update_indexes: bool = True,
     digest_label: str | None = None,
+    qce_config: Path | None = None,
 ) -> dict[str, object]:
-    """构造只调用正式 import-once 入口的日历调度配置。"""
+    """构造纯入库或先导出后入库的日历调度配置。"""
 
     # Python 保留 .venv 路径而不解引用软链接，确保解释器读取该虚拟环境。
     python_path = python.expanduser().absolute()
@@ -57,6 +58,15 @@ def build_plist(
         "--min-age-seconds",
         str(min_age_seconds),
     ]
+    if qce_config:
+        # 同一 LaunchAgent 先导出再调用正式 import-once，消除两个钟点之间的竞争。
+        config_path = _absolute(qce_config)
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        if _absolute(config["output_dir"]) != _absolute(raw_dir):
+            raise ValueError("QCE output_dir must equal the import raw directory")
+        # raw-dir 由同一配置提供，不再重复传递给外部导出入口。
+        arguments = [str(python_path), str(_absolute(project_dir) / "scripts/qce-incremental/incremental_backup.py"),
+                     "--config", str(config_path), "--then-import", *arguments[6:]]
     environment = {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
     if digest_label:
         # 只在正式导入成功后唤起独立日报，不再安排一个可能抢先运行的固定发信时间。
@@ -67,7 +77,8 @@ def build_plist(
         # 本机模型缓存已验证可用，调度显式离线读取；缓存缺失仍由构建器报告失败。
         environment["HF_HUB_OFFLINE"] = "1"
     # 两个日历事件采用机器本地时区，与用户设置的每天导出时间保持一致。
-    calendar = [{"Hour": 10, "Minute": 30}, {"Hour": 22, "Minute": 30}]
+    calendar = [{"Hour": 10, "Minute": 0 if qce_config else 30},
+                {"Hour": 22, "Minute": 0 if qce_config else 30}]
     return {
         "Label": label,
         "ProgramArguments": arguments,
@@ -197,6 +208,7 @@ def install(args: argparse.Namespace) -> dict[str, object]:
         min_age_seconds=args.min_age_seconds,
         update_indexes=args.update_indexes,
         digest_label=args.digest_label,
+        qce_config=Path(args.qce_config) if args.qce_config else None,
     )
     _write_plist(prepared, document)
     result: dict[str, object] = {
@@ -212,6 +224,10 @@ def install(args: argparse.Namespace) -> dict[str, object]:
         # 这里只说明是否装配索引 updater，不代表生产检索已经验收完成。
         "integration_required": not args.update_indexes,
     }
+    if args.qce_config and args.job == "import":
+        # 安装回执直接展示实际配置与日历，避免仅显示 loaded 掩盖流水线入口。
+        result["qce_config"] = str(_absolute(args.qce_config))
+        result["schedule"] = document["StartCalendarInterval"]
     if args.job == "digest":
         # 日报不承担文件导入或索引工作，准备结果只描述它实际使用的配置。
         for key in ("raw_dir", "update_indexes", "integration_required"):
@@ -281,6 +297,7 @@ def _parser() -> argparse.ArgumentParser:
             subparser.add_argument("--python", help="default: PROJECT/.venv/bin/python")
             subparser.add_argument("--raw-dir")
             subparser.add_argument("--database")
+            subparser.add_argument("--qce-config", help="Export QCE windows before importing; schedule at 10:00/22:00")
             subparser.add_argument("--digest-label", help="Wake the independent digest worker after evening import")
             subparser.add_argument("--mail-env-file", help="Digest SMTP configuration file; default: PROJECT/.env.digest")
             subparser.add_argument("--log-dir", default=Path.home() / "Library/Logs/Trivae")

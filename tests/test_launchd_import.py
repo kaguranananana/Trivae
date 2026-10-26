@@ -444,3 +444,33 @@ def test_real_launchd_isolated_backlog_and_index_pending(tmp_path: Path) -> None
         manage("uninstall")
         removed = manage("status")
         assert not removed["loaded"] and not removed["installed"] and not removed["prepared"]
+
+
+def test_qce_pipeline_replaces_timer_and_preserves_import_contract(manager, tmp_path):
+    """同一任务先导出后入库，休眠补偿、失败重跑与晚报参数仍保持。"""
+    config = tmp_path / 'config.json'
+    raw = tmp_path / 'raw'
+    config.write_text(json.dumps({'output_dir': str(raw)}))
+    document = manager.build_plist(project_dir=PROJECT_DIR, python=PROJECT_DIR / '.venv/bin/python',
+                                   raw_dir=raw, database=tmp_path / 'db.sqlite3', log_dir=tmp_path / 'logs',
+                                   qce_config=config, digest_label='com.trivae.daily-digest')
+    arguments = document['ProgramArguments']
+    assert arguments[1] == str(PROJECT_DIR / 'scripts/qce-incremental/incremental_backup.py')
+    assert arguments[2:5] == ['--config', str(config), '--then-import']
+    assert '--raw-dir' not in arguments
+    assert '--database' in arguments
+    assert '--update-indexes' in arguments
+    assert arguments[-3:-1] == ['--digest-label', 'com.trivae.daily-digest']
+    assert document['StartCalendarInterval'] == [{'Hour': 10, 'Minute': 0}, {'Hour': 22, 'Minute': 0}]
+    assert document['KeepAlive'] == {'SuccessfulExit': False}
+    assert document['RunAtLoad'] is True
+
+
+def test_qce_config_must_export_to_import_directory(manager, tmp_path):
+    """导出和入库目录配置不一致时应安装失败，避免任务表面成功却不入库。"""
+    config = tmp_path / 'config.json'
+    config.write_text(json.dumps({'output_dir': str(tmp_path / 'other')}))
+    with pytest.raises(ValueError, match='output_dir'):
+        manager.build_plist(project_dir=PROJECT_DIR, python=PROJECT_DIR / '.venv/bin/python',
+                            raw_dir=tmp_path / 'raw', database=tmp_path / 'db', log_dir=tmp_path / 'logs',
+                            qce_config=config)

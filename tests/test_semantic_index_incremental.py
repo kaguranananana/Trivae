@@ -219,3 +219,64 @@ def test_incomplete_or_unverifiable_baseline_does_not_support_incremental(tmp_pa
         assert not index.supports_incremental()
     finally:
         index.close()
+
+
+def test_live_reader_keeps_committed_snapshot_during_incremental_publish(tmp_path: Path) -> None:
+    """定时写索引期间，已打开的 Web 读连接必须可读旧快照，提交后才看到新版本。"""
+    path = tmp_path / 'concurrent.sqlite3'
+    writer = SQLiteSemanticIndex(path)
+    reader = None
+    try:
+        first, _ = seed(writer)
+        reader = SQLiteSemanticIndex(path)
+        before = stored_rows(reader)
+        # 小页缓存使真实写事务发生 spill，稳定复现线上读端 database is locked。
+        writer._connection.execute('PRAGMA cache_size = 10')
+        reader._connection.execute('PRAGMA busy_timeout = 1')
+        with writer.incremental_transaction(
+            IDENTITY, 302, base_revision=7, canonical_revision=8, forwarded_message_count=0,
+        ):
+            writer.insert_chunks(tuple(
+                (replace(first, chunk_id=f'new-{i}', embedding_input='新增内容' * 300), (0.0, 0.0, 1.0))
+                for i in range(300)
+            ))
+            writer.update_progress(302)
+            writer.finish('completed')
+            # 即使 writer 已 finish，正式发布前也只允许读到上次成功的完整版本。
+            assert reader.state().canonical_revision == 7
+            assert stored_rows(reader) == before
+        assert reader.state().canonical_revision == 8
+        assert len(stored_rows(reader)) == 302
+        assert reader.integrity_report(IDENTITY).status == 'valid'
+    finally:
+        if reader:
+            reader.close()
+        writer.close()
+
+
+def test_wal_upgrade_preserves_an_already_open_legacy_reader(tmp_path: Path) -> None:
+    """已有 Web 连接仍在 DELETE 模式时，新调度连接启用 WAL 后可继续读同一文件。"""
+    path = tmp_path / 'legacy.sqlite3'
+    legacy = SQLiteSemanticIndex(path)
+    writer = None
+    try:
+        first, _ = seed(legacy)
+        legacy._connection.execute('PRAGMA journal_mode = DELETE')
+        writer = SQLiteSemanticIndex(path)
+        legacy._connection.execute('PRAGMA busy_timeout = 1')
+        writer._connection.execute('PRAGMA cache_size = 10')
+        with writer.incremental_transaction(
+            IDENTITY, 302, base_revision=7, canonical_revision=8, forwarded_message_count=0,
+        ):
+            writer.insert_chunks(tuple(
+                (replace(first, chunk_id=f'added-{i}', embedding_input='迁移后正文' * 300), (0.0, 0.0, 1.0))
+                for i in range(300)
+            ))
+            writer.update_progress(302)
+            writer.finish('completed')
+            assert legacy.state().canonical_revision == 7
+        assert legacy.state().canonical_revision == 8
+    finally:
+        if writer:
+            writer.close()
+        legacy.close()

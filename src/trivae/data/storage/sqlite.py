@@ -202,6 +202,12 @@ class SQLiteCanonicalStore:
         self.connection = sqlite3.connect(str(database_path))
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
+        # 定时入库和 FTS 重建与 Web 共用此库；WAL 保留读端已提交快照，避免缓存写出锁读。
+        journal = self.connection.execute("PRAGMA journal_mode = WAL").fetchone()
+        # 模式切换失败会返回旧模式；直接报错，不能让调度继续阻塞线上读取。
+        if journal is None or str(journal[0]).lower() != "wal":
+            self.connection.close()
+            raise IngestionError("Canonical Store requires WAL for concurrent scheduled imports")
         self.connection.executescript(SCHEMA_SQL)
         # 新批次指标需要同步升级已有数据库；历史版本未做正文补齐，旧行的真实值为零。
         batch_columns = {row[1] for row in self.connection.execute("PRAGMA table_info(import_batches)")}

@@ -39,6 +39,9 @@ tmp/
 
 data/raw/
 data/*.sqlite3
+# SQLite WAL 和共享内存与本机数据库配套保存，不提交派生侧文件。
+data/*.sqlite3-wal
+data/*.sqlite3-shm
 # 导入互斥锁保留原 inode，仅在本地使用，不纳入版本控制。
 data/*.sqlite3.import-once.lock
 # 真实 retrieval packet/标签/审计队列包含私有聊天正文，只允许本地保存。
@@ -48,6 +51,11 @@ data/exports/
 # 日报正文、模型输入及邮件状态包含私有群聊材料，只在本机保存。
 data/digests/
 data/*.digest.lock
+# QCE 私人群配置、成功水位及进程锁仅保存在本机。
+scripts/qce-incremental/config.json
+scripts/qce-incremental/state.json
+scripts/qce-incremental/.run.lock
+scripts/qce-incremental/.state-*.tmp
 
 # Web frontend（构建产物按需 pnpm -C web build 生成；trivae web 自动探测 web/dist）
 web/node_modules/

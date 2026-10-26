@@ -189,3 +189,36 @@ def test_daily_append_and_late_import_use_incremental_builder_and_ack_once(tmp_p
         patch.object(provider, "embed_documents", side_effect=AssertionError("已发布不计算向量")),
     ):
         assert run(database, raw, updater).exit_code == 0
+
+
+def test_fts_rebuild_does_not_lock_canonical_web_reader(tmp_path: Path, monkeypatch) -> None:
+    """正式 FTS 重建发生页缓存写出时，Web 的 Canonical 读取仍应成功。"""
+    import trivae.data.storage.sqlite_lexical as lexical_module
+
+    database, raw = tmp_path / 'store.sqlite3', tmp_path / 'raw'
+    write_fixture(raw, 'chat.json', count=400)
+    assert run(database, raw, LocalImportIndexUpdater(
+        database, semantic_provider=_DeterministicProvider())).exit_code == 0
+    reader = sqlite3.connect(database, timeout=0.001)
+    observed_errors = []
+    observed_counts = []
+    normalize = lexical_module.normalize_lexical_index_text
+
+    def inspect_reader(text):
+        # 第一次正式 SQL UDF 调用时，DROP/CREATE 已执行，正处于未提交的全量重建。
+        if not observed_counts and not observed_errors:
+            try:
+                observed_counts.append(reader.execute('SELECT count(*) FROM messages').fetchone()[0])
+            except sqlite3.OperationalError as exc:
+                observed_errors.append(str(exc))
+        return normalize(text)
+
+    monkeypatch.setattr(lexical_module, 'normalize_lexical_index_text', inspect_reader)
+    try:
+        with closing(SQLiteLexicalIndex(database)) as lexical:
+            lexical._connection.execute('PRAGMA cache_size = 10')
+            lexical.rebuild()
+        assert observed_errors == []
+        assert observed_counts == [400]
+    finally:
+        reader.close()

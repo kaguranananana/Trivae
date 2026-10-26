@@ -1,5 +1,7 @@
 # QCE 本地增量导入与 macOS 调度
 
+2026-10-26 新增完整的 QCE 导出流水线，入口见 [增量导出说明](../scripts/qce-incremental/README.md)。`install-import.sh --qce-config scripts/qce-incremental/config.json` 可让同一个 `com.trivae.import-once` 先按每群成功水位调用 QCE 导出，再串行执行原有入库、索引和晚间日报。该模式的日历为每天 **10:00、22:00**，替换下文纯入库模式的 10:30、22:30；保留登录/唤醒补偿和失败五分钟补跑。新文件先满足原 60 秒静置契约再入库，避免每轮产生新文件却始终 deferred。QCE 连接/QQ 登录仍是前提。Canonical 与 semantic 文件已采用 WAL，避免长索引写事务阻塞既有 Web 读连接；索引未提交时 freshness 仍如实反映旧版本。实际首轮结果见开发记录，不能只凭安装成功视为补查完成。
+
 已实现文件发现、状态持久化、失败恢复、独立 CLI 和调度管理，并与「合并转发内部消息检索」代码完成合并。用户在合并后明确授权启动真实调度；本轮为正式调度接入既有索引构建器，默认携带 `--update-indexes`。实际安装、首轮运行和生产检索验收结果需以任务验证记录及下述状态命令为准，不能只凭配置已生成就视为启用成功。开发测试使用隔离数据库，不修改 QCE、原始 JSON 或冻结 Evaluation。
 
 2026-10-17 11:06 +08 正式任务已实际启用并立即运行。首轮全部 40 文件完成，新增 23,087 条，FTS 与 Agent lexical/recent 工具已验证；语义索引仍在构建，完整生产验收尚未完成。实测证据和限制见 [启用验证记录](../.trellis/tasks/10-16-qce-auto-import/enable-validation.md)。

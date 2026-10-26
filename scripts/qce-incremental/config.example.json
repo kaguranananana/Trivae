@@ -1,0 +1,16 @@
+{
+  "groups": [
+    {
+      "id": "123456789",
+      "name": "请替换为你的群名"
+    }
+  ],
+  "base_url": "http://127.0.0.1:40653",
+  "initial_lookback_hours": 72,
+  "overlap_minutes": 30,
+  "settle_minutes": 15,
+  "wait_for_api_minutes": 10,
+  "task_timeout_minutes": 120,
+  "skip_resource_downloads": true,
+  "output_dir": "/absolute/path/to/Trivae/data/raw"
+}

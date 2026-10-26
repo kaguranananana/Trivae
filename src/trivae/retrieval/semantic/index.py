@@ -37,6 +37,11 @@ class SQLiteSemanticIndex:
             self._connection = sqlite3.connect(self.database_path)
             self._connection.row_factory = sqlite3.Row
             self._connection.execute("PRAGMA foreign_keys = ON")
+            # 定时增量会跨多批向量持有事务；WAL 让 Web 读端继续读取上次已提交快照。
+            journal = self._connection.execute("PRAGMA journal_mode = WAL").fetchone()
+            # SQLite 不支持 WAL 时可能只返回旧模式，必须明确暴露而不能悄悄继续互斥读写。
+            if journal is None or str(journal[0]).lower() != "wal":
+                raise SemanticIndexStorageError("semantic index requires WAL for concurrent scheduled updates")
             self._load_sqlite_vec()
             self._create_schema()
         except Exception:

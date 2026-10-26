@@ -19,8 +19,9 @@
 - 旧、新 mutation 时间点和当前消息共同形成 gap 连通段，删除的桥接点不能丢弃。gap 秒数乘 1000 后比较 canonical 毫秒；`>` 才切 Parent，恰等于 gap 仍相连。段内从头重放既有 Chunker，段外独立自然 gap 保证传播终止。
 - 精确模型输入全文相等才复用。Parent/Child ID 只表达边界；不使用内容指纹。输入是受长度上限约束的派生计算凭据，检索证据不读取该列。
 - 增量基线必须 completed、原生/转发覆盖完整、identity 相同且具备完整格式 1 输入；未完成全量不能被局部更新补成 completed。旧格式／identity 迁移重建；同快照格式 1 的未完成全量沿用 resume。
+- Canonical 与 semantic 文件连接使用 WAL；长索引事务期间，既有 Web 连接继续读取上次已提交快照，提交后才观察到新版本。WAL 不支持时明确失败，不吞掉锁错误或放宽 freshness。在线备份使用 SQLite backup API，不能只复制主文件而遗漏 WAL。
 - 一个 semantic BEGIN IMMEDIATE 内包含范围暂存、paired delete/insert、coverage、completed 和提交。各写方法不能用嵌套 connection context 提前提交。TEMP 池仅是该事务的旧输入/vec 缓存。
-- 获取锁后复查 base revision 与 metadata/vector 一一对应。Canonical 版本构建中改变，抛 stale 并回滚。普通异常只在回滚后给旧状态记录 last_error；强停由 SQLite rollback journal 恢复。新 partial 内容绝不能发布为 completed。
+- 获取锁后复查 base revision 与 metadata/vector 一一对应。Canonical 版本构建中改变，抛 stale 并回滚。普通异常只在回滚后给旧状态记录 last_error；强停由 SQLite 事务恢复。新 partial 内容绝不能发布为 completed。
 - Canonical 和 semantic 没有跨库事务；提交后 freshness 仍由检索动态比较 identity/count/revision 保证。旧 completed revision 不等于当前可查。全量 rebuild 原有逐批持久化行为不改变。
 - 空更新不读全库转发、不 preload；全部输入复用或新增 void-only 段也不加载模型。未影响向量 ID/字节保持原样。
 - Stats：增量 parent_count / eligible / void 表示实际处理范围；chunk_count 为发布后总量，reused_chunk_count 为其中没有新计算的向量数。`build_mode` 区分 full/resume/incremental/unchanged；affected_message_count 含原生及转发 occurrence；affected_chunk_count 是重切输出，removed_chunk_count 是原范围删除数。
@@ -49,7 +50,7 @@
 
 - `test_semantic_canonical_changes.py`：old/new、会话移动、群名、noop、事务回滚、日志缺失、多个删除桥接点、scope 转发外层时间、零新增排队及恢复。
 - `test_semantic_incremental.py`：追加、迟到、边界传播、正文/void/删除/移动/转发变化与全量 oracle；逐字段 metadata、float32、检索来源；异常、并发 Canonical、真实子进程 os._exit 后重开；不完整全量及旧失败格式迁移。
-- `test_semantic_index_incremental.py`：真实 vec0 rollback、原行 ID、输入相等跨 ID 复用、同 ID 新正文不复用、过期 base 拒绝、格式标记含空旧库。
+- `test_semantic_index_incremental.py`：真实 vec0 rollback、写入发生 spill 时并发读旧快照/提交后新快照、已打开 DELETE 连接迁移 WAL、原行 ID、输入相等跨 ID 复用、同 ID 新正文不复用、过期 base 拒绝、格式标记含空旧库。
 - `test_import_index_updates.py`：正式 updater 多批合并，一次 update、新增/迟到均可被 Agent semantic/lexical 工具检索；ack 重放零 preload。
 - `scripts/verify_semantic_incremental.py --real`：真实 Qwen 和 vec0；metadata exact、float32 最大绝对差 <=1e-4、相同 Canonical 来源，报告实测而非假定加速比例。
 
