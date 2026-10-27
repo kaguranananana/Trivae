@@ -93,6 +93,10 @@ def run_digest_command(args: argparse.Namespace) -> int:
                             start=run["start_timestamp"], end=run["end_timestamp"],
                             after_revision=None if previous is None else previous["through_revision"], resume=True,
                         ))
+                        # 续跑沿用原运行的日报日期，补发不能被重新归到实际生成当天。
+                        report["delivery_day"] = run["day"]
+                        (Path(run["report_directory"]) / "report.json").write_text(
+                            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
                         state.update(args.run_id, "ready", revision=report["revision"])
                     result = deliver_report(state, args.run_id, settings)
                 finally:

@@ -414,6 +414,52 @@ def test_catch_up_preserves_real_cutoff_and_leaves_today_available(tmp_path: Pat
     assert [item.source_message_id for item in snapshots[-1].messages] == ["late"]
 
 
+def test_cli_resume_preserves_failed_catch_up_delivery_day(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """真实补发被模型中断后，显式续跑仍按原日报日期寄送。"""
+
+    import trivae.interfaces.digest_cli as command
+
+    database = tmp_path / "chat.sqlite3"
+    state_path = tmp_path / "digest.sqlite3"
+    now = datetime(2026, 10, 27, 12, tzinfo=TIMEZONE)
+    _import(database, tmp_path, [make_message("one", 1, int(now.timestamp()*1000)-1000, "具体项目经验")])
+    resumed_flags = []
+
+    async def generate(database: Path, directory: Path, *, run_id: str, start: int, end: int,
+                       after_revision: int | None = None, resume: bool = False) -> dict:
+        snapshot = read_digest_snapshot(database, start_timestamp=start, end_timestamp=end, after_revision=after_revision)
+        resumed_flags.append(resume)
+        excerpt = make_excerpts(snapshot)[0]
+        completion = Mock(side_effect=RuntimeError("observed model quota exhausted")) if not resume else Mock(
+            return_value=json.dumps({"items": [_item(excerpt.handle, excerpt.text)]}))
+        return await DigestGenerator(completion).generate(snapshot, directory, run_id=run_id, resume=resume)
+
+    monkeypatch.setattr(bootstrap, "generate_report", generate)
+    monkeypatch.setattr(command, "generate_report", generate)
+    sender = Mock(return_value="<accepted@example.com>")
+    monkeypatch.setattr(bootstrap, "send_digest_mail", sender)
+    settings = MailSettings("smtp.example.com", 465, "user", "private", "from@example.com", "to@example.com")
+    monkeypatch.setattr(command.MailSettings, "from_environment", staticmethod(lambda: settings))
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(RuntimeError, match="observed model quota exhausted"):
+        asyncio.run(bootstrap.run_daily_digest(database, state_path, tmp_path / "reports", settings,
+                                                now=now, delivery_day=(now-timedelta(days=1)).date()))
+    state = SQLiteDigestState(state_path)
+    failed = state.latest()
+    assert failed is not None and failed["status"] == "generation_failed"
+    state.close()
+    assert main(["digest", "resume", "--database", str(database), "--state-database", str(state_path),
+                 "--run-id", failed["run_id"]]) == 0
+    saved = json.loads((Path(failed["report_directory"]) / "report.json").read_text())
+    assert saved["delivery_day"] == "2026-10-26" and saved["window_end"] == now.isoformat()
+    assert sender.call_count == 1 and sender.call_args.kwargs["subject"].startswith("【补发】")
+    assert "2026-10-26" in sender.call_args.kwargs["subject"] and resumed_flags == [False, True]
+    state = SQLiteDigestState(state_path)
+    assert state.get(failed["run_id"])["status"] == "sent"
+    assert state.latest(now.date().isoformat()) is None
+    state.close()
+
+
 def test_daily_run_sends_once_and_next_day_picks_up_late_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """串起正式生成与交付，每日重复触发不发第二封，下一天读取未交付变更。"""
 
