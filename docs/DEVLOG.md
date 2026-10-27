@@ -315,3 +315,13 @@
 - QQ账号事件：排查QCE连接拒绝时，错误地新增com.trivae.qce-runtime的登录自启动和失败300秒重启，调用本机已有NapCat/QCE启动器并传QQ号快捷登录。先遇macOS访问受限，后实际运行日志在13:38:07、13:38:15、13:43:20、13:48:35显示身份/登录态失效，13:50启动后登录服务断开。用户报告QQ账号被冻结并自行完成验证恢复。无法获取腾讯后台风控判定，不能宣称因果已证实或排除本次操作的影响；在登录态失效后仍允许重启是本次操作错误。
 - 用户反馈后立即禁用新增服务；检查时其已未加载且无对应进程，bootout返回No such process，未冒称成功杀掉仍运行的进程。随后移出已安装/准备的plist，撤销manager及测试中本次QCE自启动功能、移除qce_runtime.py，禁用既有com.trivae.import-once调度，保留数据/旧配置/原日志。只暂停QQ采集，不继续任何QQ登录、权限或重新启动尝试；后续须先向用户说明并取得明确重新同意。事件和撤销凭据保存在ignored data/evaluation/qq-login-incident-20261027/。
 - 撤销后日报/调度定向46 passed/1 skipped，Ruff src/tests/scripts、mypy137源文件和diff检查通过。撤销前全量1332 passed/1 skipped包含后来删除的QCE启动配置测试，不能冒充最终代码另做过全量。摘要筛选及安全的发送前失败恢复保留；当前自动推送未恢复，正式补发未发送，QQ自动采集处于人为暂停状态。
+
+
+## 2026-10-27 · 按用户新授权恢复既有QCE采集，禁止启动QQ
+
+- 用户自行登录后明确要求“可以继续，不要尝试自己启动QQ”。只GET既有本机QCE确认接口成功，再enable/bootstrap原com.trivae.daily-digest和com.trivae.import-once；沿用已检查的导出脚本、10:00/22:00日历和原入库/索引参数，没有安装、启动、重启或登录QQ/NapCat，已撤销的com.trivae.qce-runtime保持disabled/unloaded，代码和plist未恢复。
+- 实际8群导出849条，全部游标至15:15:24，无pending；静置后正式导入及双索引15:37:35完成，198文件completed、unfinished_files/pending_indexes空，Canonical861549/revision95769，任务runs1/exit0。独立邮件worker已加载待晚间dispatch，runs0；白天完成不冒充自然晚间发信或收件成功。
+- 为避免新入库破坏旧阅读快照，使用SQLite backup API从只读Canonical冻结revision95116，对原21101片段全部字段核对一致，再显式resume原10-26补发。复用原8批，真实第9、10批完成，第11批在HTTP响应前SSLEOFError中断（0chunk、Usage未知）；原quota错误、两次新响应及TLS失败均保留。当前Trace累计12请求/10响应/2 provider_error/8 reused记录，不将重用算新HTTP。未提交任何补发邮件，成功交付水位不变。
+- 发现resume未保留逻辑日报日期，正式CLI回归先KeyError，再从state.day写回report后通过。实际续跑由quota变为TLS失败而状态仍保留旧错误，另两回归先红（新错误未更新、已发送仍生成），最小修改续跑状态及异常记录、限制生成阶段恢复、sent直接复用交付幂等；48 passed/1 skipped，Ruff src/tests/scripts、mypy137、diff通过。工作cbcc9a31、b01b5c04，未新增模型自动重试、兼容端点或网络fallback。
+- 连接诊断使用既有HTTP代理：auth OIDC GET200，api.openai.com出现TLS EOF/无HTTP响应；绕开进程HTTP代理只读诊断ConnectTimeout；实际环境下httpx与系统curl交叉复现，curl代理CONNECT200但TLS握手未完成。用户确认未调整代理；没有改全局/进程网络配置、凭据、模型或端口，也没有把无HTTP响应误诊成认证/额度错误。官方状态页当时未报告整体故障，聚合状态不能排除这条连接问题。一次诊断脚本遗漏默认.env导致本地SettingsError，按CLI相同加载顺序纠正，无密钥变更或实际模型调用。
+- 当前只剩模型连接阻塞补发；保留原快照、报告目录和最后10个成功阅读批次。下次网络恢复后用显式resume、冻结Canonical和原state数据库继续，不重复处理已完成批次，不启动QQ。自然晚间触发和实际收件仍待后续观察。完整本机回执、快照核验、原输入/Trace及交叉诊断位于data/evaluation/digest-resume-20261027/，私人记录和凭据不提交。
