@@ -100,7 +100,7 @@ Standard 与 Planned 共用 Runtime，便于在相同条件下单独评价 Plann
 
 ### 5. 评测覆盖完整生产 Query
 
-Evaluation 固定数据 Snapshot、Case 与受控 Variant，复用 Application 查询并读取答案、引用和 Trace；工程检查、质量轴和运行成本分别记录。Reference 标明 `exhaustive / partial / unknown`，机器辅助标注保留 provisional 身份。最近的 Prompt 精简实验因质量退化被拒绝，未作为性能优化发布；这里不把开发样本、测试通过率或 Token 减少写成产品准确率。[评测方法与当前边界](docs/evaluation.md)
+Evaluation 固定数据 Snapshot、Case 与受控 Variant，复用 Application 查询并读取答案、引用和 Trace；工程检查、质量轴和运行成本分别记录。Reference 标明 `exhaustive / partial / unknown`，机器辅助标注保留 provisional 身份。最近的 Prompt 精简实验因质量退化被拒绝，未作为性能优化发布；这里不把开发样本、测试通过率或 Token 减少写成产品准确率。[评测方法与当前边界](docs/evaluation.md) · [长期评测与 LangSmith](docs/evaluation-langsmith.md)
 
 ## 快速开始
 

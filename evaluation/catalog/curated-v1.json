@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "case": "dev-context-archify@v1",
+      "suite": "回归",
+      "purpose": "搜索上下文恢复直接回复",
+      "reason_and_history": "原目标回复未送达；固定输入重放与真实运行均验证回复恢复，完整 anchor 覆盖仍非全通过。",
+      "source": "evaluation/experiments/reply-repair-20261022/report.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-context-mattpocock-1@v2",
+      "suite": "回归",
+      "purpose": "关联搜索命中与直接回复",
+      "reason_and_history": "历史首轮漏送目标回复；修复后固定输入及真实答案引用均有证据。",
+      "source": "evaluation/experiments/reply-repair-20261022/report.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-context-mattpocock-2@v1",
+      "suite": "回归",
+      "purpose": "预算受限下保留关键回复",
+      "reason_and_history": "历史投影丢失目标回复；固定输入和真实答案均核验。",
+      "source": "evaluation/experiments/reply-repair-20261022/report.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-cite-nanobot@v1",
+      "suite": "能力",
+      "purpose": "跨两个群整合相关消息并绑定引用",
+      "reason_and_history": "原 Development GT 有两个群的目标消息；未保证枚举完整。",
+      "source": "evaluation/reports/resume-benchmark-v1-fact-index.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-cite-volcengine@v1",
+      "suite": "能力",
+      "purpose": "跨三个群整合证据并绑定引用",
+      "reason_and_history": "原 Development GT 有三个群的目标消息；不能把目标召回当全语料召回。",
+      "source": "evaluation/reports/resume-benchmark-v1-fact-index.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-para-intern-owner@v1",
+      "suite": "能力",
+      "purpose": "观点和适用条件整合、避免推断",
+      "reason_and_history": "历史真实回答漏掉已读观点；后续单次修复观察并非一般质量提升率。",
+      "source": "evaluation/experiments/quality-repair-20261022/report.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-para-resume-advice@v1",
+      "suite": "能力",
+      "purpose": "综合建议并检查遗漏和错误推断",
+      "reason_and_history": "历史评测及质量审计保留；自然语言质量需要独立审核。",
+      "source": "evaluation/experiments/quality-repair-20261022/report.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-para-written-test@v1",
+      "suite": "能力",
+      "purpose": "复杂意图与相关经历覆盖",
+      "reason_and_history": "历史审计发现可能遗漏目标；旧运行和当前快照不可直接等同。",
+      "source": "docs/FAILURE_AUDIT_20261023.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    },
+    {
+      "case": "dev-temporal-30d@v2",
+      "suite": "能力",
+      "purpose": "较长时间窗检索及覆盖",
+      "reason_and_history": "原 Development 窗口目标经人工确认；完整覆盖需在原冻结数据核实。",
+      "source": "evaluation/reports/resume-benchmark-v1-fact-index.md",
+      "origin": "resume-benchmark-v1 development; exposed",
+      "reference_status": "historical human-adjudicated; snapshot-specific; not exhaustive",
+      "current_answer_review": "per run; not assumed"
+    }
+  ]
+}

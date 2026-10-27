@@ -1,0 +1,33 @@
+{
+  "suite_id": "capability",
+  "version": 1,
+  "kind": "core",
+  "description": "从已暴露 Development 选取跨群、跨时间、观点整合和遗漏风险题；已暴露、参考证据非穷尽。",
+  "created_at": "2026-10-28T00:00:00+08:00",
+  "cases": [
+    {
+      "case_id": "dev-cite-nanobot",
+      "version": 1
+    },
+    {
+      "case_id": "dev-cite-volcengine",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-intern-owner",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-resume-advice",
+      "version": 1
+    },
+    {
+      "case_id": "dev-para-written-test",
+      "version": 1
+    },
+    {
+      "case_id": "dev-temporal-30d",
+      "version": 2
+    }
+  ]
+}

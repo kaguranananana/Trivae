@@ -370,7 +370,18 @@ class DatasetSnapshot:
             raise EvaluationContractError("snapshot relevant_time_range is reversed")
         if self.status not in ("available", "invalid", "restricted", "unavailable"):
             raise EvaluationContractError("snapshot status is invalid")
-        object.__setattr__(self, "manifest", _mapping(self.manifest, "snapshot manifest"))
+        # Source inventory is a complete data identity, not a bounded UI projection.
+        # Validate each source separately so real databases with >200 imports remain usable.
+        if not isinstance(self.manifest, Mapping):
+            raise EvaluationContractError("snapshot manifest must be an object")
+        manifest = dict(self.manifest)
+        sources = manifest.pop("sources", None)
+        _json_safe(manifest, "snapshot manifest")
+        if sources is not None:
+            if not isinstance(sources, (list, tuple)):
+                raise EvaluationContractError("snapshot manifest.sources must be an array")
+            manifest["sources"] = [dict(_mapping(source, "snapshot manifest source")) for source in sources]
+        object.__setattr__(self, "manifest", _JSONMapping(manifest))
 
     @classmethod
     def from_database(

@@ -4,6 +4,8 @@ Trivae 的评测用于回答两个不同的问题：系统有没有按合同完�
 
 自动化测试通过数量、Runtime 的 `completed` 状态、Token 减少或调用次数减少，都不能直接当作答案准确率。
 
+需要冻结真实数据库与索引、维护 Regression / Capability Suite 或将已有结果同步到 LangSmith 时，参见[长期评测与 LangSmith](evaluation-langsmith.md)。
+
 ## 复用生产查询链路
 
 [EvaluationRunner](../src/trivae/evaluation/runner.py) 通过 `TrivaeApplication.query()` 执行 Case，读取同一条链路的答案与 Trace，再保存运行和检查结果。Runner 不持有另一套 Router、Runtime 或检索实例。

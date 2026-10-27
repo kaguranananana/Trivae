@@ -95,6 +95,8 @@ class EvaluationRunner:
             raise EvaluationContractError(
                 "resolved Snapshot does not match the Case; create a new Case version instead of silently rebinding"
             )
+        if resolved_snapshot.deterministic_fingerprint != case.dataset_snapshot.deterministic_fingerprint:
+            raise EvaluationContractError("resolved Snapshot manifest differs from the Case Snapshot")
 
         runs: list[EvaluationRun] = []
         for repetition in range(repetitions):

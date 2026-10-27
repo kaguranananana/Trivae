@@ -183,6 +183,10 @@ def build_parser() -> argparse.ArgumentParser:
     eval_cases_subparsers = eval_cases_parser.add_subparsers(dest="cases_command", required=True)
     eval_cases_validate_parser = eval_cases_subparsers.add_parser("validate", help="Validate one Case or directory")
     eval_cases_validate_parser.add_argument("path", type=Path, help="Case JSON file or directory")
+    eval_cases_version_parser = eval_cases_subparsers.add_parser("new-version", help="Create a new Case version")
+    eval_cases_version_parser.add_argument("--source", type=Path, required=True)
+    eval_cases_version_parser.add_argument("--output", type=Path, required=True)
+    eval_cases_version_parser.add_argument("--snapshot", type=Path, help="Freeze manifest for a new unreviewed data version")
     eval_run_parser = evaluation_subparsers.add_parser("run", help="Execute a versioned Suite")
     eval_run_parser.add_argument("--suite", type=Path, required=True, help="Evaluation Suite JSON")
     eval_run_parser.add_argument("--variant", type=Path, required=True, help="Controlled Variant JSON")
@@ -205,6 +209,60 @@ def build_parser() -> argparse.ArgumentParser:
         help="Independent SQLite Evaluation Store path",
     )
     eval_run_parser.add_argument("--repeat", type=int, default=1, help="Number of repetitions per Case")
+    eval_run_parser.add_argument("--record-dir", type=Path, help="Create a formal experiment record")
+    eval_run_parser.add_argument("--freeze-manifest", type=Path, help="Manifest in the working data clone")
+    eval_run_parser.add_argument("--judge-version", default="none", help="Judge identity or none")
+    eval_freeze = evaluation_subparsers.add_parser("freeze-data", help="Freeze private canonical and index databases")
+    eval_freeze.add_argument("--database", type=Path, required=True)
+    eval_freeze.add_argument("--semantic-index", type=Path, default=None)
+    eval_freeze.add_argument("--output-dir", type=Path, required=True)
+    eval_clone = evaluation_subparsers.add_parser("clone-data", help="Create a working copy of a frozen master")
+    eval_clone.add_argument("--manifest", type=Path, required=True)
+    eval_clone.add_argument("--output-dir", type=Path, required=True)
+    eval_candidates = evaluation_subparsers.add_parser("suite-candidates", help="Prepare unreviewed Cases on new data")
+    eval_candidates.add_argument("--suite", type=Path, required=True)
+    eval_candidates.add_argument("--cases-dir", type=Path, required=True)
+    eval_candidates.add_argument("--freeze-manifest", type=Path, required=True)
+    eval_candidates.add_argument("--output-dir", type=Path, required=True)
+    eval_exp_compare = evaluation_subparsers.add_parser("compare-experiments", help="Check experiment comparability")
+    eval_exp_compare.add_argument("--baseline", type=Path, required=True)
+    eval_exp_compare.add_argument("--candidate", type=Path, required=True)
+    eval_report = evaluation_subparsers.add_parser("report", help="Report run, review and judge failures separately")
+    eval_report.add_argument("--evaluation-database", type=Path, required=True)
+    eval_report.add_argument("--suite-id")
+    eval_report.add_argument("--judgments", type=Path)
+    eval_report.add_argument("--output", type=Path, help="Create-only local JSON output")
+    eval_review = evaluation_subparsers.add_parser("review", help="Save a structured human or model-assisted Review")
+    eval_review.add_argument("--evaluation-database", type=Path, required=True)
+    eval_review.add_argument("--review", type=Path, required=True)
+    eval_sync = evaluation_subparsers.add_parser("langsmith-sync", help="Upload saved runs as a LangSmith experiment")
+    eval_sync.add_argument("--suite", type=Path, required=True)
+    eval_sync.add_argument("--cases-dir", type=Path, required=True)
+    eval_sync.add_argument("--evaluation-database", type=Path, required=True)
+    eval_sync.add_argument("--run-id", action="append", help="Select one persisted Run; repeat for a suite")
+    eval_sync.add_argument("--variant-id", help="Select this variant from benchmark --records")
+    eval_sync.add_argument("--variant-file", type=Path, help="Declared historical Variant configuration")
+    eval_sync.add_argument("--experiment", required=True)
+    eval_sync.add_argument("--trace-database", type=Path)
+    eval_sync.add_argument("--records", type=Path, help="Existing benchmark raw-records.json")
+    eval_sync.add_argument("--judgments", type=Path, help="Existing benchmark judge results")
+    eval_sync.add_argument("--manifest", type=Path, help="Formal experiment.json with runtime conditions")
+    eval_sync.add_argument("--import-time", action="store_true",
+                           help="Use import time on LangSmith; keep original run times and duration in outputs")
+    eval_sync.add_argument("--content", type=Path, help="Optional explicitly prepared case/run text")
+    eval_sync.add_argument("--metadata-only", action="store_true", help="Do not export original questions/answers")
+    eval_sync.add_argument("--ledger", type=Path, default=Path("data/evaluation/langsmith-external.sqlite3"))
+    eval_map = evaluation_subparsers.add_parser("langsmith-map", help="Look up LangSmith IDs for a local Run")
+    eval_map.add_argument("--run-id", required=True)
+    eval_map.add_argument("--ledger", type=Path, default=Path("data/evaluation/langsmith-external.sqlite3"))
+    eval_resolve = evaluation_subparsers.add_parser("langsmith-resolve", help="Resolve remote Run IDs after ingestion")
+    eval_resolve.add_argument("--experiment", required=True)
+    eval_resolve.add_argument("--ledger", type=Path, default=Path("data/evaluation/langsmith-external.sqlite3"))
+    eval_review_sync = evaluation_subparsers.add_parser("langsmith-review-sync", help="Upload a later local Review")
+    eval_review_sync.add_argument("--evaluation-database", type=Path, required=True)
+    eval_review_sync.add_argument("--review-id", required=True)
+    eval_review_sync.add_argument("--experiment", required=True)
+    eval_review_sync.add_argument("--ledger", type=Path, default=Path("data/evaluation/langsmith-external.sqlite3"))
     eval_show_parser = evaluation_subparsers.add_parser("show", help="Show one persisted Evaluation Run")
     eval_show_parser.add_argument("run_id", help="Evaluation Run identity")
     eval_show_parser.add_argument(
@@ -1025,11 +1083,158 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
         # eval 的真实 provider run 同样需要凭据；dotenv 注入只发生在显式 CLI 边界。
         load_environment_file(getattr(args, "env_file", None))
         if args.evaluation_command == "cases":
-            if args.cases_command != "validate":
-                raise EvaluationContractError("unsupported eval cases command")
+            if args.cases_command == "new-version":
+                case = EvaluationCaseBundle.from_json(args.source)
+                payload = case.to_dict()
+                payload["version"] = case.version + 1
+                payload["provenance"] = {
+                    "source": case.identity,
+                    "method": "new Case version pending review",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "notes": "Copied reference evidence retains its original provenance; review changes before promotion.",
+                }
+                if args.snapshot is not None:
+                    try:
+                        freeze = json.loads(args.snapshot.read_text(encoding="utf-8"))
+                        payload["dataset_snapshot"] = freeze["snapshot"]
+                    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+                        raise EvaluationContractError("freeze manifest cannot be read") from exc
+                    payload["reference_findings"] = []
+                    payload["provenance"] = {
+                        "source": case.identity,
+                        "method": "new data snapshot; reference evidence removed pending review",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "notes": "Candidate only; inspect and annotate evidence before claiming verified ground truth.",
+                    }
+                target = EvaluationCaseBundle.from_dict(payload)
+                try:
+                    args.output.parent.mkdir(parents=True, exist_ok=True)
+                    with args.output.open("x", encoding="utf-8") as stream:
+                        json.dump(target.to_dict(), stream, ensure_ascii=False, indent=2, sort_keys=True)
+                        stream.write("\n")
+                except OSError as exc:
+                    raise EvaluationContractError("new Case output cannot be created") from exc
+                print(json.dumps({"case": target.identity, "status": "needs_review"}, ensure_ascii=False))
+                return 0
             cases = _load_cases(args.path)
             identities = sorted({case.identity for case in cases.values()})
             print(json.dumps({"status": "valid", "cases": identities}, ensure_ascii=False, indent=2))
+            return 0
+
+        if args.evaluation_command == "freeze-data":
+            from trivae.evaluation.frozen_data import freeze_data
+            frozen = freeze_data(args.database, args.semantic_index, args.output_dir)
+            print(json.dumps({"status": "frozen", "freeze_id": frozen["freeze_id"]}))
+            return 0
+
+        if args.evaluation_command == "clone-data":
+            from trivae.evaluation.frozen_data import clone_frozen
+            print(json.dumps(clone_frozen(args.manifest, args.output_dir), ensure_ascii=False))
+            return 0
+
+        if args.evaluation_command == "suite-candidates":
+            from trivae.evaluation.suite_maintenance import rebase_suite
+            result = rebase_suite(suite=EvaluationSuite.from_json(args.suite), cases=_load_cases(args.cases_dir),
+                                  freeze_path=args.freeze_manifest, output_dir=args.output_dir)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+
+        if args.evaluation_command == "compare-experiments":
+            from trivae.evaluation.experiment_manifest import compare_experiments
+            experiment_comparison = compare_experiments(args.baseline, args.candidate)
+            print(json.dumps(experiment_comparison, ensure_ascii=False, indent=2))
+            return 0 if experiment_comparison["comparable"] else 1
+
+        if args.evaluation_command == "report":
+            from trivae.evaluation.reporting import run_report
+            report = run_report(args.evaluation_database, suite_id=args.suite_id, judgments=args.judgments)
+            if args.output is None:
+                print(json.dumps(report, ensure_ascii=False, indent=2))
+            else:
+                try:
+                    args.output.parent.mkdir(parents=True, exist_ok=True)
+                    with args.output.open("x", encoding="utf-8") as stream:
+                        json.dump(report, stream, ensure_ascii=False, indent=2)
+                        stream.write("\n")
+                except OSError as exc:
+                    raise EvaluationContractError("report output cannot be created") from exc
+                print(json.dumps({"status": "created", "counts": report["counts"]}, ensure_ascii=False))
+            return 0
+
+        if args.evaluation_command == "langsmith-map":
+            from trivae.evaluation.langsmith_sync import lookup_mapping
+            print(json.dumps(lookup_mapping(args.ledger, args.run_id), ensure_ascii=False, indent=2))
+            return 0
+
+        if args.evaluation_command == "langsmith-resolve":
+            from trivae.evaluation.langsmith_sync import resolve_remote
+            result = resolve_remote(ledger_path=args.ledger, experiment=args.experiment)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["status"] == "resolved" else 1
+
+        if args.evaluation_command == "langsmith-review-sync":
+            from trivae.evaluation.langsmith_sync import sync_review
+            result = sync_review(evaluation_db=args.evaluation_database, ledger_path=args.ledger,
+                                 experiment=args.experiment, review_id=args.review_id)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+
+        if args.evaluation_command == "review":
+            from trivae.evaluation.contracts import EvaluationReview
+            from trivae.evaluation.store import SQLiteEvaluationStore
+            if not args.evaluation_database.is_file():
+                raise EvaluationContractError("evaluation database does not exist")
+            try:
+                review = EvaluationReview.from_dict(json.loads(args.review.read_text(encoding="utf-8")))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise EvaluationContractError("review JSON cannot be read") from exc
+            store = SQLiteEvaluationStore(args.evaluation_database)
+            try:
+                store.get_run(review.run_id)
+                try:
+                    store.get_review(review.review_id)
+                except EvaluationStoreError as exc:
+                    if not str(exc).startswith("evaluation review not found:"):
+                        raise
+                else:
+                    raise EvaluationContractError("review ID already exists; create a new review")
+                store.save_review(review)
+            finally:
+                store.close()
+            print(json.dumps({"status": "saved", "review_id": review.review_id}))
+            return 0
+
+        if args.evaluation_command == "langsmith-sync":
+            from trivae.evaluation.langsmith_sync import export_experiment
+            suite = EvaluationSuite.from_json(args.suite)
+            run_ids = args.run_id
+            if args.variant_id is not None:
+                if run_ids or args.records is None:
+                    raise EvaluationContractError("--variant-id requires --records and cannot be combined with --run-id")
+                try:
+                    raw = json.loads(args.records.read_text(encoding="utf-8"))
+                    case_ids = {ref.case_id for ref in suite.case_references}
+                    run_ids = [record["run_id"] for record in raw if record.get("variant_id") == args.variant_id
+                               and record.get("case_id") in case_ids]
+                except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+                    raise EvaluationContractError("benchmark records cannot be selected") from exc
+            if not run_ids and args.manifest is not None:
+                try:
+                    record = json.loads(args.manifest.read_text(encoding="utf-8"))
+                    run_ids = [item["run_id"] for item in record["runs"]]
+                except (OSError, ValueError, TypeError, KeyError) as exc:
+                    raise EvaluationContractError("experiment manifest runs cannot be selected") from exc
+            if not run_ids:
+                raise EvaluationContractError("select --run-id, --variant-id with --records, or --manifest")
+            result = export_experiment(
+                evaluation_db=args.evaluation_database, suite=suite,
+                cases=_load_cases(args.cases_dir), include_content=not args.metadata_only and args.content is None,
+                run_ids=run_ids, experiment=args.experiment, ledger_path=args.ledger,
+                trace_db=args.trace_database, content_path=args.content,
+                records_path=args.records, judgments_path=args.judgments, manifest_path=args.manifest,
+                variant_path=args.variant_file, import_time=args.import_time,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
 
         if args.evaluation_command == "regression":
@@ -1061,6 +1266,18 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
             suite = EvaluationSuite.from_json(args.suite)
             variant = _load_variant(args.variant)
             cases = _load_cases(args.cases_dir)
+            if (args.record_dir is None) != (args.freeze_manifest is None):
+                raise EvaluationContractError("--record-dir and --freeze-manifest must be supplied together")
+            manifest = None
+            if args.record_dir is not None:
+                from trivae.evaluation.experiment_manifest import prepare_experiment
+                if args.evaluation_database is None or args.evaluation_database.exists():
+                    raise EvaluationContractError("formal evaluation requires a new independent --evaluation-database")
+                manifest = prepare_experiment(
+                    suite=suite, cases=cases, variant=variant, database=args.database,
+                    freeze_path=args.freeze_manifest, output_dir=args.record_dir,
+                    repetitions=args.repeat, judge_version=args.judge_version,
+                )
 
             async def evaluate_suite() -> tuple[EvaluationRun, ...]:
                 """在同一 event loop 内运行 Evaluation 并关闭主模型与 Jev client。"""
@@ -1076,7 +1293,24 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                         repetitions=args.repeat,
                     )
 
-            runs = asyncio.run(evaluate_suite())
+            try:
+                runs = asyncio.run(evaluate_suite())
+            except Exception as exc:
+                if manifest is not None:
+                    from trivae.evaluation.experiment_manifest import finish_experiment
+                    from trivae.evaluation.store import SQLiteEvaluationStore
+                    saved: tuple[EvaluationRun, ...] = ()
+                    if args.evaluation_database.is_file():
+                        store = SQLiteEvaluationStore(args.evaluation_database)
+                        try:
+                            saved = store.list_runs()
+                        finally:
+                            store.close()
+                    finish_experiment(args.record_dir, manifest, saved, error_type=type(exc).__name__)
+                raise
+            if manifest is not None:
+                from trivae.evaluation.experiment_manifest import finish_experiment
+                finish_experiment(args.record_dir, manifest, runs)
             print(
                 json.dumps(
                     {"suite": suite.identity, "variant": variant.to_dict(), "runs": [run.to_dict() for run in runs]},
