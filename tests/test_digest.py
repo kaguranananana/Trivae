@@ -414,7 +414,10 @@ def test_catch_up_preserves_real_cutoff_and_leaves_today_available(tmp_path: Pat
     assert [item.source_message_id for item in snapshots[-1].messages] == ["late"]
 
 
-def test_cli_resume_preserves_failed_catch_up_delivery_day(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("resume_failure", [False, True])
+def test_cli_resume_preserves_failed_catch_up_delivery_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, resume_failure: bool,
+) -> None:
     """真实补发被模型中断后，显式续跑仍按原日报日期寄送。"""
 
     import trivae.interfaces.digest_cli as command
@@ -430,8 +433,12 @@ def test_cli_resume_preserves_failed_catch_up_delivery_day(tmp_path: Path, monke
         snapshot = read_digest_snapshot(database, start_timestamp=start, end_timestamp=end, after_revision=after_revision)
         resumed_flags.append(resume)
         excerpt = make_excerpts(snapshot)[0]
-        completion = Mock(side_effect=RuntimeError("observed model quota exhausted")) if not resume else Mock(
-            return_value=json.dumps({"items": [_item(excerpt.handle, excerpt.text)]}))
+        if not resume:
+            completion = Mock(side_effect=RuntimeError("observed model quota exhausted"))
+        elif resume_failure:
+            completion = Mock(side_effect=ConnectionError("observed TLS connection interrupted"))
+        else:
+            completion = Mock(return_value=json.dumps({"items": [_item(excerpt.handle, excerpt.text)]}))
         return await DigestGenerator(completion).generate(snapshot, directory, run_id=run_id, resume=resume)
 
     monkeypatch.setattr(bootstrap, "generate_report", generate)
@@ -448,8 +455,19 @@ def test_cli_resume_preserves_failed_catch_up_delivery_day(tmp_path: Path, monke
     failed = state.latest()
     assert failed is not None and failed["status"] == "generation_failed"
     state.close()
-    assert main(["digest", "resume", "--database", str(database), "--state-database", str(state_path),
-                 "--run-id", failed["run_id"]]) == 0
+    arguments = ["digest", "resume", "--database", str(database), "--state-database", str(state_path),
+                 "--run-id", failed["run_id"]]
+    if resume_failure:
+        with pytest.raises(ConnectionError, match="observed TLS connection interrupted"):
+            main(arguments)
+        state = SQLiteDigestState(state_path)
+        saved_run = state.get(failed["run_id"])
+        assert saved_run["status"] == "generation_failed"
+        assert saved_run["last_error"] == "ConnectionError: observed TLS connection interrupted"
+        assert state.last_sent() is None and sender.call_count == 0
+        state.close()
+        return
+    assert main(arguments) == 0
     saved = json.loads((Path(failed["report_directory"]) / "report.json").read_text())
     assert saved["delivery_day"] == "2026-10-26" and saved["window_end"] == now.isoformat()
     assert sender.call_count == 1 and sender.call_args.kwargs["subject"].startswith("【补发】")
@@ -458,6 +476,7 @@ def test_cli_resume_preserves_failed_catch_up_delivery_day(tmp_path: Path, monke
     assert state.get(failed["run_id"])["status"] == "sent"
     assert state.latest(now.date().isoformat()) is None
     state.close()
+    assert main(arguments) == 0 and sender.call_count == 1 and resumed_flags == [False, True]
 
 
 def test_daily_run_sends_once_and_next_day_picks_up_late_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

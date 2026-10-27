@@ -87,17 +87,26 @@ def run_digest_command(args: argparse.Namespace) -> int:
                 try:
                     if args.digest_command == "resume":
                         run = state.get(args.run_id)
-                        previous = state.last_sent()
-                        report = asyncio.run(generate_report(
-                            args.database, Path(run["report_directory"]), run_id=args.run_id,
-                            start=run["start_timestamp"], end=run["end_timestamp"],
-                            after_revision=None if previous is None else previous["through_revision"], resume=True,
-                        ))
-                        # 续跑沿用原运行的日报日期，补发不能被重新归到实际生成当天。
-                        report["delivery_day"] = run["day"]
-                        (Path(run["report_directory"]) / "report.json").write_text(
-                            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-                        state.update(args.run_id, "ready", revision=report["revision"])
+                        if run["status"] != "sent":
+                            if run["status"] not in ("generating", "generation_failed"):
+                                raise ValueError("显式续跑只用于生成中断；已生成正文请检查状态并使用 digest send")
+                            previous = state.last_sent()
+                            state.update(args.run_id, "generating")
+                            try:
+                                report = asyncio.run(generate_report(
+                                    args.database, Path(run["report_directory"]), run_id=args.run_id,
+                                    start=run["start_timestamp"], end=run["end_timestamp"],
+                                    after_revision=None if previous is None else previous["through_revision"], resume=True,
+                                ))
+                            except Exception as exc:
+                                # 真实续跑由额度不足变为TLS失败时，状态也必须保留本次错误。
+                                state.update(args.run_id, "generation_failed", error=f"{type(exc).__name__}: {exc}")
+                                raise
+                            # 续跑沿用原运行的日报日期，补发不能被重新归到实际生成当天。
+                            report["delivery_day"] = run["day"]
+                            (Path(run["report_directory"]) / "report.json").write_text(
+                                json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+                            state.update(args.run_id, "ready", revision=report["revision"])
                     result = deliver_report(state, args.run_id, settings)
                 finally:
                     state.close()
