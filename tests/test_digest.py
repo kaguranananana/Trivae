@@ -293,6 +293,127 @@ def test_smtp_sends_alternative_bodies_and_does_not_expose_password(monkeypatch:
     assert smtp.call_args.args == ("smtp.example.com", 465)
 
 
+@pytest.mark.parametrize("stage", ["connect", "data"])
+def test_daily_run_recovers_dns_failure_without_regenerating_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stage: str,
+) -> None:
+    """复现10月25日SMTP连接前DNS失败：下一次触发应复用产物投递，不永久阻塞。"""
+
+    import socket
+
+    import trivae.digest.mail as mail
+
+    database = tmp_path / "chat.sqlite3"
+    now = datetime(2026, 10, 27, 22, 30, tzinfo=TIMEZONE)
+    _import(database, tmp_path, [make_message("one", 1, int(now.timestamp() * 1000) - 1000, "真实经验")])
+    generated = []
+
+    async def generate(database: Path, directory: Path, *, run_id: str, start: int, end: int,
+                       after_revision: int | None = None) -> dict:
+        """实际生成和落盘，只替代模型响应。"""
+
+        generated.append(run_id)
+        snapshot = read_digest_snapshot(database, start_timestamp=start, end_timestamp=end, after_revision=after_revision)
+        return await DigestGenerator(lambda prompt: json.dumps({"items": [_item("m1", "真实经验")]})).generate(
+            snapshot, directory, run_id=run_id)
+
+    monkeypatch.setattr(bootstrap, "generate_report", generate)
+    connection = Mock()
+    connection.__enter__ = Mock(return_value=connection)
+    connection.__exit__ = Mock(return_value=False)
+    connection.send_message.side_effect = ConnectionResetError("connection reset during DATA")
+    smtp = (Mock(side_effect=socket.gaierror(8, "nodename nor servname provided")) if stage == "connect"
+            else Mock(return_value=connection))
+    monkeypatch.setattr(mail.smtplib, "SMTP_SSL", smtp)
+    settings = MailSettings("smtp.example.com", 465, "user", "private", "from@example.com", "to@example.com")
+    state_path = tmp_path / "digest.sqlite3"
+    with pytest.raises((OSError, RuntimeError)):
+        asyncio.run(bootstrap.run_daily_digest(database, state_path, tmp_path / "reports", settings, now=now))
+    state = SQLiteDigestState(state_path)
+    try:
+        assert state.latest()["status"] == ("send_not_submitted" if stage == "connect" else "send_failed")
+        assert state.last_sent() is None
+    finally:
+        state.close()
+    if stage == "data":
+        # DATA期间中断无法判断服务端是否已接受；后续触发必须停在待确认状态。
+        with pytest.raises(RuntimeError, match="待确认"):
+            asyncio.run(bootstrap.run_daily_digest(database, state_path, tmp_path / "reports", settings, now=now))
+        assert len(generated) == 1 and connection.send_message.call_count == 1
+        return
+    connection = Mock()
+    connection.__enter__ = Mock(return_value=connection)
+    connection.__exit__ = Mock(return_value=False)
+    connection.send_message.return_value = {}
+    smtp.side_effect, smtp.return_value = None, connection
+    result = asyncio.run(bootstrap.run_daily_digest(database, state_path, tmp_path / "reports", settings, now=now))
+    assert result["status"] == "sent" and len(generated) == 1
+    connection.send_message.assert_called_once()
+
+
+def test_model_and_render_use_short_speakers_without_losing_original_identity(tmp_path: Path) -> None:
+    """昵称不进入编辑输入和显示标签，原作者仍完整保存在来源工件中。"""
+
+    database = tmp_path / "chat.sqlite3"
+    first = make_message("one", 1, 1000, "教程入口 https://example.com/guide")
+    second = make_message("two", 2, 1500, "用教程完成了部署", sender_uid="another")
+    first["sender"].update(name="冗长昵称甲", nickname="冗长昵称甲")
+    second["sender"].update(name="冗长昵称乙", nickname="冗长昵称乙", uin="10002")
+    _import(database, tmp_path, [first, second])
+    snapshot = read_digest_snapshot(database, start_timestamp=0, end_timestamp=2000)
+    calls = []
+
+    def complete(prompt: str) -> str:
+        calls.append(prompt)
+        return json.dumps({"items": [{**_item("m1", "https://example.com/guide"),
+                                     "summary": "有人推荐了部署教程，另一位使用者按教程完成了部署。",
+                                     "sources": [{"id": "m1", "quote": "https://example.com/guide"},
+                                                 {"id": "m2", "quote": "用教程完成了部署"}]}]}, ensure_ascii=False)
+
+    report = asyncio.run(DigestGenerator(complete).generate(snapshot, tmp_path / "report", run_id="speakers"))
+    assert "群友1" in calls[0] and "群友2" in calls[0]
+    assert "冗长昵称甲" not in calls[0] and "冗长昵称乙" not in calls[0]
+    assert report["sources"]["m1"]["sender"] == "冗长昵称甲"
+    assert report["sources"]["m2"]["sender"] == "冗长昵称乙"
+    _, text, document = render_digest(report)
+    assert "冗长昵称" not in text and "冗长昵称" not in document
+    assert "群友1" in document and "群友2" in document
+
+
+def test_catch_up_preserves_real_cutoff_and_leaves_today_available(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """补发昨天的日报按真实当前数据生成，不占今天晚间的发送名额。"""
+
+    database = tmp_path / "chat.sqlite3"
+    now = datetime(2026, 10, 27, 12, tzinfo=TIMEZONE)
+    _import(database, tmp_path, [make_message("one", 1, int(now.timestamp()*1000)-1000, "可复用经验")])
+    snapshots = []
+
+    async def generate(database: Path, directory: Path, *, run_id: str, start: int, end: int,
+                       after_revision: int | None = None) -> dict:
+        snapshot = read_digest_snapshot(database, start_timestamp=start, end_timestamp=end, after_revision=after_revision)
+        snapshots.append(snapshot)
+        excerpt = make_excerpts(snapshot)[0]
+        return await DigestGenerator(lambda prompt: json.dumps({"items": [_item(excerpt.handle, excerpt.text)]})).generate(
+            snapshot, directory, run_id=run_id)
+
+    monkeypatch.setattr(bootstrap, "generate_report", generate)
+    sender = Mock(return_value="<accepted@example.com>")
+    monkeypatch.setattr(bootstrap, "send_digest_mail", sender)
+    settings = MailSettings("smtp.example.com", 465, "user", "private", "from@example.com", "to@example.com")
+    state_path = tmp_path / "digest.sqlite3"
+    yesterday = (now - timedelta(days=1)).date()
+    result = asyncio.run(bootstrap.run_daily_digest(database, state_path, tmp_path / "reports", settings,
+                                                    now=now, delivery_day=yesterday))
+    saved = json.loads((Path(result["report_directory"]) / "report.json").read_text())
+    assert saved["delivery_day"] == "2026-10-26" and saved["window_end"] == now.isoformat()
+    assert sender.call_args.kwargs["subject"].startswith("【补发】")
+    _import(database, tmp_path, [make_message("late", 2, int(now.timestamp()*1000), "后续新经验")])
+    result = asyncio.run(bootstrap.run_daily_digest(database, state_path, tmp_path / "reports", settings,
+                                                    now=now+timedelta(hours=10)))
+    assert result["status"] == "sent" and sender.call_count == 2
+    assert [item.source_message_id for item in snapshots[-1].messages] == ["late"]
+
+
 def test_daily_run_sends_once_and_next_day_picks_up_late_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """串起正式生成与交付，每日重复触发不发第二封，下一天读取未交付变更。"""
 

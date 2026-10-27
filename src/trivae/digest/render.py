@@ -18,13 +18,22 @@ def render_digest(report: dict[str, Any]) -> tuple[str, str, str]:
     """按真实群归属排版；资源链接靠前，详细正文与可展开原始发言分层。"""
 
     # 时间窗右边界不包含在本期内，午夜结束的样稿属于前一个自然日。
-    day = (datetime.fromisoformat(report["window_end"]) - timedelta(milliseconds=1)).date().isoformat()
-    subject = f"Trivae 群聊晚报 · {day} · {len(report['items'])} 个话题"
+    window_day = (datetime.fromisoformat(report["window_end"]) - timedelta(milliseconds=1)).date().isoformat()
+    day = report.get("delivery_day", window_day)
+    prefix = "【补发】" if day != window_day else ""
+    subject = f"{prefix}Trivae 群聊晚报 · {day} · {len(report['items'])} 个话题"
     lines = [f"# {subject}", "", f"本期读取范围：{report['window_start']} 至 {report['window_end']}",
              f"新增或补齐 {report['root_message_count']} 条群消息，涉及 {report['group_count']} 个群。",
              "内容来自已入库的 QCE 记录，晚于本轮导出的聊天将在后续入库后纳入。", ""]
     # 群名与分组完全沿用实际引用；历史产物即使引用多个群，也会同时标明归属。
     group_names = {source["session_id"]: source["group"] for source in report["sources"].values()}
+    speakers: dict[tuple[str, str | None], str] = {}
+    counts: dict[str, int] = {}
+    for source in report["sources"].values():
+        key = (source["session_id"], source["sender"])
+        if key not in speakers:
+            counts[source["session_id"]] = counts.get(source["session_id"], 0) + 1
+            speakers[key] = f"群友{counts[source['session_id']]}"
     grouped: dict[tuple[str, ...], list[dict[str, Any]]] = {}
     for item in report["items"]:
         sessions = tuple(dict.fromkeys(report["sources"][ref["id"]]["session_id"] for ref in item["sources"]))
@@ -53,19 +62,19 @@ def render_digest(report: dict[str, Any]) -> tuple[str, str, str]:
                 links = ("<div style='background:#f1f6f5;padding:12px 16px;margin:14px 0 20px'>"
                          "<strong style='font-size:14px;color:#176b5b'>相关资源链接</strong>"
                          f"<ul style='padding-left:20px;margin:6px 0;font-size:14px'>{anchors}</ul></div>")
-            lines.extend((item["summary"], "", f"值得关注：{item['why_it_matters']}"))
+            lines.extend((item["summary"], "", f"能获得什么：{item['why_it_matters']}"))
             paragraphs = [_paragraphs(item["summary"]),
-                          f"<p style='color:#61736d;font-size:14px'><strong>值得关注：</strong>"
+                          f"<p style='color:#61736d;font-size:14px'><strong>能获得什么：</strong>"
                           f"{_escape(item['why_it_matters'])}</p>"]
             if item["action"]:
-                lines.append(f"可以做：{item['action']}")
-                paragraphs.append(f"<p style='color:#61736d;font-size:14px'><strong>可以做：</strong>"
+                lines.append(f"具体用法：{item['action']}")
+                paragraphs.append(f"<p style='color:#61736d;font-size:14px'><strong>具体用法：</strong>"
                                   f"{_escape(item['action'])}</p>")
             quotes: list[str] = []
             for reference in item["sources"]:
                 source = report["sources"][reference["id"]]
                 time = source["time"].replace("T", " ").removesuffix("+08:00")
-                label = f"{source['group']} · {time} · {source['sender'] or '未知作者'}"
+                label = f"{source['group']} · {time} · {speakers[(source['session_id'], source['sender'])]}"
                 if source["context_only"]:
                     label += "（前情）"
                 quotes.append("<blockquote style='margin:16px 0;padding:0 0 0 12px;border-left:2px solid #dbe6e2'>"

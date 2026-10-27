@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 from trivae.retrieval.structured import MessageProjection
 
 TIMEZONE = ZoneInfo("Asia/Shanghai")
-CATEGORIES = {"tools": "工具与开源资源", "practice": "技术实战与踩坑", "discussion": "有价值的讨论", "career": "求职与面试"}
+CATEGORIES = {"tools": "项目与资料", "practice": "实操与踩坑经验", "discussion": "可复用方法", "career": "招聘与面试经验"}
 
 
 @dataclass(frozen=True)

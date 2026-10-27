@@ -91,7 +91,7 @@ class SQLiteDigestState:
         """只有服务端已接受的邮件参与水位计算，生成成功不代表已发送。"""
 
         row = self.connection.execute(
-            "SELECT * FROM digest_runs WHERE status = 'sent' ORDER BY through_revision DESC LIMIT 1"
+            "SELECT * FROM digest_runs WHERE status = 'sent' ORDER BY through_revision DESC, sent_at DESC LIMIT 1"
         ).fetchone()
         return None if row is None else dict(row)
 
@@ -114,7 +114,7 @@ class SQLiteDigestState:
         """发件结果未确认的日报跨日仍须显式处理，不能被下一期覆盖。"""
 
         row = self.connection.execute(
-            "SELECT * FROM digest_runs WHERE status IN ('ready', 'sending', 'send_failed') "
+            "SELECT * FROM digest_runs WHERE status IN ('ready', 'sending', 'send_failed', 'send_not_submitted') "
             "ORDER BY created_at ASC LIMIT 1"
         ).fetchone()
         return None if row is None else dict(row)

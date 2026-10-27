@@ -14,6 +14,10 @@ from email.utils import format_datetime, make_msgid
 from trivae.digest.contracts import TIMEZONE
 
 
+class MailNotSubmittedError(RuntimeError):
+    """SMTP连接或认证尚未完成，邮件确定没有提交，可在后续触发时继续发送。"""
+
+
 @dataclass(frozen=True)
 class MailSettings:
     """发件服务与收件人；授权码不进入对象的 repr。"""
@@ -51,8 +55,16 @@ def send_digest_mail(settings: MailSettings, *, subject: str, text: str, documen
     message.set_content(text)
     message.add_alternative(document, subtype="html")
     # 直接使用已配置的 SSL 端口；证书校验保留，不尝试未配置的端口或明文连接。
-    with smtplib.SMTP_SSL(settings.host, settings.port, timeout=30, context=ssl.create_default_context()) as client:
-        client.login(settings.username, settings.password)
+    try:
+        connection = smtplib.SMTP_SSL(settings.host, settings.port, timeout=30, context=ssl.create_default_context())
+    except (OSError, smtplib.SMTPException) as exc:
+        raise MailNotSubmittedError(f"SMTP连接失败，邮件尚未提交：{exc}") from exc
+    with connection as client:
+        try:
+            client.login(settings.username, settings.password)
+        except (OSError, smtplib.SMTPException) as exc:
+            raise MailNotSubmittedError(f"SMTP认证失败，邮件尚未提交：{exc}") from exc
+        # 从此处开始可能已发送DATA；传输中断仍是待确认失败，不能自动重复发送。
         refused = client.send_message(message, from_addr=settings.sender, to_addrs=[settings.recipient])
         if refused:
             raise smtplib.SMTPRecipientsRefused(refused)

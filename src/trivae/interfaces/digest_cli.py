@@ -30,6 +30,8 @@ def configure_digest_parser(subparsers: argparse._SubParsersAction) -> None:
             command.add_argument("--env-file", type=Path)
         if name in ("run", "resume", "send"):
             command.add_argument("--mail-env-file", type=Path)
+        if name == "run":
+            command.add_argument("--delivery-day", type=date.fromisoformat, help="Explicit digest date for catch-up delivery")
         if name == "preview":
             command.add_argument("--date", type=date.fromisoformat, help="Beijing calendar date; default: last 24h")
             command.add_argument("--resume-from", type=Path, help="Explicitly continue this same preview and date")
@@ -77,7 +79,8 @@ def run_digest_command(args: argparse.Namespace) -> int:
         # 发件配置先于任何收费生成校验，缺授权码时仍可独立运行 preview。
         settings = MailSettings.from_environment()
         if args.digest_command == "run":
-            result = asyncio.run(run_daily_digest(args.database, state_path, args.output_dir, settings))
+            result = asyncio.run(run_daily_digest(args.database, state_path, args.output_dir, settings,
+                                                   delivery_day=args.delivery_day))
         else:
             with digest_lock(state_path):
                 state = SQLiteDigestState(state_path)

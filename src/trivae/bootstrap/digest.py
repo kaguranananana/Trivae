@@ -7,7 +7,7 @@ import json
 import logging
 import traceback
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterator
 from uuid import uuid4
@@ -16,7 +16,7 @@ from trivae.config.settings import load_settings
 from trivae.data.storage.sqlite_digest import SQLiteDigestState, read_digest_snapshot
 from trivae.digest.contracts import TIMEZONE
 from trivae.digest.generator import DigestGenerator
-from trivae.digest.mail import MailSettings, send_digest_mail
+from trivae.digest.mail import MailNotSubmittedError, MailSettings, send_digest_mail
 from trivae.digest.render import write_digest_files
 from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
 
@@ -83,8 +83,10 @@ def deliver_report(state: SQLiteDigestState, run_id: str, settings: MailSettings
     try:
         message_id = send_digest_mail(settings, subject=subject, text=text, document=document)
     except Exception as exc:
-        state.update(run_id, "send_failed", error=f"{type(exc).__name__}: {exc}")
-        (directory / "mail-error.log").write_text(traceback.format_exc(), encoding="utf-8")
+        failure_status = "send_not_submitted" if isinstance(exc, MailNotSubmittedError) else "send_failed"
+        state.update(run_id, failure_status, error=f"{type(exc).__name__}: {exc}")
+        with (directory / "mail-error.log").open("a", encoding="utf-8") as stream:
+            stream.write(traceback.format_exc() + "\n")
         raise
     # 邮件服务端已接受后才标记 sent；该事实与下一期读取水位使用同一行。
     state.update(run_id, "sent", sent_at=datetime.now(TIMEZONE).isoformat())
@@ -93,11 +95,11 @@ def deliver_report(state: SQLiteDigestState, run_id: str, settings: MailSettings
 
 
 async def run_daily_digest(database: Path, state_path: Path, output: Path, settings: MailSettings,
-                           *, now: datetime | None = None) -> dict[str, Any]:
+                           *, now: datetime | None = None, delivery_day: date | None = None) -> dict[str, Any]:
     """每个北京时间日期只发一期，只有成功邮件决定增量读取的起点。"""
 
     current = datetime.now(TIMEZONE) if now is None else now.astimezone(TIMEZONE)
-    day = current.date().isoformat()
+    day = (delivery_day or current.date()).isoformat()
     with digest_lock(state_path):
         state = SQLiteDigestState(state_path)
         try:
@@ -106,7 +108,12 @@ async def run_daily_digest(database: Path, state_path: Path, output: Path, setti
                 return {"status": "already_sent", "run_id": existing["run_id"]}
             pending = state.pending_delivery()
             if pending is not None:
-                raise RuntimeError(f"已有待确认的日报 {pending['run_id']}，请查看 digest status 并显式使用 digest send")
+                if pending["status"] not in ("ready", "send_not_submitted"):
+                    raise RuntimeError(f"已有待确认的日报 {pending['run_id']}，请查看 digest status 并显式使用 digest send")
+                # 只有确定未提交的邮件才恢复；发送中断、结果不明仍须显式核对。
+                recovered = deliver_report(state, pending["run_id"], settings)
+                if pending["day"] == day:
+                    return recovered
             previous = state.last_sent()
             end = int(current.timestamp() * 1000)
             start = int((current - timedelta(days=1)).timestamp() * 1000) if previous is None else previous["end_timestamp"]
@@ -124,6 +131,9 @@ async def run_daily_digest(database: Path, state_path: Path, output: Path, setti
             except Exception as exc:
                 state.update(run_id, "generation_failed", error=f"{type(exc).__name__}: {exc}")
                 raise
+            # 补发使用真实生成时间和读取截止，只单独记录对应的日报日期，不能伪造时钟。
+            report["delivery_day"] = day
+            (directory / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
             state.update(run_id, "ready", revision=report["revision"])
             return deliver_report(state, run_id, settings)
         finally:
