@@ -24,6 +24,10 @@
 
 复制 `.env.digest.example` 为本机 `.env.digest`，填写 SMTP 服务、发件地址、收件地址及授权码。模型仍读取原来的 `.env` 和登录状态；不需要另一份模型密钥。QQ邮箱使用 `smtp.qq.com:465`、SSL及邮箱授权码；授权码的获取与管理见[QQ邮箱官方帮助](https://help.mail.qq.com/detail/0/985)。不要将授权码写入聊天或Git。
 
+SMTP不会自动使用HTTP客户端的`HTTPS_PROXY`。若现有网络需要HTTP隧道，可在本机显式配置`TRIVAE_SMTP_HTTP_PROXY=http://127.0.0.1:7892`，由该代理处理SMTP域名与CONNECT连接，隧道内继续校验原SMTP主机的TLS证书；不修改系统DNS或QQ。此项仅支持无认证的HTTP代理，留空为标准直连，配置后不会在失败时自动退回直连、换端口或换代理。代理未就绪或拒绝CONNECT在邮件提交前明确失败，沿用`send_not_submitted`状态。
+
+该选项来自真实Failure Case：本机系统DNS对`smtp.qq.com`和`api.openai.com`均超时，而已配置HTTP代理可以连上QQ SMTP、通过证书校验并收到220欢迎语。回归使用实际本机HTTP隧道与SMTP对话，在SMTP域名本地DNS失败时验证发送，以及代理503时不认证、不提交邮件；测试中仅替换TLS握手，真实远端TLS另以无认证连接检查。
+
 ```sh
 # 正式生成并发送；初期读取最近24小时，之后读取上次成功邮件水位以后的变更。
 .venv/bin/python -m trivae digest run --mail-env-file .env.digest
