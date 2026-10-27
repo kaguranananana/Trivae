@@ -8,6 +8,9 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-28 LangSmith 与长期评测接入（工作提交 b53d895d）：复用原 EvaluationRunner/Store/Trace，新增显式外部实验同步、逐轴 Feedback、历史与本地 Run/Trace 映射、后续 Review 同步、分层失败报告、数据/索引冻结与工作副本、正式实验记录和可比性检查。原 37 Development / 10 Calibration / 18 已暴露 Holdout 不改；精选 3 条历史回归、6 条能力题，当前冻结库另生成 3+6 条无 GT 候选待审核。真实主快照及工作副本为 864615 条/206 来源、三索引 revision 98835；本次发现并修复来源超过200时 Snapshot 失败，三份相同验证副本均保留并做字节校验后写时复制。真实工作副本用明确标注为 stub 的执行器各运行3题 Baseline/Candidate，6条模拟失败、条件比较通过，无模型调用。
+- LangSmith 真实服务：合成 Dataset 的同一 Example 两个实验、独立评分、失败 Trace、后加模型辅助 Review 均实际回读；历史 Archify 的词法、词法＋语义及完整系统结果也已导入并回读，Judge 失败保留。发现初次历史失败 Run 远端误显示 SUCCESS，修复映射后另建实验回读 ERROR/3条 Trace failure，旧错误导入保留。服务对旧时间返回404/500、SDK普通Run超24小时返回422；显式 `--import-time` 记录导入时间并逐条保留原起止/耗时，平台 latency 不能冒充推理耗时。外部接口同 Example 同开始时间409；不改原始时间、显式拒绝或选择导入时间。浏览器自动化超时，UI未目视核验；实际比较API一行多Run及Feedback已回读。最终 pytest 1346 passed/1 skipped、Ruff、mypy142、diff通过，0新增模型请求；工作和限制见 docs/evaluation-langsmith.md。
+
 - 2026-10-27补发完成：用户要求重试不稳定接口后，首次续跑第11批仍TLS失败，间隔后第二次续跑成功读完41批/109候选，综合stop（474.77秒）生成8群62话题、14268正文字符。239处来源切片逐字段等于已核对的revision95116清单，248条连续摘录、52个资源链接、62处默认折叠区域通过；62项标题/摘要均人工阅读，外部事实未逐一核实。SMTP首次在系统DNS解析前失败、未提交；实际dig对smtp.qq.com及api.openai.com均超时，而原本机HTTP代理可建立QQ SMTP隧道并通过TLS证书校验、收到220。因这个重复真实故障新增显式TRIVAE_SMTP_HTTP_PROXY，已在ignored本机配置固定为原代理；不改系统DNS/全局代理/QQ，不自动切连接路径。实际16:46:45由QQ SMTP接受补发，run20261027-121632-ad094bc3标sent、水位95116；10-27晚报日期仍未占用。相关50 passed/1 skipped、Ruff、mypy137和diff通过，工作b3b21ec7。原10:00/22:00采集及独立晚报worker保持加载，QQ自启动仍禁用/配置不存在；自然晚间触发及本封收件尚未经用户确认。完整回执/来源/HTML/网络证据见data/evaluation/digest-resume-20261027/。
 
 - 2026-10-27用户自行登录后明确授权继续，约束为“不要尝试自己启动QQ”。只重新加载原com.trivae.import-once与独立邮件worker，10:00/22:00日历保留，QQ自启动仍禁用且配置/代码不存在。现有QCE接口可达，15:30这轮8群导出849条、游标一致至15:15:24，无在途任务；正式入库及双索引15:37:35完成，198文件completed、文件/索引待办均0，Canonical861549/revision95769，LaunchAgent最后exit0。当天自然晚间dispatch仍未发生，不能以白天入库成功保证收件。

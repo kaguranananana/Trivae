@@ -335,3 +335,12 @@
 - ignored本机配置仅增加既有127.0.0.1:7892的SMTP代理项，凭据不打印/提交。显式digest send复用同份正文、无新模型请求，16:46:45获QQ SMTP接受；run20261027-121632-ad094bc3为10-26补发，state.sent/水位95116，last_error清空，10-27尚未成功发送所以今晚名额保留。读取窗为10-24 22:33:31至10-27 12:16:32，之后新入库变化由后续正常日报读取。邮件回执在本机formal-mail-receipt.json；SMTP接受不冒充用户已在收件箱确认。
 - 本工件自最初生成起累计45模型请求记录、42响应、3 provider_error、28重用事件；已知completed输入1372745/输出71145，3次失败Usage未知，重用不重复算请求。原10:00/22:00采集任务最后exit0，独立邮件worker加载待dispatch；QQ启动服务始终unloaded，未启动/重启/登录QQ。自然晚间触发本轮未强制执行，不以补发成功代替自然触发验收。
 - 工作b3b21ec7，源码、测试、配置示例及daily-digest.md已更新。完整生成Trace/原错误/来源清单/冻结库/正文/逐项验证/网络对照和实际邮件回执均保留data/evaluation/digest-resume-20261027/，私人资料不提交。当前补发阻塞解除；后续须保持用户自行登录的QCE与已配置代理可用，仍不得自行启动QQ。
+
+## 2026-10-28 · LangSmith 与长期 Agent 评测
+
+- 审核现有 Runner、Store、Case/GT、37 Development、10 Calibration、18 已暴露 Holdout、历史实验和自有 Trace；保留原 Benchmark/历史记录及 OpenAI Agents tracing 禁用。工作 b53d895d 增加外部实验同步、Run/Example 映射、Trace 诊断、确定性/模型辅助/人工 Feedback、单独 Review 追加、失败分类与报告，不把未评审结果报成准确率。LangSmith 调用只在显式命令执行，网络故障不干预本地评测或查询。
+- 使用 SQLite backup 冻结 Canonical/词法和独立语义索引，核验 revision 98835、864615 消息/206 来源，生成独立工作副本。真实首轮因 Snapshot 的通用200项数组上限失败；新增大来源清单回归并修复后重新冻结、复制和 round-trip 成功。首轮未成功封存副本、修复后主库及验证工作副本均保留，逐字节一致后通过 APFS 写时复制减少重复空间，没有删除历史数据。
+- 精选原 Development 的3条有真实回复遗漏/修复证据的 Regression 和6条跨群/时间/整合能力 Case，记录来源、历史观察及审核边界；新快照产生3+6条清空 GT 的候选，不冒充人工确认。真实冻结工作副本上，用明确标注 stub 的 EvaluationRunner 各运行3题 baseline/candidate，6条均为模拟 failed；正式条件记录和可比性检查成功，未请求模型。新增Case版本、人工Review、指定Suite重复运行及网络不可用的行为由集成测试覆盖。
+- LangSmith 合成数据通过实际外部实验API、对比查询和 Feedback 回读确认同一 Example 的基线/候选、独立评分、ERROR及失败Trace；后加模型辅助 Review 经实际HTTP上传，重复执行无重复。历史 Archify 的词法、词法+语义和完整系统结果来自既有185 Run，不重跑模型；同一 Example 的对比查询可读原始时间、Run与Trace，Judge失败作为失败Feedback。发现首版对无异常类型的failed Run未写远端error，先前误显示SUCCESS；修复后新建导入实测ERROR且包含3条Trace failure，原错误导入不删除。
+- 真实接口边界：外部实验对同Example、同开始时间返回409；数周以前原始时间的合成探针返回404/500，SDK普通Run对超24小时返回422。显式 `--import-time` 将平台时间标为导入阶段，并保留原运行起止与耗时，不将平台latency当推理耗时；避免静默时间改写或自动重试。SDK直接建Example虽成功但比较页查询因Example版本时间晚于运行而为空，最终统一使用官方外部实验API，远端ID解析与Feedback使用经0.14.13 SDK核对的HTTP接口。浏览器自动化超时，未声称直接目视验收UI；服务对比API、单Run及Feedback实际回读通过。
+- 最终 `.venv/bin/pytest -q` 1346 passed/1 skipped（35.91秒）、Ruff src/tests/scripts、mypy142文件、git diff检查和已配置密钥不在暂存变更中通过。完整命令、示例、限制及可访问的Dataset见 docs/evaluation-langsmith.md；本轮0新增模型请求。下一步由用户核验候选参考证据、创建已审核版本后执行实际模型实验；旧历史环境仅有身份清单者不能宣称可精确重放。
