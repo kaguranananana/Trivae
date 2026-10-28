@@ -1,4 +1,4 @@
-"""Re-review the saved Eval v1 Baseline answers with the versioned Judge v2 rubric."""
+"""Re-review saved Eval v1 Baseline answers with a versioned Judge rubric."""
 from __future__ import annotations
 
 import argparse
@@ -13,7 +13,7 @@ from scripts.judge_capability import main_async as judge_one
 from scripts.verify_capability_bundle import verify
 from trivae.config.dotenv import load_environment_file
 from trivae.config.settings import load_settings
-from trivae.evaluation.capability_judge import JUDGE_PROMPT
+from trivae.evaluation.capability_judge import RUBRIC_VERSION, RUBRIC_VERSIONS, judge_prompt_for
 from trivae.evaluation.contracts import DatasetSnapshot, EvaluationContractError, EvaluationRun
 from trivae.evaluation.store import SQLiteEvaluationStore
 
@@ -72,18 +72,20 @@ def _load_source_runs(sources: list[tuple[Path, Path]]) -> tuple[dict[str, Evalu
     return runs, stores, databases
 
 
-def _has_v2_review(store: SQLiteEvaluationStore, run_id: str) -> bool:
+def _has_review(store: SQLiteEvaluationStore, run_id: str, rubric_version: str) -> bool:
     rows = store.connection.execute(
         "SELECT payload_json FROM evaluation_reviews WHERE run_id = ? ORDER BY created_at DESC", (run_id,)
     ).fetchall()
     for row in rows:
         review = json.loads(row["payload_json"])
-        if review.get("rubric_version") == "eval-rubric-v2":
+        if review.get("rubric_version") == rubric_version:
             return True
     return False
 
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
+    rubric_version = args.rubric_version
+    judge_prompt = judge_prompt_for(rubric_version)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     preflight = _read_json(args.bundle_dir / "preflight-record" / "experiment.json")
     suite_data = preflight["suite"]
@@ -103,7 +105,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     load_environment_file(args.env_file)
     settings = load_settings(model_id=args.judge_model, role="judge", config_path=args.models_config)
     if settings.provider != "chatgpt-plan" or settings.model_name != "gpt-6.1-sol" or settings.chatgpt_reasoning_effort != "medium":
-        raise EvaluationContractError("Judge v2 must use the Baseline GPT-6.1 Sol Medium profile")
+        raise EvaluationContractError("Judge review must use the Baseline GPT-6.1 Sol Medium profile")
 
     source_pairs = [
         (args.full_evaluation_database, args.database),
@@ -127,7 +129,8 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     if any(not run.trace_id for run in runs.values()):
         raise EvaluationContractError("a Baseline Run is missing its Trace identity")
 
-    target_database = args.output_dir / "evaluation-v2.sqlite3"
+    rubric_suffix = rubric_version.removeprefix("eval-rubric-")
+    target_database = args.output_dir / f"evaluation-{rubric_suffix}.sqlite3"
     target_store = SQLiteEvaluationStore(target_database)
     try:
         for run_record in runs.values():
@@ -135,7 +138,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
 
         campaign_path = args.output_dir / "campaign.json"
         campaign: dict[str, Any] = _read_json(campaign_path) if campaign_path.exists() else {
-            "rubric_version": "eval-rubric-v2",
+            "rubric_version": rubric_version,
             "source_suite": str(args.bundle_dir / "preflight-record" / "experiment.json"),
             "source_baseline": str(args.baseline_dir),
             "snapshot_id": full_snapshot.snapshot_id,
@@ -153,6 +156,8 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         }
 
         case_records = campaign.setdefault("cases", {})
+        if campaign.get("rubric_version") != rubric_version:
+            raise EvaluationContractError("existing campaign rubric version differs from the requested rubric")
         if not isinstance(case_records, dict):
             raise EvaluationContractError("campaign cases must be a JSON object")
         for case_id in expected_ids:
@@ -183,7 +188,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                 }
                 _write_json(campaign_path, campaign)
                 continue
-            if _has_v2_review(target_store, run_record.run_id):
+            if _has_review(target_store, run_record.run_id, rubric_version):
                 case_record["status"] = "reviewed"
                 _write_json(campaign_path, campaign)
                 continue
@@ -206,12 +211,13 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                     run_id=run_record.run_id,
                     record_dir=record_dir,
                     judge_model=args.judge_model,
+                    rubric_version=rubric_version,
                     models_config=args.models_config,
                     env_file=args.env_file,
                     skip_bundle_verification=True,
                 )
                 started = time.time()
-                print(f"Judge v2 {case_id}: attempt {next_attempt}/2", flush=True)
+                print(f"Judge {rubric_version} {case_id}: attempt {next_attempt}/2", flush=True)
                 try:
                     await judge_one(call_args)
                     attempt_record = {
@@ -243,22 +249,22 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                     case_record["failure_reason"] = {"exception_type": type(exc).__name__, "message": str(exc)}
                     previous_retryable = retryable
                     if retryable and next_attempt < 2:
-                        print(f"Judge v2 {case_id}: temporary provider failure; retrying once", flush=True)
+                        print(f"Judge {rubric_version} {case_id}: temporary provider failure; retrying once", flush=True)
                         await asyncio.sleep(2)
                 _write_json(campaign_path, campaign)
-                if _has_v2_review(target_store, run_record.run_id):
+                if _has_review(target_store, run_record.run_id, rubric_version):
                     case_record["status"] = "reviewed"
                     previous_retryable = False
                 next_attempt += 1
             if case_record["status"] == "reviewed":
-                print(f"Judge v2 {case_id}: saved", flush=True)
+                print(f"Judge {rubric_version} {case_id}: saved", flush=True)
             else:
-                print(f"Judge v2 {case_id}: not scored", flush=True)
+                print(f"Judge {rubric_version} {case_id}: not scored", flush=True)
             _write_json(campaign_path, campaign)
     finally:
         target_store.close()
 
-    (args.output_dir / "judge-prompt-v2.txt").write_text(JUDGE_PROMPT, encoding="utf-8")
+    (args.output_dir / f"judge-prompt-{rubric_suffix}.txt").write_text(judge_prompt, encoding="utf-8")
     return campaign
 
 
@@ -278,6 +284,7 @@ def main() -> None:
     parser.add_argument("--models-config", type=Path)
     parser.add_argument("--env-file", type=Path)
     parser.add_argument("--judge-model", default="gpt-plus")
+    parser.add_argument("--rubric-version", choices=RUBRIC_VERSIONS, default=RUBRIC_VERSION)
     parser.add_argument("--output-dir", type=Path, default=Path("data/evaluation/eval-v2-baseline-20261028"))
     args = parser.parse_args()
     args.database = args.database or args.baseline_dir / "full-work" / "trivae.sqlite3"

@@ -417,3 +417,10 @@
 - 无模型回归覆盖 44 项相关测试；Ruff、修改文件 Mypy、16 Case 冻结证据验证、14 份完整答案输入预演通过。Judge 使用 GPT-6.1 Sol Medium，对14份已保存成功答案评审完成；第01、02题各遇一次临时 Provider 错误并各重试一次成功，其他12题首轮成功。03/14 原运行失败保留，不伪造答案/分数。v2 原始响应、完整请求输入、Review、配置、重试与 Run 状态均留在 ignored `data/evaluation/eval-v2-baseline-20261028/`。
 - 报告统计：任务满足度 4/3/2 = 8/3/3，均分3.36；回答可信度 4/3/2 = 0/2/12，均分2.14；unknown 0。46项问题诊断中轻微13、中等33、严重0；第10题将工具域名 `vibe42.ai` 写错被识别为中等事实错误；14个评分进入人工复核队列（至少一维0–2/unknown，或存在中等/严重诊断）。可信度偏低源自回答中的具体证据错配、归属/时效范围或无依据概括，需人工逐条确认。报告不比较不同维度分数或Pass数量，未将Judge变化描述为Agent能力提升。
 - 轻微缺陷在单维度案例中有保持合格档的实例，但双维度同时合格且无中/重度问题的案例为0；本批没有unknown或严重诊断，故高不确定和严重边界的真实模型判定能力尚未实证。无百分制、加权分或额外模型评审；尚需人工审阅14个Case及Rubric边界。报告：`data/evaluation/eval-v2-baseline-20261028/REPORT.md`。
+
+## 2026-10-28 · Judge v2.1 校准与 Agent Prompt 单轮对照
+
+- 保留 Judge v2 Prompt、原 14 Review、原 Baseline 和原 GT；增加版本化 `eval-rubric-v2.1` 两处判分澄清：按原始用户意图而非理想化 GT 设任务门槛；区分单个问题 severity 与整体轴分，按结论位置和用户影响判断。两个 0–4/unknown 轴、开放式 GT 和结构化诊断语义不变。新增确定性测试覆盖 v2 Prompt 不变、v2.1 边界语句、同 schema 评分、moderate 诊断与人工审阅标记。
+- 同一 GPT-6.1 Sol Medium / OAuth 对原 14 个成功 Baseline 回答完成 v2.1 Review（14/14），03/14 保持运行失败且不评分；无请求失败/重试。v2.1 分布：任务满足度 8/4/2，回答可信度 0/7/7；41 项诊断，轻微13、中等28、严重0。分数差异只反映规则版本及重新评审，不代表 Agent 改善。所有14个 Review 仍待人工审阅。报告见 ignored `data/evaluation/eval-v2.1-calibration-20261028/REPORT.md`，逐题人工裁决建议见 `interview-docs/Evaluation校准审阅-20261028.md`。
+- 实际运行一次四行证据强度 Prompt Candidate；六个 Candidate Run/Trace 全部成功/完整，每 Case 一次。原 Baseline 与新 Candidate 条件匹配 Case、Snapshot、DeepSeek Flash、工具和预算；整个 checkout `code_version` 不同，逐路径核对 Agent `query/runtime` 仅 `prompt.py` 文本有差异，其他差异属评测/文档代码。六题两侧均由 v2.1 Judge 评审；Candidate 在 Case 07/12 有局部可信度分数改善，Case 10 却漏掉手机微信/Windows Codex 直接实践，任务满足度 4→2，Case 01仍有较多范围/因果外推。拒绝 Prompt 变更进入生产，保存完整对照及 Judge 记录，未重复调参。6题样本不作总体准确率或显著性推断，详见 ignored `data/evaluation/eval-agent-evidence-claim-20261028/REPORT.md`。
+- 定向 pytest 11 passed（含 rubric 规则与 paired comparison 回归）；Ruff 修改文件检查通过；仓库配置 Mypy（147 个源码文件）通过；`git diff --check` 通过。首个 Mypy 命令同时以脚本路径扫描 namespace package，导致模块重复报错；按项目配置重新运行成功，非代码类型错误。

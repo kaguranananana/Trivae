@@ -21,6 +21,9 @@
 - `Evaluation优化-证据账本与面试.md`：真实第五条简历Bullet、可公开分母与连续追问答案。
 - `Evaluation优化-证据账本.json`：本次实验的结构化Commit/GT审核状态/分子分母/证据位置，已同步主Claim账本。
 
+- [Evaluation评测闭环与面试讲解-20261028.md](Evaluation评测闭环与面试讲解-20261028.md)：Eval v1 真实 Baseline、Judge v2/v2.1 校准、单轮 Prompt 对照实验、2 分钟口述、Bad Case、追问与可核验简历要点。
+- [Evaluation校准审阅-20261028.md](Evaluation校准审阅-20261028.md)：16 Case 的 Judge v2 原分、v2.1 Baseline 复评、模型辅助校准建议和待人工确认的裁决入口。
+
 ## 归档约定
 
 - 后续生成的项目导学、项目面经、面试题库、STAR 口播、简历事实摘要和 Claim 核验材料均放在本目录。

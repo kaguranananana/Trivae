@@ -21,6 +21,8 @@ from .contracts import (
 
 RUBRIC_VERSION_V1 = "eval-rubric-v1"
 RUBRIC_VERSION = "eval-rubric-v2"
+RUBRIC_VERSION_V2_1 = "eval-rubric-v2.1"
+RUBRIC_VERSIONS = (RUBRIC_VERSION, RUBRIC_VERSION_V2_1)
 CAPABILITY_AXES_V2 = ("task_satisfaction", "answer_reliability")
 DIAGNOSTIC_TYPES = (
     "omitted_key_information",
@@ -88,6 +90,26 @@ evidence 填写支持/反驳判断的原始证据，或明确写出缺少哪项�
 "diagnostics":[{"type":"citation_mismatch","severity":"moderate","primary_dimension":"answer_reliability",
 "answer_excerpt":"回答原文摘录或 null","evidence":"原始证据或证据缺口","impact":"对用户理解或决策的实际影响"}]}
 """
+
+# Keep v2 immutable so historical reviews can be reproduced with their original rubric.
+JUDGE_PROMPT_V2_1 = JUDGE_PROMPT.replace(
+    "轻微且不影响理解或决策的问题可以记录为 minor，但不得因此机械地把两个核心维度都降分。",
+    "先以原始用户问题确定用户实际意图和合理隐含需求，再把开放式 Ground Truth 作为参考。"
+    "不得把 GT 中更理想化的案例、格式或细节升级为原问题没有提出的硬性要求；"
+    "只有当回答确实没有解决原问题的核心需要，或差异会妨碍用户理解或决策时，才据此降低任务满足度。\n"
+    "诊断 severity 描述单个问题的严重程度，整体轴分还要看问题位置、结论中心性、出现范围及用户实际影响。"
+    "孤立的局部中等问题可与 3 分共存，前提是回答的主要结论仍可信且该问题不实质改变用户行动；"
+    "若错误影响主结论、较大部分内容或核心决策，应按影响降低整体分数。severity 不机械映射为轴分。\n"
+    "轻微且不影响理解或决策的问题可以记录为 minor，但不得因此机械地把两个核心维度都降分。",
+)
+
+
+def judge_prompt_for(rubric_version: str) -> str:
+    if rubric_version == RUBRIC_VERSION:
+        return JUDGE_PROMPT
+    if rubric_version == RUBRIC_VERSION_V2_1:
+        return JUDGE_PROMPT_V2_1
+    raise EvaluationContractError(f"unsupported capability judge rubric: {rubric_version}")
 
 
 def prepare_review_input(*, case: EvaluationCaseBundle, truth: Mapping[str, Any], packet: Mapping[str, Any],
@@ -190,8 +212,11 @@ def parse_review_v1(output: str, *, run_id: str, judge_identity: str) -> Evaluat
                             created_at=utc_now())
 
 
-def parse_review(output: str, *, run_id: str, judge_identity: str) -> EvaluationReview:
-    """Validate a v2 score pair and preserve each concrete issue as structured data."""
+def parse_review(output: str, *, run_id: str, judge_identity: str,
+                 rubric_version: str = RUBRIC_VERSION) -> EvaluationReview:
+    """Validate a v2/v2.1 score pair and preserve each concrete issue as structured data."""
+    if rubric_version not in RUBRIC_VERSIONS:
+        raise EvaluationContractError(f"unsupported capability judge rubric: {rubric_version}")
     try:
         value = json.loads(output)
         axes = value["axes"]
@@ -250,10 +275,10 @@ def parse_review(output: str, *, run_id: str, judge_identity: str) -> Evaluation
         or any(item["severity"] in ("moderate", "severe") for item in parsed_diagnostics)
     )
     return EvaluationReview(
-        review_id=f"capability-review-v2:{uuid.uuid4().hex}",
+        review_id=f"capability-review-{rubric_version.removeprefix('eval-rubric-')}:{uuid.uuid4().hex}",
         run_id=run_id,
         reviewer_type="model_assisted",
-        rubric_version=RUBRIC_VERSION,
+        rubric_version=rubric_version,
         quality_axes=parsed_axes,
         confidence=None,
         notes=f"judge={judge_identity}; {overall_rationale.strip()}; model-assisted and provisional",
