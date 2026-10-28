@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Awaitable, Callable, Mapping, Sequence, cast
 
@@ -10,6 +11,7 @@ from trivae.observability.contracts import TraceProfile, TraceProjection
 from trivae.query.completion import CompletionProviderError
 from trivae.query.contracts import QueryRequest, QueryResult
 from trivae.query.evidence import scope_snapshot
+from trivae.query.runtime.contracts import ModelContextMessage
 
 from .checks import (
     build_evaluation_result,
@@ -162,11 +164,29 @@ class EvaluationRunner:
         run_id = f"eval-run:{case.case_id}:v{case.version}:{variant.variant_id}:{uuid.uuid4().hex}"
         request_id = f"eval-request:{run_id}"
         started_at = utc_now()
+        prior_context: tuple[ModelContextMessage, ...] = ()
+        time_snapshot: dict[str, object] = {}
+        if case.time_context is not None:
+            as_of = case.time_context.get("as_of")
+            if not isinstance(as_of, str):
+                raise EvaluationContractError("case time_context.as_of must be an ISO datetime with timezone")
+            try:
+                parsed = datetime.fromisoformat(as_of)
+            except ValueError as exc:
+                raise EvaluationContractError("case time_context.as_of must be an ISO datetime with timezone") from exc
+            if parsed.utcoffset() is None:
+                raise EvaluationContractError("case time_context.as_of must have a timezone")
+            time_snapshot["time_context"] = {"as_of": as_of}
+            prior_context = (ModelContextMessage(
+                role="user",
+                content=f"本次查询的参考时间为 {as_of}。请以此解释问题中的相对时间。",
+            ),)
         request = QueryRequest(
             query=case.query,
             scope=case.data_access_scope,
             request_id=request_id,
             locale=case.locale,
+            prior_context=prior_context,
             data_snapshot={
                 "snapshot_id": case.dataset_snapshot.snapshot_id,
                 "schema_version": case.dataset_snapshot.schema_version,
@@ -174,6 +194,7 @@ class EvaluationRunner:
                 "relevant_time_range": list(case.dataset_snapshot.relevant_time_range),
                 "evaluation_case": case.identity,
                 "repetition": repetition,
+                **time_snapshot,
             },
             available_capabilities=variant.available_tools,
             trace_profile=self._trace_profile(variant),
@@ -252,6 +273,7 @@ class EvaluationRunner:
                 "request_id": request.request_id,
                 "query": request.query,
                 "locale": request.locale,
+                "prior_context": [{"role": m.role, "content": m.content} for m in request.prior_context],
                 "scope": scope_snapshot(request.scope),
                 "data_snapshot": dict(request.data_snapshot),
                 "available_capabilities": list(request.available_capabilities),

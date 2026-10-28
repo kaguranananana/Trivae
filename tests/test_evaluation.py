@@ -432,6 +432,36 @@ class EvaluationContractTests(unittest.TestCase):
 class EvaluationRunnerTests(unittest.TestCase):
     """验证 Runner 只调用生产 callable、保存单次 Run 并保留失败。"""
 
+    def test_case_as_of_reaches_router_and_runtime_without_changing_query(self) -> None:
+        from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+
+        executor = _FailedExecutor()
+        case = replace(_case(), time_context={"as_of": "2026-10-28T12:00:00+08:00"})
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteEvaluationStore(Path(directory) / "evaluation.sqlite3")
+            runner = EvaluationRunner(query_executor=executor, trace_reader=lambda tid: _trace(tid),
+                                      store=store, snapshot_resolver=lambda: _snapshot())
+            run = asyncio.run(runner.run_case(case, _variant()))[0]
+            request = executor.requests[0]
+            self.assertEqual(request.query, case.query)
+            self.assertEqual(request.to_context().data_snapshot["time_context"], case.time_context)
+            self.assertIn("2026-10-28T12:00:00+08:00", request.to_context().prior_context[0].content)
+            items = OpenAIAgentsRuntimeAdapter._build_input(request.to_runtime_request())
+            self.assertIn("2026-10-28T12:00:00+08:00", items[0]["content"])
+            self.assertEqual(items[-1]["content"], case.query)
+            self.assertEqual(run.query_request["prior_context"][0]["content"], items[0]["content"])
+            store.close()
+
+    def test_case_as_of_requires_an_explicit_timezone(self) -> None:
+        case = replace(_case(), time_context={"as_of": "2026-10-28"})
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteEvaluationStore(Path(directory) / "evaluation.sqlite3")
+            runner = EvaluationRunner(query_executor=_FailedExecutor(), trace_reader=lambda tid: _trace(tid),
+                                      store=store, snapshot_resolver=lambda: _snapshot())
+            with self.assertRaisesRegex(EvaluationContractError, "timezone"):
+                asyncio.run(runner.run_case(case, _variant()))
+            store.close()
+
     def test_runner_repetitions_and_store_reopen(self) -> None:
         executor = _FailedExecutor()
         with tempfile.TemporaryDirectory() as directory:

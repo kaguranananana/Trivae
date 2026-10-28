@@ -60,6 +60,18 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
         settings = load_settings()
         if (settings.provider, settings.model_name) != (variant.provider, variant.model):
             raise EvaluationContractError("declared variant provider/model differs from actual runtime settings")
+        router_settings = load_router_jev_settings().to_safe_dict()
+        model_treatment = None
+        if (suite.suite_id, suite.version) == ("capability-formal", 1):
+            from .capability_conditions import effective_model_treatment, validate_formal_conditions
+
+            validate_formal_conditions(variant, settings.to_safe_dict(), router_settings)
+            model_treatment = effective_model_treatment(settings)
+            for case in selected:
+                if (case.time_context is None or case.time_context.get("as_of") != "2026-10-28T12:00:00+08:00"
+                        or case.review_policy.rubric_version != "capability-formal-rubric-v1"
+                        or "gt:capability-formal-gt-v1" not in case.suite_tags):
+                    raise EvaluationContractError("capability-formal case time or scoring identity differs")
         commit = _git_commit()
         if variant.code_version not in (commit, commit[:len(variant.code_version)]):
             raise EvaluationContractError("declared variant code_version differs from checked-out commit")
@@ -74,12 +86,14 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
             "cases": [case.to_dict() for case in selected], "freeze_id": frozen["freeze_id"],
             "snapshot": frozen["snapshot"], "index_state": frozen["index_state"], "git_commit": commit,
             "variant": variant.to_dict(), "runtime_settings": settings.to_safe_dict(),
-            "router_settings": load_router_jev_settings().to_safe_dict(), "judge_version": judge_version,
+            "router_settings": router_settings, "judge_version": judge_version,
             "python": platform.python_version(), "openai_agents_version": metadata.version("openai-agents"),
             "repetitions": repetitions, "runs": [],
         }
         if selected_cases is not None:
             manifest["selected_cases"] = [reference.identity for reference in selection]
+        if model_treatment is not None:
+            manifest["effective_model_treatment"] = model_treatment
         write_manifest(output_dir, manifest)
         return manifest
     except (OSError, KeyError, TypeError, ValueError, sqlite3.Error) as exc:
@@ -135,3 +149,39 @@ def compare_experiments(baseline_path: Path, candidate_path: Path) -> dict[str, 
                                 "openai_agents_version") if a.get(key) != b.get(key)]
     return {"comparable": not reasons, "reasons": reasons, "changed_conditions": changed,
             "baseline_runs": a.get("runs", []), "candidate_runs": b.get("runs", [])}
+
+
+def compare_model_experiments(baseline_path: Path, candidate_path: Path) -> dict[str, Any]:
+    """Compare end-to-end runs, allowing only model/provider identity and endpoint changes.
+
+    Provider-specific execution settings remain comparable only when they match. This is
+    intentionally stricter than the generic variant comparison, which merely lists changes.
+    """
+    report = compare_experiments(baseline_path, candidate_path)
+    a = json.loads(baseline_path.read_text(encoding="utf-8"))
+    b = json.loads(candidate_path.read_text(encoding="utf-8"))
+    reasons = list(report["reasons"])
+    for key in ("git_commit", "router_settings", "python", "openai_agents_version"):
+        if a.get(key) != b.get(key):
+            reasons.append(key + " differs")
+    suite = a.get("suite")
+    if isinstance(suite, Mapping) and suite.get("suite_id") == "capability-formal":
+        if (not isinstance(a.get("effective_model_treatment"), Mapping)
+                or not isinstance(b.get("effective_model_treatment"), Mapping)):
+            reasons.append("effective_model_treatment missing")
+        elif a["effective_model_treatment"] != b["effective_model_treatment"]:
+            reasons.append("effective_model_treatment differs")
+    for key, ignored in (
+        ("variant", {"variant_id", "provider", "model", "variant_fingerprint"}),
+        ("runtime_settings", {"provider", "model_name", "base_url", "api_key_configured"}),
+    ):
+        left, right = a.get(key), b.get(key)
+        if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+            reasons.append(key + " missing")
+            continue
+        for field in sorted((set(left) | set(right)) - ignored):
+            if left.get(field) != right.get(field) or (field in left) != (field in right):
+                reasons.append(f"{key}.{field} differs")
+    report["reasons"] = reasons
+    report["comparable"] = not reasons
+    return report

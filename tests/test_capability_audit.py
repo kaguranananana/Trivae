@@ -88,6 +88,26 @@ def test_forwarded_message_keeps_parent_and_original_time(tmp_path):
                            freeze=freeze, database=database)
 
 
+def test_no_evidence_is_valid_only_when_packet_and_case_both_empty(tmp_path):
+    case = replace(_message_case(), reference_findings=())
+    database = tmp_path / "canonical.sqlite3"
+    with sqlite3.connect(database) as con:
+        con.execute("CREATE TABLE messages(internal_message_id TEXT, session_id TEXT, timestamp INTEGER, "
+                    "sender_user_id TEXT, content_text TEXT)")
+    freeze = {"freeze_id": "freeze:test", "snapshot": case.dataset_snapshot.to_dict(), "index_state": {"revision": 1}}
+    packet = {"freeze_id": "freeze:test", "snapshot_id": case.dataset_snapshot.snapshot_id,
+              "cases": [{"case_id": case.case_id, "case_version": case.version, "evidence": []}]}
+    with (patch("trivae.evaluation.capability_audit.DatasetSnapshot.from_database", return_value=case.dataset_snapshot),
+          patch("trivae.evaluation.capability_audit._metadata", return_value={"revision": 1})):
+        report = audit_evidence(suite=_suite(case), cases={case.identity: case}, packet=packet,
+                                freeze=freeze, database=database)
+        assert report["sources_checked"] == 0
+        packet["cases"][0]["evidence"].append({"internal_message_id": "invented"})
+        with pytest.raises(EvaluationContractError, match="packet and reference IDs differ"):
+            audit_evidence(suite=_suite(case), cases={case.identity: case}, packet=packet,
+                           freeze=freeze, database=database)
+
+
 def test_pending_references_do_not_enter_formal_quality_and_partial_usage_is_kept(tmp_path):
     case = _message_case()
     case = replace(case, review_policy=replace(case.review_policy, rubric_version="cap-v2"))

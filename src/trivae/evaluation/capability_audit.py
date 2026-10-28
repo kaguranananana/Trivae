@@ -89,7 +89,7 @@ def audit_evidence(
                     if evidence.source_type != "message" or not isinstance(message_id, str):
                         raise EvaluationContractError(f"case {case.case_id} requires message evidence")
                     referenced.add(message_id)
-            if not referenced or referenced != set(by_id):
+            if referenced != set(by_id):
                 raise EvaluationContractError(f"case {case.case_id} packet and reference IDs differ")
             for message_id, record in by_id.items():
                 row = con.execute(
@@ -120,14 +120,18 @@ def audit_evidence(
                     scope.start_timestamp is not None and row[1] < scope.start_timestamp or
                     scope.end_timestamp is not None and row[1] >= scope.end_timestamp):
                     raise EvaluationContractError(f"case {case.case_id} source is outside scope")
-            details.append({"case": case.identity, "source_messages": len(by_id),
-                            "reference_status": "human_confirmed" if reference_confirmed(case) else "human_pending"})
+            status = ("human_confirmed" if reference_confirmed(case) else
+                      "auto_review_declared_not_human_confirmed" if "gt:automatic-review" in case.suite_tags else
+                      "human_pending")
+            details.append({"case": case.identity, "source_messages": len(by_id), "reference_status": status})
     finally:
         con.close()
     return {"cases": details, "cases_checked": len(details),
             "sources_checked": sum(row["source_messages"] for row in details),
             "human_pending": sum(row["reference_status"] == "human_pending" for row in details),
-            "note": "Identity, scope and exact source text checked; semantic support and completeness still require review."}
+            "auto_review_declared_not_human_confirmed": sum(
+                row["reference_status"] == "auto_review_declared_not_human_confirmed" for row in details),
+            "note": "Identity, scope and exact source text checked; this check does not judge semantic support or completeness."}
 
 
 def capability_report(database: Path, suite: EvaluationSuite, cases: Mapping[str, EvaluationCaseBundle]) -> dict[str, Any]:
