@@ -175,8 +175,20 @@ The Judge, condition checks and time forwarding have local fixture coverage. Und
 previous suite identity, a single-case fixture Runtime against the real frozen working
 copy verified time delivery, absence of reference facts from Agent input, and Trace
 persistence; its deliberately failed Runtime was not a model run. A formal preflight
-using the locally configured ChatGPT model also passed for `eval@v1` without invoking
-it. This build did not run a live Agent Baseline or a remote Judge. No
-scores, rankings, success rates or production retrieval improvements are claimed.
+using the locally configured ChatGPT model also passed for `eval@v1`.
+
+The first live baseline on 2026-10-28 passed the one-case DeepSeek Agent + ChatGPT Plan
+OAuth Judge smoke. The full Agent Suite then persisted 14/16 Run and Trace pairs: 12
+successful, two failed, and two not attempted. The measured success rate was 12/14
+(85.7% of attempts). One failure was a model-answer JSON parse error after an HTTP 200;
+the other was a terminal `APIStatusError` with no status code in the safe Trace, so the
+Suite stopped. Of 12 completed Runs eligible for Judge, 10 Reviews completed before
+the OAuth model-catalog request failed with `AUTH_NETWORK` / `ConnectError`; the remaining
+two were not retried. These model-assisted labels are provisional and use a denominator
+of 10, not 16. The detailed per-Run status, Trace, Review, usage, duration, and failure
+record are in the ignored local `data/evaluation/eval-v1-baseline-20261028/REPORT.md`.
+The baseline is partial; no complete 16-case score or ranking is claimed. No paid API
+fallback was used. The runner stops a Suite after a terminal Runtime/Provider failure.
+
 LangSmith remains an optional explicit metadata-only export, using the existing
 `langsmith-sync` workflow.

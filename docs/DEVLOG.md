@@ -387,3 +387,11 @@
 - 16 个 Case ID、题面、查询时点、参考事实、原始群聊及检索记录未改；因 GT 与评分规则名称、套件标签变化，另存 Case v2 并由新 Suite 引用。原 Case v1、原套件清单、本机证据包及原名下替身/预检记录保留，避免同一 Case 版本对应不同内容或混算历史运行。新本机包为 ignored `data/evaluation/eval-v1-20261028/`，包含更名映射及逐字段一致性检查。
 - 新 Suite 的 16 个 Case 合同、58 条题内来源和 406 条上下文重新核验通过；更名核对确认题目、事实、来源、上下文及原始检索日志未改变。模型运行条件与 Judge 入口同步使用 `eval@v1`、`eval-gt-v1` 和 `eval-rubric-v1`，新标识的正式实验预检通过，Agent 和 Judge 均未运行。
 - 相关测试 48 passed；Ruff、4 文件 mypy、diff 和暂存私人内容检查通过。本轮没有进行真实用户题目的模型评测或产生能力结论，后续仍需先完成有效运行再评估稳定性和短板。操作说明更新为 docs/eval-v1.md。
+
+## 2026-10-28 · 统一模型 profiles 与真实 Eval v1 Baseline
+
+- 新增 `config/models.yaml` 管理模型身份、Provider、参数与认证引用；Agent/Judge 独立用 profile 选择。普通查询保留 GPT Plan 默认与旧 `TRIVAE_MODEL_*` 覆盖。Judge 复用 `complete_json` 和 ChatGPT OAuth Responses SSE，无 Agent 检索或 API 付费回退。`.env.deepseek` 的凭证先与 `.env` 中已有值对照，再合并到本地 `DEEPSEEK_API_KEY` 并删除重复文件；`.env.example` 保持无凭证，`.env.digest` 未修改。
+- Eval 的 Agent profile 由 Composition Root 接入同一 CapabilityRegistry；避免自定义 Runtime 漏掉检索工具。Suite 在终态 Runtime/Provider 错误后停止后续 Case。新增配置与失败停止回归；完整 pytest 1373 passed/1 skipped、Ruff、mypy通过。
+- 真实单 Case smoke 的 DeepSeek Agent 和 GPT OAuth Judge 均完成。全套使用冻结 eval@v1、未改题面/GT/Prompt、固定运行条件，执行到14/16后因终态 `APIStatusError` 停止；12 Run 成功、2 失败、2 未启动，成功率12/14（85.7%，分母为已尝试Run）。失败分别是 HTTP200工具轮后的 `AnswerDeltaParseError` 和没有Trace状态码的 `APIStatusError`。Trace/Run 均留存。
+- 对12个成功Run启动GPT Plan Judge；10个 Review 完成。第11次在官方 `/v1/models` 请求遇 `AUTH_NETWORK` / `ConnectError`，没有HTTP状态码；停止后续 Judge 调用，没有切换API。五维暂定评分分母10；另2个成功Run未评分。完整统计、Token、延迟、Run/Trace/Review和错误记录保留在 ignored `data/evaluation/eval-v1-baseline-20261028/REPORT.md`，不提交私人运行数据。
+- 当前 Baseline 是部分结果，不宣称完成16 Case 或全部Judge评分。待 DeepSeek Provider 请求可用后补跑2个未执行Case；待ChatGPT模型目录网络可用后补做2个Review。错误期间未重试或改模型/Prompt。
