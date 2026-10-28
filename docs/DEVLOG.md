@@ -395,3 +395,10 @@
 - 真实单 Case smoke 的 DeepSeek Agent 和 GPT OAuth Judge 均完成。全套使用冻结 eval@v1、未改题面/GT/Prompt、固定运行条件，执行到14/16后因终态 `APIStatusError` 停止；12 Run 成功、2 失败、2 未启动，成功率12/14（85.7%，分母为已尝试Run）。失败分别是 HTTP200工具轮后的 `AnswerDeltaParseError` 和没有Trace状态码的 `APIStatusError`。Trace/Run 均留存。
 - 对12个成功Run启动GPT Plan Judge；10个 Review 完成。第11次在官方 `/v1/models` 请求遇 `AUTH_NETWORK` / `ConnectError`，没有HTTP状态码；停止后续 Judge 调用，没有切换API。五维暂定评分分母10；另2个成功Run未评分。完整统计、Token、延迟、Run/Trace/Review和错误记录保留在 ignored `data/evaluation/eval-v1-baseline-20261028/REPORT.md`，不提交私人运行数据。
 - 当前 Baseline 是部分结果，不宣称完成16 Case 或全部Judge评分。待 DeepSeek Provider 请求可用后补跑2个未执行Case；待ChatGPT模型目录网络可用后补做2个Review。错误期间未重试或改模型/Prompt。
+
+## 2026-10-28 · Eval v1 补跑与 Judge 恢复检查
+
+- 按用户要求仅补跑之前未启动的 Eval v1 第 15、16 题；Case 列表首次以错误对象格式被 CLI 在 Provider 请求前拒绝，改为 `case_id@v2` 字符串后重跑，没有产生额外 Run 或 DeepSeek 请求。使用 `trivae eval clone-data` 创建独立冻结数据副本，冻结包审计 16 Case、58 条来源记录、54 条不同来源消息及 406 条上下文通过。
+- DeepSeek `deepseek-flash` 两个 Run 均完成且最终答案/引用校验有效；各有一次工具返回 `TOOL_RESULT_BUDGET_EXHAUSTED`。补跑耗时分别 102.9s、104.9s，Trace 用量保存在新记录中。全套现有16 Case均有唯一 Run，14成功、2失败，成功率14/16。
+- GPT OAuth Judge 对先前连接失败的第12题重试成功并保存 Review；第13题随后遇 `ChatGPTResponsesError` / `ConnectError`，无 HTTP 状态码，停止剩余调用。全套14个成功 Run 中11个有 Review；五维分布分母11，仍有第13、15、16题未评分。未使用 API 付费回退。现有成功请求表明 OAuth 凭证至少可用，后续连接错误不能据此归因于认证。
+- 完整补跑 Run、Trace、Judge 输入/输出与错误记录，以及模型配置快照见 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/`；原首轮报告未覆盖。此次无生产代码改动；固定数据审计及真实模型链路为本轮验证。
