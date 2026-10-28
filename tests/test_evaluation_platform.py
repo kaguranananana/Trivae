@@ -25,6 +25,9 @@ from trivae.evaluation.langsmith_sync import export_experiment, sync_review
 from trivae.evaluation.reporting import run_report
 from trivae.evaluation.runner import EvaluationRunner
 from trivae.evaluation.store import SQLiteEvaluationStore
+from trivae.query.contracts import QueryResult
+from trivae.query.router import RouteDecision
+from trivae.query.runtime.contracts import RuntimeErrorInfo, RuntimeResult
 
 
 def _suite(case):
@@ -510,6 +513,54 @@ def test_selected_cases_keep_suite_identity_and_reject_invalid_selection(tmp_pat
     selection.write_text(json.dumps([second.identity, second.identity]))
     assert cli.main(command) == 1
     capsys.readouterr()
+
+
+def test_suite_stops_after_terminal_runtime_provider_failure(tmp_path):
+    first = _case(case_id="first")
+    second = _case(snapshot=first.dataset_snapshot, case_id="second")
+    suite = EvaluationSuite(
+        "capability", 2, "core", (CaseReference("first", 1), CaseReference("second", 1)),
+        "fixture", "2026-10-28T00:00:00+00:00",
+    )
+    calls = []
+
+    async def query(_request):
+        calls.append("requested")
+        return QueryResult(
+            runtime_result=RuntimeResult(
+                final_answer=None,
+                provider="deepseek",
+                model="deepseek-flash",
+                termination="failed",
+                tool_calls=(),
+                error=RuntimeErrorInfo(
+                    code="RUNTIME_ERROR",
+                    message="agent runtime execution failed",
+                    category="terminal",
+                    diagnostic_type="RateLimitError",
+                    exception_type="RateLimitError",
+                ),
+            ),
+            route_decision=RouteDecision("standard_execution", 1.0, "rule", "fixture"),
+        )
+
+    store = SQLiteEvaluationStore(tmp_path / "runs.sqlite3")
+    runner = EvaluationRunner(
+        query_executor=query,
+        trace_reader=lambda _: _trace(),
+        store=store,
+        snapshot_resolver=lambda: first.dataset_snapshot,
+    )
+    try:
+        runs = asyncio.run(
+            runner.run_suite(suite, {first.identity: first, second.identity: second}, _variant())
+        )
+        assert len(runs) == 1
+        assert runs[0].case_id == "first"
+        assert runs[0].query_result["runtime"]["error"]["exception_type"] == "RateLimitError"
+        assert len(calls) == 1
+    finally:
+        store.close()
 
 
 def test_formal_selected_run_records_selection_and_compares_same_subset(tmp_path, monkeypatch):

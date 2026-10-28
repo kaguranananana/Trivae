@@ -140,15 +140,16 @@ class EvaluationRunner:
             selected.append(case)
         all_runs: list[EvaluationRun] = []
         for case in selected:
-            all_runs.extend(
-                await self.run_case(
-                    case,
-                    variant,
-                    suite_id=suite.suite_id,
-                    suite_version=suite.version,
-                    repetitions=repetitions,
-                )
+            case_runs = await self.run_case(
+                case,
+                variant,
+                suite_id=suite.suite_id,
+                suite_version=suite.version,
+                repetitions=repetitions,
             )
+            all_runs.extend(case_runs)
+            if case_runs and _is_terminal_runtime_failure(case_runs[-1]):
+                break
         return tuple(all_runs)
 
     async def _run_one(
@@ -304,3 +305,13 @@ class EvaluationRunner:
 
         value = variant.runtime_configuration.get("trace_profile", "normal")
         return cast(TraceProfile, value if isinstance(value, str) else "invalid")
+
+
+def _is_terminal_runtime_failure(run: EvaluationRun) -> bool:
+    """Stop a Suite after a terminal provider/runtime failure instead of repeating it on more Cases."""
+
+    if run.terminal_status != "failed" or run.query_result is None:
+        return False
+    runtime = run.query_result.get("runtime")
+    error = runtime.get("error") if isinstance(runtime, Mapping) else None
+    return isinstance(error, Mapping) and error.get("category") == "terminal"
