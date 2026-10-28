@@ -380,3 +380,10 @@
 - Runner 将 `time_context.as_of` 作为独立上下文送入 Router/Planner 与 Runtime，不修改题面或生产默认查询；证据审计允许 Case 与 packet 同时为空但仍拒绝不一致。新增固定预算/工具条件、同模型变量比较、保存并比较实际 provider 工具协议与推理档位，以及离线 Judge；后者会回读被测答案引用的其他原始消息，不按预设 ID 判错。Judge 的结构化 SQL 来源未重新执行时应保持 unknown，模型 Review 仍为 provisional。
 - 完整 pytest 1363 passed/1 skipped（42.61 秒），Ruff src/tests/scripts、9 文件 mypy 和 diff 检查通过；暂存扫描未发现完整私人题目、GT 陈述或原文。真实冻结库副本上的一题替身 Runtime 检查通过：时间到达 Router 和实际 Runtime 输入、参考事实不在输入内、Trace 完整保存；替身按设计返回 failed，不是模型 Baseline。当前配置的正式条件及模型 Variant 预检通过，未发送 Agent 或 Judge 模型请求。
 - 实际 provider 间可能使用不同工具传输、推理档位和服务端输出上限，严格同条件比较尚未建立；未执行真实 Baseline、远端 Judge 或模型排名。下一步先按说明用独立工作副本做小规模真实链路验证，再在可对齐条件下进行重复实验；不把自动复核报告为人工结论。
+
+## 2026-10-28 · 真实用户题集更名为 Eval v1
+
+- 按用户要求，将本轮 16 道真实用户问题的套件身份由 `capability-formal@v1` 改为 `eval@v1`；这只是评测集名称，不预先声明哪些能力已稳定解决、哪些是短板。旧 Capability、候选集、Regression 及历史实验保持独立。
+- 16 个 Case ID、题面、查询时点、参考事实、原始群聊及检索记录未改；因 GT 与评分规则名称、套件标签变化，另存 Case v2 并由新 Suite 引用。原 Case v1、原套件清单、本机证据包及原名下替身/预检记录保留，避免同一 Case 版本对应不同内容或混算历史运行。新本机包为 ignored `data/evaluation/eval-v1-20261028/`，包含更名映射及逐字段一致性检查。
+- 新 Suite 的 16 个 Case 合同、58 条题内来源和 406 条上下文重新核验通过；更名核对确认题目、事实、来源、上下文及原始检索日志未改变。模型运行条件与 Judge 入口同步使用 `eval@v1`、`eval-gt-v1` 和 `eval-rubric-v1`，新标识的正式实验预检通过，Agent 和 Judge 均未运行。
+- 相关测试 48 passed；Ruff、4 文件 mypy、diff 和暂存私人内容检查通过。本轮没有进行真实用户题目的模型评测或产生能力结论，后续仍需先完成有效运行再评估稳定性和短板。操作说明更新为 docs/eval-v1.md。

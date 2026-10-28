@@ -162,8 +162,8 @@ The Judge, condition checks and time forwarding have local fixture coverage. Und
 previous suite identity, a single-case fixture Runtime against the real frozen working
 copy verified time delivery, absence of reference facts from Agent input, and Trace
 persistence; its deliberately failed Runtime was not a model run. A formal preflight
-using the locally configured ChatGPT model also passed under the previous suite identity
-without invoking it. This build did not run a live Agent Baseline or a remote Judge. No
+using the locally configured ChatGPT model also passed for `eval@v1` without invoking
+it. This build did not run a live Agent Baseline or a remote Judge. No
 scores, rankings, success rates or production retrieval improvements are claimed.
 LangSmith remains an optional explicit metadata-only export, using the existing
 `langsmith-sync` workflow.
