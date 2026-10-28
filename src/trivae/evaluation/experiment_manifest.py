@@ -62,16 +62,16 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
             raise EvaluationContractError("declared variant provider/model differs from actual runtime settings")
         router_settings = load_router_jev_settings().to_safe_dict()
         model_treatment = None
-        if (suite.suite_id, suite.version) == ("capability-formal", 1):
+        if (suite.suite_id, suite.version) == ("eval", 1):
             from .capability_conditions import effective_model_treatment, validate_formal_conditions
 
             validate_formal_conditions(variant, settings.to_safe_dict(), router_settings)
             model_treatment = effective_model_treatment(settings)
             for case in selected:
                 if (case.time_context is None or case.time_context.get("as_of") != "2026-10-28T12:00:00+08:00"
-                        or case.review_policy.rubric_version != "capability-formal-rubric-v1"
-                        or "gt:capability-formal-gt-v1" not in case.suite_tags):
-                    raise EvaluationContractError("capability-formal case time or scoring identity differs")
+                        or case.review_policy.rubric_version != "eval-rubric-v1"
+                        or "gt:eval-gt-v1" not in case.suite_tags):
+                    raise EvaluationContractError("eval v1 case time or scoring identity differs")
         commit = _git_commit()
         if variant.code_version not in (commit, commit[:len(variant.code_version)]):
             raise EvaluationContractError("declared variant code_version differs from checked-out commit")
@@ -165,7 +165,7 @@ def compare_model_experiments(baseline_path: Path, candidate_path: Path) -> dict
         if a.get(key) != b.get(key):
             reasons.append(key + " differs")
     suite = a.get("suite")
-    if isinstance(suite, Mapping) and suite.get("suite_id") == "capability-formal":
+    if isinstance(suite, Mapping) and suite.get("suite_id") == "eval" and suite.get("version") == 1:
         if (not isinstance(a.get("effective_model_treatment"), Mapping)
                 or not isinstance(b.get("effective_model_treatment"), Mapping)):
             reasons.append("effective_model_treatment missing")

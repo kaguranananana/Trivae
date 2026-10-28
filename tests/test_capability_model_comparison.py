@@ -40,7 +40,7 @@ def test_model_comparison_detects_budget_prompt_router_and_protocol_changes(tmp_
     assert set(result["reasons"]) >= {"variant.prompt_identity differs", "variant.budget differs",
                                       "runtime_settings.protocol differs", "router_settings differs"}
 
-    base["suite"]["suite_id"] = other["suite"]["suite_id"] = "capability-formal"
+    base["suite"]["suite_id"] = other["suite"]["suite_id"] = "eval"
     a.write_text(json.dumps(base))
     b.write_text(json.dumps(other))
     assert "effective_model_treatment missing" in compare_model_experiments(a, b)["reasons"]

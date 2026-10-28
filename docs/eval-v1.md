@@ -1,10 +1,15 @@
-# Capability Suite v1
+# Eval v1
 
-`capability-formal@v1` is the separate 16-question user-selected suite. The committed
-manifest contains only case identities. The questions, versioned Cases, reference
-facts, complete chat text, search logs, and review records remain in the ignored local
-directory `data/evaluation/capability-formal-v1-20261028/`. The older Capability suites,
-30-question candidate, Regression suite and their experiments retain their identities.
+`eval@v1` is the separate 16-question real-user evaluation set. Its name does not
+assert that any capability is solved or deficient; that judgment requires actual
+evaluation. The committed manifest contains only case identities. The questions,
+versioned Cases, reference facts, complete chat text, search logs, and review records
+remain in the ignored local directory `data/evaluation/eval-v1-20261028/`. The earlier
+Capability suites, 30-question candidate, Regression suite and their experiments
+retain their identities. The previous name and its fixture/preflight records remain
+in the original ignored local directory. The Case IDs, questions and evidence are
+unchanged; the Cases are saved as v2 solely because their GT, rubric and suite tags
+were renamed. The original Case v1 versions remain with the historical bundle.
 
 The fixed query time is 2026-10-28 12:00 at UTC+08:00. The frozen Canonical database has
 864,615 messages; its latest message is 2026-10-27 21:44:51 at UTC+08:00. Its freeze ID
@@ -51,11 +56,11 @@ Recheck the local bundle against the frozen master:
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/verify_capability_bundle.py \
-  --bundle-dir data/evaluation/capability-formal-v1-20261028 \
-  --suite evaluation/suites/capability-formal-v1.json \
+  --bundle-dir data/evaluation/eval-v1-20261028 \
+  --suite evaluation/suites/eval-v1.json \
   --freeze-manifest data/evaluation/frozen-20261028-validated/freeze.json \
   --database data/evaluation/frozen-20261028-validated/trivae.sqlite3 \
-  --output data/evaluation/capability-formal-v1-20261028/bundle-verification.json
+  --output data/evaluation/eval-v1-20261028/bundle-verification.json
 ```
 
 ## Running one case or a suite
@@ -86,20 +91,20 @@ export TRIVAE_RUN_TOOL_EVIDENCE_PERCENT=25 TRIVAE_RUN_TOOL_EVIDENCE_CAP=256000
 export TRIVAE_RUN_TOOL_EVIDENCE_BUDGET=32000 TRIVIAE_ROUTER_JEV_ENABLED=false
 
 .venv/bin/trivae eval clone-data --manifest data/evaluation/frozen-20261028-validated/freeze.json \
-  --output-dir data/evaluation/capability-formal-v1-my-model-work
+  --output-dir data/evaluation/eval-v1-my-model-work
 
 PYTHONPATH=src .venv/bin/python -m scripts.prepare_capability_variant \
-  --freeze-manifest data/evaluation/capability-formal-v1-my-model-work/freeze.json \
-  --variant-id my-model-v1 --output data/evaluation/capability-formal-v1-20261028/my-model.json
+  --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
+  --variant-id my-model-v1 --output data/evaluation/eval-v1-20261028/my-model.json
 
-.venv/bin/trivae eval run --suite evaluation/suites/capability-formal-v1.json \
-  --cases-dir data/evaluation/capability-formal-v1-20261028/cases \
-  --case-list data/evaluation/capability-formal-v1-20261028/one-case.json \
-  --variant data/evaluation/capability-formal-v1-20261028/my-model.json \
-  --database data/evaluation/capability-formal-v1-my-model-work/trivae.sqlite3 \
-  --evaluation-database data/evaluation/capability-formal-v1-my-model.sqlite3 \
-  --freeze-manifest data/evaluation/capability-formal-v1-my-model-work/freeze.json \
-  --record-dir data/evaluation/capability-formal-v1-my-model-record --judge-version none --repeat 1
+.venv/bin/trivae eval run --suite evaluation/suites/eval-v1.json \
+  --cases-dir data/evaluation/eval-v1-20261028/cases \
+  --case-list data/evaluation/eval-v1-20261028/one-case.json \
+  --variant data/evaluation/eval-v1-20261028/my-model.json \
+  --database data/evaluation/eval-v1-my-model-work/trivae.sqlite3 \
+  --evaluation-database data/evaluation/eval-v1-my-model.sqlite3 \
+  --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
+  --record-dir data/evaluation/eval-v1-my-model-record --judge-version none --repeat 1
 ```
 
 Remove `--case-list` to run all 16; use `--repeat` for repeated runs. The manifest
@@ -126,18 +131,18 @@ from the supplied evidence.
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m scripts.judge_capability \
-  --bundle-dir data/evaluation/capability-formal-v1-20261028 \
-  --suite evaluation/suites/capability-formal-v1.json \
-  --freeze-manifest data/evaluation/capability-formal-v1-my-model-work/freeze.json \
-  --database data/evaluation/capability-formal-v1-my-model-work/trivae.sqlite3 \
-  --evaluation-database data/evaluation/capability-formal-v1-my-model.sqlite3 \
+  --bundle-dir data/evaluation/eval-v1-20261028 \
+  --suite evaluation/suites/eval-v1.json \
+  --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
+  --database data/evaluation/eval-v1-my-model-work/trivae.sqlite3 \
+  --evaluation-database data/evaluation/eval-v1-my-model.sqlite3 \
   --run-id 'the completed Run ID' \
-  --record-dir data/evaluation/capability-formal-v1-my-model-reviews/review-01
+  --record-dir data/evaluation/eval-v1-my-model-reviews/review-01
 
 PYTHONPATH=src .venv/bin/python scripts/audit_capability.py report \
-  --suite evaluation/suites/capability-formal-v1.json \
-  --cases-dir data/evaluation/capability-formal-v1-20261028/cases \
-  --database data/evaluation/capability-formal-v1-my-model.sqlite3
+  --suite evaluation/suites/eval-v1.json \
+  --cases-dir data/evaluation/eval-v1-20261028/cases \
+  --database data/evaluation/eval-v1-my-model.sqlite3
 ```
 
 Repeat the explicit Judge command for each completed Run. `compare_capability_models.py`
@@ -153,11 +158,12 @@ yet established. Provider-specific reasoning settings and Planner treatment are 
 compared; even identical effort labels cannot guarantee identical model behavior.
 Sampling and provider behavior can still vary between repeated runs.
 
-The new Judge, condition checks and time forwarding have local fixture coverage. A
-single-case fixture Runtime against the real frozen working copy verified time delivery,
-absence of reference facts from Agent input, and Trace persistence; its deliberately
-failed Runtime was not a model run. A formal preflight using the locally configured
-ChatGPT model also passed without invoking it. This build did not run a live Agent
-Baseline or a remote Judge. No scores, rankings,
-success rates or production retrieval improvements are claimed. LangSmith remains an
-optional explicit metadata-only export, using the existing `langsmith-sync` workflow.
+The Judge, condition checks and time forwarding have local fixture coverage. Under the
+previous suite identity, a single-case fixture Runtime against the real frozen working
+copy verified time delivery, absence of reference facts from Agent input, and Trace
+persistence; its deliberately failed Runtime was not a model run. A formal preflight
+using the locally configured ChatGPT model also passed under the previous suite identity
+without invoking it. This build did not run a live Agent Baseline or a remote Judge. No
+scores, rankings, success rates or production retrieval improvements are claimed.
+LangSmith remains an optional explicit metadata-only export, using the existing
+`langsmith-sync` workflow.

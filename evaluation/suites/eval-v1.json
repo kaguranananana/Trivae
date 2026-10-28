@@ -1,73 +1,73 @@
 {
-  "suite_id": "capability-formal",
+  "suite_id": "eval",
   "version": 1,
   "kind": "core",
-  "description": "Frozen 16-case end-to-end capability suite; private cases and evidence stay local.",
-  "created_at": "2026-10-28T05:03:47.995+00:00",
+  "description": "Versioned set of 16 user-selected real-world evaluation questions; private cases and evidence remain local.",
+  "created_at": "2026-10-28T07:00:36.551+00:00",
   "cases": [
     {
       "case_id": "cap1-01-reconnect",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-02-regression",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-03-task-progress",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-04-subscriptions",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-05-agent-eval",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-06-rag",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-07-mcp-skills",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-08-kimi-deepseek",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-09-memory",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-10-mobile",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-11-trellis",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-12-agent-tools",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-13-project-interview",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-14-agent-interview",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-15-open-source",
-      "version": 1
+      "version": 2
     },
     {
       "case_id": "cap1-16-workflows",
-      "version": 1
+      "version": 2
     }
   ]
 }

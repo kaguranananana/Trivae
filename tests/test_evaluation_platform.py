@@ -366,6 +366,44 @@ def test_formal_manifest_records_and_rejects_incomparable_data(tmp_path, monkeyp
     assert not result["comparable"] and "freeze_id differs" in result["reasons"]
 
 
+def test_eval_v1_manifest_keeps_fixed_conditions_and_gt_identity(tmp_path, monkeypatch):
+    from trivae.config.settings import ModelSettings
+    from trivae.evaluation import experiment_manifest as module
+    from trivae.evaluation.capability_conditions import FORMAL_RUNTIME, FORMAL_TOOLS
+
+    canonical, semantic = _make_data(tmp_path)
+    freeze_data(canonical, semantic, tmp_path / "master")
+    clone_frozen(tmp_path / "master/freeze.json", tmp_path / "work")
+    snapshot = DatasetSnapshot.from_database(tmp_path / "work" / canonical.name)
+    base = _case(snapshot)
+    case = replace(base, time_context={"as_of": "2026-10-28T12:00:00+08:00"},
+                   suite_tags=(*base.suite_tags, "gt:eval-gt-v1"),
+                   review_policy=replace(base.review_policy, rubric_version="eval-rubric-v1"))
+    suite = replace(_suite(case), suite_id="eval")
+    frozen = json.loads((tmp_path / "work/freeze.json").read_text())
+    variant = replace(_variant(), code_version="commit1", provider="deepseek", model="deepseek-flash",
+                      prompt_identity="production-default", evidence_citation_version="production-default",
+                      runtime_configuration={"trace_profile": "normal"}, available_tools=FORMAL_TOOLS,
+                      retrieval_configuration={"surface": "agent-facing"},
+                      context_expansion_configuration={"context_window_limit": None}, budget=FORMAL_RUNTIME,
+                      index_identity=json.dumps(frozen["index_state"]["semantic_index"]))
+    settings = ModelSettings(api_key="key", base_url="https://example.com", provider="deepseek",
+                             model_name="deepseek-flash", **FORMAL_RUNTIME)
+    monkeypatch.setattr(module, "_git_commit", lambda: "commit1")
+    monkeypatch.setattr(module, "load_settings", lambda: settings)
+    monkeypatch.setattr(module, "load_router_jev_settings",
+                        lambda: type("R", (), {"to_safe_dict": lambda self: {"enabled": False}})())
+    args = dict(suite=suite, cases={case.identity: case}, variant=variant,
+                database=tmp_path / "work" / canonical.name, freeze_path=tmp_path / "work/freeze.json",
+                repetitions=1, judge_version="none")
+    manifest = prepare_experiment(**args, output_dir=tmp_path / "eval-record")
+    assert manifest["suite"]["suite_id"] == "eval"
+    assert manifest["effective_model_treatment"]["tool_transport"] == "direct"
+    changed = replace(case, suite_tags=())
+    with pytest.raises(EvaluationContractError, match="case time or scoring identity differs"):
+        prepare_experiment(**{**args, "cases": {changed.identity: changed}}, output_dir=tmp_path / "invalid-record")
+
+
 def test_snapshot_same_id_with_different_manifest_is_rejected(tmp_path):
     case = _case()
     changed = replace(_snapshot(), deterministic_fingerprint="other manifest")

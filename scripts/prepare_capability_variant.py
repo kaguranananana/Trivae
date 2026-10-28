@@ -1,4 +1,4 @@
-"""Create a private model variant using the fixed capability-formal@v1 conditions."""
+"""Create a private model variant using the fixed eval@v1 conditions."""
 from __future__ import annotations
 
 import argparse

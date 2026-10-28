@@ -1,4 +1,4 @@
-"""Fixed execution conditions for capability-formal@v1."""
+"""Fixed execution conditions for eval@v1."""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -37,11 +37,11 @@ def validate_formal_conditions(variant: ControlledVariant, runtime: Mapping[str,
     """Reject drift before running this suite; model/provider are the deliberate variables."""
     mismatches = [name for name, expected in FORMAL_RUNTIME.items() if runtime.get(name) != expected]
     if mismatches:
-        raise EvaluationContractError("capability-formal runtime conditions differ: " + ", ".join(mismatches))
+        raise EvaluationContractError("eval v1 runtime conditions differ: " + ", ".join(mismatches))
     if router.get("enabled") is not False:
-        raise EvaluationContractError("capability-formal requires the Jev router to be disabled")
+        raise EvaluationContractError("eval v1 requires the Jev router to be disabled")
     if variant.available_tools != FORMAL_TOOLS:
-        raise EvaluationContractError("capability-formal tool surface differs")
+        raise EvaluationContractError("eval v1 tool surface differs")
     if (variant.prompt_identity != "production-default" or variant.evidence_citation_version != "production-default"
             or variant.runtime_configuration != {"trace_profile": "normal"}
             or variant.retrieval_configuration != {"surface": "agent-facing"}
@@ -49,4 +49,4 @@ def validate_formal_conditions(variant: ControlledVariant, runtime: Mapping[str,
             or variant.model_parameters or variant.budget != FORMAL_RUNTIME
             or variant.execution_override.forced_route is not None
             or variant.execution_override.context_window_limit is not None):
-        raise EvaluationContractError("capability-formal variant conditions differ")
+        raise EvaluationContractError("eval v1 variant conditions differ")
