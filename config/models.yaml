@@ -1,0 +1,23 @@
+models:
+  deepseek-flash:
+    provider: deepseek
+    model: deepseek-flash
+    base_url: https://api.deepseek.com
+    auth:
+      type: api_key
+      env: DEEPSEEK_API_KEY
+
+  gpt-plus:
+    provider: chatgpt-plan
+    model: gpt-6.1-sol
+    parameters:
+      reasoning_effort: medium
+    auth:
+      type: chatgpt_oauth
+
+defaults:
+  query: gpt-plus
+
+evaluation:
+  agent: deepseek-flash
+  judge: gpt-plus

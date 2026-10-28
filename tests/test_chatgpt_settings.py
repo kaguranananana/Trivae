@@ -124,12 +124,12 @@ class ChatGPTSettingsTests(unittest.TestCase):
                 self.assertEqual(readiness.provider, "chatgpt-plan")
                 self.assertEqual(readiness.to_dict()["protocol"], "responses")
 
-    def test_independent_chat_completions_tools_reject_subscription_provider(self) -> None:
+    def test_independent_judge_uses_subscription_profile_while_retrieval_annotator_stays_api_only(self) -> None:
         settings = load_settings(_settings_env())
-        for tool in (LLMClaimJudge, LLMRetrievalAnnotator):
-            with self.subTest(tool=tool.__name__):
-                with self.assertRaisesRegex(EvaluationContractError, "does not support chatgpt-plan"):
-                    tool(settings)
+        judge = LLMClaimJudge(settings)
+        self.assertEqual(judge.identity, f"chatgpt-plan:{settings.model_name}:benchmark-judge-v1")
+        with self.assertRaisesRegex(EvaluationContractError, "does not support chatgpt-plan"):
+            LLMRetrievalAnnotator(settings)
 
     def test_readiness_exposes_unreadable_credentials(self) -> None:
         # 本机存储失败应成为明确 readiness 原因，不把无效会话误报为 ready。

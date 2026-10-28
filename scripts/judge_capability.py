@@ -6,24 +6,20 @@ import asyncio
 import json
 from pathlib import Path
 
-from openai import AsyncOpenAI
-
 from scripts.verify_capability_bundle import verify
 from trivae.config.dotenv import load_environment_file
-from trivae.config.model_capabilities import resolve_reasoning_effort
 from trivae.config.settings import load_settings
 from trivae.evaluation.capability_judge import JUDGE_PROMPT, RUBRIC_VERSION, parse_review, prepare_review_input
 from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationContractError
 from trivae.evaluation.store import SQLiteEvaluationStore
+from trivae.query.runtime.model_completion import complete_json, completion_record
 
 
 async def main_async(args: argparse.Namespace) -> None:
     # Verify references independently before exposing the saved answer to the judge.
     verify(args.bundle_dir, args.suite, args.freeze_manifest, args.database)
     load_environment_file(args.env_file)
-    settings = load_settings()
-    if settings.provider == "chatgpt-plan":
-        raise EvaluationContractError("offline judge requires an explicit OpenAI-compatible API provider")
+    settings = load_settings(model_id=args.judge_model, role="judge", config_path=args.models_config)
     if not args.evaluation_database.is_file():
         raise EvaluationContractError("evaluation database does not exist")
     store = SQLiteEvaluationStore(args.evaluation_database)
@@ -38,38 +34,48 @@ async def main_async(args: argparse.Namespace) -> None:
                                        database=args.database)
         args.record_dir.mkdir(parents=True, exist_ok=False)
         (args.record_dir / "input.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-        reasoning_effort = resolve_reasoning_effort(provider=settings.provider, model_name=settings.model_name)
-        configuration = {"rubric_version": RUBRIC_VERSION, "provider": settings.provider, "model": settings.model_name,
-                         "temperature": 0, "max_output_tokens": settings.max_output_tokens,
-                         "base_url": settings.base_url, "reasoning_effort": reasoning_effort}
+        configuration = {
+            "rubric_version": RUBRIC_VERSION,
+            "model_profile": settings.model_profile,
+            "provider": settings.provider,
+            "model": settings.model_name,
+            "auth_mode": settings.auth_mode or ("chatgpt_oauth" if settings.provider == "chatgpt-plan" else "api_key"),
+            "configuration": settings.to_safe_dict(),
+            "models_config": str(args.models_config or Path("config/models.yaml")),
+        }
         (args.record_dir / "configuration.json").write_text(json.dumps(configuration, ensure_ascii=False, indent=2) + "\n")
         try:
-            headers = ({"x-opencode-session": run.run_id, "User-Agent": "trivae/0.1.0"}
-                       if settings.provider == "opencode-go" else None)
-            async with AsyncOpenAI(api_key=settings.api_key, base_url=settings.base_url, default_headers=headers) as client:
-                response = await client.chat.completions.create(
-                    model=settings.model_name,
-                    messages=[{"role": "system", "content": JUDGE_PROMPT},
-                              {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
-                    response_format={"type": "json_object"}, temperature=0, max_tokens=settings.max_output_tokens,
-                    reasoning_effort=reasoning_effort,
-                )
-            if not response.choices or not response.choices[0].message.content:
-                raise EvaluationContractError("capability judge returned no content")
-            content = response.choices[0].message.content
-            observed = {"model": response.model, "finish_reason": response.choices[0].finish_reason,
-                        "usage": None if response.usage is None else response.usage.model_dump(), "content": content}
-            (args.record_dir / "response.json").write_text(json.dumps(observed, ensure_ascii=False, indent=2) + "\n")
-            if response.choices[0].finish_reason != "stop":
+            completion = await complete_json(
+                settings,
+                system_prompt=JUDGE_PROMPT,
+                user_prompt=json.dumps(payload, ensure_ascii=False),
+                session_id=run.run_id,
+            )
+            (args.record_dir / "response.json").write_text(
+                json.dumps(completion_record(completion), ensure_ascii=False, indent=2) + "\n"
+            )
+            if completion.finish_reason not in {"stop", "completed"}:
                 raise EvaluationContractError("capability judge response did not finish normally")
-            review = parse_review(content, run_id=run.run_id, judge_identity=f"{settings.provider}:{response.model}")
+            review = parse_review(
+                completion.content,
+                run_id=run.run_id,
+                judge_identity=f"{settings.provider}:{completion.model}:{RUBRIC_VERSION}",
+            )
             store.save_review(review)
             (args.record_dir / "review.json").write_text(json.dumps(review.to_dict(), ensure_ascii=False, indent=2) + "\n")
-            print(json.dumps({"review_id": review.review_id, "run_id": run.run_id, "judge": response.model,
+            print(json.dumps({"review_id": review.review_id, "run_id": run.run_id, "judge": completion.model,
                               "reviewer_type": review.reviewer_type}, ensure_ascii=False))
         except Exception as exc:
-            (args.record_dir / "error.json").write_text(json.dumps({"type": type(exc).__name__, "message": str(exc)},
-                                                                     ensure_ascii=False, indent=2) + "\n")
+            message = str(exc)
+            if settings.api_key:
+                message = message.replace(settings.api_key, "[REDACTED]")
+            safe_observation = getattr(exc, "observation", None)
+            if not isinstance(safe_observation, dict):
+                safe_observation = getattr(exc, "safe_observation", None)
+            error: dict[str, object] = {"type": type(exc).__name__, "message": message}
+            if isinstance(safe_observation, dict):
+                error["observation"] = safe_observation
+            (args.record_dir / "error.json").write_text(json.dumps(error, ensure_ascii=False, indent=2) + "\n")
             raise
     finally:
         store.close()
@@ -84,6 +90,8 @@ def main() -> None:
     parser.add_argument("--evaluation-database", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--record-dir", type=Path, required=True)
+    parser.add_argument("--judge-model", help="Named model profile; defaults to evaluation.judge")
+    parser.add_argument("--models-config", type=Path, help="Model registry YAML; defaults to config/models.yaml")
     parser.add_argument("--env-file", type=Path)
     asyncio.run(main_async(parser.parse_args()))
 

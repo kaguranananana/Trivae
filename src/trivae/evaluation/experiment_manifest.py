@@ -10,7 +10,7 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-from trivae.config.settings import load_router_jev_settings, load_settings
+from trivae.config.settings import ModelSettings, load_router_jev_settings, load_settings
 
 from .benchmark.environment import _git_commit
 from .contracts import (
@@ -28,7 +28,8 @@ from .variant import ControlledVariant
 
 def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, EvaluationCaseBundle], variant: ControlledVariant,
                        database: Path, freeze_path: Path, output_dir: Path, repetitions: int,
-                       judge_version: str, selected_cases: Sequence[str] | None = None) -> dict[str, Any]:
+                       judge_version: str, selected_cases: Sequence[str] | None = None,
+                       model_settings: ModelSettings | None = None) -> dict[str, Any]:
     try:
         selection = select_suite_references(suite, selected_cases)
         frozen = json.loads(freeze_path.read_text(encoding="utf-8"))
@@ -57,7 +58,7 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
             if (case.dataset_snapshot.snapshot_id != snapshot.snapshot_id or
                     case.dataset_snapshot.deterministic_fingerprint != snapshot.deterministic_fingerprint):
                 raise EvaluationContractError("case snapshot differs from frozen data; create a new case version")
-        settings = load_settings()
+        settings = model_settings or load_settings()
         if (settings.provider, settings.model_name) != (variant.provider, variant.model):
             raise EvaluationContractError("declared variant provider/model differs from actual runtime settings")
         router_settings = load_router_jev_settings().to_safe_dict()

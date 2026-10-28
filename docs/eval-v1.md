@@ -78,9 +78,18 @@ queries. The seven permitted retrieval/context/schema tools are fixed in
 the same module. There is no filesystem, GT, Judge, or evaluation-result tool available
 to the Agent; the private bundle is separate from the Canonical working database.
 
-The following environment values affect only these commands. Configure the intended
-provider and model using the existing Trivae settings before each variant. The helper
-rejects mismatched budgets and writes a new private Variant rather than overwriting one.
+Model identities, providers, endpoints, authentication references, and supported model
+parameters live in `config/models.yaml`. `.env` contains API keys and local runtime
+overrides only. Ordinary queries default to `defaults.query`; `TRIVAE_MODEL_ID` can
+select another configured profile. Existing `TRIVAE_MODEL_PROVIDER` and
+`TRIVAE_MODEL_*` overrides remain available for older commands. Eval defaults to
+`evaluation.agent` and `evaluation.judge`; `--agent-model` and `--judge-model` select
+any profile whose provider call is implemented. The DeepSeek profile reads
+`DEEPSEEK_API_KEY`; ChatGPT Plan uses the existing local OAuth Auth Store and official
+Responses endpoint. Model profiles never contain key or OAuth token values.
+
+The helper rejects mismatched budgets and writes a new private Variant rather than
+overwriting one.
 
 ```bash
 export TRIVAE_MAX_TURNS=8 TRIVAE_MAX_TOOL_ROUNDS=6
@@ -93,13 +102,15 @@ export TRIVAE_RUN_TOOL_EVIDENCE_BUDGET=32000 TRIVIAE_ROUTER_JEV_ENABLED=false
 .venv/bin/trivae eval clone-data --manifest data/evaluation/frozen-20261028-validated/freeze.json \
   --output-dir data/evaluation/eval-v1-my-model-work
 
-PYTHONPATH=src .venv/bin/python -m scripts.prepare_capability_variant \
+.venv/bin/python -m scripts.prepare_capability_variant \
   --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
+  --agent-model deepseek-flash \
   --variant-id my-model-v1 --output data/evaluation/eval-v1-20261028/my-model.json
 
 .venv/bin/trivae eval run --suite evaluation/suites/eval-v1.json \
   --cases-dir data/evaluation/eval-v1-20261028/cases \
   --case-list data/evaluation/eval-v1-20261028/one-case.json \
+  --agent-model deepseek-flash \
   --variant data/evaluation/eval-v1-20261028/my-model.json \
   --database data/evaluation/eval-v1-my-model-work/trivae.sqlite3 \
   --evaluation-database data/evaluation/eval-v1-my-model.sqlite3 \
@@ -118,16 +129,18 @@ that no Judge ran during execution; it is not an automatic quality score.
 
 ## Offline scoring and comparison
 
-After a completed run, an explicit offline Judge can reread the complete saved answer,
-resolve its actual message citations from the frozen database, and compare them with
+After a completed run, an explicit offline Judge rereads the complete saved answer,
+resolves its actual message citations from the frozen database, and compares them with
 the open-ended references. This includes valid sources absent from the reference pack.
 The Judge receives private questions, reference messages and answer content at the
-configured API provider. It stores its input, provider/model, response, usage and
-provisional Review locally; errors remain explicit. The current adapter supports an
-OpenAI-compatible API provider, not `chatgpt-plan`; a separate Judge model/configuration
-must be chosen and held fixed across all experiments. Structured SQL results are not
-re-executed by this review and should remain `unknown` when they cannot be established
-from the supplied evidence.
+configured provider. It uses a single no-tools completion and does not run Agent
+retrieval. API-key profiles use the existing compatible completion path; ChatGPT Plan
+uses the existing OAuth Auth Store and official Responses/SSE transport with storage
+disabled. No API billing fallback is available. It stores its input, selected profile,
+request settings, response, available usage and provisional Review locally; provider
+and authorization errors remain explicit. Structured SQL results are not re-executed
+by this review and should remain `unknown` when they cannot be established from the
+supplied evidence.
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m scripts.judge_capability \
@@ -136,7 +149,7 @@ PYTHONPATH=src .venv/bin/python -m scripts.judge_capability \
   --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
   --database data/evaluation/eval-v1-my-model-work/trivae.sqlite3 \
   --evaluation-database data/evaluation/eval-v1-my-model.sqlite3 \
-  --run-id 'the completed Run ID' \
+  --run-id 'the completed Run ID' --judge-model gpt-plus \
   --record-dir data/evaluation/eval-v1-my-model-reviews/review-01
 
 PYTHONPATH=src .venv/bin/python scripts/audit_capability.py report \

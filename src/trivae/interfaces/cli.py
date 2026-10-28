@@ -191,6 +191,8 @@ def build_parser() -> argparse.ArgumentParser:
     eval_run_parser = evaluation_subparsers.add_parser("run", help="Execute a versioned Suite")
     eval_run_parser.add_argument("--suite", type=Path, required=True, help="Evaluation Suite JSON")
     eval_run_parser.add_argument("--variant", type=Path, required=True, help="Controlled Variant JSON")
+    eval_run_parser.add_argument("--agent-model", help="Named model profile; defaults to evaluation.agent")
+    eval_run_parser.add_argument("--models-config", type=Path, help="Model registry YAML; defaults to config/models.yaml")
     eval_run_parser.add_argument(
         "--cases-dir",
         type=Path,
@@ -623,6 +625,18 @@ def _write_json_projection(payload: object, output_path: Path | None) -> None:
     except OSError as exc:
         raise EvaluationContractError(f"JSON output cannot be written: {output_path}") from exc
     print(output_path.resolve())
+
+
+def _write_create_only_json(path: Path, payload: object) -> None:
+    """Save a complete local evaluation projection without replacing earlier evidence."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("x", encoding="utf-8") as stream:
+            json.dump(payload, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+    except FileExistsError as exc:
+        raise EvaluationContractError(f"evaluation artifact already exists: {path.name}") from exc
 
 
 def _run_retrieval_packet_command(args: argparse.Namespace) -> int:
@@ -1273,6 +1287,11 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
             return _run_benchmark_command(args)
 
         if args.evaluation_command == "run":
+            agent_settings = load_settings(
+                model_id=args.agent_model,
+                role="agent",
+                config_path=args.models_config,
+            )
             suite = EvaluationSuite.from_json(args.suite)
             variant = _load_variant(args.variant)
             cases = _load_cases(args.cases_dir)
@@ -1294,28 +1313,39 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                     suite=suite, cases=cases, variant=variant, database=args.database,
                     freeze_path=args.freeze_manifest, output_dir=args.record_dir,
                     repetitions=args.repeat, judge_version=args.judge_version, selected_cases=selected_cases,
+                    model_settings=agent_settings,
                 )
 
-            async def evaluate_suite() -> tuple[EvaluationRun, ...]:
-                """在同一 event loop 内运行 Evaluation 并关闭主模型与 Jev client。"""
+            async def evaluate_suite() -> tuple[tuple[EvaluationRun, ...], list[dict[str, object]]]:
+                """Run the Suite and copy complete Run/Trace projections into the private record."""
 
-                async with create_application(
-                    args.database,
-                    evaluation_database_path=args.evaluation_database,
-                ) as application:
-                    if selected_cases is not None:
-                        return await application.evaluate_suite(
-                            suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
-                        )
-                    return await application.evaluate_suite(
-                        suite,
-                        cases,
-                        variant,
-                        repetitions=args.repeat,
-                    )
+                from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+
+                runtime = OpenAIAgentsRuntimeAdapter(settings=agent_settings)
+                try:
+                    async with create_application(
+                        args.database,
+                        agent_runtime=runtime,
+                        evaluation_database_path=args.evaluation_database,
+                    ) as application:
+                        if selected_cases is not None:
+                            runs = await application.evaluate_suite(
+                                suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
+                            )
+                        else:
+                            runs = await application.evaluate_suite(suite, cases, variant, repetitions=args.repeat)
+                        traces: list[dict[str, object]] = []
+                        if args.record_dir is not None:
+                            for run in runs:
+                                if run.trace_id is None:
+                                    raise EvaluationContractError("formal run has no persisted Trace identity")
+                                traces.append(asdict(application.read_trace(run.trace_id)))
+                        return runs, traces
+                finally:
+                    await runtime.aclose()
 
             try:
-                runs = asyncio.run(evaluate_suite())
+                runs, traces = asyncio.run(evaluate_suite())
             except Exception as exc:
                 if manifest is not None:
                     from trivae.evaluation.experiment_manifest import finish_experiment
@@ -1331,6 +1361,13 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 raise
             if manifest is not None:
                 from trivae.evaluation.experiment_manifest import finish_experiment
+                # The independent Evaluation DB and working Canonical DB remain authoritative;
+                # these bounded JSON projections make each Run and full Trace portable with the record.
+                _write_create_only_json(args.record_dir / "runs.json", [run.to_dict() for run in runs])
+                trace_directory = args.record_dir / "traces"
+                trace_directory.mkdir()
+                for index, trace in enumerate(traces, start=1):
+                    _write_create_only_json(trace_directory / f"trace-{index:02d}.json", trace)
                 finish_experiment(args.record_dir, manifest, runs)
             print(
                 json.dumps(

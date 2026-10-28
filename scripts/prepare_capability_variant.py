@@ -18,10 +18,12 @@ def main() -> None:
     parser.add_argument("--freeze-manifest", type=Path, required=True)
     parser.add_argument("--variant-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--agent-model", help="Named model profile; defaults to evaluation.agent")
+    parser.add_argument("--models-config", type=Path, help="Model registry YAML; defaults to config/models.yaml")
     parser.add_argument("--env-file", type=Path)
     args = parser.parse_args()
     load_environment_file(args.env_file)
-    settings = load_settings()
+    settings = load_settings(model_id=args.agent_model, role="agent", config_path=args.models_config)
     freeze = json.loads(args.freeze_manifest.read_text(encoding="utf-8"))
     index = freeze["index_state"].get("semantic_index")
     if index is None:

@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from trivae.config.dotenv import DotenvError, load_environment_file
-from trivae.config.settings import SettingsError, load_settings
+from trivae.config.settings import load_settings
 
 
 @contextmanager
@@ -122,7 +122,7 @@ class DotenvTests(unittest.TestCase):
                         load_environment_file(env_file, environ={})
 
     def test_load_settings_does_not_read_default_dotenv_implicitly(self) -> None:
-        """库层 settings 仍只读取传入 mapping，不因工作目录存在 `.env` 而产生副作用。"""
+        """默认模型目录不等于隐式加载工作目录里的 `.env`。"""
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -130,12 +130,10 @@ class DotenvTests(unittest.TestCase):
                 "TRIVAE_MODEL_API_KEY=from-file\nTRIVAE_MODEL_NAME=from-file\n",
                 encoding="utf-8",
             )
-            with (
-                _working_directory(root),
-                patch.dict(os.environ, {}, clear=True),
-                self.assertRaisesRegex(SettingsError, "TRIVAE_MODEL_API_KEY"),
-            ):
-                load_settings()
+            with _working_directory(root), patch.dict(os.environ, {}, clear=True):
+                settings = load_settings()
+                self.assertEqual(settings.model_profile, "gpt-plus")
+                self.assertEqual(settings.model_name, "gpt-6.1-sol")
 
 
 if __name__ == "__main__":

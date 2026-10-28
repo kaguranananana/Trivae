@@ -15,11 +15,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Mapping, Sequence
 
-from openai import AsyncOpenAI, OpenAIError
-
-from trivae.config.model_capabilities import resolve_reasoning_effort
 from trivae.config.settings import ModelSettings
 from trivae.evaluation.contracts import EvaluationContractError, _mapping, utc_now
+from trivae.query.runtime.chatgpt_responses import ChatGPTResponsesError
+from trivae.query.runtime.model_completion import ModelCompletionError, complete_json
 
 JUDGE_RUBRIC_VERSION = "benchmark-judge-v1"
 VERIFICATION_STATUS = "llm_assisted_provisional"
@@ -158,17 +157,11 @@ class AnswerJudgment:
 
 
 class LLMClaimJudge:
-    """OpenAI-compatible 单次调用完成 claim 切分与 citation 蕴含判定。"""
+    """A single configured-provider completion splits claims and evaluates citations."""
 
     def __init__(self, settings: ModelSettings) -> None:
         if not isinstance(settings, ModelSettings):
             raise EvaluationContractError("LLMClaimJudge requires ModelSettings")
-        # Judge 拥有独立 Chat Completions 请求，不能复用订阅授权或自动切换计费。
-        if settings.provider == "chatgpt-plan":
-            raise EvaluationContractError(
-                "LLMClaimJudge does not support chatgpt-plan; "
-                "use an explicit DeepSeek or OpenCode Go API key configuration for judging"
-            )
         self._settings = settings
 
     @property
@@ -214,46 +207,27 @@ class LLMClaimJudge:
         )
 
     async def _complete(self, payload: Mapping[str, object], *, session_id: str) -> str:
-        # OpenCode Go 按稳定会话标识路由；同一 Run 的 Judge 请求始终使用同一身份。
-        headers = (
-            {"x-opencode-session": session_id, "User-Agent": "trivae/0.1.0"}
-            if self._settings.provider == "opencode-go"
-            else None
-        )
-        # Judge 与 Runtime 共用精确 provider/model registry，不凭字符串猜测档位。
-        reasoning_effort = resolve_reasoning_effort(
-            provider=self._settings.provider,
-            model_name=self._settings.model_name,
-        )
-        async with AsyncOpenAI(
-            api_key=self._settings.api_key,
-            base_url=self._settings.base_url,
-            default_headers=headers,
-        ) as client:
-            try:
-                response = await client.chat.completions.create(
-                    model=self._settings.model_name,
-                    messages=[
-                        {"role": "system", "content": _CLAIM_SYSTEM_PROMPT},
-                        {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-                    ],
-                    response_format={"type": "json_object"},
-                    temperature=0,
-                    # Judge 产出完整 JSON，不受 Router/Planner 的短 completion budget 截断。
-                    max_tokens=self._settings.max_output_tokens,
-                    reasoning_effort=reasoning_effort,
-                )
-            except OpenAIError as exc:
-                raise EvaluationContractError(f"benchmark judge provider failed: {type(exc).__name__}: {exc}") from exc
-        if not response.choices:
-            raise EvaluationContractError("benchmark judge response has no choices")
-        content = response.choices[0].message.content
-        if not isinstance(content, str) or not content.strip():
-            # 空正文仍是失败；记录公开终止原因，区分预算截断与正常停止的空输出。
-            raise EvaluationContractError(
-                f"benchmark judge response has no JSON content; finish_reason={response.choices[0].finish_reason}"
+        try:
+            completion = await complete_json(
+                self._settings,
+                system_prompt=_CLAIM_SYSTEM_PROMPT,
+                user_prompt=json.dumps(payload, ensure_ascii=False),
+                session_id=session_id,
             )
-        return content
+        except (ModelCompletionError, ChatGPTResponsesError) as exc:
+            root_message = str(exc)
+            if isinstance(exc, ModelCompletionError):
+                provider_message = exc.observation.get("error_message")
+                if isinstance(provider_message, str) and provider_message:
+                    root_message = provider_message
+            raise EvaluationContractError(
+                f"benchmark judge provider failed: {type(exc).__name__}: {root_message}"
+            ) from exc
+        if completion.finish_reason not in {"stop", "completed"}:
+            raise EvaluationContractError(
+                f"benchmark judge response did not finish normally: {completion.finish_reason}"
+            )
+        return completion.content
 
 
 def _parse_judge_output(

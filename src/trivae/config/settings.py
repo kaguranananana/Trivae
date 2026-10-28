@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Mapping, cast
 from urllib.parse import urlsplit
 
@@ -54,6 +55,9 @@ class ModelSettings:
     run_tool_evidence_cap: int = DEFAULT_RUN_TOOL_EVIDENCE_CAP
     run_tool_evidence_budget: int | None = None
     chatgpt_reasoning_effort: str | None = None
+    model_profile: str | None = None
+    auth_mode: str | None = None
+    api_key_env: str | None = None
 
     def __post_init__(self) -> None:
         """ChatGPT 订阅模式固定公开端点，直接构造也不能混入 API key。"""
@@ -90,7 +94,8 @@ class ModelSettings:
             f"per_call_tool_result_cap={self.per_call_tool_result_cap!r}, "
             f"run_tool_evidence_percent={self.run_tool_evidence_percent!r}, "
             f"run_tool_evidence_cap={self.run_tool_evidence_cap!r}, "
-            f"run_tool_evidence_budget={self.run_tool_evidence_budget!r})"
+            f"run_tool_evidence_budget={self.run_tool_evidence_budget!r}, "
+            f"model_profile={self.model_profile!r}, auth_mode={self.auth_mode!r})"
         )
 
     def to_safe_dict(self) -> dict[str, object]:
@@ -121,6 +126,11 @@ class ModelSettings:
                 server_max_tokens_allowed=False,
                 reasoning_effort=self.chatgpt_reasoning_effort,
             )
+        if self.model_profile is not None:
+            result["model_profile"] = self.model_profile
+            result["auth_mode"] = self.auth_mode
+            if self.api_key_env is not None:
+                result["api_key_env"] = self.api_key_env
         return result
 
 
@@ -199,12 +209,86 @@ def load_router_jev_settings(environ: Mapping[str, str] | None = None) -> Router
     )
 
 
-def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
-    """在调用时读取并校验配置，不在模块导入时创建客户端。"""
+def load_settings(
+    environ: Mapping[str, str] | None = None,
+    *,
+    model_id: str | None = None,
+    role: str = "query",
+    config_path: Path | None = None,
+) -> ModelSettings:
+    """Load a named model profile, retaining the previous environment contract."""
 
     values = os.environ if environ is None else environ
 
-    # 没有显式 provider 时保留旧版 DeepSeek 默认，避免旧 smoke/evaluation 无法启动。
+    # Existing explicit TRIVAE_MODEL_* settings continue to win for old scripts and shells.
+    # A caller that passes a mapping also keeps the strict legacy parser used by library clients.
+    if model_id is None and ("TRIVAE_MODEL_PROVIDER" in values or "TRIVAE_MODEL_NAME" in values):
+        return _load_environment_settings(values)
+    if model_id is None and environ is not None:
+        return _load_environment_settings(values)
+
+    from trivae.config.models import DEFAULT_MODELS_PATH, ModelConfigurationError, load_model_catalog
+
+    configured_path = config_path
+    if configured_path is None:
+        configured_path = Path(values["TRIVAE_MODELS_CONFIG"]) if "TRIVAE_MODELS_CONFIG" in values else DEFAULT_MODELS_PATH
+    try:
+        catalog = load_model_catalog(configured_path)
+        selected_id = model_id
+        if selected_id is None and role == "query":
+            selected_id = values.get("TRIVAE_MODEL_ID")
+        profile = catalog.select(role, selected_id)
+    except ModelConfigurationError as exc:
+        raise SettingsError(str(exc)) from exc
+
+    configured_values = dict(values)
+    configured_values.update(
+        TRIVAE_MODEL_PROVIDER=profile.provider,
+        TRIVAE_MODEL_NAME=profile.model,
+        TRIVAE_MODEL_BASE_URL=profile.base_url,
+    )
+    if profile.auth_type == "api_key":
+        auth_env = profile.auth_env
+        if auth_env is None:
+            raise SettingsError(f"model profile {profile.profile_id} has no API key environment variable")
+        if auth_env not in values:
+            raise SettingsError(f"model profile {profile.profile_id} requires environment variable {auth_env}")
+        api_key = values[auth_env].strip()
+        if not api_key:
+            raise SettingsError(f"environment variable {auth_env} must not be empty")
+        configured_values["TRIVAE_MODEL_API_KEY"] = api_key
+    else:
+        # A pre-existing DeepSeek key may remain in the environment while the selected model uses OAuth.
+        configured_values.pop("TRIVAE_MODEL_API_KEY", None)
+
+    # Environment values override profile parameters; otherwise the profile fills the existing settings fields.
+    parameter_env = {
+        "max_output_tokens": "TRIVAE_MAX_OUTPUT_TOKENS",
+        "completion_max_tokens": "TRIVAE_COMPLETION_MAX_TOKENS",
+        "model_context_window_tokens": "TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS",
+    }
+    for name, env_name in parameter_env.items():
+        value = getattr(profile, name)
+        if env_name not in values and value is not None:
+            configured_values[env_name] = str(value)
+    if profile.provider != "chatgpt-plan":
+        configured_values.pop("TRIVAE_CHATGPT_REASONING_EFFORT", None)
+    elif profile.reasoning_effort is not None and "TRIVAE_CHATGPT_REASONING_EFFORT" not in values:
+        configured_values["TRIVAE_CHATGPT_REASONING_EFFORT"] = profile.reasoning_effort
+
+    settings = _load_environment_settings(configured_values)
+    return replace(
+        settings,
+        model_profile=profile.profile_id,
+        auth_mode=profile.auth_type,
+        api_key_env=profile.auth_env,
+    )
+
+
+def _load_environment_settings(values: Mapping[str, str]) -> ModelSettings:
+    """Parse the established TRIVAE_MODEL_* settings and local execution budgets."""
+
+    # Keep the original environment contract for older commands and integrations.
     provider = values.get("TRIVAE_MODEL_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
     if provider not in _SUPPORTED_PROVIDERS:
         raise SettingsError(f"unsupported model provider: {provider or '<empty>'}")
@@ -280,7 +364,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> ModelSettings:
         run_tool_evidence_percent=run_tool_evidence_percent,
         run_tool_evidence_cap=run_tool_evidence_cap,
         run_tool_evidence_budget=run_tool_evidence_budget,
-        # 未配置时保留 Provider 历史默认；实验必须显式指定 high。
+        # Preserve the existing provider default when the environment controls identity.
         chatgpt_reasoning_effort=values.get("TRIVAE_CHATGPT_REASONING_EFFORT"),
     )
 

@@ -2,12 +2,12 @@
 
 import asyncio
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from openai import OpenAIError
 
 from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope, ToolError
 from trivae.config.settings import ModelSettings
@@ -82,16 +82,20 @@ def test_corrupt_results_are_not_overwritten(tmp_path, settings):
 
 
 def test_judge_provider_wrapper_keeps_root_message(settings):
-    """包装 OpenAI 错误时保留原文和异常链。"""
-    client = AsyncMock()
-    client.chat.completions.create.side_effect = OpenAIError("upstream service unavailable")
-    context = MagicMock()
-    context.__aenter__ = AsyncMock(return_value=client)
-    context.__aexit__ = AsyncMock(return_value=False)
-    with patch("trivae.evaluation.benchmark.judge.AsyncOpenAI", return_value=context):
+    """A sanitized common completion error remains the explicit failure cause."""
+    from trivae.query.runtime.model_completion import ModelCompletionError
+
+    with patch(
+        "trivae.evaluation.benchmark.judge.complete_json",
+        new_callable=AsyncMock,
+        side_effect=ModelCompletionError(
+            "deepseek Judge request failed: APIConnectionError",
+            {"error_type": "APIConnectionError", "error_message": "upstream service unavailable"},
+        ),
+    ):
         with pytest.raises(EvaluationContractError, match="upstream service unavailable") as error:
             asyncio.run(LLMClaimJudge(settings)._complete({}, session_id="r1"))
-    assert isinstance(error.value.__cause__, OpenAIError)
+    assert isinstance(error.value.__cause__, ModelCompletionError)
 
 
 def test_failed_item_does_not_enter_quality_denominator(tmp_path, settings):
@@ -127,29 +131,24 @@ def test_judge_cli_returns_nonzero_for_partial_batch(tmp_path, settings):
         assert cli._run_benchmark_command(args) == 1
 
 
-@pytest.mark.parametrize("provider,expected", [
-    ("opencode-go", {"x-opencode-session": "run:stable", "User-Agent": "trivae/0.1.0"}),
-    ("deepseek", None),
-])
-def test_judge_uses_provider_session_contract(settings, provider, expected):
-    """同一被评测 Run 的请求使用稳定会话头，其他 provider 不附加 Go 协议。"""
-    from dataclasses import replace
+@pytest.mark.parametrize("provider", ["opencode-go", "deepseek"])
+def test_judge_passes_stable_run_identity_to_provider_completion(settings, provider):
+    """同一被测 Run 的 provider completion 使用稳定会话标识。"""
+    from trivae.query.runtime.model_completion import ModelCompletion
 
-    client = AsyncMock()
-    client.chat.completions.create.return_value = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content='{}'))],
-    )
-    context = MagicMock()
-    context.__aenter__ = AsyncMock(return_value=client)
-    context.__aexit__ = AsyncMock(return_value=False)
-    with patch("trivae.evaluation.benchmark.judge.AsyncOpenAI", return_value=context) as constructor:
+    with patch(
+        "trivae.evaluation.benchmark.judge.complete_json",
+        new_callable=AsyncMock,
+        return_value=ModelCompletion(
+            content="{}", provider=provider, model="deepseek-v4-flash" if provider == "opencode-go" else "deepseek-flash",
+            request={}, finish_reason="stop", usage=None, latency_ms=1.0,
+        ),
+    ) as complete:
         model_name = "deepseek-v4-flash" if provider == "opencode-go" else "deepseek-flash"
         judge = LLMClaimJudge(replace(settings, provider=provider, model_name=model_name))
-        assert asyncio.run(judge._complete({}, session_id="run:stable")) == '{}'
-    assert constructor.call_args.kwargs['default_headers'] == expected
-    create_kwargs = client.chat.completions.create.call_args.kwargs
-    assert create_kwargs["reasoning_effort"] == "low"
-    assert create_kwargs["max_tokens"] == settings.max_output_tokens
+        assert asyncio.run(judge._complete({}, session_id="run:stable")) == "{}"
+    assert complete.call_args.kwargs["session_id"] == "run:stable"
+    assert complete.call_args.kwargs["system_prompt"]
 
 
 def test_existing_judge_entrypoint_preserves_canonical_time_in_evidence(tmp_path, settings):

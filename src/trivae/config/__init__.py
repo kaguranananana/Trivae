@@ -30,6 +30,7 @@ from trivae.config.model_capabilities import (
     resolve_context_window,
     resolve_reasoning_effort,
 )
+from trivae.config.models import ModelCatalog, ModelConfigurationError, ModelProfile, load_model_catalog
 from trivae.config.settings import (
     DEFAULT_DEEPSEEK_BASE_URL,
     DeepSeekSettings,
@@ -63,6 +64,9 @@ __all__ = [
     "DEFAULT_MODEL_CAPABILITY_REGISTRY",
     "ModelCapabilityError",
     "ModelCapabilityRegistry",
+    "ModelCatalog",
+    "ModelConfigurationError",
+    "ModelProfile",
     "ReasoningEffort",
     "VerifiedModelMetadata",
     "resolve_context_window",
@@ -73,5 +77,6 @@ __all__ = [
     "RouterJevSettings",
     "SettingsError",
     "load_router_jev_settings",
+    "load_model_catalog",
     "load_settings",
 ]
