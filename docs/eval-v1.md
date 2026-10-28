@@ -195,8 +195,8 @@ LangSmith remains an optional explicit metadata-only export, using the existing
 
 ## 补跑结果（2026-10-28）
 
-首轮 Agent 全套在第 14 题终态错误后保存 14 个 Run，随后在独立冻结数据副本上补跑此前未启动的第 15、16 题；两条均成功，且各自的完整 Trace、配置、运行耗时和用量已保存。现有 16 个 Eval v1 Case 均有唯一 Run/Trace，成功 14/16（87.5%，分母16）；失败为第 3 题 `AnswerDeltaParseError` 与第 14 题 `APIStatusError`（未记录状态码）。补跑两条最终答案引用校验有效，但每条都记录一次 `TOOL_RESULT_BUDGET_EXHAUSTED` 工具错误，分别发生在 `get_message_context` 与 `lexical_search`。
+首轮 Agent 全套在第 14 题终态错误后保存 14 个 Run，随后在独立冻结数据副本上补跑此前未启动的第 15、16 题；两条均成功，且各自的完整 Trace、配置、运行耗时和用量已保存。现有 16 个 Eval v1 Case 均有唯一 Run/Trace，Agent 成功 14/16（87.5%，分母16）；失败为第 3 题 `AnswerDeltaParseError` 与第 14 题 `APIStatusError`（未记录状态码）。补跑两条最终答案引用校验有效，但每条都记录一次 `TOOL_RESULT_BUDGET_EXHAUSTED` 工具错误，分别发生在 `get_message_context` 与 `lexical_search`。
 
-对 14 个成功 Run，有 11 个完成 GPT OAuth Judge Review（11/14，78.6%）。此前第 12 题 Judge 重试成功；下一条第 13 题请求遇 `ConnectError` / `PROVIDER_ERROR`，没有 HTTP 状态码，后续 Judge 调用已停止。因此第 13、15、16 题仍未评分。11 个 Review 的五维暂定标签分布为：任务完成 pass 6 / mixed 5；事实正确 mixed 11；证据召回 pass 4 / mixed 7；引用忠实 mixed 11；无依据主张 mixed 7 / fail 4。每项分母均为 11，结果为模型辅助且未人工确认。现有 OAuth 成功完成了第 12 题评分；当前连接失败没有 HTTP 状态，不能据此判断凭证无效。没有使用付费 API。
+对 14 个成功 Run，最终均完成 GPT OAuth Judge Review（14/14，100%）。初次恢复调用中的第 12、13 题各遇到一次 `ConnectError` / `AUTH_NETWORK` 或 `PROVIDER_ERROR`，没有 HTTP 状态码；用户要求继续后，两题重试及第 15、16 题评分均成功。最终五维暂定标签分布（每项分母14）为：任务完成 pass 9 / mixed 5；事实正确 mixed 14；证据召回 pass 6 / mixed 8；引用忠实 mixed 14；无依据主张 mixed 9 / fail 5。结果为模型辅助且未人工确认。现有 OAuth 凭证已成功完成全部评分，没有使用付费 API；依据无 HTTP 状态的间歇连接错误，无法得出认证失败结论。
 
 补跑明细、全部运行记录、可用 Token 统计、Judge 响应和失败记录在 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/`；原首轮 `REPORT.md` 与 `summary.json` 保持不变。

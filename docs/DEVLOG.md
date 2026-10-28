@@ -402,3 +402,10 @@
 - DeepSeek `deepseek-flash` 两个 Run 均完成且最终答案/引用校验有效；各有一次工具返回 `TOOL_RESULT_BUDGET_EXHAUSTED`。补跑耗时分别 102.9s、104.9s，Trace 用量保存在新记录中。全套现有16 Case均有唯一 Run，14成功、2失败，成功率14/16。
 - GPT OAuth Judge 对先前连接失败的第12题重试成功并保存 Review；第13题随后遇 `ChatGPTResponsesError` / `ConnectError`，无 HTTP 状态码，停止剩余调用。全套14个成功 Run 中11个有 Review；五维分布分母11，仍有第13、15、16题未评分。未使用 API 付费回退。现有成功请求表明 OAuth 凭证至少可用，后续连接错误不能据此归因于认证。
 - 完整补跑 Run、Trace、Judge 输入/输出与错误记录，以及模型配置快照见 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/`；原首轮报告未覆盖。此次无生产代码改动；固定数据审计及真实模型链路为本轮验证。
+
+
+## 2026-10-28 · 用户要求继续 Eval v1 Judge 评分
+
+- 在首轮 Judge 的两次 `ConnectError` 后按用户要求继续：重试第 13 题成功，第 15、16 题也完成评分；连同此前恢复成功的第 12 题，最终14个成功 Agent Run 全部有Review。原始失败请求记录未覆盖。
+- 最终14个Review的五维标签分母均为14：任务完成 pass9/mixed5；事实正确 mixed14；证据召回 pass6/mixed8；引用忠实 mixed14；无依据主张 mixed9/fail5。Judge响应耗时合计 432.7s，input 791,993、output 7,489、reasoning 870、total 799,482 tokens；均为模型辅助暂定结果。
+- 现有 ChatGPT OAuth 路径在续跑中成功评分，两个连接错误均为无 HTTP 状态的 ConnectError，不能据此判断凭证失效；未使用付费 API。最终报告及记录位于 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/`。
