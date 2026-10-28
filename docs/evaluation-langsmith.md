@@ -101,12 +101,17 @@ trivae eval langsmith-sync --suite evaluation/suites/resume-benchmark-dev-v1.jso
   --evaluation-database data/evaluation/benchmark/gate3-final-development-evaluation.sqlite3 \
   --trace-database data/trivae.sqlite3 \
   --records data/evaluation/benchmark/gate3-final-development-real/raw-records.json \
-  --variant-id bench-full-system-v1 --variant-file evaluation/variants/bench-full-system-v1.json \
+  --failures data/evaluation/benchmark/gate3-final-development-real/failures/failures.json \
+  --history-report data/evaluation/benchmark/gate3-final-development-real/report.json \
+  --history-note 'Historical Development candidate; check provider and run window before comparison.' \
+  --require-complete --variant-id bench-full-system-v1 \
   --judgments data/evaluation/benchmark/gate3-review/gate3-final-development-judge-d.json \
   --import-time --experiment my-history-full-system-20261028
 ```
 
-也可用多个 `--run-id` 选择特定 Run；每个实验限同一 Variant、每题一个 Run，重复实验用不同名称。历史 benchmark 的 Runner 记录原本为 `single_case`，只有提供同 Run/Case/Variant 的 `--records` 才会关联到所选原 Suite，且导出中仍显示原始 `single_case`。历史 Variant 文件是声明配置，不冒称已独立核实。
+也可用多个 `--run-id` 选择特定 Run；每个实验限同一 Variant、每题一个 Run，重复实验用不同名称。历史 benchmark 的 Runner 记录原本为 `single_case`，只有提供同 Run/Case/Variant 的 `--records` 才会关联到所选原 Suite，且导出中仍显示原始 `single_case`。`--require-complete` 在联网前检查 Case、查询范围、Snapshot、Result、Trace 请求 ID、终止状态及事件序列；`--history-report` 记录当时报表中的环境和 Variant，不把当前 Variant 文件当成历史事实。`--failures` 保留历史失败分类、预期、实际及原因；`--judgments` 保留原 Judge 记录及其状态。若使用 `--metadata-only`，失败详情和 Judge 中的文本不上传。
+
+外部实验接口的数值 Feedback 最多接受四位小数，上传时按此精度表示；原始 `benchmark_metrics` 保留完整数值、分子、分母与适用范围，Judge 原始数值保留在 `judge_record`。模型辅助评审仍以其原始 provisional 或失败状态显示，不当作人工确认准确率。
 
 ```bash
 trivae eval langsmith-resolve --experiment my-baseline-20261028
@@ -121,8 +126,25 @@ trivae eval langsmith-review-sync --evaluation-database data/evaluation/baseline
 
 **历史时间边界。** 在当前服务上，官方外部实验接口对数周前的原始运行时间实际返回 404/500；SDK 普通 Run 接口对超过 24 小时的时间返回 422。`--import-time` 是显式导入模式：LangSmith 的时间及其显示的 latency 表示导入准备阶段，原始 `original_started_at`、`original_completed_at`、`original_duration_seconds` 保存在每条输出中，不能把平台 latency 当历史推理耗时。对能按原时间导入的新 Run 可不传此选项。外部接口对同一 Example 和完全相同的实验开始时间可能返回 409；本地账本会提前报错，原时间不被改写。可显式选择导入时间模式，不能把导入时间当执行时间。
 
+## 查看已导入的历史实验
+
+使用与本机 Key 对应的 LangSmith 账号和工作区打开：
+
+- [Development v2 数据集](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d8a827c1-3e32-4d3d-8caa-793673432ddc)：五轮各 185 条的 Development、Planner 两组各 37 条对照，以及有完整关联的针对性诊断。此前的单题验证实验也保留在这里。
+- [原始 Development v1 数据集](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/e7d69183-875b-4b8c-bb1a-e7bc16ba3e11)：五种 Variant、共 185 条原始实验。
+- [Calibration Pilot 数据集](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/ed1107de-2c72-4e1b-b8f9-ea4b395916d4)：六组、共 60 条 Pilot；它们不计入 Development 的正式分母。
+- [已暴露 Holdout 数据集](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/1ecdfaea-b28f-4aa3-9f10-d7dbacd601d7)：原封存运行和复用后的恢复验证各 90 条。原封存运行全部是 `SettingsError`，没有模型回答；恢复验证沿用已暴露题目，不是新盲测。
+- Planner 的[重复验证](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/4d9b0d01-9a04-4703-bc9b-fdb160aa5ffe)、[V2 定向题](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5d180e95-9569-4f24-a664-ce16a8588083)、[V3 Focus](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/163fb206-f267-47cd-b568-e6aadbb0ea97)、[V3 Controls](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/2bb603ef-90cb-4e7b-ad82-5ab7122b9df2)、[Smoke](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/96d88b02-4883-4504-bdb9-208f6f4bc318)和[Probe](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/75b8ac0e-a2c3-47b8-bb34-394e5bfc5ad3)各保持原有用途。
+- [Prompt 优化与回归验证](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/7b39f4ee-7990-46a0-9c71-a8443778f6e6)：44 条真实运行，原始决定为拒绝候选；首批 16 条的三个评审轴保留 `assistant_provisional`、人工待审核。另有[Prompt 消融](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5efc9819-caa2-44d8-ba43-07c1d37795d3)、[工具轮次预算对照](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/a4539c0d-a6b3-457e-a99c-9d193aee1a28)和 [CJK 检索对照](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/703c84a3-4f0b-4d6a-8b42-cba27a0a491e)。这些原本是 `single_case` 运行，平台上的 Suite 是为了展示根据原始 Case 和 Run 创建的新分组，并保留原始身份；每组按历史批次和 Variant 区分。
+
+在数据集的 Experiments 中选择多个实验比较，再展开同一个 Case 查看回答、逐项 Feedback 和输出中的 `benchmark_failure`、`local_run_id`、`trace_id` 与 `trace`。实验名前缀 `first-e34`、`baseline-7bac`、`rootcause-43d`、`postfix-f247` 和 `candidate-8805` 分别代表最初运行、历史基线、根因调查、修复后诊断和候选运行；`planner` 与 `target` 表示对应对照或定向验证。切勿把不同提供方或运行窗口的差异直接解释为改进效果。早期版本从 Git 的 `ac46dfd6` 恢复 Case/Suite；Pilot 执行早于该版本提交，Case 的查询、范围和 Snapshot 与 Run 可核对，但当时的完整参考文本不能独立确认。
+
+Planner V2 的两份原始 Suite 文件以同一个 Suite ID 和版本保存了不同 Case 列表；此数据集包含两份列表的并集，各 Experiment 的 `historical_context.source_suite_cases` 保留各自原始列表，不能把并集误当作当时任一原始 Suite。历史报告记录的是当时采集的环境信息；旧 Snapshot 并非完整数据库冻结，不能据此保证精确重放。
+
+CJK 的 `cjk-46` A 运行对应 Trace 的事件从序号 2 开始，缺少第一条事件，因此没有导入。其余未逐一核实关联的本地探索或合成记录未计入本次历史实验，不将本次数量表述为全部历史穷尽。
+
 ## 本次真实验证与剩余边界
 
-2026-10-28 使用本机 Key 创建了[历史 Development 对比 Dataset](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d8a827c1-3e32-4d3d-8caa-793673432ddc)：1 条历史 Case 的词法、词法＋语义、完整系统结果以及一条导入修复验证。最初失败 Run 的本地状态虽为 `failed`，远端因缺少 error 被显示为 `SUCCESS`；旧导入保留，新建 `trivae-history-archify-semantic-failure-mapping-fixed-20261028` 后回读为 `ERROR`，三个结构化 Trace failure 及本地 Trace ID 保留。比较原始版本时请选修复后的失败实验，不使用旧错误导入的远端状态。完整系统的历史 Judge 为 `judge_failed`，Feedback 回读确认其失败状态，没有伪造得分。另以[合成测试 Dataset](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/dd750137-9845-46b1-bc30-56c892a46310)确认不同评分、失败 Trace、追加模型辅助 Review 和重复同步幂等。合成评分只是测试数据；没有额外模型调用。浏览器自动化未能完成页面直接观察，以上为实际服务的 API 回读，不冒称已目视验收 UI。
+2026-10-28 使用本机 Key 批量导入 148 组历史实验、1,660 条 Run，覆盖上述 14 个数据集；不重复调用模型。通过 LangSmith API 回读 Run、独立数值评分、状态及本地 Trace 关联，并保存远端 Run ID 到本地账本。平台的实验比较接口偶尔未返回部分已有 Feedback 汇总，需以独立 Feedback 接口回读核验。最初的单题试验中，本地失败 Run 曾因缺少 error 被远端显示为 `SUCCESS`；旧导入保留，`trivae-history-archify-semantic-failure-mapping-fixed-20261028` 回读为 `ERROR`，比较时不要使用旧错误导入的远端状态。本次批量导入采用修正后的映射。完整系统的历史 Judge 为 `judge_failed` 时保留失败状态，不伪造得分。另以[合成测试 Dataset](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/dd750137-9845-46b1-bc30-56c892a46310)确认追加 Review 与重复同步幂等；合成评分只是测试数据。浏览器自动化超时，以上为实际服务的 API 回读，不冒称已目视验收 UI。
 
 真实主快照及工作副本各含 864,615 条消息、206 来源，Canonical/词法/语义 revision 98835；它们只在本机 `data/evaluation/`，运行时不能上传 SQLite。旧 Snapshot 多为身份清单而非完整数据备份，因此不能推断旧实验可用当前冻结库精确重放。基于当前冻结库生成了 3 条回归候选、6 条能力候选，均待证据审核。使用明确标注为无模型调用的测试执行器，在真实工作副本上对 3 条回归候选各跑 Baseline/Candidate 一次；6 条模拟运行均保存为 `failed`，实验元数据记录与同条件比较通过。这只验证运行及记录流程，不是实际 Agent 质量结果。没有将候选宣称为新的人工确认 Ground Truth，也没有进行新的付费 Agent 运行。

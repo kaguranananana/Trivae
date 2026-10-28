@@ -5,6 +5,7 @@ No network call is made from the query path. Full Trace payloads stay local.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sqlite3
@@ -15,7 +16,15 @@ from typing import Any, Mapping, Sequence
 
 import httpx
 
-from .contracts import EvaluationCaseBundle, EvaluationContractError, EvaluationReview, EvaluationRun, EvaluationSuite
+from .contracts import (
+    EvaluationCaseBundle,
+    EvaluationContractError,
+    EvaluationResult,
+    EvaluationReview,
+    EvaluationRun,
+    EvaluationSuite,
+    scope_identity,
+)
 from .variant import ControlledVariant
 
 _ID = re.compile(r"[A-Za-z0-9_.:@/+-]{1,256}\Z")
@@ -87,7 +96,10 @@ def _score(key: str, value: object, *, status: str | None = None) -> dict[str, o
     if isinstance(value, bool):
         entry["score"] = int(value)
     elif isinstance(value, (int, float)):
-        entry["score"] = value
+        if isinstance(value, float) and not math.isfinite(value):
+            raise EvaluationContractError("feedback score must be finite")
+        # The external-experiment API accepts at most four decimal places.
+        entry["score"] = round(value, 4) if isinstance(value, float) else value
     elif isinstance(value, str):
         entry["value"] = _identifier(value)
     else:
@@ -127,6 +139,13 @@ def _feedback(run: EvaluationRun, reviews: Sequence[EvaluationReview], record: M
                 value = judgment.get(axis)
                 if isinstance(value, (int, float)) and not isinstance(value, bool):
                     scores.append(_score("judge." + axis, value, status=verification))
+            axes = judgment.get("quality_axes", {})
+            if not isinstance(axes, dict):
+                raise EvaluationContractError("judge quality axes must be an object")
+            for axis, value in axes.items():
+                if not isinstance(axis, str) or axis in ("grounded_claim_rate", "citation_correctness"):
+                    raise EvaluationContractError("judge quality axis is invalid or duplicated")
+                scores.append(_score("judge." + axis, value, status=verification))
     for review in reviews:
         scores.extend(_review_feedback(review))
     return scores
@@ -146,17 +165,18 @@ def _review_feedback(review: EvaluationReview) -> list[dict[str, object]]:
 def _trace_facts(con: sqlite3.Connection | None, trace_id: str | None) -> dict[str, object]:
     if con is None or trace_id is None:
         return {"availability": "not_requested" if con is None else "no_trace_id"}
-    row = con.execute("SELECT terminal_outcome FROM traces WHERE trace_id=?", (trace_id,)).fetchone()
+    row = con.execute("SELECT request_id,terminal_at,terminal_outcome FROM traces WHERE trace_id=?", (trace_id,)).fetchone()
     if row is None:
         return {"availability": "not_found"}
     events = con.execute(
-        "SELECT stage, operation, phase, outcome, duration_ms, failure_json FROM trace_events "
+        "SELECT sequence,stage, operation, phase, outcome, duration_ms, failure_json FROM trace_events "
         "WHERE trace_id=? ORDER BY sequence",
         (trace_id,),
     ).fetchall()
     event_facts = []
     for event in events:
-        fact = {"stage": _identifier(event["stage"]), "operation": _identifier(event["operation"]),
+        fact = {"sequence": event["sequence"], "stage": _identifier(event["stage"]),
+                "operation": _identifier(event["operation"]),
                 "phase": _identifier(event["phase"]), "outcome": event["outcome"], "duration_ms": event["duration_ms"]}
         if event["failure_json"]:
             try:
@@ -169,6 +189,8 @@ def _trace_facts(con: sqlite3.Connection | None, trace_id: str | None) -> dict[s
         event_facts.append(fact)
     return {
         "availability": "available",
+        "request_id": row["request_id"],
+        "terminal_at": row["terminal_at"],
         "terminal_outcome": row["terminal_outcome"],
         "events": event_facts,
     }
@@ -225,8 +247,11 @@ def _connection(api_key: str | None = None) -> tuple[str, str]:
 def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: Sequence[str], experiment: str,
                       ledger_path: Path, trace_db: Path | None = None, content_path: Path | None = None,
                       records_path: Path | None = None, judgments_path: Path | None = None,
+                      failures_path: Path | None = None,
                       cases: Mapping[str, EvaluationCaseBundle] | None = None, include_content: bool = False,
                       manifest_path: Path | None = None, variant_path: Path | None = None, import_time: bool = False,
+                      history_report_path: Path | None = None, history_note: str | None = None,
+                      require_complete: bool = False,
                       endpoint: str | None = None, api_key: str | None = None,
                       transport: httpx.BaseTransport | None = None) -> dict[str, object]:
     """Import persisted runs with the documented external-experiment endpoint; never run a model."""
@@ -240,7 +265,8 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
     if not base.startswith("https://"):
         raise EvaluationContractError("LangSmith endpoint must use HTTPS")
     content = _redacted_content(content_path)
-    records, judgments = _index_records(records_path), _index_records(judgments_path)
+    records, judgments, failures = (_index_records(records_path), _index_records(judgments_path),
+                                   _index_records(failures_path))
     suite_id = _identifier(suite.identity)
     content_mode = "redacted" if content_path else "content" if include_content else "metadata"
     dataset_key = suite_id + ":" + content_mode
@@ -248,6 +274,8 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     variants: set[str] = set()
+    if require_complete and (trace_db is None or cases is None):
+        raise EvaluationContractError("complete export requires versioned cases and a trace database")
     con = _read_db(evaluation_db)
     trace_con = _read_db(trace_db) if trace_db else None
     try:
@@ -259,6 +287,13 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
             run = EvaluationRun.from_dict(json.loads(row[0]))
             identity = _identifier(f"{run.case_id}@v{run.case_version}")
             record = records.get(run_id)
+            judgment, failure = judgments.get(run_id), failures.get(run_id)
+            for artifact in (record, judgment, failure):
+                if artifact is not None:
+                    for field, expected_value in (("case_id", run.case_id), ("variant_id", run.variant_id),
+                                                  ("trace_id", run.trace_id)):
+                        if field in artifact and artifact[field] != expected_value:
+                            raise EvaluationContractError(f"historical {field} differs from run: {run_id}")
             same_suite = (run.suite_id, run.suite_version) == (suite.suite_id, suite.version)
             # Existing benchmark orchestrators called run_case(), recording "single_case" locally.
             recorded_single_case = (run.suite_id == "single_case" and record is not None
@@ -276,13 +311,34 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
             case_content = content.get("cases", {}).get(identity, {})
             run_content = content.get("runs", {}).get(run_id, {})
             case = cases.get(identity) if cases is not None else None
-            if include_content and case is None:
+            if (include_content or require_complete) and case is None:
                 raise EvaluationContractError("content export requires the versioned case")
             if case is not None and case.dataset_snapshot.snapshot_id != run.snapshot_id:
                 raise EvaluationContractError("case snapshot differs from persisted run")
+            if require_complete and case is not None:
+                if (run.scope_identity != scope_identity(case.data_access_scope)
+                        or run.query_request.get("query") != case.query):
+                    raise EvaluationContractError(f"case query or scope differs from run: {run_id}")
+                request_snapshot = run.query_request.get("data_snapshot")
+                if not isinstance(request_snapshot, Mapping) or request_snapshot.get("snapshot_id") != run.snapshot_id:
+                    raise EvaluationContractError(f"request snapshot differs from run: {run_id}")
+            result_row = con.execute("SELECT payload_json FROM evaluation_results WHERE run_id=?", (run_id,)).fetchone()
+            if require_complete and result_row is None:
+                raise EvaluationContractError(f"evaluation result is missing: {run_id}")
+            result = EvaluationResult.from_dict(json.loads(result_row[0])) if result_row is not None else None
             trace_id = _identifier(run.trace_id) if run.trace_id else None
+            trace = _trace_facts(trace_con, trace_id)
+            if require_complete:
+                events = trace.get("events")
+                if (trace.get("availability") != "available" or trace.get("request_id") != run.query_request_id
+                        or not trace.get("terminal_at") or not trace.get("terminal_outcome")
+                        or not isinstance(events, list) or not events
+                        or [event["sequence"] for event in events] != list(range(1, len(events) + 1))):
+                    raise EvaluationContractError(f"run Trace is incomplete or mismatched: {run_id}")
             actual: dict[str, object] = {"local_run_id": run_id, "trace_id": trace_id,
                                          "terminal_status": _identifier(run.terminal_status),
+                                         "local_result_status": result.status if result is not None else "not_recorded",
+                                         "quality_axes": dict(result.quality_axes) if result is not None else {},
                                          "recorded_local_suite": f"{run.suite_id}@v{run.suite_version}",
                                          "original_started_at": run.started_at,
                                          "original_completed_at": run.completed_at,
@@ -293,7 +349,20 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
                                                             "message": check.message if include_content else None}
                                                            for check in run.deterministic_checks
                                                            if check.status == "failed"],
-                                         "trace": _trace_facts(trace_con, trace_id)}
+                                         "trace": trace}
+            if record is not None:
+                actual["benchmark_metrics"] = record.get("metrics", [])
+                actual["benchmark_flags"] = record.get("flags", {})
+                actual["benchmark_category"] = record.get("category")
+                actual["benchmark_split"] = record.get("split")
+            if failure is not None:
+                actual["benchmark_failure"] = failure if include_content else {"category": failure.get("category")}
+            if judgment is not None:
+                actual["judge_record"] = judgment if include_content else {
+                    key: judgment.get(key) for key in
+                    ("status", "verification_status", "grounded_claim_rate", "citation_correctness", "quality_axes")
+                    if key in judgment
+                }
             diagnosis_rows = con.execute("SELECT payload_json FROM evaluation_diagnoses WHERE run_id=? ORDER BY diagnosis_id",
                                          (run_id,)).fetchall()
             diagnoses = [json.loads(item[0]) for item in diagnosis_rows]
@@ -316,7 +385,7 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
             if "answer" in run_content:
                 actual["answer"] = run_content["answer"]
             rows.append({"case": identity, "inputs": inputs, "expected": expected, "actual": actual,
-                         "scores": _feedback(run, reviews, records.get(run_id), judgments.get(run_id)),
+                         "scores": _feedback(run, reviews, record, judgment),
                          "reviews": reviews, "run": run})
     finally:
         con.close()
@@ -325,8 +394,36 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
     if len(variants) != 1:
         raise EvaluationContractError("an experiment must contain a single variant")
     project_metadata: dict[str, object] = {"suite": suite_id, "variant": next(iter(variants)),
-                                           "content": content_mode, "reproducibility": "not_recorded",
+                                           "content": content_mode, "suite_description": suite.description,
+                                           "reproducibility": "not_recorded",
+                                           "feedback_decimal_places": 4,
                                            "time_semantics": "import_time" if import_time else "original_execution_time"}
+    if history_report_path is not None:
+        report = _json_file(history_report_path)
+        if not isinstance(report, dict) or not isinstance(report.get("environment"), dict):
+            raise EvaluationContractError("historical report has no environment")
+        environment = report["environment"]
+        if any(row["run"].snapshot_id != environment.get("canonical_snapshot_id") for row in rows):
+            raise EvaluationContractError("historical report snapshot differs from selected runs")
+        recorded_variants = report.get("variants")
+        if not isinstance(recorded_variants, list):
+            raise EvaluationContractError("historical report has no recorded variants")
+        matching_variants = [item for item in recorded_variants if isinstance(item, dict)
+                             and item.get("variant_id") == next(iter(variants))]
+        if len(matching_variants) != 1:
+            raise EvaluationContractError("historical report variant is missing or ambiguous")
+        recorded_variant = ControlledVariant.from_dict(matching_variants[0])
+        project_metadata["historical_context"] = {
+            "benchmark": report.get("benchmark"), "git_commit": environment.get("git_commit"),
+            "source_suite_cases": [ref.to_dict() for ref in suite.case_references],
+            "snapshot_id": environment.get("canonical_snapshot_id"),
+            "lexical_index": environment.get("lexical_index"), "semantic_index": environment.get("semantic_index"),
+            "environment_created_at": environment.get("created_at"),
+            "recorded_variant": recorded_variant.to_dict(), "note": history_note,
+        }
+        project_metadata["reproducibility"] = "historical_environment_recorded_freeze_not_verified"
+    elif history_note is not None:
+        project_metadata["historical_note"] = history_note
     if variant_path is not None:
         variant = ControlledVariant.from_dict(_json_file(variant_path))
         if variant.variant_id != next(iter(variants)):

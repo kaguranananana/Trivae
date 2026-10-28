@@ -246,7 +246,11 @@ def build_parser() -> argparse.ArgumentParser:
     eval_sync.add_argument("--trace-database", type=Path)
     eval_sync.add_argument("--records", type=Path, help="Existing benchmark raw-records.json")
     eval_sync.add_argument("--judgments", type=Path, help="Existing benchmark judge results")
+    eval_sync.add_argument("--failures", type=Path, help="Existing benchmark failure details")
     eval_sync.add_argument("--manifest", type=Path, help="Formal experiment.json with runtime conditions")
+    eval_sync.add_argument("--history-report", type=Path, help="Original benchmark report with environment and Variant")
+    eval_sync.add_argument("--history-note", help="Historical stage and comparison limitations")
+    eval_sync.add_argument("--require-complete", action="store_true", help="Require matching Case, Result and complete Trace")
     eval_sync.add_argument("--import-time", action="store_true",
                            help="Use import time on LangSmith; keep original run times and duration in outputs")
     eval_sync.add_argument("--content", type=Path, help="Optional explicitly prepared case/run text")
@@ -1231,8 +1235,11 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 cases=_load_cases(args.cases_dir), include_content=not args.metadata_only and args.content is None,
                 run_ids=run_ids, experiment=args.experiment, ledger_path=args.ledger,
                 trace_db=args.trace_database, content_path=args.content,
-                records_path=args.records, judgments_path=args.judgments, manifest_path=args.manifest,
+                records_path=args.records, judgments_path=args.judgments, failures_path=args.failures,
+                manifest_path=args.manifest,
                 variant_path=args.variant_file, import_time=args.import_time,
+                history_report_path=args.history_report, history_note=args.history_note,
+                require_complete=args.require_complete,
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0

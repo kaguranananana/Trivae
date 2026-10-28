@@ -112,10 +112,10 @@ def test_sync_independent_scores_trace_and_idempotence(tmp_path):
     store.close()
     trace_db = tmp_path / "trace.sqlite3"
     with sqlite3.connect(trace_db) as con:
-        con.executescript("CREATE TABLE traces(trace_id TEXT, terminal_outcome TEXT); "
+        con.executescript("CREATE TABLE traces(trace_id TEXT, request_id TEXT, terminal_at TEXT, terminal_outcome TEXT); "
                           "CREATE TABLE trace_events(trace_id TEXT, sequence INTEGER, stage TEXT, operation TEXT, "
                           "phase TEXT, outcome TEXT, duration_ms REAL, payload_json TEXT, failure_json TEXT);")
-        con.execute("INSERT INTO traces VALUES (?,?)", (run.trace_id, "error"))
+        con.execute("INSERT INTO traces VALUES (?,?,?,?)", (run.trace_id, run.query_request_id, run.completed_at, "error"))
         con.execute("INSERT INTO trace_events VALUES (?,?,?,?,?,?,?,?,?)", (run.trace_id, 1, "model", "model.request",
                     "failed", "error", 2.0, '{"secret":"private"}', '{"error_code":"MODEL_ERROR"}'))
     captures = []
@@ -125,7 +125,7 @@ def test_sync_independent_scores_trace_and_idempotence(tmp_path):
                                          "experiment": {"id": "project-" + str(len(captures))}})
     kwargs = dict(evaluation_db=tmp_path / "runs.sqlite3", suite=_suite(case), cases={case.identity: case},
                   include_content=True, run_ids=[run.run_id], experiment="sample-exp", ledger_path=tmp_path / "ledger.sqlite3",
-                  trace_db=trace_db, api_key="ls_test_key", transport=httpx.MockTransport(handler))
+                  trace_db=trace_db, require_complete=True, api_key="ls_test_key", transport=httpx.MockTransport(handler))
     result = export_experiment(**kwargs)
     assert result["status"] == "synced"
     row = captures[0]["results"][0]
@@ -143,8 +143,14 @@ def test_sync_independent_scores_trace_and_idempotence(tmp_path):
     assert len(captures) == 1
     candidate = _local_run(tmp_path, case, _variant(variant_id="candidate"))
     store = SQLiteEvaluationStore(tmp_path / "runs.sqlite3")
-    candidate = replace(candidate, started_at=run.started_at, completed_at=run.completed_at)
+    candidate = replace(candidate, started_at=run.started_at, completed_at=run.completed_at,
+                        trace_id="trace:candidate")
     store.save_run(candidate)
+    with sqlite3.connect(trace_db) as con:
+        con.execute("INSERT INTO traces VALUES (?,?,?,?)",
+                    (candidate.trace_id, candidate.query_request_id, candidate.completed_at, "error"))
+        con.execute("INSERT INTO trace_events VALUES (?,?,?,?,?,?,?,?,?)",
+                    (candidate.trace_id, 1, "model", "model.request", "failed", "error", 2.0, "{}", None))
     with pytest.raises(EvaluationContractError, match="same experiment start time"):
         export_experiment(**{**kwargs, "experiment": "same-time", "run_ids": [candidate.run_id]})
     candidate = replace(candidate, started_at=(datetime.fromisoformat(run.started_at) + timedelta(seconds=1)).isoformat(),
@@ -215,9 +221,14 @@ def test_historical_single_case_requires_benchmark_record_and_preserves_judge_fa
     store.close()
     records = tmp_path / "records.json"
     records.write_text(json.dumps([{"run_id": run.run_id, "case_id": run.case_id, "variant_id": run.variant_id,
-                                    "metrics": [{"name": "evidence_recall", "value": 0.5, "scope": "evidence"}]}]))
+                                    "metrics": [{"name": "evidence_recall", "value": 2 / 3, "hits": 2,
+                                                 "denominator": 3, "scope": "evidence"}]}]))
     judgments = tmp_path / "judgments.json"
-    judgments.write_text(json.dumps([{"run_id": run.run_id, "status": "judge_failed"}]))
+    judgments.write_text(json.dumps([{"run_id": run.run_id, "status": "judge_failed",
+                                      "claims": [{"text": "fixture answer"}]}]))
+    failures = tmp_path / "failures.json"
+    failures.write_text(json.dumps([{"run_id": run.run_id, "case_id": run.case_id, "variant_id": run.variant_id,
+                                    "trace_id": run.trace_id, "category": "context_missing", "detail": "missing"}]))
     captured = []
     def handler(request):
         captured.append(json.loads(request.content))
@@ -227,13 +238,87 @@ def test_historical_single_case_requires_benchmark_record_and_preserves_judge_fa
                   transport=httpx.MockTransport(handler))
     with pytest.raises(EvaluationContractError, match="does not belong"):
         export_experiment(**kwargs)
-    export_experiment(**kwargs, records_path=records, judgments_path=judgments)
+    export_experiment(**kwargs, records_path=records, judgments_path=judgments, failures_path=failures)
     row = captured[0]["results"][0]
     assert row["actual_outputs"]["recorded_local_suite"] == "single_case@v1"
     scores = {item["key"]: item for item in row["evaluation_scores"]}
-    assert scores["benchmark.evidence_recall"]["score"] == 0.5
+    assert scores["benchmark.evidence_recall"]["score"] == 0.6667
+    assert row["actual_outputs"]["benchmark_metrics"][0]["value"] == 2 / 3
+    assert row["actual_outputs"]["benchmark_metrics"][0]["denominator"] == 3
+    assert row["actual_outputs"]["benchmark_failure"]["category"] == "context_missing"
+    assert row["actual_outputs"]["judge_record"]["status"] == "judge_failed"
+    assert "detail" not in row["actual_outputs"]["benchmark_failure"]
+    assert "claims" not in row["actual_outputs"]["judge_record"]
     assert scores["judge.execution_status"]["value"] == "judge_failed"
     assert run_report(tmp_path / "runs.sqlite3", judgments=judgments)["counts"]["judge_failed"] == 1
+    content_kwargs = dict(kwargs, experiment="historical-content", include_content=True, cases={case.identity: case})
+    export_experiment(**content_kwargs, records_path=records, judgments_path=judgments, failures_path=failures)
+    content = captured[1]["results"][0]["actual_outputs"]
+    assert content["benchmark_failure"]["detail"] == "missing"
+    assert content["judge_record"]["claims"][0]["text"] == "fixture answer"
+
+    judgments.write_text(json.dumps([{"run_id": run.run_id, "verification_status": "assistant_provisional",
+                                      "quality_axes": {"citation_support": "fail", "core_requirements": "pass"}}]))
+    export_experiment(**dict(kwargs, experiment="provisional", history_note="source: saved local review", import_time=True),
+                      records_path=records, judgments_path=judgments)
+    provisional = {item["key"]: item for item in captured[2]["results"][0]["evaluation_scores"]}
+    assert provisional["judge.citation_support"]["value"] == "fail"
+    assert provisional["judge.core_requirements"]["comment"] == "assistant_provisional"
+    assert captured[2]["results"][0]["actual_outputs"]["judge_record"]["quality_axes"]["core_requirements"] == "pass"
+    assert captured[2]["experiment_metadata"]["historical_note"] == "source: saved local review"
+
+    failures.write_text(json.dumps([{"run_id": run.run_id, "case_id": "different-case"}]))
+    with pytest.raises(EvaluationContractError, match="historical case_id differs"):
+        export_experiment(**dict(kwargs, experiment="mismatch"), records_path=records, failures_path=failures)
+    assert len(captured) == 3
+
+
+def test_complete_export_rejects_mismatched_trace_before_network(tmp_path):
+    case = _case()
+    run = _local_run(tmp_path, case)
+    trace_db = tmp_path / "trace.sqlite3"
+    with sqlite3.connect(trace_db) as con:
+        con.executescript("CREATE TABLE traces(trace_id TEXT, request_id TEXT, terminal_at TEXT, terminal_outcome TEXT); "
+                          "CREATE TABLE trace_events(trace_id TEXT, sequence INTEGER, stage TEXT, operation TEXT, "
+                          "phase TEXT, outcome TEXT, duration_ms REAL, failure_json TEXT);")
+        con.execute("INSERT INTO traces VALUES (?,?,?,?)", (run.trace_id, "wrong-request", run.completed_at, "error"))
+        con.execute("INSERT INTO trace_events VALUES (?,?,?,?,?,?,?,?)",
+                    (run.trace_id, 1, "model", "model.request", "failed", "error", 2.0, None))
+    sent = []
+    def handler(request):
+        sent.append(request)
+        return httpx.Response(200, json={})
+    with pytest.raises(EvaluationContractError, match="Trace is incomplete or mismatched"):
+        export_experiment(evaluation_db=tmp_path / "runs.sqlite3", suite=_suite(case), run_ids=[run.run_id],
+                          cases={case.identity: case}, require_complete=True, trace_db=trace_db,
+                          experiment="mismatch", ledger_path=tmp_path / "ledger.sqlite3", api_key="ls_test_key",
+                          transport=httpx.MockTransport(handler))
+    assert not sent
+    assert not (tmp_path / "ledger.sqlite3").exists()
+
+
+def test_historical_report_supplies_actual_environment_and_variant(tmp_path):
+    case = _case()
+    run = _local_run(tmp_path, case)
+    report = tmp_path / "history.json"
+    report.write_text(json.dumps({"benchmark": "fixture", "environment": {
+        "canonical_snapshot_id": run.snapshot_id, "git_commit": "commit-recorded",
+        "lexical_index": {"present": True}, "semantic_index": "fixture", "created_at": run.started_at},
+        "variants": [_variant().to_dict()]}))
+    sent = []
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"dataset": {"id": "dataset"}, "experiment": {"id": "project"}})
+    export_experiment(evaluation_db=tmp_path / "runs.sqlite3", suite=_suite(case), run_ids=[run.run_id],
+                      experiment="history-metadata", ledger_path=tmp_path / "ledger.sqlite3", api_key="ls_test_key",
+                      history_report_path=report, history_note="original historical run",
+                      transport=httpx.MockTransport(handler))
+    context = sent[0]["experiment_metadata"]["historical_context"]
+    assert context["git_commit"] == "commit-recorded"
+    assert context["source_suite_cases"] == [ref.to_dict() for ref in _suite(case).case_references]
+    assert context["recorded_variant"]["variant_id"] == run.variant_id
+    assert context["note"] == "original historical run"
+    assert sent[0]["results"][0]["actual_outputs"]["local_result_status"] == "failed"
 
 
 def test_explicit_import_time_preserves_original_execution_times(tmp_path):
