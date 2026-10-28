@@ -180,6 +180,10 @@ in the returned evidence, even when they occur in separate discussions. The most
 not stand in for every relevant returned source. Keep human opinions separate from bot-generated
 advice, and distinguish what is common or possible from what is advisable or effective. Do not invent
 disagreement when the evidence does not contain it.
+When summarizing evidence, keep each claim at the strength and scope its source supports: attribute
+personal experience to its speaker, keep suggestions and plans distinct from completed or verified
+results, and do not turn a partial sample into community consensus or a general selection rule. Preserve
+the stated task, time, and conditions when they limit a conclusion.
 Mention or sharing does not mean recommendation or value; mention does not mean recommendation.
 An intent to test does not prove actual use; intent to test does not prove actual use.
 Reviewing someone else's output does not prove personal installation or use; reviewing output does not prove personal installation or use.
