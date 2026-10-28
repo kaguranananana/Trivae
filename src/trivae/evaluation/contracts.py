@@ -1068,6 +1068,7 @@ class EvaluationReview:
     needs_adjudication: bool
     created_at: str
     comparison_id: str | None = None
+    diagnostics: tuple[Mapping[str, object], ...] = ()
 
     def __post_init__(self) -> None:
         for field_name in ("review_id", "run_id", "rubric_version", "created_at"):
@@ -1084,6 +1085,11 @@ class EvaluationReview:
                 raise EvaluationContractError("review confidence must be between 0 and 1")
         if not isinstance(self.needs_adjudication, bool):
             raise EvaluationContractError("needs_adjudication must be boolean")
+        if not isinstance(self.diagnostics, tuple):
+            raise EvaluationContractError("review diagnostics must be a tuple")
+        object.__setattr__(self, "diagnostics", tuple(
+            _mapping(item, "review diagnostic") for item in self.diagnostics
+        ))
         object.__setattr__(self, "notes", _optional_text(self.notes, "review notes"))
         object.__setattr__(self, "disagreement", _optional_text(self.disagreement, "review disagreement"))
         object.__setattr__(self, "comparison_id", _optional_text(self.comparison_id, "review comparison_id"))
@@ -1101,6 +1107,7 @@ class EvaluationReview:
             "needs_adjudication": self.needs_adjudication,
             "created_at": self.created_at,
             "comparison_id": self.comparison_id,
+            "diagnostics": [dict(item) for item in self.diagnostics],
         }
 
     @classmethod
@@ -1121,6 +1128,8 @@ class EvaluationReview:
             needs_adjudication=payload.get("needs_adjudication", False),
             created_at=payload.get("created_at"),
             comparison_id=payload.get("comparison_id"),
+            diagnostics=tuple(_mapping(item, "review diagnostic")
+                              for item in payload.get("diagnostics", ())),
         )
 
 

@@ -4,27 +4,37 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sqlite3
 from pathlib import Path
 
 from scripts.verify_capability_bundle import verify
 from trivae.config.dotenv import load_environment_file
 from trivae.config.settings import load_settings
 from trivae.evaluation.capability_judge import JUDGE_PROMPT, RUBRIC_VERSION, parse_review, prepare_review_input
-from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationContractError
+from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationContractError, EvaluationRun
 from trivae.evaluation.store import SQLiteEvaluationStore
 from trivae.query.runtime.model_completion import complete_json, completion_record
 
 
 async def main_async(args: argparse.Namespace) -> None:
     # Verify references independently before exposing the saved answer to the judge.
-    verify(args.bundle_dir, args.suite, args.freeze_manifest, args.database)
+    if not args.skip_bundle_verification:
+        verify(args.bundle_dir, args.suite, args.freeze_manifest, args.database)
     load_environment_file(args.env_file)
     settings = load_settings(model_id=args.judge_model, role="judge", config_path=args.models_config)
-    if not args.evaluation_database.is_file():
-        raise EvaluationContractError("evaluation database does not exist")
+    source_database = args.source_evaluation_database or args.evaluation_database
+    if not source_database.is_file():
+        raise EvaluationContractError("source evaluation database does not exist")
+    source = sqlite3.connect(source_database.resolve().as_uri() + "?mode=ro", uri=True)
+    source.row_factory = sqlite3.Row
     store = SQLiteEvaluationStore(args.evaluation_database)
     try:
-        run = store.get_run(args.run_id)
+        row = source.execute("SELECT payload_json FROM evaluation_runs WHERE run_id = ?", (args.run_id,)).fetchone()
+        if row is None:
+            raise EvaluationContractError(f"source evaluation run not found: {args.run_id}")
+        run = EvaluationRun.from_dict(json.loads(row["payload_json"]))
+        # The output Store is independent from the Baseline Store and keeps its own Run reference.
+        store.save_run(run)
         case = EvaluationCaseBundle.from_json(args.bundle_dir / "cases" / f"{run.case_id}.json")
         truth = json.loads((args.bundle_dir / "ground-truth-v1.json").read_text(encoding="utf-8"))
         packet = json.loads((args.bundle_dir / "evidence.json").read_text(encoding="utf-8"))
@@ -78,6 +88,7 @@ async def main_async(args: argparse.Namespace) -> None:
             (args.record_dir / "error.json").write_text(json.dumps(error, ensure_ascii=False, indent=2) + "\n")
             raise
     finally:
+        source.close()
         store.close()
 
 
@@ -88,11 +99,15 @@ def main() -> None:
     parser.add_argument("--freeze-manifest", type=Path, required=True)
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--evaluation-database", type=Path, required=True)
+    parser.add_argument("--source-evaluation-database", type=Path,
+                        help="Baseline Run Store to read; defaults to --evaluation-database")
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--record-dir", type=Path, required=True)
     parser.add_argument("--judge-model", help="Named model profile; defaults to evaluation.judge")
     parser.add_argument("--models-config", type=Path, help="Model registry YAML; defaults to config/models.yaml")
     parser.add_argument("--env-file", type=Path)
+    parser.add_argument("--skip-bundle-verification", action="store_true",
+                        help="Skip only when a campaign runner has just verified the same frozen bundle")
     asyncio.run(main_async(parser.parse_args()))
 
 

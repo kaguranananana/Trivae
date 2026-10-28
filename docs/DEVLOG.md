@@ -409,3 +409,11 @@
 - 在首轮 Judge 的两次 `ConnectError` 后按用户要求继续：重试第 13 题成功，第 15、16 题也完成评分；连同此前恢复成功的第 12 题，最终14个成功 Agent Run 全部有Review。原始失败请求记录未覆盖。
 - 最终14个Review的五维标签分母均为14：任务完成 pass9/mixed5；事实正确 mixed14；证据召回 pass6/mixed8；引用忠实 mixed14；无依据主张 mixed9/fail5。Judge响应耗时合计 432.7s，input 791,993、output 7,489、reasoning 870、total 799,482 tokens；均为模型辅助暂定结果。
 - 现有 ChatGPT OAuth 路径在续跑中成功评分，两个连接错误均为无 HTTP 状态的 ConnectError，不能据此判断凭证失效；未使用付费 API。最终报告及记录位于 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/`。
+
+## 2026-10-28 · Eval Judge v2 重评 Baseline
+
+- 新增 `eval-rubric-v2`：任务满足度与回答可信度两个独立 0–4/unknown 维度，按证据支持/反驳/不足区分开放式 Ground Truth；加入问题类型、严重程度、准确回答摘录、原始证据/证据缺口、用户影响及单一主维度。保留 v1 原提示词、解析函数和旧 Review JSON 读取能力；`EvaluationReview.diagnostics` 对历史记录可选。
+- 更新单题 Judge 入口并新增批次重评和报告脚本。批次从 Eval v1 full/supplement Store 只读加载 Run；按 Run 批次关联对应冻结工作副本，原始输入通过 16 Case 包验证。15、16 题的对话工件只存在补跑副本，初次用主批次数据库的只读预演明确失败，按实际存储边界修正后两题均通过。源 v1 Store/Canonical 数据未写入；v2 使用独立 Evaluation Store。
+- 无模型回归覆盖 44 项相关测试；Ruff、修改文件 Mypy、16 Case 冻结证据验证、14 份完整答案输入预演通过。Judge 使用 GPT-6.1 Sol Medium，对14份已保存成功答案评审完成；第01、02题各遇一次临时 Provider 错误并各重试一次成功，其他12题首轮成功。03/14 原运行失败保留，不伪造答案/分数。v2 原始响应、完整请求输入、Review、配置、重试与 Run 状态均留在 ignored `data/evaluation/eval-v2-baseline-20261028/`。
+- 报告统计：任务满足度 4/3/2 = 8/3/3，均分3.36；回答可信度 4/3/2 = 0/2/12，均分2.14；unknown 0。46项问题诊断中轻微13、中等33、严重0；第10题将工具域名 `vibe42.ai` 写错被识别为中等事实错误；14个评分进入人工复核队列（至少一维0–2/unknown，或存在中等/严重诊断）。可信度偏低源自回答中的具体证据错配、归属/时效范围或无依据概括，需人工逐条确认。报告不比较不同维度分数或Pass数量，未将Judge变化描述为Agent能力提升。
+- 轻微缺陷在单维度案例中有保持合格档的实例，但双维度同时合格且无中/重度问题的案例为0；本批没有unknown或严重诊断，故高不确定和严重边界的真实模型判定能力尚未实证。无百分制、加权分或额外模型评审；尚需人工审阅14个Case及Rubric边界。报告：`data/evaluation/eval-v2-baseline-20261028/REPORT.md`。
