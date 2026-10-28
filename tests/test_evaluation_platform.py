@@ -428,6 +428,98 @@ def test_case_version_review_and_suite_rerun_cli(tmp_path, monkeypatch, capsys):
     capsys.readouterr()
 
 
+def test_selected_cases_keep_suite_identity_and_reject_invalid_selection(tmp_path, monkeypatch, capsys):
+    from trivae.interfaces import cli
+
+    first = _case(case_id="first")
+    second = _case(case_id="second")
+    suite = EvaluationSuite("capability", 2, "core", (CaseReference("first", 1), CaseReference("second", 1)),
+                            "fixture", "2026-10-28T00:00:00+00:00")
+    cases_dir = tmp_path / "cases"
+    first.to_json(cases_dir / "first.json")
+    second.to_json(cases_dir / "second.json")
+    suite_path = tmp_path / "suite.json"
+    suite_path.write_text(json.dumps(suite.to_dict()))
+    variant_path = tmp_path / "variant.json"
+    variant_path.write_text(json.dumps(_variant().to_dict()))
+    selection = tmp_path / "selection.json"
+    selection.write_text(json.dumps([second.identity]))
+    db = tmp_path / "runs.sqlite3"
+
+    class Application:
+        def __init__(self):
+            self.store = SQLiteEvaluationStore(db)
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            self.store.close()
+        async def evaluate_suite(self, s, cases, variant, *, repetitions, selected_cases=None):
+            runner = EvaluationRunner(query_executor=_FailedExecutor(), trace_reader=lambda _: _trace(),
+                                      store=self.store, snapshot_resolver=lambda: second.dataset_snapshot)
+            return await runner.run_suite(s, cases, variant, repetitions=repetitions, selected_cases=selected_cases)
+
+    monkeypatch.setattr(cli, "create_application", lambda *args, **kwargs: Application())
+    command = ["eval", "run", "--suite", str(suite_path), "--variant", str(variant_path),
+               "--cases-dir", str(cases_dir), "--evaluation-database", str(db), "--case-list", str(selection)]
+    assert cli.main(command) == 0
+    store = SQLiteEvaluationStore(db)
+    runs = store.list_runs()
+    store.close()
+    assert len(runs) == 1 and runs[0].case_id == "second"
+    assert (runs[0].suite_id, runs[0].suite_version) == ("capability", 2)
+    selection.write_text(json.dumps(["missing@v1"]))
+    assert cli.main(command) == 1
+    selection.write_text(json.dumps([second.identity, second.identity]))
+    assert cli.main(command) == 1
+    capsys.readouterr()
+
+
+def test_formal_selected_run_records_selection_and_compares_same_subset(tmp_path, monkeypatch):
+    canonical, semantic = _make_data(tmp_path)
+    freeze_data(canonical, semantic, tmp_path / "master")
+    clone_frozen(tmp_path / "master/freeze.json", tmp_path / "work")
+    snapshot = DatasetSnapshot.from_database(tmp_path / "work" / canonical.name)
+    first, second = _case(snapshot, "first"), _case(snapshot, "second")
+    suite = EvaluationSuite("capability", 2, "core", (CaseReference("first", 1), CaseReference("second", 1)),
+                            "fixture", "2026-10-28T00:00:00+00:00")
+    variant = replace(_variant(), code_version="commit1")
+    from trivae.config.settings import ModelSettings
+    from trivae.evaluation import experiment_manifest as module
+    monkeypatch.setattr(module, "_git_commit", lambda: "commit1")
+    monkeypatch.setattr(module, "load_settings", lambda: ModelSettings("key", "https://example.com", "test-provider", "test-model", 8))
+    monkeypatch.setattr(module, "load_router_jev_settings", lambda: type("R", (), {"to_safe_dict": lambda self: {}})())
+    args = dict(suite=suite, cases={first.identity: first, second.identity: second}, variant=variant,
+                database=tmp_path / "work" / canonical.name, freeze_path=tmp_path / "work/freeze.json",
+                repetitions=1, judge_version="none", selected_cases=[second.identity])
+    a = prepare_experiment(**args, output_dir=tmp_path / "exp-a")
+    b = prepare_experiment(**args, output_dir=tmp_path / "exp-b")
+    store = SQLiteEvaluationStore(tmp_path / "runs.sqlite3")
+    runner = EvaluationRunner(query_executor=_FailedExecutor(), trace_reader=lambda _: _trace(),
+                              store=store, snapshot_resolver=lambda: snapshot)
+    run = asyncio.run(runner.run_suite(suite, args["cases"], variant, selected_cases=[second.identity]))[0]
+    other = asyncio.run(runner.run_suite(suite, args["cases"], replace(variant, variant_id="candidate"),
+                                         selected_cases=[second.identity]))[0]
+    store.close()
+    finish_experiment(tmp_path / "exp-a", a, (run,))
+    finish_experiment(tmp_path / "exp-b", b, (other,))
+    assert a["suite"] == suite.to_dict() and a["selected_cases"] == [second.identity]
+    assert compare_experiments(tmp_path / "exp-a/experiment.json", tmp_path / "exp-b/experiment.json")["comparable"]
+    sent = []
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"dataset": {"id": "dataset"}, "experiment": {"id": "project"}})
+    export_experiment(evaluation_db=tmp_path / "runs.sqlite3", suite=suite, cases=args["cases"],
+                      run_ids=[run.run_id], experiment="selected", ledger_path=tmp_path / "ledger.sqlite3",
+                      api_key="ls_test_key", manifest_path=tmp_path / "exp-a/experiment.json",
+                      transport=httpx.MockTransport(handler))
+    assert sent[0]["experiment_metadata"]["selected_cases"] == [second.identity]
+    assert sent[0]["results"][0]["inputs"]["case"] == second.identity
+    b["selected_cases"] = [first.identity]
+    finish_experiment(tmp_path / "exp-b", b, (other,))
+    assert "selected_cases differs" in compare_experiments(
+        tmp_path / "exp-a/experiment.json", tmp_path / "exp-b/experiment.json")["reasons"]
+
+
 def test_suite_candidates_drop_old_ground_truth(tmp_path):
     from trivae.evaluation.suite_maintenance import rebase_suite
 

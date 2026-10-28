@@ -6,7 +6,7 @@ import inspect
 import logging
 import sqlite3
 import uuid
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Literal, cast
@@ -567,11 +567,16 @@ class TrivaeApplication:
         variant: ControlledVariant,
         *,
         repetitions: int = 1,
+        selected_cases: Sequence[str] | None = None,
     ) -> tuple[EvaluationRun, ...]:
         """Suite orchestration 复用同一个 Runner，不复制业务执行链。"""
 
         self._ensure_open()
-        return await self._evaluation_runner.run_suite(suite, cases, variant, repetitions=repetitions)
+        if selected_cases is None:
+            return await self._evaluation_runner.run_suite(suite, cases, variant, repetitions=repetitions)
+        return await self._evaluation_runner.run_suite(
+            suite, cases, variant, repetitions=repetitions, selected_cases=selected_cases,
+        )
 
     def read_evaluation_run(self, run_id: str) -> EvaluationRun:
         """读取 Evaluation Store 中的单次 Run，不重新执行 Query。"""

@@ -41,6 +41,7 @@ from trivae.evaluation.benchmark.orchestrator import (
     BenchmarkOrchestrator,
     run_benchmark_async,
 )
+from trivae.evaluation.contracts import select_suite_references
 from trivae.evaluation.review import M6_FAILURE_REGRESSION_MAP
 from trivae.evaluation.store import EvaluationStoreError
 from trivae.feedback.contracts import FeedbackError, FeedbackRecord
@@ -209,6 +210,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Independent SQLite Evaluation Store path",
     )
     eval_run_parser.add_argument("--repeat", type=int, default=1, help="Number of repetitions per Case")
+    eval_run_parser.add_argument("--case-list", type=Path,
+                                 help="JSON array of exact Case identities to run within the Suite")
     eval_run_parser.add_argument("--record-dir", type=Path, help="Create a formal experiment record")
     eval_run_parser.add_argument("--freeze-manifest", type=Path, help="Manifest in the working data clone")
     eval_run_parser.add_argument("--judge-version", default="none", help="Judge identity or none")
@@ -1273,6 +1276,13 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
             suite = EvaluationSuite.from_json(args.suite)
             variant = _load_variant(args.variant)
             cases = _load_cases(args.cases_dir)
+            selected_cases = None
+            if args.case_list is not None:
+                try:
+                    selection = json.loads(args.case_list.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    raise EvaluationContractError("selected Case list cannot be read") from exc
+                selected_cases = [ref.identity for ref in select_suite_references(suite, selection)]
             if (args.record_dir is None) != (args.freeze_manifest is None):
                 raise EvaluationContractError("--record-dir and --freeze-manifest must be supplied together")
             manifest = None
@@ -1283,7 +1293,7 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 manifest = prepare_experiment(
                     suite=suite, cases=cases, variant=variant, database=args.database,
                     freeze_path=args.freeze_manifest, output_dir=args.record_dir,
-                    repetitions=args.repeat, judge_version=args.judge_version,
+                    repetitions=args.repeat, judge_version=args.judge_version, selected_cases=selected_cases,
                 )
 
             async def evaluate_suite() -> tuple[EvaluationRun, ...]:
@@ -1293,6 +1303,10 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                     args.database,
                     evaluation_database_path=args.evaluation_database,
                 ) as application:
+                    if selected_cases is not None:
+                        return await application.evaluate_suite(
+                            suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
+                        )
                     return await application.evaluate_suite(
                         suite,
                         cases,

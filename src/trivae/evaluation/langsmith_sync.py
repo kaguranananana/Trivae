@@ -444,6 +444,8 @@ def export_experiment(*, evaluation_db: Path, suite: EvaluationSuite, run_ids: S
                                  "variant_configuration": manifest.get("variant"),
                                  "runtime_settings": manifest.get("runtime_settings"),
                                  "router_settings": manifest.get("router_settings")})
+        if "selected_cases" in manifest:
+            project_metadata["selected_cases"] = manifest["selected_cases"]
     serialized = json.dumps({"rows": [{k: v for k, v in row.items() if k not in ("run", "reviews")}
                                        for row in rows], "metadata": project_metadata}, ensure_ascii=False)
     for name, value in os.environ.items():

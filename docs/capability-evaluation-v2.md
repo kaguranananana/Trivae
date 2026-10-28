@@ -40,7 +40,27 @@ Suite 清单和不含群聊正文的目录见 `evaluation/suites/capability-v2.j
 
 修订转发证据后的三题复测 3/3 完成、确定性检查 3/3 无失败；耗时合计 384.596 秒，13 次工具调用，Runtime 返回输入 362,129／输出 5,460 Token、12 次请求。助手暂定评审的任务完成及参考事实覆盖均为 3/3；事实正确、引用忠实和无依据断言各为 2/2 `pass`、另有 1 条 `mixed`，人工分母仍为 0。跨群题只命中 2/4 预设消息 ID，但找到可直接支持结论的转发子消息；不应把此 ID 命中数当作语义证据召回失败。第一题总结引用问题连续两次出现，仍需人工复核。此试运行使用独立校准 Suite，不冒充 30 题完整结果。
 
-实际 Run、确定性 Feedback、失败 Trace 和模型辅助 Feedback 已以 metadata-only 上传；逐题入口（需对应 LangSmith 工作区）：[初始三题试运行](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d275acdf-a256-4f76-93e6-bc55c4831251)、[单题恢复与暂定 Review](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5b4d0556-f213-4155-a1bd-d9ca911522f0)、[修订后三题复测](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/93256cf3-c495-48ac-9ddb-e263cc589afb)。前两组 Run 和单题恢复的 5 项模型辅助 Feedback 已通过 API 回读；第三组已接收，回读待核。为避免泄露私人消息，平台只含 Case ID、运行状态、结构化 Trace 元数据及 Feedback；原题、参考和回答在本机查看。页面未进行视觉验收。
+## 30 题 Baseline：中断后的真实结果
+
+全套实验实际启动 13/30 题，10 条完整回答、3 条运行失败，17 题没有启动。三条失败分别为 1 次响应流提前断开和 2 次 Provider 明确返回 `subscription_sharing_usage_limit_exceeded`；第二次发生在 Router 阶段，异常向上暴露，实验随即停止。用量上限的重置时间未由该响应提供，不能从其他用量窗口推断。原失败和已保存 Run 不覆盖，整个实验状态为 `failed`，不是完成的全套 Baseline。
+
+对 10 条完整回答的助手暂定 Review：
+
+| 质量轴 | 暂定 pass / 已判 pass 或 fail | 其他 | 人工确认分母 |
+| --- | --- | --- | --- |
+| Task Completion | 7/8 | 2 mixed | 0 |
+| Factual Correctness | 10/10 | 0 | 0 |
+| Evidence Recall | 7/8 | 1 mixed、1 unknown | 0 |
+| Citation Faithfulness | 9/9 | 1 mixed | 0 |
+| Unsupported Claims | 10/10 | 0；pass 表示未发现无依据断言 | 0 |
+
+这些数值只覆盖有回答的 10 次运行，来自本次 Codex 助手初审，所有 Case 与 Review 仍待人工核验；`mixed` 和 `unknown` 不计入 pass/fail 分母。三条系统失败单独计数，不伪装成质量失败。13 条运行的 Runtime 已知输入 Token **至少** 1,025,705、输出 **至少** 14,843，已知请求至少 40 次；两次响应没有 Usage、另有一次运行无 Usage，因此不是完整账单。13 条 Trace 耗时合计 1,074.976 秒；工具调用已知 44 次，覆盖 12/13 条，另一条未知。货币成本不可得。
+
+再加上前述三组试运行，已知 Runtime 输入至少 1,517,569 Token、输出至少 22,085 Token、请求至少 58 次；仍有缺失 Usage，Router/其他阶段以及本次 Codex 会话中的取证与辅助评审也没有合并的完整成本记录。不要把这些下界解释为总账单。
+
+最值得复核的现象：`cap2-harness-bridge` 未找到两条直接回答问题的消息，三次原始词法查询在同快照重放也未返回它们，原 Trace 的计数和前部一致，但原结果投影有截断，归因为 `likely:retrieval`；`cap2-student-terms` 的总结段引用遗漏直接支持消息，列为 `likely:citation`；`cap2-visualization` 遗漏同一发言者紧随回复的 HTML 提示，但 Trace 投影不完整，不能区分检索、上下文或生成选择；`cap2-video-workflow` 的问题没有指明日期或作品，Agent 找到另一段有依据的相似讨论，列为题目歧义待裁决。重放记录和逐题答案、引用、初审在本机 `harness-bridge-retrieval-replay.json`、`full-review-input/` 和 Evaluation Store 中。
+
+实际 Run、确定性 Feedback、失败 Trace 和模型辅助 Feedback 已以 metadata-only 上传；逐题入口（需对应 LangSmith 工作区）：[30 题数据集与部分 Baseline](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/0ea1cbb6-6497-44b7-84bd-f17f586fc94c)、[初始三题试运行](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d275acdf-a256-4f76-93e6-bc55c4831251)、[单题恢复与暂定 Review](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5b4d0556-f213-4155-a1bd-d9ca911522f0)、[修订后三题复测](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/93256cf3-c495-48ac-9ddb-e263cc589afb)。部分 Baseline 的 13/13 Run、Trace 事件数量和 50 项暂定 Feedback 已通过 API 回读；其余 17 个 Example 仅登记 Case 身份，不包含虚构 Run，已核对与本机同步账本的对应关系。修订三题的 3/3 Run 与 15 项 Feedback 也通过 API 回读。为避免泄露私人消息，平台只含 Case ID、运行状态、结构化 Trace 元数据及 Feedback；原题、参考和回答在本机查看。页面未进行视觉验收。
 
 ## 新增题目、核验和运行
 
@@ -89,5 +109,30 @@ trivae eval langsmith-sync --suite evaluation/suites/capability-v2.json \
   --experiment capability-v2-next --require-complete --metadata-only
 trivae eval langsmith-resolve --experiment capability-v2-next
 ```
+
+### 额度恢复后补跑本轮未完成题目
+
+当前 `remaining-case-identities.json` 精确列出 **20 个 Case 版本**：3 条已有失败运行和 17 条未启动题，不包括 10 条已有完整回答的题。提供方额度恢复后，可在独立实验中使用 `--case-list` 只运行这些 Case；Runner 仍记录原 `capability@v2` Suite 身份，manifest 和 LangSmith Experiment 会记录本次选择，不修改旧的失败实验。下列命令需要先按当前干净 Git 版本和实际模型设置建立新的 `continuation-variant.json`；仓库或配置后来变化时应重新建立 Variant。
+
+```bash
+trivae eval clone-data --manifest data/evaluation/frozen-20261028-validated/freeze.json \
+  --output-dir data/evaluation/capability-v2-continuation-work
+trivae eval run --suite evaluation/suites/capability-v2.json \
+  --case-list data/evaluation/capability-v2-20261028/remaining-case-identities.json \
+  --cases-dir data/evaluation/capability-v2-20261028/cases \
+  --variant data/evaluation/capability-v2-20261028/continuation-variant.json \
+  --database data/evaluation/capability-v2-continuation-work/trivae.sqlite3 \
+  --evaluation-database data/evaluation/capability-v2-continuation-runs.sqlite3 \
+  --freeze-manifest data/evaluation/capability-v2-continuation-work/freeze.json \
+  --record-dir data/evaluation/capability-v2-continuation-record --judge-version none
+trivae eval langsmith-sync --suite evaluation/suites/capability-v2.json \
+  --cases-dir data/evaluation/capability-v2-20261028/cases \
+  --evaluation-database data/evaluation/capability-v2-continuation-runs.sqlite3 \
+  --trace-database data/evaluation/capability-v2-continuation-work/trivae.sqlite3 \
+  --manifest data/evaluation/capability-v2-continuation-record/experiment.json \
+  --experiment capability-v2-continuation --require-complete --metadata-only
+```
+
+续跑入口和选择记录已在测试中验证；本轮因额度限制没有进行真实续跑。原实验和续跑是独立 Experiment，比较前要核对 Snapshot、Case、模型、配置、评分版本及代码变化；不可把旧的三条失败删掉或把两批不同运行称作一次完整原实验。
 
 模型或网络失败应保留并按 Trace 分类；不要用模拟运行代替真实结果。已有平台同步、人工 Review 追加、时间语义与实验对比规则见 `docs/evaluation-langsmith.md`。

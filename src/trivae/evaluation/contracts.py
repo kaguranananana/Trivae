@@ -825,6 +825,23 @@ class EvaluationSuite:
         return cls.from_dict(payload)
 
 
+def select_suite_references(
+    suite: EvaluationSuite, identities: Sequence[str] | None,
+) -> tuple[CaseReference, ...]:
+    """Select exact Case versions without changing the versioned Suite identity."""
+    if identities is None:
+        return suite.case_references
+    if isinstance(identities, str) or not isinstance(identities, (list, tuple)) or not identities:
+        raise EvaluationContractError("selected cases must be a non-empty array of Case identities")
+    available = {reference.identity for reference in suite.case_references}
+    if any(not isinstance(item, str) or item not in available for item in identities):
+        raise EvaluationContractError("selected Case identity is not in the Suite")
+    if len(set(identities)) != len(identities):
+        raise EvaluationContractError("selected Case identities must be unique")
+    chosen = set(identities)
+    return tuple(reference for reference in suite.case_references if reference.identity in chosen)
+
+
 @dataclass(frozen=True)
 class DeterministicCheck:
     """一条自动检查事实；质量判断不混入这里。"""

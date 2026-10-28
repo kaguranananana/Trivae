@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Awaitable, Callable, Mapping, cast
+from typing import Awaitable, Callable, Mapping, Sequence, cast
 
 from trivae.observability.contracts import TraceProfile, TraceProjection
 from trivae.query.completion import CompletionProviderError
@@ -24,6 +24,7 @@ from .contracts import (
     EvaluationRun,
     EvaluationSuite,
     scope_identity,
+    select_suite_references,
     utc_now,
 )
 from .store import EvaluationStore
@@ -121,13 +122,14 @@ class EvaluationRunner:
         variant: ControlledVariant,
         *,
         repetitions: int = 1,
+        selected_cases: Sequence[str] | None = None,
     ) -> tuple[EvaluationRun, ...]:
         """按 Suite 的 versioned references 执行 Case，不复制 Case Truth。"""
 
         if not isinstance(suite, EvaluationSuite):
             raise EvaluationContractError("run_suite requires an EvaluationSuite")
         selected: list[EvaluationCaseBundle] = []
-        for reference in suite.case_references:
+        for reference in select_suite_references(suite, selected_cases):
             case = cases.get(reference.identity)
             if case is None:
                 case = cases.get(reference.case_id)

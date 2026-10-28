@@ -5,7 +5,7 @@ import json
 import platform
 import sqlite3
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from importlib import metadata
 from pathlib import Path
 from typing import Any
@@ -19,6 +19,7 @@ from .contracts import (
     EvaluationContractError,
     EvaluationRun,
     EvaluationSuite,
+    select_suite_references,
     utc_now,
 )
 from .frozen_data import _metadata
@@ -27,8 +28,9 @@ from .variant import ControlledVariant
 
 def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, EvaluationCaseBundle], variant: ControlledVariant,
                        database: Path, freeze_path: Path, output_dir: Path, repetitions: int,
-                       judge_version: str) -> dict[str, Any]:
+                       judge_version: str, selected_cases: Sequence[str] | None = None) -> dict[str, Any]:
     try:
+        selection = select_suite_references(suite, selected_cases)
         frozen = json.loads(freeze_path.read_text(encoding="utf-8"))
         if frozen.get("role") != "working_copy":
             raise EvaluationContractError("formal evaluation requires a working copy, not the frozen master")
@@ -76,6 +78,8 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
             "python": platform.python_version(), "openai_agents_version": metadata.version("openai-agents"),
             "repetitions": repetitions, "runs": [],
         }
+        if selected_cases is not None:
+            manifest["selected_cases"] = [reference.identity for reference in selection]
         write_manifest(output_dir, manifest)
         return manifest
     except (OSError, KeyError, TypeError, ValueError, sqlite3.Error) as exc:
@@ -111,11 +115,15 @@ def compare_experiments(baseline_path: Path, candidate_path: Path) -> dict[str, 
             reasons.append(key + " differs")
     if a.get("status") != "completed" or b.get("status") != "completed":
         reasons.append("one or both experiments did not complete")
-    expected = len(a.get("cases", [])) * a.get("repetitions", 0)
+    identities = [f"{case['case_id']}@v{case['version']}" for case in a.get("cases", [])]
+    selected_a = a.get("selected_cases", identities)
+    selected_b = b.get("selected_cases", identities)
+    if selected_a != selected_b:
+        reasons.append("selected_cases differs")
+    expected = len(selected_a) * a.get("repetitions", 0)
     if len(a.get("runs", [])) != expected or len(b.get("runs", [])) != expected:
         reasons.append("run count is incomplete")
-    identities = [f"{case['case_id']}@v{case['version']}" for case in a.get("cases", [])]
-    expected_cases = Counter({identity: a.get("repetitions", 0) for identity in identities})
+    expected_cases = Counter({identity: a.get("repetitions", 0) for identity in selected_a})
     for label, item in (("baseline", a), ("candidate", b)):
         if Counter(run.get("case") for run in item.get("runs", [])) != expected_cases:
             reasons.append(label + " case repetitions differ from suite")
