@@ -2,6 +2,15 @@
 
 Judge v2 is the versioned review rubric for saved Agent answers. Its version identifier is `eval-rubric-v2`; the previous five-axis rules remain available as `JUDGE_V1_PROMPT` and historical v1 Review records stay under `eval-rubric-v1`.
 
+## v2.1 calibration
+
+`eval-rubric-v2.1` retains the same two 0–4/`unknown` dimensions, open Ground Truth, issue types, severity labels, structured evidence/impact fields, and review eligibility. The v2 prompt and saved v2 Reviews remain unchanged. The v2.1 prompt adds only two judgment clarifications:
+
+- Establish the original user intent first. Treat Ground Truth as an open reference, not a stricter hidden contract; do not require an idealized example or format that the question did not ask for. Lower task satisfaction when the answer misses a real core need or the difference impairs the user's understanding or decision.
+- Treat diagnostic severity as the impact of one issue. Set each overall score by considering where the issue appears, how central or repeated it is, and what it changes for the user. A localized moderate issue can coexist with a 3 when the main conclusion remains trustworthy and the issue does not materially change the user's action; a material error in the main conclusion or core decision lowers the score. Severity does not mechanically map to score.
+
+The v2.1 re-review is a separate, model-assisted calibration pass. A difference between v2 and v2.1 is a rubric effect, not an Agent improvement or regression.
+
 ## Scoring dimensions
 
 Each dimension is scored independently from 0 to 4, or `unknown` when the available material cannot support a reliable judgment. `unknown` is excluded from the numeric mean and is never treated as zero.

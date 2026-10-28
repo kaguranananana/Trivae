@@ -10,7 +10,13 @@ from pathlib import Path
 from scripts.verify_capability_bundle import verify
 from trivae.config.dotenv import load_environment_file
 from trivae.config.settings import load_settings
-from trivae.evaluation.capability_judge import JUDGE_PROMPT, RUBRIC_VERSION, parse_review, prepare_review_input
+from trivae.evaluation.capability_judge import (
+    RUBRIC_VERSION,
+    RUBRIC_VERSIONS,
+    judge_prompt_for,
+    parse_review,
+    prepare_review_input,
+)
 from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationContractError, EvaluationRun
 from trivae.evaluation.store import SQLiteEvaluationStore
 from trivae.query.runtime.model_completion import complete_json, completion_record
@@ -22,6 +28,8 @@ async def main_async(args: argparse.Namespace) -> None:
         verify(args.bundle_dir, args.suite, args.freeze_manifest, args.database)
     load_environment_file(args.env_file)
     settings = load_settings(model_id=args.judge_model, role="judge", config_path=args.models_config)
+    rubric_version = args.rubric_version
+    judge_prompt = judge_prompt_for(rubric_version)
     source_database = args.source_evaluation_database or args.evaluation_database
     if not source_database.is_file():
         raise EvaluationContractError("source evaluation database does not exist")
@@ -45,7 +53,7 @@ async def main_async(args: argparse.Namespace) -> None:
         args.record_dir.mkdir(parents=True, exist_ok=False)
         (args.record_dir / "input.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
         configuration = {
-            "rubric_version": RUBRIC_VERSION,
+            "rubric_version": rubric_version,
             "model_profile": settings.model_profile,
             "provider": settings.provider,
             "model": settings.model_name,
@@ -57,7 +65,7 @@ async def main_async(args: argparse.Namespace) -> None:
         try:
             completion = await complete_json(
                 settings,
-                system_prompt=JUDGE_PROMPT,
+                system_prompt=judge_prompt,
                 user_prompt=json.dumps(payload, ensure_ascii=False),
                 session_id=run.run_id,
             )
@@ -69,7 +77,8 @@ async def main_async(args: argparse.Namespace) -> None:
             review = parse_review(
                 completion.content,
                 run_id=run.run_id,
-                judge_identity=f"{settings.provider}:{completion.model}:{RUBRIC_VERSION}",
+                judge_identity=f"{settings.provider}:{completion.model}:{rubric_version}",
+                rubric_version=rubric_version,
             )
             store.save_review(review)
             (args.record_dir / "review.json").write_text(json.dumps(review.to_dict(), ensure_ascii=False, indent=2) + "\n")
@@ -104,6 +113,7 @@ def main() -> None:
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--record-dir", type=Path, required=True)
     parser.add_argument("--judge-model", help="Named model profile; defaults to evaluation.judge")
+    parser.add_argument("--rubric-version", choices=RUBRIC_VERSIONS, default=RUBRIC_VERSION)
     parser.add_argument("--models-config", type=Path, help="Model registry YAML; defaults to config/models.yaml")
     parser.add_argument("--env-file", type=Path)
     parser.add_argument("--skip-bundle-verification", action="store_true",

@@ -13,7 +13,10 @@ from trivae.conversation.serialization import serialize_answer_artifact
 from trivae.evaluation.capability_audit import CAPABILITY_AXES
 from trivae.evaluation.capability_judge import (
     JUDGE_PROMPT,
+    JUDGE_PROMPT_V2_1,
     JUDGE_V1_PROMPT,
+    RUBRIC_VERSION_V2_1,
+    judge_prompt_for,
     parse_review,
     parse_review_v1,
     prepare_review_input,
@@ -149,6 +152,36 @@ def test_v2_moderate_diagnostic_is_flagged_even_with_passing_score():
     review = parse_review(json.dumps(output, ensure_ascii=False), run_id="run", judge_identity="fixture:model")
     assert review.quality_axes["answer_reliability"]["score"] == 3
     assert review.needs_adjudication
+
+
+def test_v2_1_calibration_preserves_score_contract_and_v2_prompt():
+    output = {
+        "axes": {
+            "task_satisfaction": {"score": 3, "reason": "原问题核心需求已满足。"},
+            "answer_reliability": {"score": 3, "reason": "主结论可信，局部问题已记录。"},
+        },
+        "overall_rationale": "单个局部问题不改变整答结论。",
+        "diagnostics": [{
+            "type": "unsupported_assertion",
+            "severity": "moderate",
+            "primary_dimension": "answer_reliability",
+            "answer_excerpt": "某个局部说法",
+            "evidence": "输入材料没有支持该局部说法。",
+            "impact": "该局部信息可能影响一个次级细节。",
+        }],
+    }
+    review = parse_review(
+        json.dumps(output, ensure_ascii=False), run_id="run", judge_identity="fixture:model",
+        rubric_version=RUBRIC_VERSION_V2_1,
+    )
+    assert review.rubric_version == RUBRIC_VERSION_V2_1
+    assert review.quality_axes["answer_reliability"]["score"] == 3
+    assert review.diagnostics[0]["severity"] == "moderate"
+    assert review.needs_adjudication
+    assert judge_prompt_for("eval-rubric-v2") == JUDGE_PROMPT
+    assert "GT 中更理想化的案例" in JUDGE_PROMPT_V2_1
+    assert "severity 不机械映射为轴分" in JUDGE_PROMPT_V2_1
+    assert "GT 中更理想化的案例" not in JUDGE_PROMPT
 
 
 def test_v1_parser_still_rejects_incomplete_five_axis_output():
