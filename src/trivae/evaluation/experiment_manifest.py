@@ -29,8 +29,11 @@ from .variant import ControlledVariant
 def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, EvaluationCaseBundle], variant: ControlledVariant,
                        database: Path, freeze_path: Path, output_dir: Path, repetitions: int,
                        judge_version: str, selected_cases: Sequence[str] | None = None,
-                       model_settings: ModelSettings | None = None) -> dict[str, Any]:
+                       model_settings: ModelSettings | None = None,
+                       allow_prompt_variant: bool = False) -> dict[str, Any]:
     try:
+        if allow_prompt_variant and (suite.suite_id, suite.version) != ("eval", 1):
+            raise EvaluationContractError("prompt variants are supported only for recorded eval@v1 experiments")
         selection = select_suite_references(suite, selected_cases)
         frozen = json.loads(freeze_path.read_text(encoding="utf-8"))
         if frozen.get("role") != "working_copy":
@@ -66,7 +69,8 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
         if (suite.suite_id, suite.version) == ("eval", 1):
             from .capability_conditions import effective_model_treatment, validate_formal_conditions
 
-            validate_formal_conditions(variant, settings.to_safe_dict(), router_settings)
+            validate_formal_conditions(variant, settings.to_safe_dict(), router_settings,
+                                       allow_prompt_variant=allow_prompt_variant)
             model_treatment = effective_model_treatment(settings)
             for case in selected:
                 if (case.time_context is None or case.time_context.get("as_of") != "2026-10-28T12:00:00+08:00"
@@ -93,6 +97,8 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
         }
         if selected_cases is not None:
             manifest["selected_cases"] = [reference.identity for reference in selection]
+        if allow_prompt_variant:
+            manifest["prompt_variant_allowed"] = True
         if model_treatment is not None:
             manifest["effective_model_treatment"] = model_treatment
         write_manifest(output_dir, manifest)

@@ -217,6 +217,8 @@ def build_parser() -> argparse.ArgumentParser:
     eval_run_parser.add_argument("--record-dir", type=Path, help="Create a formal experiment record")
     eval_run_parser.add_argument("--freeze-manifest", type=Path, help="Manifest in the working data clone")
     eval_run_parser.add_argument("--judge-version", default="none", help="Judge identity or none")
+    eval_run_parser.add_argument("--allow-prompt-variant", action="store_true",
+                                 help="Allow a named prompt candidate while keeping other eval@v1 conditions fixed")
     eval_freeze = evaluation_subparsers.add_parser("freeze-data", help="Freeze private canonical and index databases")
     eval_freeze.add_argument("--database", type=Path, required=True)
     eval_freeze.add_argument("--semantic-index", type=Path, default=None)
@@ -1304,6 +1306,8 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 selected_cases = [ref.identity for ref in select_suite_references(suite, selection)]
             if (args.record_dir is None) != (args.freeze_manifest is None):
                 raise EvaluationContractError("--record-dir and --freeze-manifest must be supplied together")
+            if args.allow_prompt_variant and (args.record_dir is None or (suite.suite_id, suite.version) != ("eval", 1)):
+                raise EvaluationContractError("--allow-prompt-variant requires a recorded eval@v1 experiment")
             manifest = None
             if args.record_dir is not None:
                 from trivae.evaluation.experiment_manifest import prepare_experiment
@@ -1313,7 +1317,7 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                     suite=suite, cases=cases, variant=variant, database=args.database,
                     freeze_path=args.freeze_manifest, output_dir=args.record_dir,
                     repetitions=args.repeat, judge_version=args.judge_version, selected_cases=selected_cases,
-                    model_settings=agent_settings,
+                    model_settings=agent_settings, allow_prompt_variant=args.allow_prompt_variant,
                 )
 
             async def evaluate_suite() -> tuple[tuple[EvaluationRun, ...], list[dict[str, object]]]:

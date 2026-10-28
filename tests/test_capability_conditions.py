@@ -24,8 +24,13 @@ def _formal_variant():
 def test_formal_conditions_fix_window_tool_budget_and_router():
     variant = _formal_variant()
     validate_formal_conditions(variant, FORMAL_RUNTIME, {"enabled": False})
+    prompt_candidate = replace(variant, prompt_identity="evidence-strength-claims-v1")
+    with pytest.raises(EvaluationContractError, match="variant conditions differ"):
+        validate_formal_conditions(prompt_candidate, FORMAL_RUNTIME, {"enabled": False})
+    validate_formal_conditions(prompt_candidate, FORMAL_RUNTIME, {"enabled": False}, allow_prompt_variant=True)
     with pytest.raises(EvaluationContractError, match="model_context_window_tokens"):
-        validate_formal_conditions(variant, {**FORMAL_RUNTIME, "model_context_window_tokens": None}, {"enabled": False})
+        validate_formal_conditions(prompt_candidate, {**FORMAL_RUNTIME, "model_context_window_tokens": None},
+                                   {"enabled": False}, allow_prompt_variant=True)
     with pytest.raises(EvaluationContractError, match="tool surface"):
         validate_formal_conditions(replace(variant, available_tools=("lexical_search",)), FORMAL_RUNTIME, {"enabled": False})
     with pytest.raises(EvaluationContractError, match="router"):
