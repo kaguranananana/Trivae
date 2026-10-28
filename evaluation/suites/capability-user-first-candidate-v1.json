@@ -1,0 +1,129 @@
+{
+  "suite_id": "capability-user-first-candidate",
+  "version": 1,
+  "kind": "core",
+  "description": "用户需求先行，题面先冻结，证据非穷尽；全部候选待人工审核。",
+  "created_at": "2026-10-28T03:42:11.629+00:00",
+  "cases": [
+    {
+      "case_id": "uf2-01-reconnect",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-02-codex-interrupt",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-03-codex-login",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-04-mcp-connect",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-05-agent-regression",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-06-long-context",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-07-task-progress",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-08-context-cost",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-09-multi-agent",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-10-agent-evaluation",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-11-rag-retrieval",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-12-mcp-vs-skills",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-13-coding-cost",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-14-code-review",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-15-agent-memory",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-16-codex-cursor",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-17-kimi-deepseek",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-18-trellis",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-19-agent-tools",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-20-open-source-agent",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-21-agent-deploy",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-22-ai-project-interview",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-23-agent-interview",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-24-coding-assessment",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-25-rag-interview",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-26-citation",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-27-recent-models",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-28-recent-projects",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-29-ai-workflows",
+      "version": 1
+    },
+    {
+      "case_id": "uf2-30-remote-coding",
+      "version": 1
+    }
+  ]
+}
