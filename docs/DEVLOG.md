@@ -344,3 +344,10 @@
 - LangSmith 合成数据通过实际外部实验API、对比查询和 Feedback 回读确认同一 Example 的基线/候选、独立评分、ERROR及失败Trace；后加模型辅助 Review 经实际HTTP上传，重复执行无重复。历史 Archify 的词法、词法+语义和完整系统结果来自既有185 Run，不重跑模型；同一 Example 的对比查询可读原始时间、Run与Trace，Judge失败作为失败Feedback。发现首版对无异常类型的failed Run未写远端error，先前误显示SUCCESS；修复后新建导入实测ERROR且包含3条Trace failure，原错误导入不删除。
 - 真实接口边界：外部实验对同Example、同开始时间返回409；数周以前原始时间的合成探针返回404/500，SDK普通Run对超24小时返回422。显式 `--import-time` 将平台时间标为导入阶段，并保留原运行起止与耗时，不将平台latency当推理耗时；避免静默时间改写或自动重试。SDK直接建Example虽成功但比较页查询因Example版本时间晚于运行而为空，最终统一使用官方外部实验API，远端ID解析与Feedback使用经0.14.13 SDK核对的HTTP接口。浏览器自动化超时，未声称直接目视验收UI；服务对比API、单Run及Feedback实际回读通过。
 - 最终 `.venv/bin/pytest -q` 1346 passed/1 skipped（35.91秒）、Ruff src/tests/scripts、mypy142文件、git diff检查和已配置密钥不在暂存变更中通过。完整命令、示例、限制及可访问的Dataset见 docs/evaluation-langsmith.md；本轮0新增模型请求。下一步由用户核验候选参考证据、创建已审核版本后执行实际模型实验；旧历史环境仅有身份清单者不能宣称可精确重放。
+
+## 2026-10-28 · 历史评测批量导入 LangSmith
+
+- 工作提交 4b437c20：对历史导入增加可选完整性检查，逐条核验原 Case 版本、查询、范围、Snapshot、Result、Trace 请求 ID、终止状态和连续事件；保存原始指标、失败详情、Judge 结果、历史报告环境和 Variant。接口真实返回 422，定位为数值 Feedback 只允许四位小数，按平台精度上传且在输出保留原始值和分母；未重写历史数据。单题原始运行按来源建立明确标识的新展示分组，仍保留 `single_case` 原身份。助手初审的分类质量轴保留原始 provisional/人工待审状态。
+- 共导入 148 个 Experiment、1,660 条 Run、14 个 Dataset，包括原 Development v1 的 185 条、五轮 Development v2 的 925 条、Calibration Pilot 60 条、Holdout 两轮 180 条、Planner/Router 与定向验证、Prompt 优化/消融、工具预算和 CJK 对照。原封存 Holdout 的 90 条是 SettingsError，复用后不属于新盲测；各数据集与用途链接见 docs/evaluation-langsmith.md。首次盘点漏查根目录 Evaluation DB，随后找到旧 Run 并从 Git ac46dfd6 恢复 v1 Case/Suite；Pilot 早于该提交，运行时参考文本不能独立确认。
+- 实际 LangSmith API 回读 1,660/1,660 条 Run 与本地 Trace、原始指标和终止状态一致，远端 Run ID 全部入本地账本；平台比较接口对74条未返回评分汇总，独立 Feedback API 核对该批320个数值评分，另核对16份暂定Review的48个分类轴。运行状态为 1,209 SUCCESS / 451 ERROR，不代表答案质量；历史失败分类 1,020 条，不当作人工准确率。CJK 一条 Trace 从序号2开始，按完整性要求排除；未核实的其他探索或合成 Run 未计入。
+- 严格模式、历史资料关联、四位小数、原始评分保留、元数据模式不泄露 Judge 文本及暂定轴均有测试；完整 pytest 1348 passed/1 skipped（41.51秒），末次元数据调整后定向13 passed，Ruff src/tests/scripts、修改文件 mypy、diff 和暂存密钥检查通过。无新增模型调用、未上传数据库/凭据、未修改历史记录；浏览器自动化超时，页面未目视验收，结论来自真实 API 回读。本机导入索引、回执、被排除原因及核验结果在 data/evaluation/langsmith-history-import-20261028/；服务故障或未完成入库时仍先检查远端与账本，不自动重试覆盖。
