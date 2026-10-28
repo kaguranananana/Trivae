@@ -8,7 +8,7 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
-- 2026-10-28 历史 Eval 补充导入（工作提交 4b437c20）：本轮以已保存 Case、Run、Result 和 Trace 为依据，导入 148 个 LangSmith Experiment、1,660 条真实 Run，含 Development v1/v2、Calibration Pilot、已暴露 Holdout、Planner/Router 对照、Prompt 消融与优化、工具预算和 CJK 对照；没有重复调用模型。按运行记录、评分与 Trace 全量 API 回读并写回远端 Run ID 映射；服务比较接口对 74 条没有返回 Feedback 汇总，对应 320 项数值经独立 Feedback API 核对。16 条优化初审的48个独立轴均为助手暂定、人工待审。CJK 一条 Trace 缺首事件，排除不导入；其他未核实的本地探索/合成记录未计入。完整快照限制、历史分组、原 Holdout 失败及查看链接见 docs/evaluation-langsmith.md。
+- 2026-10-28 历史 Eval 补充导入（工作提交 4b437c20）：本轮以已保存 Case、Run、Result 和 Trace 为依据，导入 177 个 LangSmith Experiment、1,740 条真实 Run，含 Development v1/v2 及局部运行、Calibration Pilot、已暴露 Holdout、Planner/Router 对照、Prompt 消融与优化、工具预算、CJK 对照和后续修复验证；没有重复调用模型。按运行记录、评分与 Trace 全量 API 回读并写回远端 Run ID 映射；服务比较接口对 74 条没有返回 Feedback 汇总，对应 320 项数值经独立 Feedback API 核对。16 条优化初审的48个独立轴均为助手暂定、人工待审。CJK 一条 Trace 缺首事件、12 条 Prompt 记录缺原 Case，排除不导入；11 条合成/测试和 1 条离线回放未计入真实实验。完整快照限制、历史分组、原 Holdout 失败及查看链接见 docs/evaluation-langsmith.md。
 - 旧 Development v1 和 Pilot 的 Run 在根目录 Evaluation 数据库找到，早期 Case/Suite 从首次保存版本 ac46dfd6 恢复；Pilot 早于该版本提交，不能独立确认运行时完整参考文本。旧数据未冻结为可复现原库；不把平台导入时间/延迟当原运行时间/耗时。UI 浏览器自动化仍超时，核验为实际 API 回读。最终完整 pytest 1348 passed/1 skipped，最后一次代码调整后定向13 passed，Ruff、修改文件 mypy 与 diff 检查通过；本地导入证据及派生索引保留在 data/evaluation/langsmith-history-import-20261028/，密钥和数据库不提交。
 
 - 2026-10-28 LangSmith 与长期评测接入（工作提交 b53d895d）：复用原 EvaluationRunner/Store/Trace，新增显式外部实验同步、逐轴 Feedback、历史与本地 Run/Trace 映射、后续 Review 同步、分层失败报告、数据/索引冻结与工作副本、正式实验记录和可比性检查。原 37 Development / 10 Calibration / 18 已暴露 Holdout 不改；精选 3 条历史回归、6 条能力题，当前冻结库另生成 3+6 条无 GT 候选待审核。真实主快照及工作副本为 864615 条/206 来源、三索引 revision 98835；本次发现并修复来源超过200时 Snapshot 失败，三份相同验证副本均保留并做字节校验后写时复制。真实工作副本用明确标注为 stub 的执行器各运行3题 Baseline/Candidate，6条模拟失败、条件比较通过，无模型调用。
