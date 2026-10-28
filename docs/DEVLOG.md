@@ -360,3 +360,7 @@
 - 新增证据回读与分母报告，正式分母只接受明确人工确认的关键事实及人工答案 Review，模型辅助/混合/未知单列；不同评分版本不混算。针对额度中断后无法不重复成功题续跑的真实缺口，复用 EvaluationRunner 增加 `--case-list`：选择精确 Case 版本，保留完整 Suite 身份，manifest 和 LangSmith 记录选集，比较时只允许相同选集。20题续跑清单包含3失败和17未启动；入口经测试未做真实模型续跑。未修改产品查询主链路、未切换模型或自动重试。
 - LangSmith 的 Capability v2 数据集包含30个不含群聊正文的 Example，13条真实Run、Trace和50项模型辅助 Feedback 已逐条API回读；其余17 Example无伪造运行。本机账本和远端30/30映射一致；浏览器页面未目视验收。全部原文、题目、运行和工作库仅留 ignored `data/evaluation/capability-v2-20261028/` 及其独立工作目录，详情见 docs/capability-evaluation-v2.md。
 - 完整 pytest 1353 passed/1 skipped（38.33秒）、Ruff src/tests/scripts、修改的7个源码文件 mypy 和 diff 检查通过，暂存内容检查未发现已配置密钥或完整参考原文。下一步等待 Provider 共享额度恢复后，以新 Variant 和独立记录按选集补跑，随后人工审核样本与评分分歧；不得将部分流程验证报告为能力提升。
+
+### 同日补充：题目歧义候选
+
+- 根据实际 Baseline 中两段相似讨论导致的评分歧义，使用现有 Case new-version 生成独立 `cap2-video-workflow@v2`，在问题中限定参考讨论的日期，原题、Suite 和已运行实验保持原样。9 条参考均位于该日期；独立证据包经冻结库回读，身份、时间、范围、原文及摘录检查 9/9 通过。语义关联、完整性和消歧效果仍待人工审查，候选未运行，且不属于已发布 Suite。未增加模型调用。

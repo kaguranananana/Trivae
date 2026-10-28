@@ -8,6 +8,8 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
+- 2026-10-28 对 `cap2-video-workflow` 的歧义准备独立 v2 候选，限定原证据讨论日期；9/9 条参考消息身份、时间、范围和原文自动回读通过，语义、完整性及消歧效果仍待人工审查。候选未运行，不属于已发布的 Capability Suite v2，不更改原实验；本机记录在 `data/evaluation/capability-v2-20261028/candidate-fixes/`。
+
 - 2026-10-28 Capability Suite v2：保留历史及回归集，新增 30 题版本清单；真实冻结库 864,615 消息、三索引 revision 98835，7 群、235 条 Case 内参考记录对应 205 条不同消息。ID、时间、范围、原文和转发关系已回读，语义与全部 30 题仍待人工审核，近期讨论占比偏高。小规模初始3题均因提供方连接失败；恢复单题完成；修订后三题 3/3 完成，模型辅助 Review 仅为暂定。全套实际尝试13/30、10完成、1次响应流中断、2次订阅共享额度耗尽，后17题未启动；正式质量分母0。10条答案的暂定任务完成7/8另2 mixed，证据覆盖7/8另1 mixed/1 unknown；一题因目标歧义不按固定 ID 判错，一题同快照重放提示检索遗漏，一题总结段引用遗漏连续出现。LangSmith 数据集30个元数据条目，13/13 Run、Trace与50项模型辅助 Feedback已API回读；17个未运行条目无伪造Run。新增证据核验、按审核与评分版本分母报告及 `--case-list` 选择续跑；剩余20题（3失败+17未启动）已列在本机待额度恢复，续跑入口仅经测试未实测。完整 pytest 1353 passed/1 skipped、Ruff、7文件 mypy、diff 与暂存隐私检查通过；无 Agent 查询主链路优化。本机 Case、原文、报告和快照均不提交；详细限制、入口和命令见 docs/capability-evaluation-v2.md。
 
 - 2026-10-28 历史 Eval 补充导入（工作提交 4b437c20）：本轮以已保存 Case、Run、Result 和 Trace 为依据，导入 177 个 LangSmith Experiment、1,740 条真实 Run，含 Development v1/v2 及局部运行、Calibration Pilot、已暴露 Holdout、Planner/Router 对照、Prompt 消融与优化、工具预算、CJK 对照和后续修复验证；没有重复调用模型。按运行记录、评分与 Trace 全量 API 回读并写回远端 Run ID 映射；服务比较接口对 74 条没有返回 Feedback 汇总，对应 320 项数值经独立 Feedback API 核对。16 条优化初审的48个独立轴均为助手暂定、人工待审。CJK 一条 Trace 缺首事件、12 条 Prompt 记录缺原 Case，排除不导入；11 条合成/测试和 1 条离线回放未计入真实实验。完整快照限制、历史分组、原 Holdout 失败及查看链接见 docs/evaluation-langsmith.md。
