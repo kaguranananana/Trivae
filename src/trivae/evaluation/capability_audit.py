@@ -25,14 +25,15 @@ CAPABILITY_AXES = (
 
 
 def reference_confirmed(case: EvaluationCaseBundle) -> bool:
-    """Human confirmation must be explicit for the case and each finding and source."""
+    """Only confirmed critical findings and their sources are needed for formal review."""
+    required = [finding for finding in case.reference_findings if finding.critical]
     return bool(
         "review:confirmed" in case.suite_tags
-        and case.reference_findings
+        and required
         and all(
             finding.provenance.adjudicated and finding.reference_evidence
             and all(evidence.provenance.adjudicated for evidence in finding.reference_evidence)
-            for finding in case.reference_findings
+            for finding in required
         )
     )
 
@@ -140,6 +141,8 @@ def capability_report(database: Path, suite: EvaluationSuite, cases: Mapping[str
     latency_ms = 0.0
     latency_samples = tool_samples = 0
     tool_calls = 0
+    mismatched_reviews = 0
+    variants: set[str] = set()
     con = sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True)
     try:
         rows = con.execute("SELECT payload_json FROM evaluation_runs WHERE suite_id=? AND suite_version=? ORDER BY started_at,run_id",
@@ -149,6 +152,7 @@ def capability_report(database: Path, suite: EvaluationSuite, cases: Mapping[str
         suite_refs = {ref.identity for ref in suite.case_references}
         for (payload,) in rows:
             run = EvaluationRun.from_dict(json.loads(payload))
+            variants.add(run.variant_id)
             identity = f"{run.case_id}@v{run.case_version}"
             case = cases.get(identity)
             if identity not in suite_refs or case is None or run.snapshot_id != case.dataset_snapshot.snapshot_id:
@@ -180,6 +184,9 @@ def capability_report(database: Path, suite: EvaluationSuite, cases: Mapping[str
             latest: dict[tuple[str, str], tuple[str, bool]] = {}
             for (review_payload,) in review_rows:
                 review = EvaluationReview.from_dict(json.loads(review_payload))
+                if review.rubric_version != case.review_policy.rubric_version:
+                    mismatched_reviews += 1
+                    continue
                 for axis in CAPABILITY_AXES:
                     assessment = review.quality_axes.get(axis, {})
                     label = assessment.get("label")
@@ -192,6 +199,15 @@ def capability_report(database: Path, suite: EvaluationSuite, cases: Mapping[str
                     metrics[axis]["human_confirmed"][label] += 1
     finally:
         con.close()
+    if len(variants) > 1:
+        raise EvaluationContractError("capability report requires a single variant")
+    diagnoses: Counter[str] = Counter()
+    undiagnosed_failed_runs = 0
+    for item in base["runs"]:
+        if item["runtime_failed"] and not item["diagnoses"]:
+            undiagnosed_failed_runs += 1
+        for diagnosis in item["diagnoses"]:
+            diagnoses[f"{diagnosis['status']}:{diagnosis['primary_cause']}"] += 1
     result_metrics: dict[str, dict[str, dict[str, int]]] = {}
     for axis, groups in metrics.items():
         result_metrics[axis] = {}
@@ -201,4 +217,6 @@ def capability_report(database: Path, suite: EvaluationSuite, cases: Mapping[str
     return {"run_report": base, "quality": result_metrics, "usage": dict(usage),
             "latency_ms_sum": latency_ms, "latency_samples": latency_samples,
             "tool_calls_sum": tool_calls, "tool_calls_samples": tool_samples,
+            "variant_id": next(iter(variants)) if variants else None, "mismatched_reviews": mismatched_reviews,
+            "diagnoses": dict(diagnoses), "undiagnosed_failed_runs": undiagnosed_failed_runs,
             "note": "Quality excludes failed runs; provisional reviews are not formal accuracy. Cost is unavailable unless observed."}

@@ -10,6 +10,7 @@ Suite 清单和不含群聊正文的目录见 `evaluation/suites/capability-v2.j
 
 - `cases/`：版本化 Case，含非穷尽 Findings、引用和每题评分要求；`suite.json` 是同一 Suite 的本地副本。
 - `evidence.json`：原文、时间、消息身份、转发关系和检索摘录；`review-queue.md` 提供逐题人工抽查视图，展示的摘录可能被截断。
+- `evidence-conflicts.json`：8 个已发现的条件差异、表面冲突或因果不确定性，均待人工复核；没有列出不代表其他题不存在冲突。
 - `evidence-audit.json`：30 题、235 条 Case 内参考记录的回读结果；仅证明 ID、群、时间、范围、原文和所存摘录一致，不证明语义推断或枚举完整。
 
 线索来自原始消息检索及历史日报中值得追问的话题；后者只用于发现话题，参考摘录重新对当前冻结库逐条比对。语义与冲突归因由助手暂定，全部 30 题 `review:pending`，参考来源均 `adjudicated=false`。候选题不作为人工确认的 Ground Truth；遗漏未被收集的信息不等于不存在。`cap2-quota-timeline` 在完整 Suite 中为 v2，补充了可回读的转发子消息；试运行保留原 v1 和原运行事实。
@@ -29,7 +30,7 @@ Suite 清单和不含群聊正文的目录见 `evaluation/suites/capability-v2.j
 | Unsupported Claims | `pass` 表示未发现无依据断言，`fail` 表示发现明确无依据断言 | 信息不足时不能简单把未知定为错误 |
 | Cost / Latency | 记录实际 Provider 返回的 Token、运行耗时和工具调用 | 部分响应无 Usage 时只报已知下界；没有价格或账单时货币成本为未知 |
 
-`capability_audit.py` 不创建第二套 Runner 或 Judge。它复用现有 Case、Evaluation Store 与 `run_report`，单独验证私人证据包，并把人工确认和模型辅助判断分开计数。正式维度分母只接受已有 `review:confirmed`、每个 Finding 和 Evidence 已人工裁决、且有不需进一步裁决的人工答案 Review 的完整回答；`mixed`、`unknown` 和未审核不进入 pass/fail 分母。模型辅助 Review 始终单列为暂定，不能冒充人工评审。当前 Codex 会话的试运行初审属于模型辅助 Review；尚未建立 Judge 与人工的符合率，也没有独立批量 Judge 对 v2 运行评分。
+`capability_audit.py` 不创建第二套 Runner 或 Judge。它复用现有 Case、Evaluation Store 与 `run_report`，单独验证私人证据包，并把人工确认和模型辅助判断分开计数。正式维度分母只接受已有 `review:confirmed`、关键 Finding 及其 Evidence 已人工裁决、且有不需进一步裁决的人工答案 Review 的完整回答；非关键参考不强制全部确认。报告只汇总单一 Variant 和匹配 Case 评分版本的 Review，重复运行按 Run 计数。`mixed`、`unknown` 和未审核不进入 pass/fail 分母。模型辅助 Review 始终单列为暂定，不能冒充人工评审。当前 Codex 会话的试运行初审属于模型辅助 Review；尚未建立 Judge 与人工的符合率，也没有独立批量 Judge 对 v2 运行评分。
 
 ## 真实试运行（2026-10-28，待继续）
 
@@ -37,7 +38,9 @@ Suite 清单和不含群聊正文的目录见 `evaluation/suites/capability-v2.j
 
 恢复回答的助手初审：任务完成 1/1、参考事实覆盖 1/1；事实正确、引用忠实、无依据断言各有 1 条 `mixed`，不计入 pass/fail 分母。主要疑点为旧图片消息与话题的关联未能仅凭引用确认，以及总结中一项额度体验未绑定直接支持消息；这些均需人工复核。所有正式质量指标的分母是 0，当前不能报正式准确率，也不能据此宣称 Agent 能力提升。
 
-实际 Run、确定性 Feedback、失败 Trace 和 5 项模型辅助 Feedback 已以 metadata-only 上传并通过 API 回读。逐题入口（需对应 LangSmith 工作区）：[初始三题试运行](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d275acdf-a256-4f76-93e6-bc55c4831251)、[单题恢复与暂定 Review](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5b4d0556-f213-4155-a1bd-d9ca911522f0)。为避免泄露私人消息，平台只含 Case ID、运行状态、结构化 Trace 元数据及 Feedback；原题、参考和回答在本机查看。页面未进行视觉验收，以上以 API 回读为准。
+修订转发证据后的三题复测 3/3 完成、确定性检查 3/3 无失败；耗时合计 384.596 秒，13 次工具调用，Runtime 返回输入 362,129／输出 5,460 Token、12 次请求。助手暂定评审的任务完成及参考事实覆盖均为 3/3；事实正确、引用忠实和无依据断言各为 2/2 `pass`、另有 1 条 `mixed`，人工分母仍为 0。跨群题只命中 2/4 预设消息 ID，但找到可直接支持结论的转发子消息；不应把此 ID 命中数当作语义证据召回失败。第一题总结引用问题连续两次出现，仍需人工复核。此试运行使用独立校准 Suite，不冒充 30 题完整结果。
+
+实际 Run、确定性 Feedback、失败 Trace 和模型辅助 Feedback 已以 metadata-only 上传；逐题入口（需对应 LangSmith 工作区）：[初始三题试运行](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d275acdf-a256-4f76-93e6-bc55c4831251)、[单题恢复与暂定 Review](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5b4d0556-f213-4155-a1bd-d9ca911522f0)、[修订后三题复测](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/93256cf3-c495-48ac-9ddb-e263cc589afb)。前两组 Run 和单题恢复的 5 项模型辅助 Feedback 已通过 API 回读；第三组已接收，回读待核。为避免泄露私人消息，平台只含 Case ID、运行状态、结构化 Trace 元数据及 Feedback；原题、参考和回答在本机查看。页面未进行视觉验收。
 
 ## 新增题目、核验和运行
 

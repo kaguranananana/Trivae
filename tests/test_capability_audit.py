@@ -10,7 +10,7 @@ import pytest
 from tests.test_evaluation import _case
 from tests.test_evaluation_platform import _local_run, _suite
 from trivae.evaluation.capability_audit import audit_evidence, capability_report, reference_confirmed
-from trivae.evaluation.contracts import EvaluationContractError, EvaluationReview
+from trivae.evaluation.contracts import EvaluationContractError, EvaluationReview, FailureDiagnosis
 from trivae.evaluation.store import SQLiteEvaluationStore
 
 
@@ -90,6 +90,7 @@ def test_forwarded_message_keeps_parent_and_original_time(tmp_path):
 
 def test_pending_references_do_not_enter_formal_quality_and_partial_usage_is_kept(tmp_path):
     case = _message_case()
+    case = replace(case, review_policy=replace(case.review_policy, rubric_version="cap-v2"))
     run = _local_run(tmp_path, case)
     store = SQLiteEvaluationStore(tmp_path / "runs.sqlite3")
     run = replace(run, terminal_status="completed", operational_measurements={
@@ -101,20 +102,27 @@ def test_pending_references_do_not_enter_formal_quality_and_partial_usage_is_kep
                          None, None, None, False, "2026-10-28T01:00:01+00:00"),
         EvaluationReview("m1", run.run_id, "model_assisted", "cap-v2", {"task_completion": {"label": "fail"}},
                          None, None, None, True, "2026-10-28T01:00:02+00:00"),
+        EvaluationReview("m2", run.run_id, "model_assisted", "other-rubric", {"task_completion": {"label": "pass"}},
+                         None, None, None, True, "2026-10-28T01:00:03+00:00"),
     ):
         store.save_review(review)
+    store.save_diagnosis(FailureDiagnosis("d1", run.run_id, "citation", (), (), (), None, "likely"))
     store.close()
     report = capability_report(tmp_path / "runs.sqlite3", _suite(case), {case.identity: case})
     axis = report["quality"]["task_completion"]
     assert axis["human_confirmed"]["denominator"] == 0
     assert axis["model_assisted_provisional"]["denominator"] == 1
     assert axis["model_assisted_provisional"]["numerator"] == 0
+    assert report["mismatched_reviews"] == 1
+    assert report["diagnoses"] == {"likely:citation": 1}
     assert report["usage"]["known_input_tokens"] == 100
     assert report["usage"]["known_output_tokens"] == 12
     assert report["usage"]["responses_without_usage"] == 1
     assert not reference_confirmed(case)
     confirmed = _confirmed(case)
     assert reference_confirmed(confirmed)
+    optional = replace(case.reference_findings[0], finding_id="optional", critical=False)
+    assert reference_confirmed(replace(confirmed, reference_findings=(*confirmed.reference_findings, optional)))
     eligible = capability_report(tmp_path / "runs.sqlite3", _suite(confirmed), {confirmed.identity: confirmed})
     assert eligible["quality"]["task_completion"]["human_confirmed"]["denominator"] == 1
     assert eligible["quality"]["task_completion"]["human_confirmed"]["numerator"] == 1
