@@ -60,6 +60,8 @@ Suite 清单和不含群聊正文的目录见 `evaluation/suites/capability-v2.j
 
 最值得复核的现象：`cap2-harness-bridge` 未找到两条直接回答问题的消息，三次原始词法查询在同快照重放也未返回它们，原 Trace 的计数和前部一致，但原结果投影有截断，归因为 `likely:retrieval`；`cap2-student-terms` 的总结段引用遗漏直接支持消息，列为 `likely:citation`；`cap2-visualization` 遗漏同一发言者紧随回复的 HTML 提示，但 Trace 投影不完整，不能区分检索、上下文或生成选择；`cap2-video-workflow` 的问题没有指明日期或作品，Agent 找到另一段有依据的相似讨论，列为题目歧义待裁决。重放记录和逐题答案、引用、初审在本机 `harness-bridge-retrieval-replay.json`、`full-review-input/` 和 Evaluation Store 中。
 
+针对最后一题，本机 `candidate-fixes/` 另存了限定讨论日期的 `cap2-video-workflow@v2` 候选及独立证据包；9/9 条参考已自动回读，语义、完整性和消歧效果仍待人工审查，尚未运行。它不在已发布的 `capability@v2` 中，也不改写原题或实验；采纳时需建立新的 Suite 版本。
+
 实际 Run、确定性 Feedback、失败 Trace 和模型辅助 Feedback 已以 metadata-only 上传；逐题入口（需对应 LangSmith 工作区）：[30 题数据集与部分 Baseline](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/0ea1cbb6-6497-44b7-84bd-f17f586fc94c)、[初始三题试运行](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d275acdf-a256-4f76-93e6-bc55c4831251)、[单题恢复与暂定 Review](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5b4d0556-f213-4155-a1bd-d9ca911522f0)、[修订后三题复测](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/93256cf3-c495-48ac-9ddb-e263cc589afb)。部分 Baseline 的 13/13 Run、Trace 事件数量和 50 项暂定 Feedback 已通过 API 回读；其余 17 个 Example 仅登记 Case 身份，不包含虚构 Run，已核对与本机同步账本的对应关系。修订三题的 3/3 Run 与 15 项 Feedback 也通过 API 回读。为避免泄露私人消息，平台只含 Case ID、运行状态、结构化 Trace 元数据及 Feedback；原题、参考和回答在本机查看。页面未进行视觉验收。
 
 ## 新增题目、核验和运行
