@@ -8,7 +8,7 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 ## 已记录的最近进度
 
-- 2026-10-28 用户问题优先 Capability 候选：先按题面审旧 30 题，27 明显预设讨论、2 存疑、1 较自然；另建 `capability-user-first-candidate@v1`，30 题在检索前冻结。随后只读同一 864615 消息冻结库独立取证，候选 20 题主要需求暂可回答、10 题部分充分、0 题未检得，均为助手初审且人工未审；74 条 Case 内来源、66 条不同消息、8 个会话，身份、时间、原文与转发关系回读通过。零证据允许但当前未出现；Runner 未将 Case 时间上下文传入查询，近期题未来复跑前需固定并验证时点；原 Capability 与历史实验保留，0 次 Agent 评测，不改生产检索。非旧题双盲及范围限制见 docs/capability-user-first-candidate.md；完整私人审阅稿与证据包在 data/evaluation/capability-user-first-20261028/。
+- 2026-10-28 用户问题优先 Capability 候选：先按题面审旧 30 题，27 明显预设讨论、2 存疑、1 较自然；另建 `capability-user-first-candidate@v1`，30 题在检索前冻结。随后只读同一 864615 消息冻结库独立取证，候选 20 题主要需求暂可回答、10 题部分充分、0 题未检得，均为助手初审且人工未审；74 条 Case 内来源、66 条不同消息、8 个会话，身份、时间、原文与转发关系回读通过。零证据允许但当前未出现；Runner 未将 Case 时间上下文传入查询，近期题未来复跑前需固定并验证时点；原 Capability 与历史实验保留，0 次 Agent 评测，不改生产检索。冻结前同一助手已见旧题、项目状态及旧评测说明，不能保证设计完全不受已有线索影响；范围限制见 docs/capability-user-first-candidate.md；完整私人审阅稿与证据包在 data/evaluation/capability-user-first-20261028/。
 
 - 2026-10-28 对 `cap2-video-workflow` 的歧义准备独立 v2 候选，限定原证据讨论日期；9/9 条参考消息身份、时间、范围和原文自动回读通过，语义、完整性及消歧效果仍待人工审查。候选未运行，不属于已发布的 Capability Suite v2，不更改原实验；本机记录在 `data/evaluation/capability-v2-20261028/candidate-fixes/`。
 
