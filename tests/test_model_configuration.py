@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from trivae.bootstrap.application import create_application
 from trivae.config.models import ModelConfigurationError, load_model_catalog
 from trivae.config.settings import SettingsError, load_settings
 from trivae.query.runtime.model_completion import complete_json, completion_record
@@ -21,6 +22,26 @@ def test_repository_model_catalog_has_independent_query_agent_and_judge_defaults
     assert catalog.select("judge").auth_type == "chatgpt_oauth"
     assert catalog.select("judge").reasoning_effort == "medium"
     assert catalog.select("agent").auth_env == "DEEPSEEK_API_KEY"
+
+
+def test_composition_root_binds_selected_agent_settings_to_registered_capabilities(tmp_path: Path):
+    settings = load_settings({"DEEPSEEK_API_KEY": "api-key-fixture"}, model_id="deepseek-flash")
+    runtime = MagicMock()
+    runtime.aclose = AsyncMock()
+    with patch(
+        "trivae.query.runtime.openai_adapter.OpenAIAgentsRuntimeAdapter",
+        return_value=runtime,
+    ) as runtime_factory:
+        application = create_application(tmp_path / "canonical.sqlite3", agent_settings=settings)
+        try:
+            assert application._agent_runtime is runtime
+            runtime_factory.assert_called_once_with(
+                capability_registry=application.capability_registry,
+                settings=settings,
+            )
+        finally:
+            asyncio.run(application.aclose())
+    runtime.aclose.assert_awaited_once()
 
 
 def test_named_api_profile_uses_its_secret_env_and_ignores_legacy_model_identity():

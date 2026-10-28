@@ -1319,30 +1319,24 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
             async def evaluate_suite() -> tuple[tuple[EvaluationRun, ...], list[dict[str, object]]]:
                 """Run the Suite and copy complete Run/Trace projections into the private record."""
 
-                from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
-
-                runtime = OpenAIAgentsRuntimeAdapter(settings=agent_settings)
-                try:
-                    async with create_application(
-                        args.database,
-                        agent_runtime=runtime,
-                        evaluation_database_path=args.evaluation_database,
-                    ) as application:
-                        if selected_cases is not None:
-                            runs = await application.evaluate_suite(
-                                suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
-                            )
-                        else:
-                            runs = await application.evaluate_suite(suite, cases, variant, repetitions=args.repeat)
-                        traces: list[dict[str, object]] = []
-                        if args.record_dir is not None:
-                            for run in runs:
-                                if run.trace_id is None:
-                                    raise EvaluationContractError("formal run has no persisted Trace identity")
-                                traces.append(asdict(application.read_trace(run.trace_id)))
-                        return runs, traces
-                finally:
-                    await runtime.aclose()
+                async with create_application(
+                    args.database,
+                    agent_settings=agent_settings,
+                    evaluation_database_path=args.evaluation_database,
+                ) as application:
+                    if selected_cases is not None:
+                        runs = await application.evaluate_suite(
+                            suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
+                        )
+                    else:
+                        runs = await application.evaluate_suite(suite, cases, variant, repetitions=args.repeat)
+                    traces: list[dict[str, object]] = []
+                    if args.record_dir is not None:
+                        for run in runs:
+                            if run.trace_id is None:
+                                raise EvaluationContractError("formal run has no persisted Trace identity")
+                            traces.append(asdict(application.read_trace(run.trace_id)))
+                    return runs, traces
 
             try:
                 runs, traces = asyncio.run(evaluate_suite())

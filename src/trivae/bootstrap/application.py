@@ -42,7 +42,7 @@ from trivae.capabilities.tools import (
     SearchMessagesTool,
     SemanticSearchTool,
 )
-from trivae.config.settings import SettingsError, load_router_jev_settings, load_settings
+from trivae.config.settings import ModelSettings, SettingsError, load_router_jev_settings, load_settings
 from trivae.conversation import (
     Conversation,
     ConversationScopeError,
@@ -1107,6 +1107,7 @@ def create_application(
     database_path: Path,
     agent_runtime: AgentRuntime | None = None,
     *,
+    agent_settings: ModelSettings | None = None,
     router: Router | None = None,
     planner: Planner | None = None,
     trace_store: TraceStore | None = None,
@@ -1120,6 +1121,9 @@ def create_application(
     semantic_provider: EmbeddingProvider | None = None,
 ) -> TrivaeApplication:
     """Composition Root 统一装配 write/read/derived/retrieval/capability 组件。"""
+
+    if agent_runtime is not None and agent_settings is not None:
+        raise ValueError("provide either agent_runtime or agent_settings, not both")
 
     # 在 stdio 仍是真实终端的阶段预热 tqdm multiprocessing lock：
     # 所有 CLI 命令路径共用本工厂，而 chat 的 TUI 分支在 TrivaeChatApp.run()
@@ -1170,6 +1174,14 @@ def create_application(
     # Stage C 继续复用同一个 canonical read adapter；SQL Tool 不建立第二套查询管线。
     capability_registry.register(GetSchemaTool(GetSchemaCapability(read_repository)))
     capability_registry.register(ExecuteSQLTool(ExecuteSQLCapability(read_repository)))
+    resolved_agent_runtime = agent_runtime
+    if agent_settings is not None:
+        from trivae.query.runtime.openai_adapter import OpenAIAgentsRuntimeAdapter
+
+        resolved_agent_runtime = OpenAIAgentsRuntimeAdapter(
+            capability_registry=capability_registry,
+            settings=agent_settings,
+        )
     owned_conversation_store = (
         SQLiteConversationStore(database_path) if conversation_store is None else conversation_store
     )
@@ -1193,7 +1205,7 @@ def create_application(
         semantic_retrieval=semantic_retrieval,
         semantic_builder=semantic_builder,
         conversation_store=owned_conversation_store,
-        agent_runtime=agent_runtime,
+        agent_runtime=resolved_agent_runtime,
         router=router,
         planner=planner,
         trace_store=trace_store,
