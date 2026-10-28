@@ -2,6 +2,8 @@
 
 Trivae 负责执行、Snapshot 校验、确定性检查和本地记录；LangSmith 只用于查看外部导入的实验、独立评分和复核。正常查询与 `eval run` 不访问 LangSmith；只有显式执行 `langsmith-sync`、`langsmith-resolve` 或 `langsmith-review-sync` 才联网。OpenAI Agents SDK 原有的 tracing 禁用保持不变，诊断使用 Trivae 自己的 Trace。
 
+Capability Suite v2 的证据核验、待审分母、真实试运行及操作说明见 [capability-evaluation-v2.md](capability-evaluation-v2.md)。
+
 官方参考：[导入外部实验](https://docs.langchain.com/langsmith/upload-existing-experiments)、[实验 Run 查询](https://reference.langchain.com/python/langsmith/_openapi_client/resources/datasets/experiment_runs/ExperimentRunsResource/query)、[Feedback](https://reference.langchain.com/python/langsmith/client/Client/create_feedback)。对照 `langsmith` 0.14.13 的 SDK 实际接口并用其回读验收；产品代码使用对应的官方 HTTP API 和已有 `httpx`，无需新增 SDK 依赖。没有引入 LangChain、LangGraph 或第二个运行时。
 
 ## 准备

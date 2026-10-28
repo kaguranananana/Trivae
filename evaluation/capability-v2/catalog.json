@@ -1,0 +1,367 @@
+{
+  "suite": "capability@v2",
+  "private_artifacts": "data/evaluation/capability-v2-20261028/",
+  "automated_check": "message identity, timestamp, scope, exact source text and stored excerpts; semantics remain pending",
+  "cases": [
+    {
+      "case_id": "cap2-student-terms",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:conflict_uncertainty",
+        "difficulty:basic",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 4
+    },
+    {
+      "case_id": "cap2-mcp-parallel",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:multi_person_reasoning",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 6
+    },
+    {
+      "case_id": "cap2-quota-timeline",
+      "version": 2,
+      "tags": [
+        "capability:v2",
+        "category:cross_group_timeline",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 7
+    },
+    {
+      "case_id": "cap2-reconnect",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:conflict_uncertainty",
+        "difficulty:basic",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 5
+    },
+    {
+      "case_id": "cap2-video-workflow",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:timeline",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 9
+    },
+    {
+      "case_id": "cap2-issue-stages",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:multi_person_reasoning",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 8
+    },
+    {
+      "case_id": "cap2-harness-bridge",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 2
+    },
+    {
+      "case_id": "cap2-model-roles",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:basic",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 3
+    },
+    {
+      "case_id": "cap2-visualization",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:conflict_uncertainty",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 7
+    },
+    {
+      "case_id": "cap2-ticket-tracking",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:multi_person_reasoning",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 15
+    },
+    {
+      "case_id": "cap2-magpie",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:insufficient_evidence",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 2
+    },
+    {
+      "case_id": "cap2-interview-prep",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:multi_person_reasoning",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 7
+    },
+    {
+      "case_id": "cap2-forge",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:insufficient_evidence",
+        "difficulty:basic",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 2
+    },
+    {
+      "case_id": "cap2-coding-assessment",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 9
+    },
+    {
+      "case_id": "cap2-rabbithole",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 10
+    },
+    {
+      "case_id": "cap2-subagent-stream",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 5
+    },
+    {
+      "case_id": "cap2-fold-agents",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:multi_person_reasoning",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 3
+    },
+    {
+      "case_id": "cap2-review-practice",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 7
+    },
+    {
+      "case_id": "cap2-memory-handoff",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 5
+    },
+    {
+      "case_id": "cap2-web-mcp",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 5
+    },
+    {
+      "case_id": "cap2-scenario-eval",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 4
+    },
+    {
+      "case_id": "cap2-mcp-schema",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:conflict_uncertainty",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 4
+    },
+    {
+      "case_id": "cap2-model-choice",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:multi_person_reasoning",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 11
+    },
+    {
+      "case_id": "cap2-kimi-testing",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:timeline",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 14
+    },
+    {
+      "case_id": "cap2-workbuddy-video",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:conflict_uncertainty",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 10
+    },
+    {
+      "case_id": "cap2-codex-reset",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:timeline",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 9
+    },
+    {
+      "case_id": "cap2-zcode-remote",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:complex_retrieval",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 10
+    },
+    {
+      "case_id": "cap2-issue-open-question",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:insufficient_evidence",
+        "difficulty:medium",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 6
+    },
+    {
+      "case_id": "cap2-kimi-cross-groups",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:cross_group_comparison",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 25
+    },
+    {
+      "case_id": "cap2-issue-cross-groups",
+      "version": 1,
+      "tags": [
+        "capability:v2",
+        "category:cross_group_comparison",
+        "difficulty:advanced",
+        "review:pending"
+      ],
+      "reference_status": "human_pending",
+      "reference_messages": 21
+    }
+  ]
+}

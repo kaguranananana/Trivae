@@ -2,6 +2,8 @@
 
 这里保存 version-controlled 的 Case、Suite 和 Controlled Variant 定义，不保存聊天正文、完整 Trace 或运行结果。
 
+Capability Suite v2 的清单、隐私边界、证据审核与真实试运行见 [capability-evaluation-v2.md](../docs/capability-evaluation-v2.md)。其原始题目和参考消息保留在本机私有评测目录，不能从公开目录推断其已人工审核。
+
 ## Planner Evaluation 最终工程收口（2026-10-03）
 
 当前P1 canonical Planner使用官方DeepSeek `deepseek-flash` / `none`，Router与共享Runtime保持独立`low`。source_id/mN-K与canonical message_id契约已在真实SDK schema/prompt明确；真实日期关系失败保留于`regressions/archify-temporal-relation.json`，复用既有Judge时间投影。
