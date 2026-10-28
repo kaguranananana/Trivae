@@ -33,8 +33,8 @@ def effective_model_treatment(settings: ModelSettings) -> dict[str, object]:
 
 
 def validate_formal_conditions(variant: ControlledVariant, runtime: Mapping[str, object],
-                               router: Mapping[str, object]) -> None:
-    """Reject drift before running this suite; model/provider are the deliberate variables."""
+                               router: Mapping[str, object], *, allow_prompt_variant: bool = False) -> None:
+    """Reject drift; only model/provider and an explicitly allowed prompt may vary."""
     mismatches = [name for name, expected in FORMAL_RUNTIME.items() if runtime.get(name) != expected]
     if mismatches:
         raise EvaluationContractError("eval v1 runtime conditions differ: " + ", ".join(mismatches))
@@ -42,7 +42,8 @@ def validate_formal_conditions(variant: ControlledVariant, runtime: Mapping[str,
         raise EvaluationContractError("eval v1 requires the Jev router to be disabled")
     if variant.available_tools != FORMAL_TOOLS:
         raise EvaluationContractError("eval v1 tool surface differs")
-    if (variant.prompt_identity != "production-default" or variant.evidence_citation_version != "production-default"
+    if ((variant.prompt_identity != "production-default" and not allow_prompt_variant)
+            or variant.evidence_citation_version != "production-default"
             or variant.runtime_configuration != {"trace_profile": "normal"}
             or variant.retrieval_configuration != {"surface": "agent-facing"}
             or variant.context_expansion_configuration != {"context_window_limit": None}
