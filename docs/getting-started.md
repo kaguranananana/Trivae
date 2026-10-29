@@ -11,7 +11,7 @@
 | Node.js | 建议 Node 22.12+（22 系列）或 24+；当前 Vite 7 / Vue 插件要求 `^20.19.0 \|\| >=22.12.0`，Vitest 4 的引擎范围不包含 Node 23 |
 | pnpm | 安装和构建 `web/`；仓库未固定 pnpm 版本，安装时保持现有锁文件 |
 | SQLite FTS5 | Python 所用 SQLite 必须支持 FTS5，构建全文索引时实际探测 |
-| 模型访问 | 默认使用自行配置的 DeepSeek API key；语义向量由本机 Qwen 模型生成 |
+| 模型访问 | 仓库默认查询 profile 使用 ChatGPT OAuth；也可切换到已登记的 API key profile。语义向量由本机 Qwen 模型生成 |
 
 首次加载 `Qwen/Qwen3-Embedding-0.6B` 需要下载模型，预留本地磁盘、内存与构建时间。CPU / GPU 和数据量会影响耗时，本文不承诺固定的首次启动时间。
 
@@ -36,14 +36,19 @@ pnpm -C web build
 cp .env.example .env
 ```
 
-填写自己的 DeepSeek API key，示例值均为占位：
+仓库默认查询 profile `gpt-plus` 使用 ChatGPT OAuth。先登录并确认本机授权：
+
+```sh
+uv run trivae auth login --provider chatgpt
+uv run trivae auth status --provider chatgpt
+```
+
+如使用 API key profile，则在 `.env` 中选择 `deepseek-flash` 并填写自己的 key（占位值）：
 
 ```dotenv
-# 主模型 Provider 与示例默认模型。
-TRIVAE_MODEL_PROVIDER=deepseek
-TRIVAE_MODEL_NAME=deepseek-flash
-TRIVAE_MODEL_BASE_URL=https://api.deepseek.com
-TRIVAE_MODEL_API_KEY=<你的DeepSeek_API_key>
+# 从 config/models.yaml 中选择已登记的 profile。
+TRIVAE_MODEL_ID=deepseek-flash
+DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
 ```
 
 Jev 是独立的可选 Router 实验。若只准备使用主模型，在 `.env` 中明确关闭它：
@@ -53,7 +58,7 @@ Jev 是独立的可选 Router 实验。若只准备使用主模型，在 `.env` 
 TRIVIAE_ROUTER_JEV_ENABLED=false
 ```
 
-示例文件原本保留 Jev `enabled=true / mode=shadow`，其凭据是独立的 `OPENROUTER_API_KEY`。主模型变量拼写为 `TRIVAE_MODEL_*`，历史 Jev 变量拼写为 `TRIVIAE_ROUTER_JEV_*`，两者不可混用。Shell 已导出的同名变量优先于 `.env`，修改后重启进程。
+`.env.example` 默认保留 Jev `enabled=true / mode=shadow`，其凭据是独立的 `OPENROUTER_API_KEY`。只使用主模型时可在 `.env` 设置 `TRIVIAE_ROUTER_JEV_ENABLED=false`。profile 定义和覆盖顺序见[配置说明](configuration.md#配置加载与模型profile)；旧 `TRIVAE_MODEL_PROVIDER` / `TRIVAE_MODEL_NAME` 配置仍可覆盖 profile。Shell 已导出的同名变量优先于 `.env`，修改后重启进程。
 
 本地优先指原始导出、数据库、索引和会话存于本机；模型分析仍会向配置的外部 Provider 发送问题、会话上下文和工具取得的相关内容。启用 Jev 还会向 OpenRouter 发送其路由上下文。请使用有权处理的数据；这不是全离线推理模式。
 

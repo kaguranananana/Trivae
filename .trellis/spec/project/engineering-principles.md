@@ -1,6 +1,6 @@
 # Engineering Principles
 
-> 本项目长期工程原则，浓缩自项目创建规范。每次开发前阅读，并遵守。
+> 历史工程原则文档。根因优先、错误透明和最小修复等原则仍见根目录 [AGENTS.md](../../../AGENTS.md)；Stage-specific 实现状态和工作流约束可能已过时，当前架构见 [docs/architecture.md](../../../docs/architecture.md)。按需参考，不要求每次开发前阅读。
 > 目标是：可验证、可定位、可维护、可迭代。
 
 ---
@@ -38,7 +38,7 @@
 - request_id、User Query、Router Decision、Plan/State、Tool Calls（含参数与结果）、Retrieval Query、Retrieval Candidates / Results、Evidence Selection、Final Evidence、Context、Final Answer；
 - 指标：Latency、Token Usage、Tool Call Count、Retry Count、Error Type、Model、Prompt Version。
 
-Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverage、Error Code ownership、privacy / retention 与 Trace storage 的概念契约；具体 Python / JSON Schema、Collector / Store backend 与业务代码仍未实现。
+历史 Stage 1.9 规格最初只冻结了概念契约。Normalized event、Failure Attribution、query-scope coverage、Collector 与 SQLite Trace Store 已在当前代码实现；当前 Trace 边界见 [docs/architecture.md](../../../docs/architecture.md)。
 
 ## 5. Evaluation
 
@@ -85,7 +85,7 @@ Stage 1.9 已确认 normalized event、Failure Attribution、query-scope coverag
 - 完成状态必须由与变更直接相关、可复现的证据支持，不能只依据“代码已经修改”“看起来正确”或 Agent 的自然语言声明。证据可以是 automated test、regression test、lint / type-check、命令 exit code、可复现案例、benchmark / evaluation、CLI / API 实际输出，或 diff 与既有 contract / spec 的一致性检查；按任务选择最小但真实的证据，不机械要求所有类型。
 - 如果缺少可靠验证方式，先建立最小可复现 case、测试、evaluation 或验证命令；在此之前不得把任务标记为完成。若连最小验证也无法建立，应按第 10 节停止并升级。
 
-## 9. 禁止事项（当前阶段 / 未定架构时）
+## 9. 历史阶段限制（非当前状态入口）
 
 未由正式设计文档定义的内容（模块边界、数据模型、检索选型、Agent 架构、API 边界等）：
 

@@ -8,7 +8,9 @@ Trivae 帮助你从持续积累的群聊历史中定位事实、找回资源、�
 
 `Python 3.12+` · `FastAPI` · `Vue 3` · `OpenAI Agents SDK` · `SQLite FTS5` · `sqlite-vec`
 
-[快速开始](#快速开始) · [系统架构](#系统架构) · [配置指南](docs/configuration.md) · [Evaluation](docs/evaluation.md)
+[快速开始](#快速开始) · [系统架构](#系统架构) · [当前状态](docs/PROJECT_STATUS.md) · [配置指南](docs/configuration.md) · [Evaluation](docs/evaluation.md)
+
+当前实现与配置以源码和 `config/models.yaml` 为准；当前架构、运行配置、评测方法和进度分别见[系统架构](docs/architecture.md)、[配置指南](docs/configuration.md)、[Evaluation](docs/evaluation.md)和[项目状态](docs/PROJECT_STATUS.md)。带日期的实验记录及 `.trellis/` 规格用于追溯当时的事实和设计；其阶段状态与待办不是当前进度。
 
 ## 产品预览
 
@@ -100,7 +102,7 @@ Standard 与 Planned 共用 Runtime，便于在相同条件下单独评价 Plann
 
 ### 5. 评测覆盖完整生产 Query
 
-Evaluation 固定数据 Snapshot、Case 与受控 Variant，复用 Application 查询并读取答案、引用和 Trace；工程检查、质量轴和运行成本分别记录。Reference 标明 `exhaustive / partial / unknown`，机器辅助标注保留 provisional 身份。最近的 Prompt 精简实验因质量退化被拒绝，未作为性能优化发布；这里不把开发样本、测试通过率或 Token 减少写成产品准确率。[评测方法与当前边界](docs/evaluation.md) · [长期评测与 LangSmith](docs/evaluation-langsmith.md)
+Evaluation 固定数据 Snapshot、Case 与受控 Variant，复用 Application 查询并读取答案、引用和 Trace；工程检查、质量轴和运行成本分别记录。Reference 标明 `exhaustive / partial / unknown`，机器辅助标注保留 provisional 身份。当前主 Prompt 已采纳四行证据强度与来源范围约束，这是用户基于回答偏好的产品选择；六题对照不证明总体质量提升。开发样本、测试通过率或 Token 减少也不能写成产品准确率。[评测方法与当前边界](docs/evaluation.md) · [长期评测与 LangSmith](docs/evaluation-langsmith.md)
 
 ## 快速开始
 
@@ -116,16 +118,16 @@ pnpm -C web build
 cp .env.example .env
 ```
 
-在 `.env` 填写自己的模型配置；默认 API key 示例：
+普通查询的仓库默认 profile 是 `gpt-plus`，使用 ChatGPT OAuth。下面切换到 API key profile，作为不使用 OAuth 的快速开始：
 
 ```dotenv
-TRIVAE_MODEL_PROVIDER=deepseek
-TRIVAE_MODEL_NAME=deepseek-flash
-TRIVAE_MODEL_BASE_URL=https://api.deepseek.com
-TRIVAE_MODEL_API_KEY=<你的DeepSeek_API_key>
-# 快速开始只使用主模型，显式关闭独立 Jev 实验。
+TRIVAE_MODEL_ID=deepseek-flash
+DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
+# 快速开始只使用主模型时，关闭独立 Router Jev。
 TRIVIAE_ROUTER_JEV_ENABLED=false
 ```
+
+profile 名称和配置优先级见[配置指南](docs/configuration.md#配置加载与模型profile)。使用仓库默认的 `gpt-plus` 时，先运行 `uv run trivae auth login --provider chatgpt`。
 
 准备自己有权使用的 QQChatExporter JSON，复制到 `data/raw/`：
 
@@ -163,6 +165,8 @@ pnpm -C web build
 | [配置与故障定位](docs/configuration.md) | Provider、ChatGPT OAuth、多账号、Jev、索引升级与续建、验证脚本 |
 | [系统架构](docs/architecture.md) | 应用边界、工具、数据与索引、Runtime、引用、Trace |
 | [Evaluation](docs/evaluation.md) | Snapshot / Case / Variant、对照评测、质量轴与结论边界 |
+| [当前项目状态](docs/PROJECT_STATUS.md) | 已核验的当前能力、评测证据与技术限制 |
+| [开发历史](docs/DEVLOG.md) | 按日期记录的开发与实验事实；不是当前待办清单 |
 | [语义增量索引](docs/semantic-incremental-index.md) | 变更日志、向量复用、版本与更新验证 |
 | [QCE 自动导入](docs/qce-auto-import.md) | 文件稳定检查、macOS 调度、索引待办与恢复 |
 | [群聊邮件晚报](docs/daily-digest.md) | 按群详细整理讨论、前置资源链接、折叠原始发言与晚间邮件交付 |

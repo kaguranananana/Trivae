@@ -1,21 +1,17 @@
 # Architecture
 
-> 状态：**Draft / In Progress**
->
-> 本文件记录已完成的 Stage 1.1 整体架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation、Stage 1.9 Trace / Observability、Stage 1.10 Evaluation 与 Stage 1.11 Application Boundary 架构确认内容，不是完整且最终的 Architecture Specification。
-> 当前状态为：Stage 1.1–1.11 completed；M1–M7 deterministic vertical slices、Trace backend、Evaluation runner、Semantic Retrieval slice 与 CLI Product Experience hardening 已实现；官方 Qwen provider 已完成真实 473,236-message baseline rebuild、integrity/reopen/stale validation 与 LLM-assisted provisional paired evaluation；HTTP Product Interaction、human verification 与长期 quality threshold 仍 Pending。
-> 未明确列出的实现细节继续标记为 `Pending architecture specification`，不得自行补全。
+> **历史架构规格，不是当前实现或进度入口。** 本文的 Stage/M 状态、Draft 标记和 Pending 列表记录规格形成时的设计/实现快照；不要将其当作当前待办或当前代码事实。仍有效的架构决定须与源码及 [当前系统架构](../../../docs/architecture.md) 一致后再采用；当前进度见 [PROJECT_STATUS](../../../docs/PROJECT_STATUS.md)，当前开发规则见 [AGENTS.md](../../../AGENTS.md)。
 
 ---
 
-## Status
+## 历史规格状态快照（非当前项目状态）
 
 | 项      | 状态                                                                                                                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 当前阶段   | Stage 1.1–1.11 completed；M1–M7 与 Semantic Retrieval vertical slice 已实现；下一阶段为 human-verified quality calibration、长期阈值与 Stage 1.11 Product Interaction |
-| 文档成熟度  | Draft / In Progress                                                                                                                                                                                            |
-| 业务实现   | M1 ingestion、M4 Query Plane、M5a Evidence/Citation、M5b Conversation、M6 Trace、M7 Evaluation、Semantic Retrieval 与 CLI source/scope/readiness/feedback/history hardening 已实现；HTTP/API 产品交互、human-verified quality 与长期阈值仍待后续 Trellis task |
-| 最终架构评审 | 等待 Stage 1.1-1.11 全部完成                                                                                                                                                                                         |
+| 历史阶段（记录时） | Stage 1.1–1.11 completed；M1–M7 与 Semantic Retrieval vertical slice 已实现；当时后续工作为 human-verified quality calibration、长期阈值与 Stage 1.11 Product Interaction |
+| 规格成熟度（记录时） | Draft / In Progress |
+| 实现状态（记录时） | 该规格曾记录 M1–M7、Trace、Evaluation、Semantic Retrieval 与 CLI 实现；细节以当前源码和 docs/architecture.md 为准 |
+| 最终架构评审（记录时） | 等待 Stage 1.1-1.11 全部完成 |
 
 ## Goals
 

@@ -5,6 +5,8 @@
 > 本 ADR 将 Stage 1.1–1.10 已确认的内部架构映射到 Python 工程的 package ownership、Application Boundary、入口适配器与生命周期。它确认代码如何组织、CLI / HTTP API / Evaluation 如何进入同一套 execution core，以及跨层契约由哪一层拥有。
 >
 > 本 ADR 不创建业务代码，不冻结 Python / JSON / Database Schema、CLI / HTTP 框架版本、真实 Evaluation runner、真实 baseline 或产品 UI。架构已沉淀不等于业务实现已完成。
+>
+> **实现状态历史提示**：上面的范围说明记录 Stage 1.11 决策时的非目标，不表示这些能力当前尚未实现。Application、HTTP/API、CLI、Evaluation 与共享执行链路的当前状态见 [docs/architecture.md](../../../../docs/architecture.md) 和 [docs/PROJECT_STATUS.md](../../../../docs/PROJECT_STATUS.md)。
 
 ---
 

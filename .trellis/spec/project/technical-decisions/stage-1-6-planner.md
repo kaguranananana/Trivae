@@ -3,6 +3,8 @@
 > 状态：**Confirmed（Stage 1.6）**
 >
 > 本文记录 Stage 1.6 Planner 的架构定位、输入语义、Plan Schema、校验边界和失败契约。当前 SoftPlanner 的 Python class、Prompt、Plan bounds、validation/sanitization、soft guidance、Trace 已实现；37 条 Development forced-path Case 已运行。zero-result 回归的 targeted 修复与复验、人工 treatment 裁决和长期校准仍在推进。下文阶段设计时的 Pending 不代表当前代码仍缺失。
+>
+> **状态提示**：本段实现进度与“仍在推进”是该 ADR 的历史快照，不代表今天的实现或待办。当前架构、评测证据和进度见 [docs/architecture.md](../../../../docs/architecture.md)、[docs/evaluation.md](../../../../docs/evaluation.md) 与 [docs/PROJECT_STATUS.md](../../../../docs/PROJECT_STATUS.md)。
 
 ---
 

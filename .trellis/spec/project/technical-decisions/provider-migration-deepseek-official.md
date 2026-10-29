@@ -3,6 +3,8 @@
 > 状态：Confirmed（2026-09-11）
 >
 > 目的：把当前 Runtime、Planner/Router completion、Benchmark Judge 和 retrieval blind annotator 的新执行身份切换为 DeepSeek 官方 API，同时保留历史 OpenCode Go 运行材料的事实边界。
+>
+> **历史配置快照**：本文的“当前”和 `TRIVAE_MODEL_*` 示例只描述 2026-09-11 的迁移方案，不是当前默认配置。现行模型 profile 与覆盖顺序以 [`config/models.yaml`](../../../../config/models.yaml) 和 [docs/configuration.md](../../../../docs/configuration.md) 为准。
 
 ## 1. 结论
 

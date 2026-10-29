@@ -63,13 +63,15 @@ Planner Utility 使用 forced standard / forced planned 路径：绕过 Router �
 
 当前已实现并经过确定性测试的能力包括：版本化 Case / Suite、Snapshot 校验、Controlled Variant、生产链路 Runner、独立 Evaluation Store、工程检查、ReviewPacket、盲配对和失败归因。真实运行覆盖过索引构建、检索对照、Planner 调查和 Prompt 候选验证，但不同实验的样本、模型与标注强度并不相同。
 
-截至 2026-10-19，最近一次 GPT High Prompt 精简实验的最终决定是**拒绝发布精简候选，保留生产 Prompt**。候选出现关键目标召回与引用退化；其他候选也存在端到端门禁失败。局部样本改善、Token 或耗时变化不能抵销质量退化，不能作为已经落地的性能收益。该实验的 Agent 证据复核也不能替代尚未完成的人工盲审。
+截至 2026-10-29，当前主 Prompt 已采纳四行证据强度与来源范围约束。这是用户人工比较回答后作出的产品选择，不代表六题配对结果证明总体质量提高。该对照中，Case 07/12 有局部可信度分数改善；Case 10 遗漏手机远控 Codex/微信实例，Case 01 仍有范围与因果外推。当前代码包含 Candidate，问题仍是需要继续观察的样本风险。版本、评审与取舍记录见 [项目状态](PROJECT_STATUS.md) 和 [DEVLOG](DEVLOG.md)。
 
-2026-10-20 的 DeepSeek Flash 历史失败驱动实验也**拒绝具名资源充分性 Prompt 候选，恢复原生产策略**：20题40次正式A/B及4次补充复测使用118/120次实际HTTP；开发集固定目标Evidence为11/19→8/19，调参外验证为23/29→22/29。新增答案人工审核仍待完成，调参外样本来自历史Development，不是fresh Holdout。逐题统计、失败与条件见 [质量实验报告](../evaluation/experiments/answer-quality-20261020/README.md)。
+Eval v1 是 2026-10-28 的 16 Case 历史基线：Agent 成功 14/16，2 个运行失败；14 个成功答案完成 v2.1 模型辅助 Review，尚无人类裁决。该次 Agent profile 与当前普通查询默认 profile 不同，不能据此代表当前模型效果。完整分母和限制见 [项目状态](PROJECT_STATUS.md)。
 
-此前词法与语义检索对照中的机器辅助 provisional 标注，同样只能支持相应样本的诊断，不能作为人工验证的全库准确率。本文不发布跨模型排名、总体回答准确率或稳定提速数字。
+### 历史候选结果
 
-已知待验证或待改进事项包括：广泛人工校准、穷尽 Reference、长期回归阈值、模型检索与参数选择波动，以及共享证据预算接近耗尽时的工具投影失败与错误分类。网络、协议、额度错误与答案质量失败应分别归因，不能混入同一个“准确率”分母。
+截至 2026-10-19 的 GPT High Prompt 精简候选曾被拒绝，原因是关键目标召回与引用退化；这只记录当时的候选决策，不描述当前主 Prompt。2026-10-20 的 DeepSeek Flash 具名资源充分性候选也被拒绝：20 题 40 次正式 A/B 与 4 次补充复测使用 118/120 次实际 HTTP；开发集固定目标 Evidence 为 11/19→8/19，调参外验证为 23/29→22/29。调参外样本来自历史 Development，不是 fresh Holdout。逐题统计、失败与条件见 [质量实验报告](../evaluation/experiments/answer-quality-20261020/README.md)。这些历史模型辅助标注只能支持对应样本诊断，不能作为人工验证的全库准确率。
+
+当前可确认的质量边界是：缺少广泛人工裁决的代表性 Benchmark 与穷尽 Reference；检索和工具结果受范围及预算限制，不能保证全库覆盖；模型辅助 Review 仍是 provisional。预算耗尽会以明确的预算停止结果记录，可能使模型看不到更多证据；当前 Runtime 不把它当作“已完整检索”。网络、协议、额度错误与答案质量问题应分别归因，不能混入同一个“准确率”分母。本文不发布跨模型排名、总体回答准确率或稳定提速数字。
 
 ## 本地验证入口
 
@@ -102,7 +104,7 @@ uv run trivae eval run --suite evaluation/suites/my-suite.json \
   --record-dir data/evaluation/my-experiment --judge-version none
 ```
 
-`evaluation.sqlite3` 默认保存在实验记录目录，也可通过 `--evaluation-database` 指定独立的持久路径。Runner 逐步写入 Run/Result；关闭 Application 前把 Run 与完整 Trace 投影原子写入记录目录，成功后自动删除临时 Canonical/semantic 工作库及其中的 Conversation、Trace 数据和辅助存储。正常结束与已持久化的失败都会清理；中断或结果落盘失败会保留带 lease 的恢复副本，默认 7 天后过期。`--keep-workspace` 可显式保留调试副本，`trivae eval cleanup-workspaces --manifest <freeze.json>` 可查看并回收已过期副本。并发运行会各自获得独立目录和数据库。
+`evaluation.sqlite3` 默认保存在实验记录目录，也可通过 `--evaluation-database` 指定独立的持久路径。Runner 逐步写入 Run/Result；关闭 Application 前把 Run 与完整 Trace 投影原子写入记录目录，成功后自动删除临时 Canonical/semantic 工作库及其中的 Conversation、Trace 数据和辅助存储。正常结束与已持久化的失败都会清理；中断或结果落盘失败会保留带 lease 的恢复副本，默认 7 天后过期。`--keep-workspace` 可为调试或需要后续从 SQLite 回读 Trace 的工具保留工作库，`trivae eval cleanup-workspaces --manifest <freeze.json>` 可查看并回收已过期副本。并发运行会各自获得独立目录和数据库。
 
 需要在代码里编排自定义实验时，使用 `trivae.evaluation.workspace.EvaluationWorkspace`；在 Run、Result、Trace、评分和实验记录均已持久化之后调用 `mark_results_persisted()`。不要让 `create_application` 指向 master freeze，也不要以 `du` 的逻辑大小推断 APFS 实际回收空间；空间变化需同时记录目录大小与 `df` 可用量。
 

@@ -1,8 +1,10 @@
 # Capability Suite v2：真实群聊评测
 
+> **历史评测快照（2026-10-28）**：本页记录当日 Suite、样本和局部试运行；“待继续”不构成当前任务。当前正式评测运行方式见 [Evaluation](evaluation.md)，当前进度见 [PROJECT_STATUS](PROJECT_STATUS.md)。旧运行结果和模型辅助 Review 均按原样保留。
+
 本套能力集按 [Anthropic 的 Agent 评测思路](https://www.anthropic.com/research/demystifying-evals-for-ai-agents)设计：保留能力边界题和独立回归集，联合使用确定性检查、模型辅助判断与人工核验，阅读 Trace 后再解释分数。原有能力集、回归集和历史实验均不覆盖。
 
-## 当前数据与状态
+## 历史数据与状态（截至 2026-10-28）
 
 `capability@v2` 有 30 个不同 Case：基础 4、中等 12、较难 14；覆盖跨群和时间比较、多人观点、条件检索、证据不足与冲突。来源覆盖 7 个群，参考消息时间从 2026 年 6 月至 10 月；近期技术讨论占比偏高，不代表全部群聊任务的自然分布。235 条 Case 内参考记录对应 205 条不同消息，交叉题可复用同一消息。
 
@@ -32,7 +34,7 @@ Suite 清单和不含群聊正文的目录见 `evaluation/suites/capability-v2.j
 
 `capability_audit.py` 不创建第二套 Runner 或 Judge。它复用现有 Case、Evaluation Store 与 `run_report`，单独验证私人证据包，并把人工确认和模型辅助判断分开计数。正式维度分母只接受已有 `review:confirmed`、关键 Finding 及其 Evidence 已人工裁决、且有不需进一步裁决的人工答案 Review 的完整回答；非关键参考不强制全部确认。报告只汇总单一 Variant 和匹配 Case 评分版本的 Review，重复运行按 Run 计数。`mixed`、`unknown` 和未审核不进入 pass/fail 分母。模型辅助 Review 始终单列为暂定，不能冒充人工评审。当前 Codex 会话的试运行初审属于模型辅助 Review；尚未建立 Judge 与人工的符合率，也没有独立批量 Judge 对 v2 运行评分。
 
-## 真实试运行（2026-10-28，待继续）
+## 真实试运行记录（2026-10-28；非当前待办）
 
 初始三题真实运行均失败：第一题在两次模型请求、两次工具调用后因 Provider `ConnectError` 终止；另两题在进入有效作答前同类失败。不是答案质量失败。首题已知输入 29,293、输出 80 Token，有一次响应的 Usage 缺失，不能把它作为完整总量。网络探测后单题恢复运行完成，耗时 160.641 秒、3 次工具调用，Runtime 返回 100,442 输入／1,702 输出 Token、4 次请求；货币成本未返回。两组是不同 Suite 的诊断运行，不是完整 v2 Baseline 或可直接比较的同集实验。
 
@@ -64,7 +66,9 @@ Suite 清单和不含群聊正文的目录见 `evaluation/suites/capability-v2.j
 
 实际 Run、确定性 Feedback、失败 Trace 和模型辅助 Feedback 已以 metadata-only 上传；逐题入口（需对应 LangSmith 工作区）：[30 题数据集与部分 Baseline](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/0ea1cbb6-6497-44b7-84bd-f17f586fc94c)、[初始三题试运行](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/d275acdf-a256-4f76-93e6-bc55c4831251)、[单题恢复与暂定 Review](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/5b4d0556-f213-4155-a1bd-d9ca911522f0)、[修订后三题复测](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/93256cf3-c495-48ac-9ddb-e263cc589afb)。部分 Baseline 的 13/13 Run、Trace 事件数量和 50 项暂定 Feedback 已通过 API 回读；其余 17 个 Example 仅登记 Case 身份，不包含虚构 Run，已核对与本机同步账本的对应关系。修订三题的 3/3 Run 与 15 项 Feedback 也通过 API 回读。为避免泄露私人消息，平台只含 Case ID、运行状态、结构化 Trace 元数据及 Feedback；原题、参考和回答在本机查看。页面未进行视觉验收。
 
-## 新增题目、核验和运行
+## 当日记录的新增题目、核验与运行指引（历史操作记录）
+
+> 本节及后续“额度恢复后补跑”命令记录的是 2026-10-28 的本机流程与当时计划。命令依赖忽略文件中的私有评测包，且示例中的 `eval clone-data` 不符合当前正式评测工作库生命周期；不要将其复制为当前运行步骤。新的正式实验应直接把冻结主库 manifest 交给 `trivae eval run`，并遵循 [当前评测入口](evaluation.md#本地验证入口) 的隔离、持久化和清理要求。
 
 1. 在私人目录从原始消息独立收集事实、时间、群、消息 ID 和原文；记录话题线索、检索方法、冲突与不确定性。新增独立 Case 身份；修订已发布题目用现有 `trivae eval cases new-version`，不要覆盖旧版本。候选参考默认 `partial` 和 `adjudicated=false`，并以 `review:pending` 标记。
 2. 在私人 evidence packet 中按 Case ID 和版本保存完整原文、`session_id`、毫秒时间、`sender_user_id`、摘录；转发消息另存 root、parent、path 和原始时间。Case 中每条 `internal_message_id` 必须与 packet 对应，packet 记录 Snapshot 和 freeze ID。
@@ -112,7 +116,7 @@ trivae eval langsmith-sync --suite evaluation/suites/capability-v2.json \
 trivae eval langsmith-resolve --experiment capability-v2-next
 ```
 
-### 额度恢复后补跑本轮未完成题目
+### 历史补跑计划：额度恢复后补跑本轮未完成题目
 
 当前 `remaining-case-identities.json` 精确列出 **20 个 Case 版本**：3 条已有失败运行和 17 条未启动题，不包括 10 条已有完整回答的题。提供方额度恢复后，可在独立实验中使用 `--case-list` 只运行这些 Case；Runner 仍记录原 `capability@v2` Suite 身份，manifest 和 LangSmith Experiment 会记录本次选择，不修改旧的失败实验。下列命令需要先按当前干净 Git 版本和实际模型设置建立新的 `continuation-variant.json`；仓库或配置后来变化时应重新建立 Variant。
 

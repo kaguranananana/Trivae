@@ -3,6 +3,8 @@
 > 状态：**Confirmed（Stage 1.5）**
 >
 > 本文记录 Stage 1.5 Router 的取舍、理由、边界、Failure Case 与重新打开条件。当前两路 Rule-first/strict-JSON LLM、Jev shadow、RouteDecision 与 Trace 已实现；16 条 Jev Case 的 route 分类已人工裁决。Planner treatment 的 Development 实验已运行，Router Utility 正式校准与生产推广仍 Pending。下文部分 Pending 是阶段设计时的历史状态，以本段当前实现状态为准。
+>
+> **状态提示**：本段“当前”与 Pending 是该 ADR 更新时的快照，不代表今天的实现或待办。当前架构、评测证据和进度见 [docs/architecture.md](../../../../docs/architecture.md)、[docs/evaluation.md](../../../../docs/evaluation.md) 与 [docs/PROJECT_STATUS.md](../../../../docs/PROJECT_STATUS.md)。
 
 ---
 

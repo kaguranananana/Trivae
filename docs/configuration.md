@@ -1,25 +1,39 @@
 # 配置、索引与故障定位
 
-基础安装、导入和 Web 启动见[本地上手](getting-started.md)。本文保留 Provider、OAuth、多账号、Jev、索引升级和真实链路验证的操作细节。命令中的 `<…>` 均为待替换占位，不包含真实账号或群聊标识。
+基础安装、导入和 Web 启动见[本地上手](getting-started.md)。本文保留模型 profile、环境变量覆盖、OAuth、多账号、Jev、索引升级和真实链路验证的操作细节。命令中的 `<…>` 均为待替换占位，不包含真实账号或群聊标识。
 
-## 配置加载与主模型
+## 配置加载与模型profile
 
-`web`、`chat` 和模型评测入口读取当前工作目录的 `.env`，Shell 已导出的同名值优先，包括空字符串。修改 `.env` 后重启进程；`chat` 可用 `--env-file`，`eval` 可在子命令前指定 `--env-file`，`web` 当前没有这个参数。库层直接调用 Application 时，由调用者负责加载环境。
+CLI 的 `web`、`chat` 和 `eval` 入口默认读取当前工作目录的 `.env`；已经存在于进程环境的同名变量优先，包括空字符串。修改 `.env` 后重启进程。`chat` 与 `eval` 可指定 `--env-file`，`web` 当前没有这个参数；直接从 Python 调用 Application 时，由调用者负责加载环境。
 
-主模型配置使用 `TRIVAE_MODEL_*`，不是 `TRIVIAE_MODEL_*`。建议沿用 [`.env.example`](../.env.example) 的 DeepSeek 示例：
+受跟踪的 [`config/models.yaml`](../config/models.yaml) 是 profile 注册表：
+
+| 用途 | 仓库默认 profile | 当前登记身份 |
+| --- | --- | --- |
+| 普通查询 | `defaults.query` → `gpt-plus` | ChatGPT OAuth，`gpt-6.1-sol`，medium |
+| Evaluation Agent | `evaluation.agent` → `deepseek-flash` | DeepSeek API key，`deepseek-flash` |
+| 离线 Judge | `evaluation.judge` → `gpt-plus` | ChatGPT OAuth，`gpt-6.1-sol`，medium |
+
+配置解析顺序如下：
+
+1. `TRIVAE_MODELS_CONFIG` 可替换默认注册表路径；Evaluation CLI 也可传 `--models-config`。
+2. 普通查询通过 `TRIVAE_MODEL_ID` 选择已登记 profile；未设置时使用 `defaults.query`。`eval run --agent-model` 选择 Agent profile，省略时使用 `evaluation.agent`。离线 Judge 脚本通过 `--judge-model` 选择 profile，省略时使用 `evaluation.judge`。
+3. 为兼容旧入口，普通查询若设置 `TRIVAE_MODEL_PROVIDER` 或 `TRIVAE_MODEL_NAME`，会走旧的直接配置路径并优先于自动 profile 选择。它们与 profile 的接口契约不同，不要只设置其中一个。
+4. API key profile 通过其 `auth.env` 读取密钥；当前 DeepSeek profile 使用 `DEEPSEEK_API_KEY`。profile 不保存密钥。旧 DeepSeek 直接配置仍接受 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`；显式的新变量优先，显式空值会报错。
+
+当前支持 `deepseek`、`opencode-go` 和 `chatgpt-plan`。API key profile 在注册表中明确 Provider、模型、base URL 和密钥环境变量；使用 `opencode-go` 时须提供该账号可用的端点和模型，不会借用 DeepSeek 配置。ChatGPT Plan 固定使用官方 Responses 端点和本地 OAuth Auth Store，不读取 API key。
+
+若需要不使用 OAuth 的常规查询，可在 `.env` 选择登记好的 DeepSeek profile：
 
 ```dotenv
-# 主模型配置；密钥必须替换为自己持有的有效值。
-TRIVAE_MODEL_PROVIDER=deepseek
-TRIVAE_MODEL_NAME=deepseek-flash
-TRIVAE_MODEL_BASE_URL=https://api.deepseek.com
-TRIVAE_MODEL_API_KEY=<你的DeepSeek_API_key>
+TRIVAE_MODEL_ID=deepseek-flash
+DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
 ```
-
-当前支持 `deepseek`、`opencode-go` 和 `chatgpt-plan`。API key 模式必须填写模型名及对应 Provider 的 base URL 和 key；使用 `opencode-go` 时由用户明确提供其端点与账号可用模型，不自动借用 DeepSeek 配置。DeepSeek 历史变量 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` 仍受支持，但仅在对应新变量未出现时生效；新变量存在而为空会报错。只有未使用新 key 变量的旧 DeepSeek 配置保留默认 base URL。
 
 | 变量 | 默认值 | 作用 |
 | --- | --- | --- |
+| `TRIVAE_MODEL_ID` | `config/models.yaml` 的 `defaults.query`（`gpt-plus`） | 普通查询选择已登记的 profile |
+| `TRIVAE_MODELS_CONFIG` | `config/models.yaml` | 替换模型 profile 注册表文件 |
 | `TRIVAE_MAX_TURNS` | `8` | SDK 执行轮数上限 |
 | `TRIVAE_MAX_TOOL_ROUNDS` | `6` | 工具轮数上限，材料足够时可提前完成 |
 | `TRIVAE_MAX_OUTPUT_TOKENS` | `16384` | API key Provider 的 Runtime 输出预算 |
@@ -32,13 +46,13 @@ TRIVAE_MODEL_API_KEY=<你的DeepSeek_API_key>
 | `TRIVAE_RUN_TOOL_EVIDENCE_CAP` | `256000` | 单次 Run 证据池预算上限 |
 | `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET` | 未配置 | 显式覆盖单次 Run 的证据池预算 |
 
-未知模型 context 使用现有 dynamic 预算的未知上下文边界，不按模型名称猜测窗口大小。这些是执行预算，不是答案正确性指标。
+未能从显式设置或已登记能力中确认模型 context 时，dynamic 预算使用未知上下文边界，不按相似模型名称推断窗口。这些是执行预算，不是答案正确性指标。
 
 对于“全部范围”的建议、技巧、经验或观点综合，Runtime 默认要求先充分召回主题词命中，再按具体缺口补读长消息、回复或不同表达的证据；最终回答展开有来源支持的具体做法、示例、适用条件和注意事项。简短提问不等于要求简短回答，重复表述与证据元数据可以精简，独立有用的信息不应只压成几个标签。明确要求简答时仍遵从用户要求。
 
 仓库默认工具轮数上限与当前本机统一为6轮，默认8次执行回合可容纳6轮工具和最终综合。真实Provider、环境加载、直接构造配置和注入模型共用同一个轮次默认值；已有 `.env` 显式设置的值仍优先，原来写了3的配置需要自行改为6，保存后重启 Web。上限按问题需要使用，材料足够可提前完成，不要求简单问题固定检索6轮。
 
-需要更大证据余量时，可在已确认模型context容量后设置 `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET=200000`。2026-10-23 当前本机实例已启用：已登记的 Plan / gpt-6.1-sol context 为500000，证据池由默认125000提高到200000；单次工具结果仍最多128000。未确认context的模型不能使用显式证据池覆盖，按实际模型容量配置，不直接复制此数值。ChatGPT订阅模式不会发送服务端输出Token上限，回答详细程度主要由综合提示和来源覆盖决定。之前同题两次真实运行都只使用2工具轮，检索覆盖和细节有所改善，尚不能证明增加第4至6轮带来独立质量收益；统一默认值是保留充分补查空间的产品选择，也不代表全库语义穷尽。
+显式增加 `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET` 前，应确认所选 Provider / 模型的 context 能力，并同时考虑单次结果上限和 Run 总上限。不要把历史本机环境的预算数值复制为仓库默认配置。ChatGPT 订阅模式不会发送服务端输出 Token 上限；回答细节仍取决于提示、实际召回证据和模型生成。
 
 ## Sign in with ChatGPT
 
@@ -52,13 +66,14 @@ uv run trivae auth models --provider chatgpt
 
 身份凭证的 `iat` / `nbf` / `exp` 校验固定允许 10 秒时钟偏差；这是针对已实测约 3.5 秒的服务端/本机时间差，签名、issuer、audience、nonce 和时间校验仍保留。若仍提示 `not yet valid (iat)`，应检查系统自动校时；超过容差的凭证仍会被拒绝。浏览器的 “Authorization received” 只表示收到授权回调，最终是否登录成功以终端结果为准。
 
-从 `auth models` 返回的该账号模型目录复制真实 slug，再编辑 `.env`：
+仓库已登记的 ChatGPT OAuth profile 为 `gpt-plus`；普通查询默认已选择它。登录后可用 `auth models` 查看该账号可用的服务端模型，再编辑 `.env` 选择 profile：
 
 ```dotenv
-# 仅替换主模型 Provider 与模型名，不在此存放 OAuth token。
-TRIVAE_MODEL_PROVIDER=chatgpt-plan
-TRIVAE_MODEL_NAME=<auth_models返回的模型slug>
+# 选择已配置的 ChatGPT OAuth profile；OAuth token 保留在本机 Auth Store。
+TRIVAE_MODEL_ID=gpt-plus
 ```
+
+若要使用 `auth models` 返回的其他模型 slug，需先在 `config/models.yaml` 增加经过验证的 profile；`TRIVAE_MODEL_ID` 只能选择注册表中已定义的 profile ID，不能直接传服务端模型 slug。
 
 订阅模式使用 OAuth Bearer 和官方 `https://api.openai.com/v1` Responses API。已有 `TRIVAE_MODEL_API_KEY`、`DEEPSEEK_API_KEY` 与传统 base URL 不参与此调用，不会自动换到 API key 计费。服务端请求固定 `store=false`、`stream=true`，不发送 `max_output_tokens`、`max_tokens` 或 `temperature`；本地 `MAX_TURNS`、`MAX_TOOL_ROUNDS` 与工具结果预算继续有效。
 
@@ -94,7 +109,7 @@ uv run trivae auth logout --provider chatgpt
 uv run trivae auth logout --provider chatgpt --account '<已签发client_id>'
 ```
 
-退出会撤销 renewable session 并清除所选会话的本地 token，保留注册身份和主机标识，方便再次登录。远端撤销失败会报告错误，本地 token 仍会清除；随后可在 ChatGPT Settings → Usage 管理对应应用。切回 DeepSeek 时，恢复本文开头的四个 `TRIVAE_MODEL_*` 配置并重启。
+退出会撤销 renewable session 并清除所选会话的本地 token，保留注册身份和主机标识，方便再次登录。远端撤销失败会报告错误，本地 token 仍会清除；随后可在 ChatGPT Settings → Usage 管理对应应用。切回 DeepSeek profile 时，在 `.env` 设置 `TRIVAE_MODEL_ID=deepseek-flash` 与 `DEEPSEEK_API_KEY`，然后重启进程。
 
 ## 独立 Router Jev
 

@@ -60,16 +60,20 @@ trivae eval run --suite data/evaluation/new-regression-candidates/suite.json \
   --cases-dir data/evaluation/new-regression-candidates/cases \
   --variant data/evaluation/my-baseline-variant.json \
   --freeze-manifest data/evaluation/frozen-new/freeze.json \
-  --record-dir data/evaluation/baseline-record --judge-version none
+  --record-dir data/evaluation/baseline-record \
+  --evaluation-database data/evaluation/baseline-record/evaluation.sqlite3 \
+  --keep-workspace --judge-version none
 ```
 
-Candidate 使用同一 master freeze，另选 Variant、record 目录和 Evaluation DB。也可显式指定 `--evaluation-database`，但路径必须是尚不存在的独立数据库。Variant 的 `code_version` 必须匹配当前干净 Git commit，`provider`/`model` 必须匹配实际环境；其余声明的 Prompt、工具、检索和预算也应如实填写。`experiment.json` 记录 Suite、完整 Case 版本、freeze/schema/snapshot/index 身份、冻结文件位置、Git commit、存储策略、声明的 Variant、实际非密钥模型/Router 设置、Python/SDK 和 Judge 版本。Run/Result 保存在 Evaluation DB 和 `runs.json`；完整 Trace 保存在 `traces/`。持久化完成并关闭所有 SQLite 连接后临时数据库自动清理。`--keep-workspace` 为调试显式保留副本；过期副本可用 `trivae eval cleanup-workspaces --manifest <freeze.json>` 回收。`--judge-version none` 表示未运行 Judge，不会生成 Judge 评分。
+Candidate 使用同一 master freeze，另选 Variant、record 目录和 Evaluation DB。显式指定 Evaluation DB 时，路径必须是尚不存在的独立数据库。Variant 的 `code_version` 必须匹配当前干净 Git commit，`provider`/`model` 必须匹配实际环境；其余声明的 Prompt、工具、检索和预算也应如实填写。`experiment.json` 记录 Suite、完整 Case 版本、freeze/schema/snapshot/index 身份、冻结文件位置、Git commit、存储策略、声明的 Variant、实际非密钥模型/Router 设置、Python/SDK 和 Judge 版本。Run/Result 保存在 Evaluation DB 和 `runs.json`；完整 Trace 保存在 `traces/`。持久化完成并关闭所有 SQLite 连接后临时数据库自动清理。
+
+若后续要用 `langsmith-sync --require-complete` 从 SQLite 回读 Trace，应在正式 `eval run` 时加 `--keep-workspace`；否则工作库会在 Run、Result、Trace 和实验清单持久化后清理。保留时，可从 `experiment.json` 的 `workspace_storage.workspace_id` 和冻结 manifest 所在目录定位工作库：`<freeze-manifest 所在目录>/.trivae-eval-workspaces/<workspace_id>/data/<canonical_file>`。本例的同步命令使用这一保留库。保留的副本默认 7 天后可用 `trivae eval cleanup-workspaces --manifest <freeze.json>` 回收。`--judge-version none` 表示未运行 Judge，不会生成 Judge 评分。
 
 ```bash
 trivae eval compare-experiments \
   --baseline data/evaluation/baseline-record/experiment.json \
   --candidate data/evaluation/candidate-record/experiment.json
-trivae eval report --evaluation-database data/evaluation/baseline-runs.sqlite3 \
+trivae eval report --evaluation-database data/evaluation/baseline-record/evaluation.sqlite3 \
   --output data/evaluation/baseline-report.json
 ```
 
@@ -78,18 +82,20 @@ trivae eval report --evaluation-database data/evaluation/baseline-runs.sqlite3 \
 人工或模型辅助 Review 以 `EvaluationReview` JSON 保存；质量轴逐项给 `label` 或 `score`，写清 `reviewer_type`、`rubric_version` 和 `needs_adjudication`。`review_id` 只能创建一次，修订另建 ID。
 
 ```bash
-trivae eval review --evaluation-database data/evaluation/baseline-runs.sqlite3 --review data/evaluation/review.json
+trivae eval review --evaluation-database data/evaluation/baseline-record/evaluation.sqlite3 --review data/evaluation/review.json
 ```
 
 ## 同步与追溯
 
 ```bash
 # 正式运行的所有 Run 直接来自 experiment.json，不需手抄 ID。
+# 将 <workspace_id> 替换为 experiment.json 的 workspace_storage.workspace_id。
 trivae eval langsmith-sync --suite data/evaluation/new-regression-candidates/suite.json \
   --cases-dir data/evaluation/new-regression-candidates/cases \
-  --evaluation-database data/evaluation/baseline-runs.sqlite3 \
-  --trace-database data/evaluation/work-baseline/trivae.sqlite3 \
-  --manifest data/evaluation/baseline-record/experiment.json --experiment my-baseline-20261028
+  --evaluation-database data/evaluation/baseline-record/evaluation.sqlite3 \
+  --trace-database "data/evaluation/frozen-new/.trivae-eval-workspaces/<workspace_id>/data/trivae.sqlite3" \
+  --manifest data/evaluation/baseline-record/experiment.json --experiment my-baseline-20261028 \
+  --require-complete --metadata-only
 
 # 已有 benchmark：按 Variant 从原始记录选择，不调用模型。
 trivae eval langsmith-sync --suite evaluation/suites/resume-benchmark-dev-v1.json \
@@ -112,9 +118,9 @@ trivae eval langsmith-sync --suite evaluation/suites/resume-benchmark-dev-v1.jso
 ```bash
 trivae eval langsmith-resolve --experiment my-baseline-20261028
 trivae eval langsmith-map --run-id '本地 Run ID'
-trivae trace show '本地 Trace ID' --database data/evaluation/work-baseline/trivae.sqlite3
+trivae trace show '本地 Trace ID' --database "data/evaluation/frozen-new/.trivae-eval-workspaces/<workspace_id>/data/trivae.sqlite3"
 # 有新的本地 Review 时，解析映射后增量上传；重复执行不会重复添加已完成的评分。
-trivae eval langsmith-review-sync --evaluation-database data/evaluation/baseline-runs.sqlite3 \
+trivae eval langsmith-review-sync --evaluation-database data/evaluation/baseline-record/evaluation.sqlite3 \
   --review-id '本地 Review ID' --experiment my-baseline-20261028
 ```
 
@@ -141,6 +147,8 @@ Planner V2 的两份原始 Suite 文件以同一个 Suite ID 和版本保存了�
 CJK 的 `cjk-46` A 运行对应 Trace 的事件从序号 2 开始，缺少第一条事件，因此没有导入。Prompt Loop 的 10 条及 Prompt v01 的 2 条记录找不到对应版本的 Case，也未导入。另有 11 条合成/测试运行和 1 条离线回放未计入真实历史实验。
 
 ## 本次真实验证与剩余边界
+
+> **历史验证快照（2026-10-28）**：本节只描述当次 LangSmith 导入和候选评测状态。候选审核与“剩余边界”不是当前待办；当前进度见 [PROJECT_STATUS](PROJECT_STATUS.md)，当前质量边界见 [Evaluation](evaluation.md)。
 
 2026-10-28 使用本机 Key 批量导入 177 组历史实验、1,740 条 Run，覆盖上述 19 个数据集；不重复调用模型。通过 LangSmith API 回读 Run、独立数值评分、状态及本地 Trace 关联，并保存远端 Run ID 到本地账本。平台的实验比较接口偶尔未返回部分已有 Feedback 汇总，需以独立 Feedback 接口回读核验。最初的单题试验中，本地失败 Run 曾因缺少 error 被远端显示为 `SUCCESS`；旧导入保留，`trivae-history-archify-semantic-failure-mapping-fixed-20261028` 回读为 `ERROR`，比较时不要使用旧错误导入的远端状态。本次批量导入采用修正后的映射。完整系统的历史 Judge 为 `judge_failed` 时保留失败状态，不伪造得分。另以[合成测试 Dataset](https://smith.langchain.com/o/4b9f5259-77e7-449b-9cb5-5da340ab4792/datasets/dd750137-9845-46b1-bc30-56c892a46310)确认追加 Review 与重复同步幂等；合成评分只是测试数据。浏览器自动化超时，以上为实际服务的 API 回读，不冒称已目视验收 UI。
 

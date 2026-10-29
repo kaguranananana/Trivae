@@ -2,6 +2,13 @@
 
 Trellis historical documents are a knowledge archive, not mandatory coding workflow. Choose implementation, planning, delegation and validation appropriate to the task. Do not automatically create Trellis tasks, require PRDs or separate approval turns, enforce Phase ordering, or dispatch fixed Trellis subagents.
 
+## 文档事实优先级
+
+- 当前实现与默认值：以当前分支的源码、测试和受跟踪配置为准；运行时实际值还可能被 Shell 环境和未跟踪的本机 `.env` 覆盖。
+- 当前架构、配置、评测方法和项目进度：分别以 `docs/architecture.md`、`docs/configuration.md`、`docs/evaluation.md` 和 `docs/PROJECT_STATUS.md` 为入口；README 链接到这些文档。
+- `docs/DEVLOG.md`、日期化实验/审查文档及 `.trellis/` 是带时间边界的历史记录。保留其中的事实，但旧 Stage、旧命令、旧配置和“下一步”不能自动视为当前状态或待办。
+- 出现冲突时，先核对当前源码/配置和相关测试，再更新当前文档；历史结果只在各自实验条件内解释，不追改成当前结论。
+
 ## Handoff and memory across agents
 
 - For meaningful work or agent switching, read docs/PROJECT_STATUS.md first, then recent docs/DEVLOG.md entries as needed.

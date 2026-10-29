@@ -1,20 +1,22 @@
 # QCE 本地增量导入与 macOS 调度
 
-2026-10-26 新增完整的 QCE 导出流水线，入口见 [增量导出说明](../scripts/qce-incremental/README.md)。`install-import.sh --qce-config scripts/qce-incremental/config.json` 可让同一个 `com.trivae.import-once` 先按每群成功水位调用 QCE 导出，再串行执行原有入库、索引和晚间日报。该模式的日历为每天 **10:00、22:00**，替换下文纯入库模式的 10:30、22:30；保留登录/唤醒补偿和失败五分钟补跑。新文件先满足原 60 秒静置契约再入库，避免每轮产生新文件却始终 deferred。QCE 连接/QQ 登录仍是前提。Canonical 与 semantic 文件已采用 WAL，避免长索引写事务阻塞既有 Web 读连接；索引未提交时 freshness 仍如实反映旧版本。实际首轮结果见开发记录，不能只凭安装成功视为补查完成。
+> **本机运维说明**：launchd 是否已安装、账号权限、QCE 登录、日志和数据库均依赖运行机器；文中历史状态不证明当前机器仍处于该状态。QCE 导出模式与下文“纯入库”模式使用不同日历，选择模式时以安装参数和生成的 plist 为准。
+
+2026-10-26 新增完整的 QCE 导出流水线，入口见 [增量导出说明](../scripts/qce-incremental/README.md)。`install-import.sh --qce-config scripts/qce-incremental/config.json` 可让同一个 `com.trivae.import-once` 先按每群成功水位调用 QCE 导出，再串行执行原有入库、索引和晚间日报。QCE 导出模式的日历为每天 **10:00、22:00**；它替换下文不含 QCE 导出的纯入库日历（10:30、22:30），保留登录/唤醒补偿和失败五分钟补跑。新文件先满足原 60 秒静置契约再入库，避免每轮产生新文件却始终 deferred。QCE 连接/QQ 登录仍是前提。Canonical 与 semantic 文件已采用 WAL，避免长索引写事务阻塞既有 Web 读连接；索引未提交时 freshness 仍如实反映旧版本。实际首轮结果见开发记录，不能只凭安装成功视为补查完成。
 
 已实现文件发现、状态持久化、失败恢复、独立 CLI 和调度管理，并与「合并转发内部消息检索」代码完成合并。用户在合并后明确授权启动真实调度；本轮为正式调度接入既有索引构建器，默认携带 `--update-indexes`。实际安装、首轮运行和生产检索验收结果需以任务验证记录及下述状态命令为准，不能只凭配置已生成就视为启用成功。开发测试使用隔离数据库，不修改 QCE、原始 JSON 或冻结 Evaluation。
 
-2026-10-17 11:06 +08 正式任务已实际启用并立即运行。首轮全部 40 文件完成，新增 23,087 条，FTS 与 Agent lexical/recent 工具已验证；语义索引仍在构建，完整生产验收尚未完成。实测证据和限制见 [启用验证记录](../.trellis/tasks/10-16-qce-auto-import/enable-validation.md)。
+2026-10-17 11:06 +08 的首次纯入库调度曾完成 40 个文件、增加 23,087 条，并确认 FTS 与 Agent lexical/recent 工具；当时语义索引仍在构建。这是首次启用时的机器状态，不能作为当前 readiness。实测证据见 [启用验证记录](../.trellis/tasks/10-16-qce-auto-import/enable-validation.md)。
 
 ## 单次执行与处理状态
 
-在项目目录执行：
+在项目根目录执行以下命令：
 
 ```sh
 uv sync --extra dev --extra semantic
 .venv/bin/python -m trivae import-once \
-  --raw-dir /Users/anontokyo/Downloads/Project/Learn/Trivae/data/raw \
-  --database /Users/anontokyo/Downloads/Project/Learn/Trivae/data/trivae.sqlite3 \
+  --raw-dir data/raw \
+  --database data/trivae.sqlite3 \
   --update-indexes
 ```
 
@@ -41,12 +43,14 @@ uv sync --extra dev --extra semantic
 
 全量成本可能很高：[合并转发验证记录](../.trellis/tasks/archive/2026-10/10-16-qq-forward-retrieval/validation.md) 中，本机对 765,780 条 Canonical、12,484 条转发内部记录续建时，复用 20,104 个块，新计算 72,184 个向量仍耗时约 **5 小时 13 分**。这不是从零重建耗时，也不是本次调度的预计完成时间。首次新增触发后可能长时间处于 `building`；期间不能声称最新消息已经通过语义检索验收。
 
-## 准备调度配置
+## 准备纯入库调度（不包含 QCE 导出）
+
+以下示例在项目根目录执行；脚本会把相对目录解析为 launchd 所需的路径。
 
 ```sh
 ./scripts/macos/install-import.sh \
-  --raw-dir /Users/anontokyo/Downloads/Project/Learn/Trivae/data/raw \
-  --database /Users/anontokyo/Downloads/Project/Learn/Trivae/data/trivae.sqlite3
+  --raw-dir data/raw \
+  --database data/trivae.sqlite3
 ```
 
 默认仅准备 plist，输出 `status: prepared`、`enabled: false`。准备文件放在 `~/Library/Application Support/Trivae/launchd/`，没有写入 `~/Library/LaunchAgents/`，因此下次登录也不会提前启动真实导入。准备时只用项目 `.venv/bin/python -m trivae import-once --help` 校验入口，不打开数据库。脚本可从其他工作目录执行。
@@ -55,7 +59,7 @@ plist 固定使用绝对 Python 路径、`-m trivae import-once --update-indexes
 
 正式调度的环境显式设置 `HF_HUB_OFFLINE=1`，复用已验证的本机 Qwen 模型缓存，避免既有 Hub HEAD SSL EOF 导致启动失败；缓存缺失仍明确报错，不换模型或降级。需要 `semantic` extra 和正确模型缓存。隔离的只入库测试可给安装脚本传 `--no-update-indexes`；生成的命令不请求索引更新，也不设置该离线模型环境项。
 
-调度为机器本地时区每天 **10:30 和 22:30**：
+本节的纯入库调度使用机器本地时区每天 **10:30 和 22:30**；若通过 `--qce-config` 启用 QCE 导出，则采用文首说明的 10:00 和 22:00：
 
 ```xml
 <key>StartCalendarInterval</key>
@@ -71,14 +75,14 @@ plist 固定使用绝对 Python 路径、`-m trivae import-once --update-indexes
 
 真实 macOS 验证发现，刚执行完就调用 `launchctl kickstart` 也会受 300 秒节流，命令可能一直等待到允许启动。不要把它误判成导入卡死；`launchctl print` 中 `state=spawn scheduled`、`minimum runtime=300` 能说明原因。需要立即验证新安装参数时可重新执行显式安装命令，让管理器 bootout/bootstrap；常规补偿应等待系统调度。
 
-## 启用调度
+## 启用纯入库调度（不包含 QCE 导出）
 
-使用最终集成目录及已安装 semantic 依赖的 Python 环境，在 prepare 命令上增加 `--enable`：
+以下示例在项目根目录执行；若从其他目录调用脚本，请传入对应工作区的数据路径。使用最终集成目录及已安装 semantic 依赖的 Python 环境，在 prepare 命令上增加 `--enable`：
 
 ```sh
 ./scripts/macos/install-import.sh \
-  --raw-dir /Users/anontokyo/Downloads/Project/Learn/Trivae/data/raw \
-  --database /Users/anontokyo/Downloads/Project/Learn/Trivae/data/trivae.sqlite3 \
+  --raw-dir data/raw \
+  --database data/trivae.sqlite3 \
   --enable
 ```
 
@@ -101,11 +105,11 @@ macOS 如果拒绝 launchd 访问 Downloads，stderr 会保留对应 `Permission
 - `~/Library/Logs/Trivae/com.trivae.import-once.stdout.log`：每次命令的 JSON 结果与文件、批次、索引待办。
 - `~/Library/Logs/Trivae/com.trivae.import-once.stderr.log`：明确错误与 traceback。
 
-再读取业务状态，以下命令只读，不创建数据库或 Application：
+再读取业务状态，以下命令只读，不创建数据库或 Application；从项目根目录运行：
 
 ```sh
 .venv/bin/python -m trivae import-once \
-  --database /Users/anontokyo/Downloads/Project/Learn/Trivae/data/trivae.sqlite3 \
+  --database data/trivae.sqlite3 \
   --status
 ```
 

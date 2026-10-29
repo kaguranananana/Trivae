@@ -1,6 +1,6 @@
 # Project Overview
 
-> 简短说明，不展开架构细节（架构见 architecture.md，当前 Draft / In Progress）。
+> **历史项目概览，不是当前实现或进度入口。** 下方 Stage 完成状态和“当前任务状态”是该规格的历史快照；当前实现以源码及 [docs/architecture.md](../../../docs/architecture.md) 为准，当前进度见 [docs/PROJECT_STATUS.md](../../../docs/PROJECT_STATUS.md)。历史架构决定只有在仍与当前实现一致时才适用。
 
 ---
 
@@ -32,7 +32,7 @@
 | 开发管理 | Trellis |
 | 工程风格 | Simple / Explicit / Testable / Observable / Failure-case driven / Evidence-based |
 
-## 当前阶段
+## 历史阶段快照（非当前进度）
 
 **Stage 1.1 已完成**：Stage 0 的 Git、Trellis 与工程规范已完成；Data Plane + Query Plane 的架构骨架已沉淀。
 

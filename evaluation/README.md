@@ -1,18 +1,20 @@
 # Trivae Evaluation Catalog
 
+> **历史评测目录**：本文件保留版本化 Case/Variant、旧 benchmark 与实验操作记录。带日期的 Provider、baseline、Trellis task 状态和命令不是当前默认配置或当前入口；当前评测方法、正式工作库生命周期和质量边界见 [docs/evaluation.md](../docs/evaluation.md)，当前项目进度见 [docs/PROJECT_STATUS.md](../docs/PROJECT_STATUS.md)。
+
 这里保存 version-controlled 的 Case、Suite 和 Controlled Variant 定义，不保存聊天正文、完整 Trace 或运行结果。
 
 Capability Suite v2 的清单、隐私边界、证据审核与真实试运行见 [capability-evaluation-v2.md](../docs/capability-evaluation-v2.md)。其原始题目和参考消息保留在本机私有评测目录，不能从公开目录推断其已人工审核。
 
-## Planner Evaluation 最终工程收口（2026-10-03）
+## Planner Evaluation 最终工程收口快照（2026-10-03）
 
-当前P1 canonical Planner使用官方DeepSeek `deepseek-flash` / `none`，Router与共享Runtime保持独立`low`。source_id/mN-K与canonical message_id契约已在真实SDK schema/prompt明确；真实日期关系失败保留于`regressions/archify-temporal-relation.json`，复用既有Judge时间投影。
+该次 P1 canonical Planner 使用官方 DeepSeek `deepseek-flash` / `none`，Router 与共享 Runtime 保持独立 `low`。source_id/mN-K 与 canonical message_id 契约已在真实 SDK schema/prompt 明确；真实日期关系失败保留于 `regressions/archify-temporal-relation.json`，复用既有 Judge 时间投影。
 
 限定八条已暴露Development Case完成16次Standard/Planned E2E、54实际HTTP，无额外repeat。结论为限制使用、保留架构、production routing继续保守，Jev shadow未变；不是答案质量全通过。low/none研究与本轮engineering validation closed，不安排新的付费Planner实验。旧runner/命令属于历史记录，不能据此自动扩样。完整证据见[report.md](../.trellis/tasks/10-02-planner-engineering-closure/report.md)与[ADR](../.trellis/spec/project/technical-decisions/planner-engineering-closure.md)。
 
-## Provider migration boundary（2026-09-11）
+## 历史 Provider migration boundary（2026-09-11）
 
-当前新执行身份是官方 DeepSeek：`deepseek / deepseek-flash`，base URL 为
+该次迁移期的新执行身份是官方 DeepSeek：`deepseek / deepseek-flash`，base URL 为
 `https://api.deepseek.com`，配置使用 generic `TRIVAE_MODEL_*` 变量；本地 key 只放在被 `.gitignore`
 忽略的 `.env`。旧的 `opencode-go / deepseek-v4-flash` 仍是历史 benchmark 的身份和元数据，不把新结果
 追加到旧目录或旧 Variant。
@@ -26,7 +28,7 @@ Provider migration 的能力/传输审计、reasoning_content 回放回归和 A�
 
 `cases/seed-*.json` 是第一版 Design / Seed contract 样例。它们故意使用 `unavailable` 的占位 Snapshot：真实数据 Case 必须由当前 Canonical Store 建立 Snapshot 后显式 materialize，不能把漂移数据静默绑定到旧 Case。
 
-`variants/last-stable.json` pin 到 M6 完成后的 `cce944d`，表示当前 stable reference，不表示最优方案。`forced-standard.json` 与 `forced-planned.json` 只改变显式 execution override，供同 Case 的 Planner Utility 实验使用。
+`variants/last-stable.json` pin 到 M6 完成后的 `cce944d`，表示生成该文件时选定的 stable reference，不代表当前 main 或最优方案。`forced-standard.json` 与 `forced-planned.json` 只改变显式 execution override，供同 Case 的 Planner Utility 实验使用。
 
 `variants/deepseek-json-budget-m7.json` 是 M7 provider-boundary candidate `deepseek-json-budget-m7-v2`：只增加显式 JSON completion budget，不能与 `last-stable-m6` 混称为同一 Variant。
 

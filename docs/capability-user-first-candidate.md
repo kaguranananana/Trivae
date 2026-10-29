@@ -1,5 +1,7 @@
 # Capability Suite：用户问题优先候选
 
+> **历史候选记录（2026-10-28）**：该候选用于记录一次题集设计与证据审查，不是当前发布 Suite、待办或 Baseline。后续 Runner 和评测流程可能已变化；当前实现以源码及 [PROJECT_STATUS](PROJECT_STATUS.md) 为准。
+
 本候选针对旧 `capability@v2` 的问题来源偏差：用户通常不知道群里已经讨论过什么。旧 Suite、Case 版本、运行、Review 和历史实验均保留；新身份是 `capability-user-first-candidate@v1`，仅供设计与人工审查，不是已发布的 v3、盲测集或新的 Baseline。
 
 ## 审查与冻结顺序

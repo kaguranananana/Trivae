@@ -81,7 +81,7 @@ Structured Retrieval 必须支持参数化 SQL 的 session、半开时间、send
 
 ### R8. Interview-defense Evidence
 
-本任务遵守项目级 [Interview Defense Evidence](../../spec/project/interview-defense.md) 原则。实现/验证记录必须能够支撑围绕“为什么、替代方案、失败、验证、debug、规模、演进”的连续追问，但不得为了面试制造复杂度或虚构项目事实。
+本任务遵守项目级 [Interview Defense Evidence](../../../../spec/project/interview-defense.md) 原则。实现/验证记录必须能够支撑围绕“为什么、替代方案、失败、验证、debug、规模、演进”的连续追问，但不得为了面试制造复杂度或虚构项目事实。
 
 任务记录新增 `validation.md`，只收录 architecture decision、implementation、test、真实 canonical 数据校准、benchmark、evaluation 或真实 Failure Case 能证明的内容，并明确区分 `measured fact` / `engineering expectation`、`real failure` / `regression test case` / `anticipated risk`、`permanently rejected` / `currently unnecessary / waiting for evaluation evidence`。不得为了面试制造复杂度或虚构性能/失败事实。
 

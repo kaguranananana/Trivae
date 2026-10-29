@@ -85,7 +85,7 @@ Planner 在 Planned 路径进入 Runtime 前运行一次，生成有界的结构
 
 Runtime 基于 OpenAI Agents SDK 承载单 Agent 工具循环。Trivae 持有上下文、工具适配、结果预算、取消、事件和最终合成边界。工具轮预算与 SDK 的绝对回合上限分别约束调查和异常失控：到达正常工具轮预算后进入最终合成，绝对上限仍属于失败边界。流式客户端看到的是项目事件投影，而不是 SDK 内部对象。
 
-预算同时约束单次工具结果和本轮累计证据内容。截断与省略会作为事实记录；有界输出也意味着模型可能没有看见全部命中。当前已知的小余量工具结果投影失败仍是工程限制，不能把“有预算”解释成“所有问题都能在预算内完成”。
+预算同时约束单次工具结果和本轮累计证据内容。截断与省略会作为事实记录；共享预算接近耗尽时，Runtime 返回显式的预算停止结果并阻止超预算投影。模型可能因此看不到更多命中，有界输出也不能保证全量检索或充分回答。
 
 实现与回归入口：[orchestrator.py](../src/trivae/query/orchestrator.py)、[planner.py](../src/trivae/query/planner.py)、[openai_adapter.py](../src/trivae/query/runtime/openai_adapter.py)、[Runtime 测试](../tests/test_agent_runtime.py)。
 

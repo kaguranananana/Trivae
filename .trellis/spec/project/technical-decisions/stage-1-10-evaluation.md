@@ -3,6 +3,8 @@
 > 状态：**Confirmed / Completed（Stage 1.10，架构契约）**
 >
 > 本 ADR 冻结 Evaluation 的事实边界、Case / Reference / Suite 语义、Baseline 与 Controlled Variant 身份、paired comparison、Judge governance、Failure Diagnosis 与 Reproducibility contract。文中“不实现”描述 Stage 1.10 作出架构决策时的范围；当前 runner、CLI、Dataset storage、Evaluation Schema 和 Development baseline 已实现，人工 treatment adjudication、fresh generalization、数值 threshold 与推广校准仍 Pending。
+>
+> **状态提示**：本段实现与 Pending 状态记录于该 ADR 更新时点，不代表今天的评测进度或待办。正式评测方法、当前质量边界和状态见 [docs/evaluation.md](../../../../docs/evaluation.md) 与 [docs/PROJECT_STATUS.md](../../../../docs/PROJECT_STATUS.md)。
 
 ---
 

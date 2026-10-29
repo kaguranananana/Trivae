@@ -1,5 +1,7 @@
 # Eval v1
 
+> **历史基线记录（2026-10-28）**：本页冻结了 eval@v1 的题集、运行和评分事实，不代表当前默认配置或当前待办。当前评测入口与正式工作库流程以 [Evaluation 文档](evaluation.md) 和 [项目状态](PROJECT_STATUS.md) 为准；下面记载的旧运行条件不应直接复制到新实验。
+
 `eval@v1` is the separate 16-question real-user evaluation set. Its name does not
 assert that any capability is solved or deficient; that judgment requires actual
 evaluation. The committed manifest contains only case identities. The questions,
@@ -63,70 +65,23 @@ PYTHONPATH=src .venv/bin/python scripts/verify_capability_bundle.py \
   --output data/evaluation/eval-v1-20261028/bundle-verification.json
 ```
 
-## Running one case or a suite
+## Historical run conditions (2026-10-28; not a current recipe)
 
-Formal experiments require a clean committed checkout, a separate working clone and
-independent Evaluation database per experiment. The local clone
-`data/evaluation/capability-formal-v1-work/` was used for a fixture-only smoke test and
-was removed on 2026-10-29; create a fresh clone with `trivae eval clone-data` for each
-independent experiment. The fixed runtime settings
-are defined in `capability_conditions.py`: eight turns, six tool rounds, 128,000-token
-declared context window for budget calculation, 32,000-token run evidence pool,
-50% per-call ceiling, 16,384 output tokens and 2,048 completion tokens. Jev routing is
-disabled; the production Router/Planner and prompt from the recorded Git commit are
-otherwise unchanged. The primary Router may use the configured model for ambiguous
-queries. The seven permitted retrieval/context/schema tools are fixed in
-the same module. There is no filesystem, GT, Judge, or evaluation-result tool available
-to the Agent; the private bundle is separate from the Canonical working database.
+The following limits describe the recorded eval@v1 experiment only: eight turns, six
+tool rounds, 128,000-token declared context window for budget calculation, a
+32,000-token Run evidence pool, 50% per-call ceiling, 16,384 output tokens and 2,048
+completion tokens. Jev routing was disabled. The primary Router could use the
+configured model for ambiguous queries. The Agent had seven permitted
+retrieval/context/schema tools and no filesystem, GT, Judge, or evaluation-result
+tool. These values are not the repository defaults and do not describe every run.
 
-Model identities, providers, endpoints, authentication references, and supported model
-parameters live in `config/models.yaml`. `.env` contains API keys and local runtime
-overrides only. Ordinary queries default to `defaults.query`; `TRIVAE_MODEL_ID` can
-select another configured profile. Existing `TRIVAE_MODEL_PROVIDER` and
-`TRIVAE_MODEL_*` overrides remain available for older commands. Eval defaults to
-`evaluation.agent` and `evaluation.judge`; `--agent-model` and `--judge-model` select
-any profile whose provider call is implemented. The DeepSeek profile reads
-`DEEPSEEK_API_KEY`; ChatGPT Plan uses the existing local OAuth Auth Store and official
-Responses endpoint. Model profiles never contain key or OAuth token values.
-
-The helper rejects mismatched budgets and writes a new private Variant rather than
-overwriting one.
-
-```bash
-export TRIVAE_MAX_TURNS=8 TRIVAE_MAX_TOOL_ROUNDS=6
-export TRIVAE_MAX_OUTPUT_TOKENS=16384 TRIVAE_COMPLETION_MAX_TOKENS=2048
-export TRIVAE_TOOL_RESULT_BUDGET_MODE=dynamic TRIVAE_MODEL_CONTEXT_WINDOW_TOKENS=128000
-export TRIVAE_PER_CALL_TOOL_RESULT_PERCENT=50 TRIVAE_PER_CALL_TOOL_RESULT_CAP=128000
-export TRIVAE_RUN_TOOL_EVIDENCE_PERCENT=25 TRIVAE_RUN_TOOL_EVIDENCE_CAP=256000
-export TRIVAE_RUN_TOOL_EVIDENCE_BUDGET=32000 TRIVIAE_ROUTER_JEV_ENABLED=false
-
-.venv/bin/trivae eval clone-data --manifest data/evaluation/frozen-20261028-validated/freeze.json \
-  --output-dir data/evaluation/eval-v1-my-model-work
-
-.venv/bin/python -m scripts.prepare_capability_variant \
-  --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
-  --agent-model deepseek-flash \
-  --variant-id my-model-v1 --output data/evaluation/eval-v1-20261028/my-model.json
-
-.venv/bin/trivae eval run --suite evaluation/suites/eval-v1.json \
-  --cases-dir data/evaluation/eval-v1-20261028/cases \
-  --case-list data/evaluation/eval-v1-20261028/one-case.json \
-  --agent-model deepseek-flash \
-  --variant data/evaluation/eval-v1-20261028/my-model.json \
-  --database data/evaluation/eval-v1-my-model-work/trivae.sqlite3 \
-  --evaluation-database data/evaluation/eval-v1-my-model.sqlite3 \
-  --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
-  --record-dir data/evaluation/eval-v1-my-model-record --judge-version none --repeat 1
-```
-
-Remove `--case-list` to run all 16; use `--repeat` for repeated runs. The manifest
-captures the Case and GT identities, freeze, Git commit, Variant, runtime and router
-settings, tool surface, effective provider-specific reasoning and transport, and run IDs. Full answers and citations are retained in the
-working database's conversations; the Evaluation database keeps bounded projections
-and references. Traces remain in the working database. Usage and latency are recorded
-when returned; missing usage and cost remain unknown. Keep each working database,
-Evaluation database and experiment record together. `--judge-version none` records
-that no Judge ran during execution; it is not an automatic quality score.
+Model identities and environment overrides are described in the
+[current configuration guide](configuration.md#配置加载与模型profile). The profile
+active in an old run is evidence about that run, not a statement of today's default.
+For a new formal experiment, pass the master freeze manifest directly to
+`trivae eval run`; the current entry creates an isolated APFS working clone. Do not
+first run `eval clone-data` and pass that working copy as the formal master. See
+[current Evaluation run instructions](evaluation.md#本地验证入口).
 
 ## Offline scoring and comparison
 
@@ -143,21 +98,9 @@ and authorization errors remain explicit. Structured SQL results are not re-exec
 by this review and should remain `unknown` when they cannot be established from the
 supplied evidence.
 
-```bash
-PYTHONPATH=src .venv/bin/python -m scripts.judge_capability \
-  --bundle-dir data/evaluation/eval-v1-20261028 \
-  --suite evaluation/suites/eval-v1.json \
-  --freeze-manifest data/evaluation/eval-v1-my-model-work/freeze.json \
-  --database data/evaluation/eval-v1-my-model-work/trivae.sqlite3 \
-  --evaluation-database data/evaluation/eval-v1-my-model.sqlite3 \
-  --run-id 'the completed Run ID' --judge-model gpt-plus \
-  --record-dir data/evaluation/eval-v1-my-model-reviews/review-01
-
-PYTHONPATH=src .venv/bin/python scripts/audit_capability.py report \
-  --suite evaluation/suites/eval-v1.json \
-  --cases-dir data/evaluation/eval-v1-20261028/cases \
-  --database data/evaluation/eval-v1-my-model.sqlite3
-```
+The old local review commands depended on the ignored eval@v1 answer bundle and
+working databases. They are retained as historical usage context only; use the current
+Evaluation and model configuration documents when preparing a new run or review.
 
 Repeat the explicit Judge command for each completed Run. `compare_capability_models.py`
 checks the recorded code, suite, data, settings and repetitions while allowing model,

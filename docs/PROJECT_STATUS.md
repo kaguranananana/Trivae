@@ -1,135 +1,39 @@
-# Trivae 开发状态
+# Trivae 当前状态
 
-> 整理时间：2026-10-29。此页是跨 Agent 接手的快速入口；当前事实请以代码、测试和 Git 为准，不能仅凭较旧的记录推断。
+> 核验日期：2026-10-29。此页是当前状态摘要，不替代源码、测试和受跟踪配置。机器上的 Shell 环境与未跟踪 `.env` 可能改变实际运行值；本页不记录本机密钥或私有数据配置。
 
-## 项目目标
+## 项目定位
 
-Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原始消息的证据型回答的系统。完整背景参见 README.md 和 .trellis/spec/project/overview.md。
+Trivae 将 QQ 群聊导入、检索、Agent 调查和来源回溯接成一个本地使用的系统。产品能力和数据边界见 [README](../README.md)；当前链路见 [系统架构](architecture.md)。
 
-## 已记录的最近进度
+## 当前实现
 
-- 2026-10-29 评测临时工作库生命周期已接入正式 `trivae eval run`：输入 master `freeze.json`，校验 freeze/schema/snapshot/index 身份，Canonical 与 semantic 数据库用 APFS `clonefile` 隔离；关闭 Application 并将 Run/Result、完整 Trace、实验清单写入持久记录后自动清理。未持久化异常会保留带 lease 的恢复副本，中断及显式 `--keep-workspace` 默认保留7天，可由 `eval cleanup-workspaces` 回收。`create_application` 会拒绝直接打开 master；Canonical/semantic WAL/schema、Conversation、Trace、Evaluation 和 feedback 初始化均确认会写库。实测 3.526GiB 快照：SQLite backup 使 `df` 可用空间降低3.546GiB；APFS clone及 Application 初始化波动约2MiB，清理后无多GiB增长。全量 pytest 1391 passed/1 skipped、Ruff、148源码 Mypy、diff check 通过；未发模型请求。实施与完整空间读数见 `evaluation/experiments/storage-management-20261029/report.md`。
-- 2026-10-29 按用户要求清理三份已完成的本地校验/冒烟副本：`data/evaluation/frozen-20261028/`（初次冻结失败副本）、`data/evaluation/frozen-20261028-working-check/`（往返校验工作副本）和 `data/evaluation/capability-formal-v1-work/`（fixture-only 冒烟副本）。三目录共 10.59 GiB 表观文件；删除后实际可用空间由 5.00 GiB 增至 8.53 GiB（增加 3.53 GiB，APFS 共享块）。保留正式主快照 `frozen-20261028-validated/`、实验 Run/Trace、生产数据库和原始语料；三个目标删除后逐项确认不存在。
-- 2026-10-28 Agent 评测收尾：保留原 `eval@v1` 16 Case Baseline（14 个 Agent 成功、Case 03 `AnswerDeltaParseError` 与 Case 14 `APIStatusError` 两个运行失败），v2 原始 14 Review/46 诊断未覆盖。新增独立 `eval-rubric-v2.1`，只澄清原始问题优先于理想化 GT、局部 severity 与整体轴分按用户影响分别判断；用同一 GPT-6.1 Sol Medium 对 14 个已保存答案复评完成。所有 Review 仍为模型辅助、人工未确认。逐题建议与空白人工裁决栏见 `interview-docs/Evaluation校准审阅-20261028.md`；原始复评数据在 ignored `data/evaluation/eval-v2.1-calibration-20261028/`。
-- 2026-10-28/29 六题真实 Prompt Candidate 对照与最终取舍：两侧用同一 v2.1 Judge、Case、Snapshot、模型和运行条件，各 6/6 Run 完成，Trace 均完整。模型辅助评审显示 Case 07/12 可信度上升，但 Case 10 遗漏手机远控 Codex/微信实例、任务满足度 4→2，Case 01 仍有范围/因果外推；该评审当时建议不采纳。后续用户人工比较 Baseline 与 Candidate 回答后偏好 Candidate，决定合入四行证据强度约束；该约束已通过 `fix(agent): preserve evidence strength and source scope` 合入当前 `main`，并包含在 `origin/main`。这是用户基于回答偏好的产品取舍，不代表六题评测证明总体质量提升；Case 10 等退化仍保留为已知风险。完整对照见 ignored `data/evaluation/eval-agent-evidence-claim-20261028/` 和 `interview-docs/Evaluation评测闭环与面试讲解-20261028.md`。
-- 2026-10-28 Judge v2：新增 `eval-rubric-v2` 双维度 0–4/unknown 规则、结构化质量诊断、旧 Review 兼容和独立评分/对比脚本。对 Eval v1 Baseline 14 份成功回答使用 GPT-6.1 Sol Medium 重评 14/14；第 01、02 题各在一次临时 Provider 错误后重试成功，其他 12 题首轮完成。03/14 原 Agent 失败不评分。任务满足度 4/3/2 分布为 8/3/3、均分3.36；回答可信度为0/2/12、均分2.14；unknown 0，结构化诊断46项（轻微13、中等33、严重0），14题进入人工复核队列。第10题工具域名拼写错误被判为中等事实错误。报告与独立 v2 输入/响应/Review Store 保存在 ignored `data/evaluation/eval-v2-baseline-20261028/`；v1 数据库只读未改。定向45项测试、Ruff、修改范围 Mypy、16题冻结包校验及14份答案输入核对通过。轻微瑕疵总体边界仍需人工抽审；本批未观察到 unknown/severe 样例。详情见 docs/eval-rubric-v2.md 与实验 REPORT.md。
-- 2026-10-28 最新状态：新增 `config/models.yaml`，Agent/Judge 独立按模型 profile 选择；ChatGPT Plan Judge 复用本地 OAuth 和官方 Responses 接口，不存在付费 API fallback。已把原 `.env.deepseek` 的凭证安全合并至 `.env` 的 `DEEPSEEK_API_KEY`，确认后删除重复文件；`.env.example` 不含凭证，`.env.digest` 保留。普通查询仍默认使用 GPT Plan profile，旧 `TRIVAE_MODEL_*` 覆盖路径保留。全量 pytest 1373 passed/1 skipped，Ruff 与 mypy 通过。
-- 真实 Eval v1 Baseline 已覆盖全部 16 个 Case，均有唯一 Run/Trace；Agent 成功 14/16（87.5%，分母16），失败为第 3 题 `AnswerDeltaParseError` 与第 14 题无状态码 `APIStatusError`。14 个成功 Run 均已完成 GPT OAuth Review（14/14）；两次中途 `ConnectError` 均在用户要求继续后通过原 OAuth 路径重试成功。五维标签分母14：任务完成 pass9/mixed5；事实正确 mixed14；证据召回 pass6/mixed8；引用忠实 mixed14；无依据主张 mixed9/fail5。没有使用付费 API。完整记录见 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/REPORT.md`；首轮报告保留。
-- 2026-10-28 根据用户要求，将 16 道真实用户题集从 `capability-formal@v1` 更名为 `eval@v1`，不预先判断哪些是稳定能力或能力短板。16 个 Case ID、题面、GT 事实、原始证据和检索记录不变；因套件标签、GT 与评分规则名称更新，Case 另存 v2，原 v1 及原名下的预检、替身 Trace 留在旧本机目录。新本机包在 ignored `data/evaluation/eval-v1-20261028/`，GT 为 `eval-gt-v1`；更名后逐字段对照与原始证据重验均通过。
-- Eval v1 沿用冻结库 864615 条主消息、revision 98835、最新消息 10-27 21:44:51 北京时间及 10-28 12:00 查询时点。模型辅助证据复核曾暂判 7 题主要需求充分、9 题部分充分；58 条题内来源、54 条不同消息、7 个群和 406 条上下文通过回读。这是证据覆盖判断，不是能力评测结果；语义复核同一 Codex 会话完成，不是人工确认或穷尽。
-- 更名后 48 项相关测试、Ruff、4 文件 mypy、16 Case 合同及新题集证据审计通过；当时的新标识正式实验预检通过且尚未执行 Agent/Judge 请求。该阶段验证不代表后续真实 Baseline；跨提供方严格比较仍受工具传输、推理档位及输出上限差异限制。详情见 docs/eval-v1.md。
+- **数据与检索**：支持 QQChatExporter JSON（V5 / 0.1.0 字段形态），将消息保存在 SQLite Canonical Store；FTS5 和 sqlite-vec 是派生索引。语义向量使用本地 Qwen3 Embedding。图片、文件等媒体保留结构和来源，不执行 OCR 或语音转写。
+- **查询链路**：Web UI / HTTP API、CLI/TUI 和 Evaluation 通过共享 Application/QueryOrchestrator；Router 选择 Standard 或 Planned 路径，Planner 提供软指导，两者共用 Agent Runtime。Runtime 可使用词法、语义、近期消息、上下文、成员与只读 SQL 能力。Finalizer 校验来源和范围，Application 持久化会话与 Trace。各层职责和限制见 [系统架构](architecture.md)。
+- **模型配置**：受跟踪默认值见 [`config/models.yaml`](../config/models.yaml)：普通查询 `gpt-plus`（ChatGPT OAuth，`gpt-6.1-sol`，medium）；Evaluation Agent `deepseek-flash`；离线 Judge `gpt-plus`。`TRIVAE_MODELS_CONFIG` 可替换注册表，普通查询可用 `TRIVAE_MODEL_ID` 选择 profile；旧直接配置 `TRIVAE_MODEL_PROVIDER` / `TRIVAE_MODEL_NAME` 仍可覆盖 profile。CLI 从 `.env` 注入未设置的变量，Shell 值优先。实际生效值以当前进程为准，完整顺序见 [配置指南](configuration.md)。
+- **正式评测**：`trivae eval run` 接收 master `freeze.json`，校验冻结身份后在同卷创建隔离 APFS 工作库。Canonical 和语义索引会写 WAL/schema，不能共享 master 或其他 Application 工作库。结果与 Trace 持久化后才清理临时副本；Clone 不可用时明确失败。当前命令与生命周期见 [Evaluation 文档](evaluation.md#本地验证入口)。`clone-data` 用于需要长期保留的独立数据副本，不是正式运行入口的前置步骤。
 
-- 2026-10-28 用户问题优先 Capability 候选：先按题面审旧 30 题，27 明显预设讨论、2 存疑、1 较自然；另建 `capability-user-first-candidate@v1`，30 题在检索前冻结。随后只读同一 864615 消息冻结库独立取证，候选 20 题主要需求暂可回答、10 题部分充分、0 题未检得，均为助手初审且人工未审；74 条 Case 内来源、66 条不同消息、8 个会话，身份、时间、原文与转发关系回读通过。零证据允许但当前未出现；Runner 未将 Case 时间上下文传入查询，近期题未来复跑前需固定并验证时点；原 Capability 与历史实验保留，0 次 Agent 评测，不改生产检索。冻结前同一助手已见旧题、项目状态及旧评测说明，不能保证设计完全不受已有线索影响；范围限制见 docs/capability-user-first-candidate.md；完整私人审阅稿与证据包在 data/evaluation/capability-user-first-20261028/。
+## 当前评测证据
 
-- 2026-10-28 对 `cap2-video-workflow` 的歧义准备独立 v2 候选，限定原证据讨论日期；9/9 条参考消息身份、时间、范围和原文自动回读通过，语义、完整性及消歧效果仍待人工审查。候选未运行，不属于已发布的 Capability Suite v2，不更改原实验；本机记录在 `data/evaluation/capability-v2-20261028/candidate-fixes/`。
+- **Eval v1 历史 Baseline**：2026-10-28 的 16 Case 运行中，Agent 成功 14/16，另有 `AnswerDeltaParseError` 与 `APIStatusError` 两个运行失败。14 个成功答案均完成 Judge v2.1 Review；Review 是模型辅助、未人工裁决，不能当作总体准确率或代表当前普通查询默认模型。详细事实见 [Eval v1 记录](eval-v1.md)。
+- **当前主 Prompt**：2026-10-29 用户人工比较回答后，采纳了四行证据强度与来源范围约束。6 Case Candidate/Baseline 对照两侧各完成 6/6；模型辅助 Review 指出 Case 07/12 有局部改善、Case 10 漏掉手机远控 Codex/微信实践、Case 01 仍有范围/因果外推。用户选择采纳不等于六题实验证明总体质量提升；这些结果及取舍均保留在 [开发日志](DEVLOG.md) 与 [Evaluation 说明](evaluation.md)。
+- **最近一次完整代码验证记录**：1391 passed / 1 skipped，Ruff、148 个源码文件的 Mypy 与 diff 检查通过；记录见 [工作库生命周期实验报告](../evaluation/experiments/storage-management-20261029/report.md)。该记录是代码验证，不是答案质量评测。
 
-- 2026-10-28 Capability Suite v2：保留历史及回归集，新增 30 题版本清单；真实冻结库 864,615 消息、三索引 revision 98835，7 群、235 条 Case 内参考记录对应 205 条不同消息。ID、时间、范围、原文和转发关系已回读，语义与全部 30 题仍待人工审核，近期讨论占比偏高。小规模初始3题均因提供方连接失败；恢复单题完成；修订后三题 3/3 完成，模型辅助 Review 仅为暂定。全套实际尝试13/30、10完成、1次响应流中断、2次订阅共享额度耗尽，后17题未启动；正式质量分母0。10条答案的暂定任务完成7/8另2 mixed，证据覆盖7/8另1 mixed/1 unknown；一题因目标歧义不按固定 ID 判错，一题同快照重放提示检索遗漏，一题总结段引用遗漏连续出现。LangSmith 数据集30个元数据条目，13/13 Run、Trace与50项模型辅助 Feedback已API回读；17个未运行条目无伪造Run。新增证据核验、按审核与评分版本分母报告及 `--case-list` 选择续跑；剩余20题（3失败+17未启动）已列在本机待额度恢复，续跑入口仅经测试未实测。完整 pytest 1353 passed/1 skipped、Ruff、7文件 mypy、diff 与暂存隐私检查通过；无 Agent 查询主链路优化。本机 Case、原文、报告和快照均不提交；详细限制、入口和命令见 docs/capability-evaluation-v2.md。
+## 当前可确认的限制
 
-- 2026-10-28 历史 Eval 补充导入（工作提交 4b437c20）：本轮以已保存 Case、Run、Result 和 Trace 为依据，导入 177 个 LangSmith Experiment、1,740 条真实 Run，含 Development v1/v2 及局部运行、Calibration Pilot、已暴露 Holdout、Planner/Router 对照、Prompt 消融与优化、工具预算、CJK 对照和后续修复验证；没有重复调用模型。按运行记录、评分与 Trace 全量 API 回读并写回远端 Run ID 映射；服务比较接口对 74 条没有返回 Feedback 汇总，对应 320 项数值经独立 Feedback API 核对。16 条优化初审的48个独立轴均为助手暂定、人工待审。CJK 一条 Trace 缺首事件、12 条 Prompt 记录缺原 Case，排除不导入；11 条合成/测试和 1 条离线回放未计入真实实验。完整快照限制、历史分组、原 Holdout 失败及查看链接见 docs/evaluation-langsmith.md。
-- 旧 Development v1 和 Pilot 的 Run 在根目录 Evaluation 数据库找到，早期 Case/Suite 从首次保存版本 ac46dfd6 恢复；Pilot 早于该版本提交，不能独立确认运行时完整参考文本。旧数据未冻结为可复现原库；不把平台导入时间/延迟当原运行时间/耗时。UI 浏览器自动化仍超时，核验为实际 API 回读。最终完整 pytest 1348 passed/1 skipped，最后一次代码调整后定向13 passed，Ruff、修改文件 mypy 与 diff 检查通过；本地导入证据及派生索引保留在 data/evaluation/langsmith-history-import-20261028/，密钥和数据库不提交。
+- 没有广泛人工裁决的代表性质量 Benchmark，也没有穷尽全语料的 Reference；Judge Review 保持 provisional。六题 Prompt 对照和 16 Case Baseline 只支持各自的样本与条件。
+- 工具结果与查询范围均受预算和分页边界限制。检索命中不保证全库穷尽；Finalizer 能验证来源身份、可访问范围和结构，但不证明自然语言结论必然被引用语义支持。
+- Web 当前面向本机使用，未提供公网多用户认证或租户隔离。模型调用会把问题、上下文和相关工具结果发送到所配置的 Provider；ChatGPT OAuth 路径不自动回退到收费 API key。
+- 代码库当前仅承诺已支持的 QQ 导出格式，不承诺任意聊天平台、OCR 或语音转写。
+- 2026-10-23 的 Failure Audit、修复清单和前端审查是带日期的诊断/修复记录。它们记录的待办不能直接当作当前 Backlog；本次文档审计没有重新运行其中的生产问题。需要主张仍存在的 Bug 时，应以当前复现、Trace 或源码证据核验。
 
-- 2026-10-28 LangSmith 与长期评测接入（工作提交 b53d895d）：复用原 EvaluationRunner/Store/Trace，新增显式外部实验同步、逐轴 Feedback、历史与本地 Run/Trace 映射、后续 Review 同步、分层失败报告、数据/索引冻结与工作副本、正式实验记录和可比性检查。原 37 Development / 10 Calibration / 18 已暴露 Holdout 不改；精选 3 条历史回归、6 条能力题，当前冻结库另生成 3+6 条无 GT 候选待审核。真实主快照及工作副本为 864615 条/206 来源、三索引 revision 98835；本次发现并修复来源超过200时 Snapshot 失败，三份相同验证副本均保留并做字节校验后写时复制。真实工作副本用明确标注为 stub 的执行器各运行3题 Baseline/Candidate，6条模拟失败、条件比较通过，无模型调用。
-- LangSmith 真实服务：合成 Dataset 的同一 Example 两个实验、独立评分、失败 Trace、后加模型辅助 Review 均实际回读；历史 Archify 的词法、词法＋语义及完整系统结果也已导入并回读，Judge 失败保留。发现初次历史失败 Run 远端误显示 SUCCESS，修复映射后另建实验回读 ERROR/3条 Trace failure，旧错误导入保留。服务对旧时间返回404/500、SDK普通Run超24小时返回422；显式 `--import-time` 记录导入时间并逐条保留原起止/耗时，平台 latency 不能冒充推理耗时。外部接口同 Example 同开始时间409；不改原始时间、显式拒绝或选择导入时间。浏览器自动化超时，UI未目视核验；实际比较API一行多Run及Feedback已回读。最终 pytest 1346 passed/1 skipped、Ruff、mypy142、diff通过，0新增模型请求；工作和限制见 docs/evaluation-langsmith.md。
+## 文档入口与优先级
 
-- 2026-10-27补发完成：用户要求重试不稳定接口后，首次续跑第11批仍TLS失败，间隔后第二次续跑成功读完41批/109候选，综合stop（474.77秒）生成8群62话题、14268正文字符。239处来源切片逐字段等于已核对的revision95116清单，248条连续摘录、52个资源链接、62处默认折叠区域通过；62项标题/摘要均人工阅读，外部事实未逐一核实。SMTP首次在系统DNS解析前失败、未提交；实际dig对smtp.qq.com及api.openai.com均超时，而原本机HTTP代理可建立QQ SMTP隧道并通过TLS证书校验、收到220。因这个重复真实故障新增显式TRIVAE_SMTP_HTTP_PROXY，已在ignored本机配置固定为原代理；不改系统DNS/全局代理/QQ，不自动切连接路径。实际16:46:45由QQ SMTP接受补发，run20261027-121632-ad094bc3标sent、水位95116；10-27晚报日期仍未占用。相关50 passed/1 skipped、Ruff、mypy137和diff通过，工作b3b21ec7。原10:00/22:00采集及独立晚报worker保持加载，QQ自启动仍禁用/配置不存在；自然晚间触发及本封收件尚未经用户确认。完整回执/来源/HTML/网络证据见data/evaluation/digest-resume-20261027/。
+- README：项目首页与能力概览。
+- [architecture.md](architecture.md)：当前系统架构。
+- [configuration.md](configuration.md)：当前模型、环境变量、索引和运行配置。
+- [evaluation.md](evaluation.md)：当前评测实现、方法与质量边界。
+- [DEVLOG.md](DEVLOG.md)：按日期追加的开发历史；其中“当前”和“下一步”只适用于记录时点。
+- `.trellis/spec/project/`、[evaluation/README.md](../evaluation/README.md) 及日期化审计/实验文档：历史设计、旧工作流与实验材料。可追溯决策，但其中的 Stage 状态、旧命令和旧配置不构成当前实现或待办。当前开发约定以根目录 [AGENTS.md](../AGENTS.md) 为准。
 
-- 2026-10-27用户自行登录后明确授权继续，约束为“不要尝试自己启动QQ”。只重新加载原com.trivae.import-once与独立邮件worker，10:00/22:00日历保留，QQ自启动仍禁用且配置/代码不存在。现有QCE接口可达，15:30这轮8群导出849条、游标一致至15:15:24，无在途任务；正式入库及双索引15:37:35完成，198文件completed、文件/索引待办均0，Canonical861549/revision95769，LaunchAgent最后exit0。当天自然晚间dispatch仍未发生，不能以白天入库成功保证收件。
-- 同轮正式补发续跑复用原8批，再完成第9、10批，第11批在HTTP响应前TLS EOF中断，尚未发送。已用SQLite backup API冻结revision95116并逐字段核对原21101片段，原20261027-121632-ad094bc3/10-26日期可继续显式resume；下次须使用data/evaluation/digest-resume-20261027/canonical.sqlite3及原data/trivae.digest.sqlite3，不能混入新Canonical。当前代理的httpx和系统curl均复现api.openai.com TLS握手失败（代理CONNECT200后无HTTP响应），绕开进程HTTP代理诊断也超时；用户确认未改代理，未更改网络、凭据或模型。修复resume遗漏补发日期、错误停留上次额度失败及已发送仍进入生成的问题；回归先红，最终48 passed/1 skipped、Ruff、mypy137、diff通过。当时阻塞为模型连接，后续已重试并补发完成，见最新记录；Trace及网络/服务/快照证据data/evaluation/digest-resume-20261027/。
-- 2026-10-27晚报筛选改为具体项目资料、可复用实操及招聘面试经验，取消普通讨论凑数，正文泛称、折叠来源群内短标记，Canonical作者原文保留。真实旧材料重筛61→23项，103个来源片段/111条摘录核对，样稿SMTP接受；不冒充新提示下全部重读。漏发查到10-25空报告在SMTP连接阶段DNS失败后被旧pending状态永久阻挡；新增发送前失败分类及下次触发复用正文，DATA阶段不明确错误仍需核查。正式补发最初因subscription_sharing_usage_limit_exceeded失败，后续补发已发送并推进水位，结果见最新记录。
-- **2026-10-27 QQ账号事件，后续接手先读：**排查时错误地新增com.trivae.qce-runtime登录自启动及失败300秒重启，日志确认13:38、13:43、13:48快捷登录失败（身份/登录态失效）；用户随后报告QQ冻结并自行验证恢复。不能从本机日志确认腾讯冻结原因，也不能排除该操作触发或加重风控。已禁用并移除新增启动配置/代码，当时同步暂停既有导出调度，原数据及配置保留。用户后来只授权恢复已经运行QCE的采集/推送，仍明确禁止自行启动QQ；不要恢复QQ/NapCat启动、重启、快捷登录或登录自启动。当前采集恢复及邮件阻塞见最新进度。本机事件证据data/evaluation/qq-login-incident-20261027/。
-
-- 2026-10-26 QCE 时间水位导出已接入（工作提交 a973c8f）：用户脚本移至 scripts/qce-incremental，ignored 配置取原 8 个群；同一 com.trivae.import-once 每天 10:00/22:00 先导出、静置、入库及双索引，再沿原晚间入口 dispatch。登录/唤醒补偿、非零约五分钟补跑、每群成功游标及在途 taskId 恢复；首次复查从 10-16 00:00 开始。锁外读游标与条数不匹配回归先 2 failed；真实空窗口 JSON 成功。联调另复现 Canonical/semantic 长事务 spill 锁住 Web，两个实际存储回归先 failed，再启用 WAL，已打开旧 DELETE 连接迁移回归通过；未延长超时或吞错。全量 1327 passed/1 skipped（42.97秒）、Ruff、mypy137通过。首轮 71964 条导出全部完成，首次旧进程静置 deferred 两文件后实际退出75，launchd 自动第二轮按原水位补偿并等待59.5秒；最终 Canonical/语义均854818（新增12661），revision89038对齐，174文件全部completed、0文件/索引待办，任务最后exit0。生产本轮语义事务期间 Web readiness HTTP200/1.772秒，明确 stale，两个库均 WAL；原500日志保留。QCE原WebUI8个定时已通过API实际停用并保留配置/本机旧快照；新消息正式词法按群及精确时间命中，Web最终readiness HTTP200/semantic completed。原历史版本冲突875+237次仍保留来源，不视为错误或已自动统一；物理休眠/重启和自然晚间联动仍待使用中观察。本机证据 data/evaluation/qce-incremental-20261026/，配置和水位不提交。
-
-- 2026-10-24邮件晚报详细版已落地并发出改版样稿：先按群名分组，各话题前置相关资源链接，多段还原对象用途、起因、具体回应、方案、分歧与进展；移除5至8分钟及固定主题数目标，材料充足时通常400至800字，按真实信息量展开。综合补送候选所引用的完整原文，引用仍按编号绑定；同项跨群来源明确报错。HTML原始发言默认折叠，589px浏览器展开/收起已验证，用户已在QQ邮箱实际收件中明确确认“能正常展开”，客户端原文折叠验收完成。裸网址紧接中文被当成域名的问题新增回归先failed，修后通过。最终全量pytest1309 passed/1 skipped（31.21秒）、Ruff和mypy137文件通过。同快照复用16批75个旧候选，送达466个完整来源片段；1次真实新版综合stop（655秒），产出6群61话题、正文19370字符，464处来源身份/作者/时间/偏移/正文及478条摘录回读Canonical通过，27个链接均来自已选摘录。人工抽看12个话题，未声称全部语义或外部事实核实；未冒充新提示下全量重读。新版样稿SMTP已接受，本地preview-expanded-20261024-214822保留完整Trace/验证/邮件回执。定时入口和正式交付水位未改。
-
-- 2026-10-24群聊邮件晚报已实现并启用：四方向筛选、Canonical修订增量、迟到/转发补齐、回复前情、全部文字分批阅读、主程序绑定引用、HTML/纯文本邮件及独立交付水位。全量pytest1307 passed/1 skipped（30.82秒）、Ruff与mypy137文件通过，最终编辑提示调整后22项日报回归通过。10-23真实6536根消息/6590文字片段、16批75候选，最终12主题；76处来源切片和80处摘录回读Canonical通过，5处未展开转发明确披露。样稿已由真实QQ SMTP接受，用户随后明确确认已收到；此前IMAP未定位该封的检查保留原记录，收件依据为用户确认；样稿不推进正式水位。独立worker与晚间导入dispatch均已注册，原10:30/22:30日历不变，安装后导入补查exit0；首个自然晚间触发尚未发生。HTTP520、ReadTimeout与旧54项综合删字错误均保留，显式续跑只重用同快照成功阅读批次；综合改选引用编号，未放宽原文匹配或新增产品自动重试。说明docs/daily-digest.md，本地样稿及验证data/digests/preview-20261024-180736-212743/。既有Web未重启。
-
-- 2026-10-23剩余Failure修复已落地（f9fc1dc）：转发树保留旧事实的单调补齐及旧raw溯源/enriched计数，原revision驱动双索引发布；SQL计算让出事件循环、Trace留原线程，ASGI慢SQL期间readiness/Stop通过；混合单汉字AND复用既有两索引求交；partial空检索新增正式insufficient_evidence且不放宽no_result；流式坏JSON保存有界偏移/正文/状态诊断，仍显式失败。原两个红探针现均exit0，5秒SQL期间20ms回调约21ms执行，补齐正文可检索。完整pytest1280 passed/1 skipped（31.26秒）、Ruff/mypy129、前端80项/typecheck/lint/build通过。冻结834636条/revision68856，同一配置7次自主查询、21HTTP全部completed/valid；笔试两次找到直接经历，Nanobot/Matt/Archify/owner及空结果逐段复核，82处引用Canonical核对通过，无Host投影省略/工具错误。小样本不证明稳定成功率、全量语义召回或额外轮数收益；源245个未展开转发仍需完整导出，旧解析坏正文不可追溯。Web已正常重启，库/语义834636及revision68856对齐、Plan ready。完整报告docs/FAILURE_REPAIR_20261023.md，原审计保持历史事实。
-
-- 2026-10-23剩余Failure审计完成（a6fdee4，0新增生成）：1,574条唯一Evaluation/200分组及近期独立工件复核，2个封存库排除。新增确定性复现：空转发后补齐正文仍被判equal duplicate且incoming raw不保存，重建FTS仍0命中，完整版本先导入控制为1；真实SDK同步SQL使20ms回调延迟约4.98秒，快查询控制正常。当前“github.com 荐”0命中但主表字面19条；部分覆盖空检索的no_result仍失败，空来源claims仅degraded。旧Plan笔试题110条材料漏目标，当前原词排名41、聚焦词排名8；当前完整配置未重跑，不能报为最新模型必现。全量pytest1269 passed/1 skipped（33.53秒）、前端80项、Ruff/mypy通过；两项独立审计门禁预期红，未修产品。具体优先级、根因、实验及边界见docs/FAILURE_AUDIT_20261023.md，探针scripts/audit_failure_boundaries.py。
-
-- 2026-10-23前端七项清单已落地：正式段落引用+来源侧面板/窄屏抽屉、原文主动重读及ordinal复用、接收确认后清草稿、按会话保存阅读位置、前进后退/范围URL/侧栏偏好、交错详情归属、范围内全历史正文搜索与分页、中文限制及44px触摸区。新增三项旧实现失败回归后修复；前端80项/typecheck/lint/build、完整后端1269 passed/1 skipped、Ruff/mypy通过。1280×720/390×844浏览器确认来源展开不改正文位置、引用定位返回、正文词搜索与后退184→184。Web已重启，库/语义829397、Plan ready，0新增推理；实体软键盘/读屏未验收，整页刷新不保存滚动。详见docs/FRONTEND_REVIEW_20261023.md修复段。
-
-- 2026-10-23前端只读审查完成：窄屏604×732已有长回答展开25条Sources时自动滚到末尾，根因为全内容ResizeObserver复用生成跟随；另代码确认首次创建失败丢草稿、原文错误缓存阻止重新读取、历史搜索仅最近100条标题/摘要等。完整前端71项测试、typecheck/lint/build通过，0新增模型请求、未改产品。已复现/静态发现/建议及边界见docs/FRONTEND_REVIEW_20261023.md；下一步优先最小修复前三项。
-
-- 2026-10-23仓库默认轮数已与本机统一为6（bfa3118）：limits.py提供唯一默认值，环境加载/ModelSettings/注入Runtime及.env.example同步；显式较小轮数仍优先，8turn/证据公式不变。新增真实SDK循环回归先在旧默认3下failed，修后允许六轮工具、第七回合无工具综合completed；两处旧Prompt测试显式固定原3轮，保留原断言。完整pytest1267 passed/1 skipped（27.31秒）、Ruff/mypy通过。0新增真实模型请求，Web原本已显式6轮，本轮无需重启。此次统一是用户偏好的产品配置选择；前一轮同题两组均只用2轮，尚无第4至6轮独立质量收益证据。
-
-- 2026-10-23全部范围综合已调整（575460a）：主题建议/技巧/经验/观点先按Schema最大词法召回、初始0/0邻居，再补长文/回复及具体概念缺口；默认展开问法、用途、条件和注意事项，不需每题声明详细。本机显式证据池125k→200k、工具轮3→6，8turn/128k单次及通用默认公式保留。全范围同题旧首取100/167、846字/6段，新首取8群167/167、1899字/8段；各3HTTP/2工具轮completed/valid，投影23,852→50,559，新余149,441，0预算省略/0工具错误，22/28来源Canonical核对通过。不把改善单归因大预算，未声称语义穷尽/零遗漏；缺失转发仍partial。完整pytest1266 passed/1 skipped、Ruff/mypy通过，Web已重启加载工作提交及本机新预算，库/语义829,397、Plan ready。报告evaluation/experiments/broad-advice-20261023/report.md，完整新回答在本地data/evaluation/broad-advice-20261023/expanded/answer.md。
-
-- 2026-10-23长消息读取已修复（8d74aa8）：get_message_context按原文content_offset/content_limit分页，默认/最大8000字符，公开真实总长与实际投影续读位置；搜索600字预览不变，Host正文页与1000字引用摘录分离，尾页引用位置随codec/Web保存。98dd02b接通来源面板“查看完整原消息”，只读本地Canonical。真实1103字尾段599起504字零生成重放通过；同题自主3HTTP/2轮completed、1555字/8段、30来源切片/时间/范围核对通过，前端/全栈定位、强需求和跨场复盘实际进入答案；证据32,270/125k、余额92,730。后端1266 passed/1 skipped、Ruff/mypy通过，前端71 passed/typecheck/lint/build通过，真实浏览器原文展开可见。Web重启前后当前库/语义均829,397、Plan ready，任务期间库已更新，非冻结语料A/B；不报一般稳定收益或有用信息零遗漏。报告evaluation/experiments/long-message-read-20261023/report.md；最终正文20k/20条Evidence、3轮等未触顶，缺失转发正文/图片/OCR和综合选择仍有边界，总预算不扩大。
-
-- 2026-10-23反问答案后续质量审计（0新增生成请求）：同群含“反问”的61条原文全部进入既有lexical结果；实际投影31,117/125,000，余额93,883，当前无需扩大总池。但发现已读跨场复盘/模拟复练与面后联系建议未展开（均机器人来源）；另1103字面经的岗位/全栈定位及前端强需求问题位于1040偏移之后，600字预览与1000字record仍挡住该尾部。主要类别可用，不等于全部有用信息已检索并输出；下一步优先长消息分段读取与已读信息覆盖，不改历史答案或宣称全量语义召回。详见interview-answer-20261023/report.md后续审计。
-
-- 2026-10-23最新反问技巧Trace覆盖修复：旧479字回答正常stop，原语义13,839 Token挤占16k证据池，词法61命中仅9条送达、52条hit裁掉。官方账号/models明确context_window=500000，004bd20登记当前Plan/Sol容量，既有动态公式得到125k证据池；显式锚点补读恢复原1000字record范围，Prompt保留具体问法/适用条件与真人/bot区分。只改Prompt/补读的16k控制2HTTP仍预算失败，保留；最终同题3HTTP/2轮completed、1471字/8段、26来源原文时间范围核对通过，实际投影31,117、四类真人清单实际可见4/4。不是全历史穷尽或一般稳定收益；超过1000字record/未展开转发仍有限制。完整pytest1,263 passed/1 skipped（31.08s）、Ruff/mypy129文件通过。Web已重启加载004bd20，数据库/语义827,614及Plan ready；未重算索引。完整答案interview-docs/面试反问技巧-群聊证据整理.md，诊断evaluation/experiments/interview-answer-20261023/report.md；新增5真实请求，含2个失败请求，均独立保留。
-
-- 2026-10-23用户要求进一步清理后，将已结束真实运行的重复语料数据库合并：删除55份数据库及3个别名，六份历史代表数据库9.82GiB无损压缩为1.91GiB，完整解压流与原文件逐块比较通过。独立答案/Trace/失败/账本保留；2,770个原有非目标文件在更新存储收据前大小/修改时间保持，61份说明已更新。可用空间实测2.47→15.88GiB（约16GiB），本轮增加13.41GiB，测评目录约2.9GiB。当前共享快照改为gzip归档，旧脚本重跑前须解压并准备独立副本；版本位置见data/evaluation/storage-cleanup-20261023/shared-snapshots.json，完整操作见round2-manifest.json。在线readiness仍数据库/语义827,614、Plan/Sol ready；未改线上库/原始导出，0新增模型请求。
-
-- 2026-10-23用户授权清理重复测评数据库：14组零推理准备与12组离线重放/索引对照共删除57份数据库，逻辑90.28GiB；APFS共享块下实测可用约0.74→2.48GiB，实际增加约1.75GiB。2,805个原有非目标文件大小/修改时间保持，真实推理结果、失败及运行快照保留；历史语料与当前索引共享副本保留，后者811,892条身份/readiness只读核对通过。26份新存储收据及4份旧共享路径修正已落盘；旧离线脚本需按原协议重新准备已删除数据库。报告evaluation/experiments/storage-cleanup-20261023/report.md，本地完整清单data/evaluation/storage-cleanup-20261023/manifest.json。剩余空间仍紧张，不把逻辑体积当作实际释放量。
-
-- 2026-10-23当前修复清单已完成已复现范围的验证：20ce741冻结的最终系列，原空日/密集两天/两周分别2/3/3真实HTTP首次completed，Finalizer全部valid、无工具参数/预算错误，逐条来源复核通过。两天94条/14,969Token引用10-18/19/20，两周98条/15,007Token引用10-06/10/14/18/20，均诚实partial，未声称全量热度；总输入105,632/输出3,106，Usage全已知。完整产品回归1,261 passed/1 skipped（27.34s）、Ruff/mypy通过。报告evaluation/experiments/quality-repair-20261022/report.md，清单docs/REPAIR_PLAN.md。
-- 此次续推三系列共19真实HTTP，volume旧空日一次最终格式失败仍保留，最新8请求全部有效；不同实现/题目不混成稳定成功率。Web已加载bef1dc8产品代码；aa9deb0仅验证准备显式复用索引，空间不足已处理。所有真实运行快照/Trace/账本保留，仅清理0推理失败/未运行重复准备副本。后续源码修改应基于新的具体Failure Case或用户目标。
-
-- ca01b86的密集两天真实自主3HTTP完成：先20+四段，投影20/18/19/19/18、14,986Token，四段全部有正文、finalization valid，主题原文复核通过；输入44,345/输出1,380。随后完整空日控制出现非网络失败，系列按设计退出：模型先误传absolute时间对象，纠正后完整0条，但旧错误历史使no_result unavailable，模型仍选择该格式被拒。三请求24,819输入/328输出，失败保留，14天尚未执行。定位到SDK把time_range公开成任意dict，仅文字要求relative；bef1dc8已从已有RelativeTimeRange生成字段Schema，JSON仍走原Capability解析，不放宽Finalizer或更改错误历史。完整1,261 passed/1 skipped（27.34s）、Ruff/mypy通过；补充验证非法absolute仍显式INVALID_ARGUMENT、后续合法relative正常。准备原temporal-schema-series时重复重建索引实际耗尽磁盘（0推理）；aa9deb0显式复用冻结索引、校对身份/readiness，准备smoke通过。仅清理失败/未运行重复副本，真实运行快照保留，剩余空间523MiB→2.5GiB。20ce741冻结的temporal-schema-v2-series已通过复用准备并启动，顺序验证原空日、密集两天、14天；运行中不改源码或HEAD。
-
-- 0ff6bc0冻结生产系列已完整执行，14天3HTTP/2工具轮：先20条+四窗，投影20/20/20/18/18、14,949Token，全部无预算错误；四窗总数86,287，最终引用10-09/13/16/20且valid，主题原文复核通过。两天2HTTP也valid但仍取5,000/14,619、投影146条/15,767Token集中短时段。新证据证明“短窗直接max”用天数代替消息量，276a56d已去掉此分支，统一先小页按实际量决定分页/分段；完整1,260 passed/1 skipped（27.78s）、Ruff/mypy通过。ca01b86冻结temporal-volume-series已启动，顺序验证密集两天、完整空日、14天，运行中不改HEAD/源码；不把上一轮两天的诚实披露误报为覆盖修复完成。
-
-- 2026-10-23 持续推进：9c9e134已将长窗20条探路、少量不重叠子窗、保留partial边界的指导落到生产；完整pytest1,260 passed/1 skipped（30.58s）、Ruff及mypy129文件通过。份额修复后的两次自主运行四窗均有正文，最终HTTP分别ReadTimeout/RemoteProtocolError，均保留；固定原两轮历史的独立最终综合1HTTP完成，引用及主题来源支持通过，但不冒充完整自主成功。
-- 新增验证层连续执行器：独立冻结快照与每次账本，总推理次数只累加；仅已观察到的网络错误继续，其他错误明确退出并保存异常链。模拟断流→成功保留两次/累计4请求、非网络契约错误仅执行一次并显式退出，Ruff通过。用户授权睡眠期间持续推进，当前聊天已设置15分钟自动续接；下一步冻结最新生产版本执行14天与2天完整自主验收，期间不修改HEAD/源码。
-
-- 同轮时间窗份额已修40b8997：新长窗真实指导先20条，再发四个65条窗口，旧贪心分配让后两窗预算错误。真实SQLite/SDK最小回归先failed；Host仅对同轮全部get_recent_messages的多调用均分扣除控制结果后的数据额度，16k不扩大，具名/语义/上下文及单次调用不改变。固定真实原参数后四窗全部送达18–19条，总15,029；前3个Host结果身份/顺序不变。36定向、完整pytest1,260 passed/1 skipped（27.54s）、Ruff/mypy通过；真实自主复核继续，Web已重启加载至0ff6bc0；readiness数据库ready、语义827,614/827,614、Plan/Sol ready。
-- 2026-10-22 后续生产自主验收：Archify 3HTTP完成，首轮11,782、两次补查2,029/1,720成功，第三次仍预算错误198，总15,729<16k；答案保留正负反馈及补查引用。advice首个unit连接失败保留，新独立control 3HTTP完成并通过源证据复核；zero预检失败保留后2HTTP完成。三条有效结果合计41检查通过/4不适用，单次观察不作稳定成功率；原配对失败不能补成完整A/B。
-- 中文单字已修233dc23：真实“荐”0/7和转发“程”漏召回先失败；独立Han主索引只服务完整单字keyword，保持原bigram/BM25。原64题中4单字覆盖20/44,703→44,703/44,703，60非单字全深度顺序不变；生产克隆64题count+top10 parity通过。单字FTS增加142.61MiB，原库重建27.05秒；多词夹单字/ASCII词内前后缀仍旧契约，不声称解决所有CJK边界。60定向、完整pytest1,259 passed/1 skipped（28.66s）、Ruff/mypy129文件通过。
-- 本地Web已重启加载全部已落地修复；在线827,614 canonical +14,720转发重建32.62秒，canonical不变，6个非单字控制前十保持，荐/习/模/码各2,526/17,182/16,300/9,679命中。readiness数据库ready、semantic completed且827,614/827,614、Plan/Sol ready；没有重算语义向量。
-- 长窗新探针默认可信5,000下自主取5,000/86,287，投影15,768Token，随后连接失败。零模型重放只保留同一天约7分21秒的146条；不能把Host5000等于模型已读5000。既有工具的小页20+5子窗×15计划，在完整SDK中95条/5日期、15,528Token、计数和86,287，仍partial；固定答案只证明预算可行。此为历史基线；后续分段指导已于9c9e134落地，完整自主验收继续。
-- 2026-10-22 持续迭代中（用户明确要求不要在阶段结果处停止）：新增当前Plan owner/advice/zero各一次，全部完成；owner已收到但遗漏机器人导师/技术兜底建议，5句通用观点覆盖候选在新owner回答中恢复并区分来源。候选advice第二HTTP为TLS连接失败，zero认证预检失败（0推理），均保留，尚不能声称完整质量A/B通过。
-- 同轮复现并修复Semantic远直接回复遗漏：真实SQLite/vec0/Capability/投影最小回归先1 failed；ContextExpander范围上下文在原容量内复用批量回复关系，保留ANN命中身份/顺序、非hit回复身份、0/0不扩展及时间边界。33项定向通过，完整pytest1,254 passed/1 skipped（28.48s），Ruff、mypy129文件通过，工作f683bf0。
-- 投影精简已落地d52ffdf：显式公共默认字段、省略模型词法打分细节；原三题逐消息事实全部保持，Archify15,257→11,761Token、100条不变，Matt各95→100条且约13.8k。完整SDK固定原工具决策两次补查由预算错误恢复为各15条，总15,440<16k，原固定答案/引用保持。完整pytest1,255 passed/1 skipped（27.61s），Ruff/mypy通过。此为工程验收，真实自主配对仍因认证刷新/TLS连接失败待完成；旧失败保留，HTTP2/TLS1.2未证明可修复，未加产品重试。
-- SQL计算无期限已修复（6a63937）：1000消息/十亿交叉计数隔离复现max_rows=1仍持续计算；SQLite VM进度回调覆盖scope准备/execute/fetch的5秒期限，超时显式SQL_EXECUTION_TIMEOUT，后续正常查询可用。确定性回归先failed后通过，真实万亿交叉计数在5.000秒中断；十亿计数可在5秒内完成，不误报为应超时。8项定向、完整pytest1,255 passed/1 skipped（30.15s），Ruff、mypy129文件通过。不宣称同步SQL已变成异步线程执行。
-- 2026-10-22 修复清单已沉淀至docs/REPAIR_PLAN.md，并完成首批5条Plan源证据复核及三题首轮预算配对。8k候选虽恢复补查空间，却减少首轮来源，Matt遗漏基线已有的teach负面意见；不采用为默认。6Query/16HTTP，15完成、1TLS连接失败；已知Usage输入215,947/输出4,324，另一次未知，失败保留。报告evaluation/experiments/first-round-budget-20261022/report.md。
-- 同轮最小修复Runtime格式资格信息：每次工具返回后复用Finalizer的原判定，把当前no_result是否可用传给模型；不改校验、检索或生产预算。完整pytest1,251 passed/1 skipped，Ruff及mypy129文件通过，后增回放接口回归定向5 passed。原错误答案仍被拒绝；固定原工具历史的一次真实Plan最终综合改用claims，空日事实与3条统计引用通过，输入10,674/输出214。不是自主检索验收或全库收益。工作6ba2596、回放修正4a9dde8；初次回放namespace错误及真实HTTP400均保留，真实综合共2次发送尝试、1次有效完成。报告evaluation/experiments/final-response-contract-20261022/report.md。
-- 2026-10-22 核验外部问题评估：历史 Miner 失败发生在检索/工具选择层（目标未进入 Host），此前 Prompt 充分性候选已被否决。另核对已有 Plan/Sol/medium 同题工件，模型通过 semantic→lexical 找到 ResumeSkills 的用途匹配替代资源，名称、用途及链接均有保存的 ToolResult 原文支持，3 HTTP/2工具轮、投影11,866、余额4,134；单次观察不能声明稳定修复，也不能仅凭旧target遗漏判业务失败。没有新增模型请求或修改产品；空结果契约测试15 passed。下一步先复核现有当前模型答案质量，再决定具名资源修复；首轮预算分配仍有当前直接证据。
-- 2026-10-22 搜索回复送达修复并完成真实验收：Lexical 在原容量内先批量恢复所有已返回 hit 的明确直接回复，再填普通邻居；投影仅省略必要普通 context，保留 hit/回复关系。新增会话/回复目标访问索引，未扩大 100 条/16k 池、不改 Prompt/GT/语义向量。原参数零模型重放三题直接 hit 身份/顺序不变，目标模型覆盖均从 1/2 到 2/2；完整 pytest 1,246 passed / 1 skipped，Ruff、mypy（129 文件）通过。工作提交 `366f290`。
-- 同轮真实 Plan / gpt-6.1-sol / medium 原三题各一次、7 HTTP 全部 response.completed，三条原遗漏回复全部进入首轮输入并被最终答案引用（Sources 9/7/6）；Archify 最终固定目标 Evidence 1/2，Matt 两题 2/2，均 finalization valid，42 passed/3不适用。Usage 输入110,808/输出3,397/总114,205。Archify 仍有两个明确预算错误，未声称一般预算策略已解决或全库质量提升。离线引用核验提交 `7a7bdde`，报告 `evaluation/experiments/reply-repair-20261022/report.md`。
-- 同轮定位终端直连 DNS 超时；使用 macOS 已有 127.0.0.1:7892 代理完成认证/推理及 GitHub SSH443 连接，未改全局网络。Web 从31153重启为40113加载修复，当前827,614条本地库及Plan/Sol均ready，回复索引已创建；实验仍是独立811,892条旧快照。普通推送成功，远端 main 从9539aec更新至a4e7fbb，包含此前因DNS阻塞未推送的提交。
-- 2026-10-22 进一步零模型诊断真实回复遗漏：三题首轮canonical消息身份与顺序均重放一致，目标原消息已模型可见（rank43/14/6、m1-43/14/6）。Matt-1只改正确anchor即可在原7,352额度恢复；Matt-2正确回复首轮已取回，却被搜索投影一次删除全部72条非hit context，最终仅用8,449/15,801；改正确anchor补查可在原6,954额度恢复。Archify原704额度下，即使正确anchor/仅关系补查仍只剩原消息；足够的离线额度才能恢复。新增诊断脚本，未改产品/GT/索引/预算，无新增模型请求。报告：`evaluation/experiments/reply-context-live-20261022/miss-diagnosis.md`，工作提交 `7176aae`。
-- 2026-10-22 补完真实模型终端验收：Plan / gpt-6.1-sol / medium，三条原始 Development + 一条隔离合成控制，共12次真实推理、全部response.completed、0次门禁阻断、无重试/Judge。原预算3轮/8turns/16k与原问题保持；三题均completed且自主开启include_replies，42项确定性检查通过/3项不适用，但旧required reply均未送达模型（Archify/Matt-2有预算阻断，另有anchor选择和context裁剪问题），未证明质量提升。
-- 合成控制中，真实模型自行通过回复关系找回相隔143条噪声的唯一反馈，最终保留正负两面并引用真实reply；3请求/2工具轮。四题合计Usage输入167,113/输出3,377/总170,490，均完整。未修改产品；新增实验/分析脚本与报告，定向15passed、Ruff和mypy通过。报告：`evaluation/experiments/reply-context-live-20261022/report.md`，工作提交 `a224fc8`。
-- 2026-10-22 关键回复恢复审计与修复完成：`get_message_context` 新增显式 `include_replies`，按同会话/直接转发容器的真实回复边补查，保持原容量与 16k 预算；模型投影保留原始回复关系及当前结果内可唯一解析的短 handle，目标裁剪后不留下悬空关系。修复 20 锚点上限未披露的截断事实，Trace/Evidence 同步新参数与回复边界。本轮普通 `git push` 仍在 25 秒后超时，尚未推送。
-- 原始最小复现 2 failed，修复后新增 12 项回归通过；真实 10-20 Development 快照固定 anchor 配对：Archify、Matt-1 从 1/2 目标到 2/2，Matt-2 保持 2/2，关系与目标 Citation 均通过，模型请求 0 次。完整 pytest 1,241 passed / 1 skipped / 0 failed，Ruff、mypy（129 文件）通过。未验证真实模型自主选 anchor/新参数或答案收益；未修改预算分配、历史压缩和索引。报告：`evaluation/experiments/reply-context-20261022/report.md`，工作提交 `25e7438`，开发记录提交 `bc35810`。
-- 2026-10-22 后续 Plan Medium 实验完成：用户追加并放宽至 24 次/每 Case 8 次，保留旧 4/4 账本；实际新用 12 次、4 条 Development Query 均 completed、无实验门禁阻断。Archify 真实触发两个预算错误，四个 SDK Tool Call 均有响应，最终综合与四组 Citation 绑定通过。Runtime/Trace/Evaluation 的轮次及累计 Usage 一致；没有自然复现坏 JSON，未声称质量提升或 A/B 收益。
-- 新实验发现前三条 Case 的 canonical ToolResult 限制未进入 Trace，最小修复 Collector 的一次 emit；原始失败 Evaluation 保留，Matt 零 HTTP 原输出序列/快照重放后检查通过，稳定 Evidence/答案/Citation 不变，修复后新 Archify 全部检查通过。完整测试 1,229 passed / 1 skipped / 0 failed，Ruff 和 mypy（129文件）通过。Web 已重启加载修复，Medium readiness=ready。报告：`evaluation/experiments/runtime-budget-followup-20261022/report.md`。
-- 2026-10-22 Runtime 预算可靠性与 Collector 修复完成本地验证：原 10-18 私有快照/参数重放由第四结果投影失败，变为完整返回 4 个 Tool Call、明确预算错误后无工具综合，先前 Citation 校验通过。新增整轮控制结果预留、最小准入、完整投影开销记账及 SDK 异常链预算归因；不扩大 16k 池，仍为 3 工具轮 / 8 模型回合。
-- Collector 已修复异常中断时轮次高估和 last_usage 漏计；未知响应/字段用 known_* 下界及 responses_without_usage 表达，Trace/Evaluation 与终态对齐。完整回归后续补齐至 1,224 passed / 1 skipped / 0 failed，产品与测试脚本 Ruff、mypy（129 文件）通过；全树另有 53 项未修改 Trellis 归档 lint 问题。报告：`evaluation/experiments/runtime-budget-reliability-20261022/report.md`。
-- OAuth 阻塞已修复：公开官方时间快约 3.462 秒，原 JWT 零容差导致新授权在 iat 校验失败；固定十秒 leeway 的完整登录与超界回归通过，既有会话及 CLI models 已成功。账号目录明确支持 Medium，能力白名单和 Settings/三条共享 HTTP 参数测试已补齐。首轮真实推理严格 4/4（一个 JSON 探针内容失败、独立预算协议三请求成功），真实 Medium 预算退出与 Citation 通过；不是质量 A/B。ignored .env 已改 Plan / gpt-6.1-sol / medium，关闭独立 Jev shadow，Web 8710 readiness=ready。旧四次账本已封存，后续授权追加实验见上方记录。
-- 2026-10-21 工具轮次审计完成：本地 1,537 条唯一历史 Evaluation、1,534 条可判断工具轮次、166 次三轮触顶，按批次/Provider/模型/Variant/执行版本分别统计。报告位于 `evaluation/experiments/tool-round-budget-20261021/report.md`。
-- 同日完成严格 3 Case × 2 配置、6 Query、20 HTTP 的真实 DeepSeek Flash 对照，无重试/补跑/Judge。B 无第4/5轮；miner 的4/4 GT恢复发生在前三轮策略差异中；archify两组均可回答；written-test B为流式解析失败。建议默认维持3轮，待用户决定，未修改产品或GT，实验阶段按指示未提交/推送；后续用户已授权提交并推送工作区变更。
-- 10-21 暴露 Collector 在 observer 解析失败时的轮次高估与 last_usage 漏计，已零费用复现；统计缺陷已在 10-22 修复，真实坏正文未保存、JSON根因仍未确认。公价成本下界约 $0.07251，包含一条未知usage的保守上界约 $0.23234，精确Provider账单不可用。
-- 2026-10-20 的旧 Journal Session 75：完成历史 Evaluation 审计、正式 A/B 和补充复测；对候选方案未发现可信质量收益，恢复生产基线。
-- 同一会话记录了测试、Ruff 和 mypy 的实际验证，并标记人工质量审核为 pending。精确结果和提交号参见旧 Journal 原文，不在此重复可能过时的数值。
-- 旧 Trellis 工作流已退出日常开发；其历史开发记录和技术规范仍保留以供查询。
-
-## 仍需确认的事项
-
-- 最新审计确认转发正文补齐被丢弃、SQL阻塞事件循环两项当前缺陷尚未修复；组合单字检索及部分覆盖空结果交付仍有边界。当前244个转发缺口涉及143条根消息，但未确认多少具有可恢复的更完整导出，不能将244直接作为归并缺陷的丢失数量。下一步修复和验证入口见docs/FAILURE_AUDIT_20261023.md。
-- 笔试经历检索、结论与所绑来源不匹配、旧流式AnswerDeltaParseError根因仍需闭合。先补当前配置的原题/来源复核；语义改写、六轮独立质量收益和Planner一般收益属于实验缺口，不冒充已证实当前Bug。实体手机软键盘/读屏仍未验收。
-- docs/REPAIR_PLAN.md本轮已复现范围已收口；当前owner/advice/zero及最终空日/两天/两周有有效来源核验。原精简配对受网络失败不能判胜负，重复稳定性/fresh Holdout未验证，不作为新的已知产品Bug或全库收益。
-- 具名资源问题须区分历史 DeepSeek 失败与已有 Plan/Sol 用途匹配替代答案，先做当前模型/来源的质量核验，不能直接重复已否决的 Prompt 方案。10-20 zero-empty-2 曾取得完整空时间窗，但额外日期分组行使 no_result 不合契约；Semantic远回复及SQL计算无期限已复现并修复；CJK单字已独立修复；长窗分段自主验收完成但始终为partial，不宣称完整或代表性。
-- 原三题的关键回复送达/最终引用已在真实模型下恢复；原Archify补查在SDK固定决策中恢复；当前自主运行两次补查成功、第三仍失败，未证明一般预算策略或全库稳定收益。没有 Holdout、重复采样或全库质量 A/B，不能外推稳定收益。
-- GitHub DNS/SSH 直连问题可通过现有系统代理解决，本轮普通 push 已成功；后续终端网络操作仍需使用相同进程代理，不改变全局网络或强推。
-- 旧Session 75人工质量审核尚未确认；本轮Assistant源证据复核不替代人类审核。
-- .trellis/spec/project/overview.md 提到的 human-verified 标注、长期参数阈值和 HTTP 产品交互，应按当前源码及新任务实际情况逐项核对；这些是旧文档记录的待办，不保证仍未完成。
-- 下一个开发目标应以新的用户请求和当前代码状态确定，避免把旧文档的待办直接当成新授权。
-
-## 历史资料索引
-
-- 新开发记录：docs/DEVLOG.md
-- 原 75 次会话：.trellis/workspace/anontokyo/journal-1.md
-- 原任务 / 评测实验：.trellis/tasks/（包含实验数据，不是缓存）
-- 架构及决策：.trellis/spec/project/architecture.md、.trellis/spec/project/technical-decisions/
-- 真实问题案例：.trellis/spec/project/problems/
-- 后端契约：.trellis/spec/backend/
-- 代码和验证：src/、tests/、evaluation/
-
-## 更新规范（轻量）
-
-实质开发/调试/评测完成后，根据已确认结果更新近期进度和待确认项，并在 docs/DEVLOG.md 追加一条事实性记录。无需 Trellis Task、固定 Phase、PRD 或再次批准。简单问答不产生记录。
+下一项开发工作由新的用户目标和当前代码状态确定；这里不维护一份从旧历史记录自动推导的待办清单。

@@ -3,6 +3,8 @@
 > 状态：**Confirmed / Completed（Stage 1.8）**
 >
 > 本 ADR 冻结 Evidence / Citation 的领域语义、职责边界与失败语义，不冻结 Python class、数据库表、JSON 字段名、SDK structured output、API endpoint 或 UI 组件。业务实现与 Evaluation 参数不属于本阶段；Evidence / Citation Trace 的 conceptual boundary 后由 Stage 1.9 确认，具体 Schema / 实现仍 Pending。
+>
+> **状态提示**：本段的“不冻结”和 Pending 描述该 ADR 的决策范围与形成时状态，不表示当前业务实现缺失。当前来源校验与引用边界见 [docs/architecture.md](../../../../docs/architecture.md)，进度见 [docs/PROJECT_STATUS.md](../../../../docs/PROJECT_STATUS.md)。
 
 ## 0. Architecture Governance
 

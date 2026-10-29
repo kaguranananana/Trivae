@@ -1,7 +1,8 @@
 # Technical Decisions
 
 > 重大技术决策（ADR）的沉淀位置与格式。
-> 当前状态：Stage 1.1 的一级架构方向记录于 architecture.md；Stage 1.2–1.11 的关键决策分别记录于本页索引的对应 ADR。
+>
+> **历史决策索引。** ADR 的 Confirmed 表示决策当时已作出，不等于当前实现完整或仍在推进该 Stage；其中的 Pending / “当前”按对应记录时点解读。当前架构和实现见 [docs/architecture.md](../../../docs/architecture.md) 与 [docs/PROJECT_STATUS.md](../../../docs/PROJECT_STATUS.md)。
 
 ---
 
@@ -9,7 +10,7 @@
 
 正式决策文档：`.trellis/spec/project/technical-decisions/<slug>.md`，本文件作为索引。
 
-## 当前 ADR 列表
+## ADR 列表（决策状态，不代表当前实现进度）
 
 | Stage | 状态 | 主要决策 | ADR 路径 |
 | --- | --- | --- | --- |
@@ -28,7 +29,7 @@
 | Router Jev experiment | Experimental / Not promoted | OpenRouter Decisions provider for ambiguous Router choices · default shadow · paired diagnostic Evaluation | [router-jev-provider-experiment.md](./technical-decisions/router-jev-provider-experiment.md) |
 | Planner engineering closure | Confirmed / Evaluation closed | P1/none completion reliability · source/temporal contracts · limited use / conservative routing | [planner-engineering-closure.md](./technical-decisions/planner-engineering-closure.md) |
 
-Stage 1.1 一级架构骨架仍记录于 [architecture.md](./architecture.md)。Stage 1.11 架构边界已确认；M4 Query、M5a Evidence/Citation、M5b Conversation、M6 Trace backend 与 Evaluation runner 已实现。历史Planner Utility已在37条Development Case上执行；2026-10-03当前版本的16次Standard/Planned工程检查已收口，限制使用、路由继续保守，不安排扩样。人工treatment裁决、fresh generalization、数值阈值与生产Jev切换仍未证明，不代表自动排入新Planner实验。
+Stage 1.1 一级架构骨架保留于 [architecture.md](./architecture.md)。下方 Planner Utility 事实是 2026-10-03 的决策快照：限制使用、路由继续保守；未证明的人工 treatment 裁决、fresh generalization 和数值阈值不是自动排入的新实验。当前实现与未解决问题须按源码和当前状态页核验。
 
 ## 决策问题链
 

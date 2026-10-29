@@ -1,5 +1,7 @@
 # Trivae 开发增量日志
 
+> 本文是按日期追加的历史记录。每条“当前”“下一步”只描述该次记录形成时的状态；现行实现和待办请查 [PROJECT_STATUS](PROJECT_STATUS.md) 与当前源码。
+
 从 2026-10-20 开始使用此轻量日志。此前 75 条开发会话记录位于 .trellis/workspace/anontokyo/，历史 Task、技术决策和评测数据仍保留在 .trellis/ 中。
 
 重要开发任务、问题修复或评测结束后，追加一条包含实际变更、涉及文件、真实验证结果、未完成事项的记录。无强制任务创建和文档模板，不记录琐碎闲聊。
@@ -441,3 +443,9 @@
 - 核实 `create_application` 会写 Canonical 与 semantic WAL/schema，以及 Conversation、Trace、Evaluation、feedback 存储；因此正式实验不共享 master 或其他实验数据库。Composition Root 会在可写初始化前拒绝 manifest 标记为 master 的 Canonical/semantic 文件。Evaluation DB 默认放入 record 目录，Run/Result 每题写入 SQLite，关闭 Application 前原子写出 Run 与完整 Trace，终态 manifest 持久化后清理临时 Canonical/semantic 工作库及辅助文件。已持久化普通失败清理；中断或结果未持久化时保留恢复副本，默认7天过期，lease 避免误删活动任务。
 - 测试覆盖正常/失败/中断、并发隔离、freeze 版本漂移、失败时拒绝普通复制、symlink 清理边界、master 直接打开拒绝以及 CLI 的 Run/Trace 落盘。全量 pytest 1391 passed/1 skipped，Ruff (`src tests scripts`)、Mypy（148源码文件）、`git diff --check` 通过。没有 Agent/Judge 模型请求，也没有改历史评测结果。
 - 实测现存 `frozen-20261028-validated` 主快照，数据库 `du -A` 逻辑约3.526GiB。SQLite backup 临时工作库令 `df` 可用空间 22.308→18.762GiB（-3.546GiB）；移除后22.295GiB。APFS clone逻辑大小仍约3.526GiB，但建立并通过 `create_application` 初始化时最低约22.293GiB；临时副本清理后22.296GiB。测量期间 `df` 有十余MiB背景波动，但没有持续多GiB增长。完整测量、身份及限制见 `evaluation/experiments/storage-management-20261029/report.md`。
+
+## 2026-10-29 · 当前文档入口与历史状态审计
+
+- 依据当前 `config/models.yaml`、配置解析和 CLI 入口核对默认模型：普通查询 `gpt-plus`，Evaluation Agent `deepseek-flash`，离线 Judge `gpt-plus`；记录 Shell 对 `.env` 的优先级及旧 `TRIVAE_MODEL_PROVIDER` / `TRIVAE_MODEL_NAME` 直接配置兼容路径。更新 README、上手、配置、架构、评测和状态入口。
+- 将旧 Stage / Pending、Provider 迁移配置、2026-10-23 诊断建议和旧评测命令显式标为历史快照；保留其原始实验结论。同步修正 LangSmith 示例中的工作库定位和 Evaluation DB 路径，并修复归档 PRD 的相对链接。没有改产品代码、测试、评测数据或实验结果。
+- 验证：33 个变更或当前入口 Markdown 文件的本地链接与标题锚点检查 0 个问题；`git diff --check` 通过。全仓 540 个 Markdown 的附加扫描发现两份 `data/interview_raw/` 原始面经资料引用的 52 个本地图片目标不存在；附件不在仓库中，本次未改写原始资料。未运行测试或真实模型请求。

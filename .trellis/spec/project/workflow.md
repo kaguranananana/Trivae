@@ -2,18 +2,20 @@
 
 > 历史参考（已停用）：Trellis Phase/Task/PRD/Hook 不再作为 Trivae 日常开发约束。实际有效的项目约定见根目录 AGENTS.md，跨 Agent 进度见 docs/PROJECT_STATUS.md。旧内容仅供查看历史工作方式。
 
+> **本文件后续内容是旧工作流和旧 Stage 状态快照，不构成当前开发流程、强制 gate 或待办。** 现行约定只以根目录 [AGENTS.md](../../../AGENTS.md) 为准；Stage 1.10 / 1.11 的“pending”等状态不反映当前实现。
+
 
 > 本项目开发工作流：以 Trellis 标准工作流（`.trellis/workflow.md`，Phase 1 Plan / Phase 2 Execute / Phase 3 Finish）为骨架，叠加以下项目规则。
 
 ---
 
-## 标准流程（Trellis）
+## 历史工作流原文：标准流程（已停用）
 
 - **新任务**：先经 `task.py create` 进入 planning，产出 `prd.md`（复杂任务还需 `design.md` + `implement.md`），评审后 `task.py start` 进入实施。
 - **实施**：`trellis-implement`（或 inline 模式直接实现）→ `trellis-check` 质量检查 → lint / type-check / tests 全绿。
 - **收尾**：`trellis-update-spec` 沉淀新知 → 自动批量 commit → `/trellis:finish-work` 归档并记录会话 → 自动 push。
 
-## Agent 执行闭环
+## 历史 Agent 执行闭环（不替代当前规则）
 
 以下规则适用于 Trellis Phase 2 的实现与检查，不改变 Trellis 的 task、review、spec update 和 commit gate，也不把产品 Agent Loop 变成第二套 workflow。每轮工作按以下顺序推进：
 
@@ -42,7 +44,7 @@
 
 此时可以继续做不改变外部状态的复现、日志 / Trace 阅读和方案整理，但不应擅自把局部修复扩展成架构重设计。升级格式和边界清单见 [engineering-principles.md](./engineering-principles.md) 第 10 节。
 
-## 项目规则
+## 历史项目规则（不再作为当前工作流 gate）
 
 ### 1. 架构未定时禁止自行决定
 
@@ -80,7 +82,7 @@
 - 验证、commit 或 push 失败时，显式报告错误与当前状态并优先定位根因；push 成功前不得声称远端已同步。
 - 本约定是用户的长期授权，覆盖 Trellis 模板中的提交确认与禁止推送默认规则。
 
-## 当前阶段约束（Stage 1.10 Evaluation 与 Stage 1.11 Application Boundary 架构 completed；Implementation / Calibration pending）
+## 历史 Stage 状态快照（非当前实现状态）
 
 - Stage 1.1 架构骨架、Stage 1.2 Data Model + Ingestion、Stage 1.3 Retrieval Architecture、Stage 1.4 Tool / Capability Layer、Stage 1.5 Router、Stage 1.6 Planner、Stage 1.7 Agent Runtime、Stage 1.8 Evidence / Citation 与 Stage 1.9 Trace / Observability 已完成；各阶段未冻结的具体参数仍由后续 Evaluation 校准。
 - Stage 1.9 已完成 normalized event、Failure Attribution、query-scope coverage、Error Code ownership、`normal / debug` Trace Profile、model-visible content capture、retention / privacy 与 Trace storage 原则沉淀但尚未实现；具体 Python / JSON Schema、Error Code 枚举、capture policy、Collector / Store backend 与 retention 时长保持 Implementation Pending。

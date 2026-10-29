@@ -1,7 +1,6 @@
-# Project Development Guidelines
+# Historical Project Specifications and Decisions
 
-> 项目级长期规范：目标、工程原则、工作流与架构状态。
-> 按需查阅，不再强制每次会话预读： `overview.md` 与 `engineering-principles.md`。
+> **历史规格与决策索引，不是当前流程或进度入口。** 旧 Stage、Pending、工作流和“不实现”描述可能早于当前代码。现行约定见根目录 [AGENTS.md](../../../AGENTS.md)，当前架构与进度见 [docs/architecture.md](../../../docs/architecture.md) 和 [docs/PROJECT_STATUS.md](../../../docs/PROJECT_STATUS.md)。按需查阅；不要求每次会话预读这些文档。
 
 ---
 
@@ -9,10 +8,10 @@
 
 | Guide                                                 | 内容                                    | 何时阅读           |
 | ----------------------------------------------------- | ------------------------------------- | -------------- |
-| [Project Overview](./overview.md)                     | 项目目标、定位、当前阶段                          | 需要项目背景时         |
+| [Project Overview](./overview.md)                     | 项目目标与历史阶段快照                          | 需要项目背景时         |
 | [Engineering Principles](./engineering-principles.md) | 核心工程原则（根因优先 / Failure-Case 驱动 / 证据化完成 / 有界自主） | 需要工程权衡时          |
-| [Architecture Status](./architecture.md)              | 架构状态与等待决策清单                           | 涉及任何模块边界或技术选型前 |
-| [Development Workflow](./workflow.md)                 | 本项目开发工作流（Trellis 之上的项目规则）             | 回顾历史工作流时         |
+| [Architecture Status](./architecture.md)              | 历史设计状态与等待决策记录；当前架构见 docs/architecture.md | 查阅架构设计史时         |
+| [Development Workflow](./workflow.md)                 | 已停用的 Trellis 工作流与项目规则快照               | 回顾历史工作流时         |
 | [WebUI Experience](./webui-experience.md) | Vue 聊天导航、输入草稿、阅读和手机交互契约 | 修改 WebUI 前 |
 | [Problem Records](./problem-records.md)               | 重要问题 / Failure Case 的记录模板与存放位置        | 修复重要问题时        |
 | [Technical Decisions](./technical-decisions.md)       | 重大技术决策（ADR）的沉淀方式                      | 做出重大决策时        |

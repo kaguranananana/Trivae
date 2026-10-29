@@ -3,6 +3,8 @@
 > 状态：**Confirmed / Completed（Stage 1.9，修订版）**
 >
 > 本 ADR 只确认 Query Plane 的跨切面 Trace / Observability 语义：归一化事件边界、因果关联、Failure Attribution、query-scope coverage、Error Code ownership、隐私与保留边界、Trace storage 原则和 operational metrics 维度。它不实现代码，不冻结 Python / JSON / Database Schema、日志产品或部署拓扑，也不提前设计 Stage 1.10 的 Evaluation Dataset、质量指标阈值、gate 或参数校准。
+>
+> **实现状态历史提示**：上面的“不实现代码”描述 ADR 的决策范围，不是当前实现状态。Trace Collector、SQLite Store 与事件投影已实现；当前行为见 [docs/architecture.md](../../../../docs/architecture.md)。
 
 ---
 
