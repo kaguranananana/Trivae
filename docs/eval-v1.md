@@ -67,8 +67,9 @@ PYTHONPATH=src .venv/bin/python scripts/verify_capability_bundle.py \
 
 Formal experiments require a clean committed checkout, a separate working clone and
 independent Evaluation database per experiment. The local clone
-`data/evaluation/capability-formal-v1-work/` has been used for the fixture-only smoke
-test; create a fresh clone with `trivae eval clone-data` for each independent experiment. The fixed runtime settings
+`data/evaluation/capability-formal-v1-work/` was used for a fixture-only smoke test and
+was removed on 2026-10-29; create a fresh clone with `trivae eval clone-data` for each
+independent experiment. The fixed runtime settings
 are defined in `capability_conditions.py`: eight turns, six tool rounds, 128,000-token
 declared context window for budget calculation, 32,000-token run evidence pool,
 50% per-call ceiling, 16,384 output tokens and 2,048 completion tokens. Jev routing is
