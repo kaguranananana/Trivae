@@ -1,6 +1,6 @@
 # Trivae 开发状态
 
-> 整理时间：2026-10-28。此页是跨 Agent 接手的快速入口；当前事实请以代码、测试和 Git 为准，不能仅凭较旧的记录推断。
+> 整理时间：2026-10-29。此页是跨 Agent 接手的快速入口；当前事实请以代码、测试和 Git 为准，不能仅凭较旧的记录推断。
 
 ## 项目目标
 
@@ -10,7 +10,7 @@ Trivae 是使用 Python 分析高噪声群聊技术信息并产生可追溯原�
 
 - 2026-10-29 按用户要求清理三份已完成的本地校验/冒烟副本：`data/evaluation/frozen-20261028/`（初次冻结失败副本）、`data/evaluation/frozen-20261028-working-check/`（往返校验工作副本）和 `data/evaluation/capability-formal-v1-work/`（fixture-only 冒烟副本）。三目录共 10.59 GiB 表观文件；删除后实际可用空间由 5.00 GiB 增至 8.53 GiB（增加 3.53 GiB，APFS 共享块）。保留正式主快照 `frozen-20261028-validated/`、实验 Run/Trace、生产数据库和原始语料；三个目标删除后逐项确认不存在。
 - 2026-10-28 Agent 评测收尾：保留原 `eval@v1` 16 Case Baseline（14 个 Agent 成功、Case 03 `AnswerDeltaParseError` 与 Case 14 `APIStatusError` 两个运行失败），v2 原始 14 Review/46 诊断未覆盖。新增独立 `eval-rubric-v2.1`，只澄清原始问题优先于理想化 GT、局部 severity 与整体轴分按用户影响分别判断；用同一 GPT-6.1 Sol Medium 对 14 个已保存答案复评完成。所有 Review 仍为模型辅助、人工未确认。逐题建议与空白人工裁决栏见 `interview-docs/Evaluation校准审阅-20261028.md`；原始复评数据在 ignored `data/evaluation/eval-v2.1-calibration-20261028/`。
-- 同日完成一次六题真实 Prompt Candidate 对照；两侧用同一 v2.1 Judge、同一 Case/Snapshot/模型/运行条件，各 6/6 Run 完成，Trace 均完整。实际 Agent Prompt 仅试加四行证据强度约束；Case 07/12 可信度有评分提升，但 Case 10 因遗漏手机远控 Codex/微信直接实例，任务满足度从4降到2，Case 01仍有新的强因果外推。按逐题证据拒绝 Candidate 进入生产，不继续调参；Baseline、Candidate Run/Trace/答案/Review 和代码身份比较均保留在 ignored `data/evaluation/eval-agent-evidence-claim-20261028/`。面试说明见 `interview-docs/Evaluation评测闭环与面试讲解-20261028.md`。
+- 2026-10-28/29 六题真实 Prompt Candidate 对照与最终取舍：两侧用同一 v2.1 Judge、Case、Snapshot、模型和运行条件，各 6/6 Run 完成，Trace 均完整。模型辅助评审显示 Case 07/12 可信度上升，但 Case 10 遗漏手机远控 Codex/微信实例、任务满足度 4→2，Case 01 仍有范围/因果外推；该评审当时建议不采纳。后续用户人工比较 Baseline 与 Candidate 回答后偏好 Candidate，决定合入四行证据强度约束；该约束已通过 `fix(agent): preserve evidence strength and source scope` 合入当前 `main`，并包含在 `origin/main`。这是用户基于回答偏好的产品取舍，不代表六题评测证明总体质量提升；Case 10 等退化仍保留为已知风险。完整对照见 ignored `data/evaluation/eval-agent-evidence-claim-20261028/` 和 `interview-docs/Evaluation评测闭环与面试讲解-20261028.md`。
 - 2026-10-28 Judge v2：新增 `eval-rubric-v2` 双维度 0–4/unknown 规则、结构化质量诊断、旧 Review 兼容和独立评分/对比脚本。对 Eval v1 Baseline 14 份成功回答使用 GPT-6.1 Sol Medium 重评 14/14；第 01、02 题各在一次临时 Provider 错误后重试成功，其他 12 题首轮完成。03/14 原 Agent 失败不评分。任务满足度 4/3/2 分布为 8/3/3、均分3.36；回答可信度为0/2/12、均分2.14；unknown 0，结构化诊断46项（轻微13、中等33、严重0），14题进入人工复核队列。第10题工具域名拼写错误被判为中等事实错误。报告与独立 v2 输入/响应/Review Store 保存在 ignored `data/evaluation/eval-v2-baseline-20261028/`；v1 数据库只读未改。定向45项测试、Ruff、修改范围 Mypy、16题冻结包校验及14份答案输入核对通过。轻微瑕疵总体边界仍需人工抽审；本批未观察到 unknown/severe 样例。详情见 docs/eval-rubric-v2.md 与实验 REPORT.md。
 - 2026-10-28 最新状态：新增 `config/models.yaml`，Agent/Judge 独立按模型 profile 选择；ChatGPT Plan Judge 复用本地 OAuth 和官方 Responses 接口，不存在付费 API fallback。已把原 `.env.deepseek` 的凭证安全合并至 `.env` 的 `DEEPSEEK_API_KEY`，确认后删除重复文件；`.env.example` 不含凭证，`.env.digest` 保留。普通查询仍默认使用 GPT Plan profile，旧 `TRIVAE_MODEL_*` 覆盖路径保留。全量 pytest 1373 passed/1 skipped，Ruff 与 mypy 通过。
 - 真实 Eval v1 Baseline 已覆盖全部 16 个 Case，均有唯一 Run/Trace；Agent 成功 14/16（87.5%，分母16），失败为第 3 题 `AnswerDeltaParseError` 与第 14 题无状态码 `APIStatusError`。14 个成功 Run 均已完成 GPT OAuth Review（14/14）；两次中途 `ConnectError` 均在用户要求继续后通过原 OAuth 路径重试成功。五维标签分母14：任务完成 pass9/mixed5；事实正确 mixed14；证据召回 pass6/mixed8；引用忠实 mixed14；无依据主张 mixed9/fail5。没有使用付费 API。完整记录见 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/REPORT.md`；首轮报告保留。

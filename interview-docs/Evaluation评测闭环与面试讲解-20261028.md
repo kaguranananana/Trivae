@@ -6,7 +6,7 @@
 - **真实 Baseline：** 16 个 Case 均有 Run/Trace；14 个 Agent Run 成功，2 个是运行失败：Case 03 `AnswerDeltaParseError`（Provider 返回 HTTP 200 后答案增量解析失败）和 Case 14 `APIStatusError`（未取到 HTTP 状态码）。两题没有完整回答，不进入回答质量分母。
 - **原始 Judge v2：** 14/14 成功回答有 GPT-6.1 Sol / Medium、ChatGPT OAuth 的模型辅助 Review。任务满足度分布 4/3/2 = 8/3/3；回答可信度 = 0/2/12；46 条结构化诊断（轻微 13、中等 33、严重 0）。所有 Review 都是 provisional，未人工确认。
 - **Judge v2.1 校准复评：** 同一批 14 个保存回答重新评审，全部成功，单独 Store；评分分布为任务满足度 8/4/2、可信度 0/7/7；41 条诊断（轻微 13、中等 28、严重 0）。v2/v2.1 评分差异来自规则澄清，不能当 Agent 性能变化。详细逐题裁决建议见[校准审阅文件](Evaluation校准审阅-20261028.md)，全部待人工确认。
-- **单轮真实 Candidate：** 六个重点 Case 都重新执行，Candidate 6/6 completed、Trace 6/6 complete；同一 Judge v2.1 评审 Baseline 与 Candidate。Case 07、12 的可信度评分提高，Case 10 的任务满足度从 4 降至 2，遗漏最贴近题意的手机远控 Codex/微信实例。综合逐题证据，拒绝将 Candidate Prompt 变更合入生产；不宣称质量提升。
+- **单轮真实 Candidate 与后续取舍：** 六个重点 Case 都重新执行，Candidate 6/6 completed、Trace 6/6 complete；同一 Judge v2.1 评审 Baseline 与 Candidate。Case 07、12 的可信度评分提高，Case 10 的任务满足度从 4 降至 2，遗漏最贴近题意的手机远控 Codex/微信实例。模型辅助评审当时建议不采纳；用户随后人工比较原答案与 Candidate 后偏好 Candidate，并将四行约束合入当前 Prompt。此决定反映用户对具体答案的偏好，不把六题结果外推为总体质量提升；Case 10 的退化仍是已知风险。
 
 ## 2 分钟口述
 
@@ -14,7 +14,7 @@
 
 Judge 从保存的回答开始，读取原始问题、完整答案、Ground Truth、被引用的消息及其邻近上下文。Ground Truth 是开放参考，Judge 接受参考清单外但有原文支持的答案。Judge v2 有任务满足度和回答可信度两个独立的 0–4/unknown 维度，具体问题用结构化诊断记录类型、严重程度、原文证据和用户影响。校准时我们发现两个边界：Case 05 的原题并没有要求必须讲一个完整真实项目；Case 06 的一个中等范围误读影响局部结论，但不一定要把整份回答可信度压到 2。于是增加了 v2.1 的两段规则说明，保留 v2 原始 Prompt 和评审记录，并用 v2.1 单独重评 Baseline。所有模型判断仍待人工抽审。
 
-最后我只试了一次四行 Prompt 约束，用同一 Case、快照、模型和预算重新跑六题，并用同一个 v2.1 Judge 评两边。它帮助 Case 07、12 更谨慎地说明证据范围，但 Case 10 因为漏掉最贴合用户问题的已有手机远控实例，任务满足度从 4 降到 2，所以我拒绝这项改动。这个六题单次对照只能说明本次结果，不代表统计显著或整体准确率提升。我的交付是可回放的 Run/Trace/Review、明确的运行失败分母、待人工确认的校准建议和一次有明确采纳/拒绝结论的真实实验。
+最后我试了一次四行 Prompt 约束，用同一 Case、快照、模型和预算重新跑六题，并用同一个 v2.1 Judge 评两边。模型辅助评审看到 Case 07、12 的局部可信度改善，也指出 Case 10 漏掉最贴近用户问题的手机远控实例，任务满足度从 4 降到 2。随后我人工比较了原答案和 Candidate，实际更偏好 Candidate，因此决定采用，并已合入当前 Prompt。这个决定是基于具体回答的人工产品取舍；它没有抹去 Case 10 的退化，也不表示六题单次对照证明了总体质量提升。可复核的 Run/Trace/Review 和运行失败分母仍保留。
 
 ## 从用户问题到校准与实验
 
@@ -35,7 +35,7 @@ flowchart LR
 3. **Agent Run：** 固定 Model Variant、工具面、快照和预算。保存完整回答、每个引用、运行状态、模型使用量和异常。运行失败保留 Trace，独立于质量分数统计。
 4. **Judge：** 从保存回答评审，重新读取引用原文与上下文；材料无法支持可靠判断时用 `unknown`。任务满足度衡量有没有完成用户实际需求，回答可信度衡量证据、归属、时间和适用范围。
 5. **结构化诊断：** 每条问题保留一个主维度、问题类型、minor/moderate/severe、回答摘录或遗漏标记、证据/证据缺口和对用户的影响。严重程度是局部问题属性，不能直接当作整体分数映射。
-6. **人工校准：** 模型 Review 只进待审队列。审阅文件逐题并列原始 v2、v2.1 Baseline 分和模型辅助建议；人工确认区为空，禁止把模型输出标成 human-confirmed。
+6. **人工校准与产品取舍：** 模型 Review 仍是 provisional，不因用户选择 Candidate 就变成人工评分。用户另行人工比较了 Baseline 与 Candidate 回答，并按实际偏好采纳四行约束；记录这项产品决定，同时保留模型评审和逐题差异作为后续复核证据。
 7. **优化对照：** Baseline 使用原始保存答案；Candidate 重新运行真实 Agent。冻结 Case、Snapshot、模型及其他运行条件，单独记录 Prompt Variant 和代码身份；用现有 PairedComparison 校验 Case、快照、范围与 Variant 对应关系并保存运行指标。两边必须由同一个 Judge 版本评审，再逐题检查遗漏、引用和 Trace，不把单次打分差异当作总体收益。
 
 ## 两个可追溯 Bad Case
@@ -53,7 +53,7 @@ flowchart LR
 - **问题：** “想用手机远程让 AI 帮我写代码，有没有人试过？”
 - **发现：** Baseline 把引用原文 `vibe42.ai` 写成 `vjbe42.ai`，又加入证据未支持的 OpenClaw iOS/Android App 信息，还把个人账号中断经历归纳成普遍封号风险。错误域名会让用户找不到工具，产品和风险表述会影响采用判断。
 - **根因判断：** 长工具清单中的域名未逐字保真；来源里的个人经历、推测和产品摘要没有维持各自的证据等级。
-- **方案与验证：** v2 将可信度评为 2/4；v2.1 对同一回答评为 3/4，但人工建议暂仍是 2/4，因为域名正是直接使用入口。Candidate 没有保留错误域名，却漏掉更贴近题意的手机调用 Windows Codex/微信线索，任务满足度降至 2/4、可信度 2/4。因此拒绝 Candidate Prompt，而不是以修好一个错名掩盖新遗漏。
+- **方案与验证：** v2 将可信度评为 2/4；v2.1 对同一回答评为 3/4，但人工建议暂仍是 2/4，因为域名正是直接使用入口。Candidate 没有保留错误域名，却漏掉更贴近题意的手机调用 Windows Codex/微信线索，任务满足度降至 2/4、可信度 2/4。用户后续人工比较后仍选择采纳 Candidate；这项单题退化没有因此被视为解决，继续作为生产 Prompt 的已知风险。
 - **原始材料：** `eval-v2-baseline-20261028/cases/cap1-10-mobile/attempt-01/input.json`、`review.json`；Candidate 对照在 `eval-agent-evidence-claim-20261028/candidate-reviews/cap1-10-mobile/attempt-01/`。
 
 ## 面试官可能追问
@@ -70,7 +70,7 @@ flowchart LR
 
 6. **怎么证明实验可比？** 两侧来自相同六个 Eval Case 和冻结 Snapshot，DeepSeek Flash、配置模型、工具面、索引、运行预算相同；Baseline 读取原始已保存回答，Candidate 使用独立数据库真实重跑。整个 checkout 的代码身份不同，但 Agent `query/runtime` 差异只有一段 Prompt；这一身份差异和其余评测代码差异均在 manifest/协议中保留。
 
-7. **实验结果如何决定 Prompt？** Candidate 6/6 运行完成，Trace 均完整；v2.1 对两侧各评六题。Case 07/12 可信度评分上升，但 Case 10 任务满足度从 4 降到 2，Case 01 仍出现更严重的范围/因果外推。逐题核对后拒绝 Candidate，不以平均分决定。
+7. **实验结果如何决定 Prompt？** Candidate 6/6 运行完成，Trace 均完整；v2.1 对两侧各评六题。模型辅助评分指出 Case 07/12 局部改善、Case 10 任务满足度从 4 降到 2，Case 01 仍有范围/因果外推。用户人工比较完整回答后偏好 Candidate，决定把四行约束合入 main。这个选择优先回应实际答案偏好，不宣称六题实验验证了总体改善；Case 10 仍需关注。
 
 8. **失败 Run 怎么计？** 原始 16 Case 的 14 个成功、2 个失败分别报告。Case 03 `AnswerDeltaParseError` 和 Case 14 `APIStatusError` 没有可评分完整答案，不进入回答质量统计，也不伪造结果。
 
@@ -78,4 +78,4 @@ flowchart LR
 
 - 基于现有 EvaluationRunner、Judge、Suite、Store 与 Trace，完成 16 题 `eval@v1` 真实 Baseline；14 个成功 Run 全部保留完整回答/Trace 并完成模型辅助 Review，另外 2 个 Provider/解析运行失败单独记录。
 - 设计并落地 Judge 双维度 0–4/unknown 与结构化证据诊断；对 14 个成功回答记录 46 条 v2 诊断，并进行单独 v2.1 校准复评。该数量是诊断记录数，不是人工确认缺陷数或准确率。
-- 完成六题真实 Prompt 对照：两侧各 6/6 Run 完成，用同一个 v2.1 Judge；发现 Case 10 的关键遗漏后拒绝候选变更。不得写质量提升百分比或显著性结论。
+- 完成六题真实 Prompt 对照：两侧各 6/6 Run 完成，用同一个 v2.1 Judge；模型辅助评审发现 Case 10 关键遗漏。用户人工比较回答后偏好 Candidate，并将四行约束合入当前 Prompt；保留该退化记录，不声称总体质量提升或统计显著。

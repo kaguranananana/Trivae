@@ -422,10 +422,15 @@
 
 - 保留 Judge v2 Prompt、原 14 Review、原 Baseline 和原 GT；增加版本化 `eval-rubric-v2.1` 两处判分澄清：按原始用户意图而非理想化 GT 设任务门槛；区分单个问题 severity 与整体轴分，按结论位置和用户影响判断。两个 0–4/unknown 轴、开放式 GT 和结构化诊断语义不变。新增确定性测试覆盖 v2 Prompt 不变、v2.1 边界语句、同 schema 评分、moderate 诊断与人工审阅标记。
 - 同一 GPT-6.1 Sol Medium / OAuth 对原 14 个成功 Baseline 回答完成 v2.1 Review（14/14），03/14 保持运行失败且不评分；无请求失败/重试。v2.1 分布：任务满足度 8/4/2，回答可信度 0/7/7；41 项诊断，轻微13、中等28、严重0。分数差异只反映规则版本及重新评审，不代表 Agent 改善。所有14个 Review 仍待人工审阅。报告见 ignored `data/evaluation/eval-v2.1-calibration-20261028/REPORT.md`，逐题人工裁决建议见 `interview-docs/Evaluation校准审阅-20261028.md`。
-- 实际运行一次四行证据强度 Prompt Candidate；六个 Candidate Run/Trace 全部成功/完整，每 Case 一次。原 Baseline 与新 Candidate 条件匹配 Case、Snapshot、DeepSeek Flash、工具和预算；整个 checkout `code_version` 不同，逐路径核对 Agent `query/runtime` 仅 `prompt.py` 文本有差异，其他差异属评测/文档代码。六题两侧均由 v2.1 Judge 评审；Candidate 在 Case 07/12 有局部可信度分数改善，Case 10 却漏掉手机微信/Windows Codex 直接实践，任务满足度 4→2，Case 01仍有较多范围/因果外推。拒绝 Prompt 变更进入生产，保存完整对照及 Judge 记录，未重复调参。6题样本不作总体准确率或显著性推断，详见 ignored `data/evaluation/eval-agent-evidence-claim-20261028/REPORT.md`。
+- 实际运行一次四行证据强度 Prompt Candidate；六个 Candidate Run/Trace 全部成功/完整，每 Case 一次。原 Baseline 与新 Candidate 条件匹配 Case、Snapshot、DeepSeek Flash、工具和预算；整个 checkout `code_version` 不同，逐路径核对 Agent `query/runtime` 仅 `prompt.py` 文本有差异，其他差异属评测/文档代码。六题两侧均由 v2.1 Judge 评审；Candidate 在 Case 07/12 有局部可信度分数改善，Case 10 却漏掉手机微信/Windows Codex 直接实践，任务满足度 4→2，Case 01 仍有较多范围/因果外推。模型辅助评审当时建议不合入；保存完整对照及 Judge 记录，未重复调参。6题样本不作总体准确率或显著性推断，详见 ignored `data/evaluation/eval-agent-evidence-claim-20261028/REPORT.md`。
 - 定向 pytest 11 passed（含 rubric 规则与 paired comparison 回归）；Ruff 修改文件检查通过；仓库配置 Mypy（147 个源码文件）通过；`git diff --check` 通过。首个 Mypy 命令同时以脚本路径扫描 namespace package，导致模块重复报错；按项目配置重新运行成功，非代码类型错误。
 
 ## 2026-10-29 · 清理三份本机校验与冒烟副本
 
 - 按用户要求删除初次冻结失败副本 `data/evaluation/frozen-20261028/`、冻结往返校验工作副本 `data/evaluation/frozen-20261028-working-check/` 和 fixture-only 冒烟工作副本 `data/evaluation/capability-formal-v1-work/`。删除前共 10.59 GiB 表观文件，删除后核对三个目录均不存在；实际可用空间从 5.00 GiB 增至 8.53 GiB（+3.53 GiB，APFS 共享块）。
 - 保留当前正式冻结主库 `data/evaluation/frozen-20261028-validated/`、已有评测结果/Trace、生产库及原始语料；未运行模型或产品测试。`git diff --check` 通过，Git 待提交内容仅为本次文档记账。
+
+## 2026-10-29 · 人工比较后采纳四行证据约束
+
+- 用户人工比较 Prompt Candidate 与原 Baseline 回答后，基于实际回答偏好决定采纳 Candidate；四行约束已由 `fix(agent): preserve evidence strength and source scope` 合入当前 `main` 并推送。该人工产品决定覆盖六题模型辅助评审当时给出的不采纳建议，不改写原对照结果。
+- 保留 Case 10 任务满足度 4→2、可信度 3→2 与 Case 01 范围/因果外推等已观察风险；采纳不代表问题已修复，也不构成总体质量提升或统计结论。原始 Run、Trace、回答和 Review 仍用于后续核验。
