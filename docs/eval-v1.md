@@ -144,3 +144,7 @@ LangSmith remains an optional explicit metadata-only export, using the existing
 对 14 个成功 Run，最终均完成 GPT OAuth Judge Review（14/14，100%）。初次恢复调用中的第 12、13 题各遇到一次 `ConnectError` / `AUTH_NETWORK` 或 `PROVIDER_ERROR`，没有 HTTP 状态码；用户要求继续后，两题重试及第 15、16 题评分均成功。最终五维暂定标签分布（每项分母14）为：任务完成 pass 9 / mixed 5；事实正确 mixed 14；证据召回 pass 6 / mixed 8；引用忠实 mixed 14；无依据主张 mixed 9 / fail 5。结果为模型辅助且未人工确认。现有 OAuth 凭证已成功完成全部评分，没有使用付费 API；依据无 HTTP 状态的间歇连接错误，无法得出认证失败结论。
 
 补跑明细、全部运行记录、可用 Token 统计、Judge 响应和失败记录在 ignored `data/evaluation/eval-v1-baseline-20261028/supplement-20261028/`；原首轮 `REPORT.md` 与 `summary.json` 保持不变。
+
+## 两次失败的后续排查（2026-10-29）
+
+核对原始 Trace 后，第 3 题实际为“长任务跨会话记住进度”：答案正文的未转义英文双引号在 Unicode 偏移 40 提前结束字符串，标准 JSON 解析器与当前增量解析器均在同一位置失败。第 14 题在 Router 和 Runtime 请求阶段均报 `APIStatusError`，尚未调用工具；原始 HTTP 状态未保存，无法据此认定余额、限流或认证故障。现已补齐兼容 Provider 在流建立前与 completion 请求失败时的 HTTP 诊断；未补跑两题或修改 Baseline，仍为 14/16 成功。完整证据与修复边界见[运行失败排查](EVAL_RUNTIME_FAILURES_20261029.md)。

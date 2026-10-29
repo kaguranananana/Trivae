@@ -3,7 +3,7 @@
 ## 一页评测结果
 
 - **评测集：** `eval@v1` 固定 16 道真实用户问题和同一冻结数据快照。题面、开放式 Ground Truth、证据包、引用原文及上下文记录在 ignored 本机目录 `data/evaluation/eval-v1-20261028/`。
-- **真实 Baseline：** 16 个 Case 均有 Run/Trace；14 个 Agent Run 成功，2 个是运行失败：Case 03 `AnswerDeltaParseError`（Provider 返回 HTTP 200 后答案增量解析失败）和 Case 14 `APIStatusError`（未取到 HTTP 状态码）。两题没有完整回答，不进入回答质量分母。
+- **真实 Baseline：** 16 个 Case 均有 Run/Trace；14 个 Agent Run 成功，2 个是运行失败：Case 03 长任务跨会话进度 `AnswerDeltaParseError`（第一轮工具请求 HTTP 200；第二轮答案正文的未转义引号导致 JSON 解析失败）和 Case 14 `APIStatusError`（未取到 HTTP 状态码）。两题没有完整回答，不进入回答质量分母。2026-10-29 的[后续排查](../docs/EVAL_RUNTIME_FAILURES_20261029.md)补充了原因和诊断修复，没有改写原结果。
 - **原始 Judge v2：** 14/14 成功回答有 GPT-6.1 Sol / Medium、ChatGPT OAuth 的模型辅助 Review。任务满足度分布 4/3/2 = 8/3/3；回答可信度 = 0/2/12；46 条结构化诊断（轻微 13、中等 33、严重 0）。所有 Review 都是 provisional，未人工确认。
 - **Judge v2.1 校准复评：** 同一批 14 个保存回答重新评审，全部成功，单独 Store；评分分布为任务满足度 8/4/2、可信度 0/7/7；41 条诊断（轻微 13、中等 28、严重 0）。v2/v2.1 评分差异来自规则澄清，不能当 Agent 性能变化。详细逐题裁决建议见[校准审阅文件](Evaluation校准审阅-20261028.md)，全部待人工确认。
 - **单轮真实 Candidate 与后续取舍：** 六个重点 Case 都重新执行，Candidate 6/6 completed、Trace 6/6 complete；同一 Judge v2.1 评审 Baseline 与 Candidate。Case 07、12 的可信度评分提高，Case 10 的任务满足度从 4 降至 2，遗漏最贴近题意的手机远控 Codex/微信实例。模型辅助评审当时建议不采纳；用户随后人工比较原答案与 Candidate 后偏好 Candidate，并将四行约束合入当前 Prompt。此决定反映用户对具体答案的偏好，不把六题结果外推为总体质量提升；Case 10 的退化仍是已知风险。

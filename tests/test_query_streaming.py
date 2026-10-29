@@ -277,6 +277,27 @@ class AnswerArtifactDeltaParserTests(unittest.TestCase):
         self.assertLessEqual(len(detail["context_before"]), 128)
         self.assertLessEqual(len(detail["context_after"]), 64)
 
+    def test_unescaped_quote_matches_standard_json_failure_across_chunks(self) -> None:
+        """Case 03 的故障形状：正文引号提前关闭字符串，后续汉字不再是合法 JSON。"""
+
+        raw = '{"claims": [{"text": "跨会话续做依靠"进度文件"}]} '
+        with self.assertRaises(json.JSONDecodeError) as standard_failure:
+            json.loads(raw)
+        for width in (1, 2, 7, len(raw)):
+            parser = AnswerArtifactDeltaParser()
+            with self.assertRaises(AnswerDeltaParseError) as failure:
+                for offset in range(0, len(raw), width):
+                    parser.feed(raw[offset:offset + width])
+            self.assertEqual(failure.exception.diagnostics["offset"], standard_failure.exception.pos)
+            self.assertEqual(failure.exception.diagnostics["unexpected"], "进")
+
+        # 按 JSON 契约转义后的相同正文正常输出，保留引号，不修补错误输入。
+        text = '跨会话续做依靠"进度文件"'
+        valid = json.dumps({"claims": [{"text": text}]}, ensure_ascii=False)
+        parser = AnswerArtifactDeltaParser()
+        self.assertEqual(parser.feed(valid), text)
+        parser.finish()
+
 
 class QueryStreamProjectionTests(unittest.TestCase):
     """Runtime 与 normalized 两个真实来源共享一个 live sequence。"""

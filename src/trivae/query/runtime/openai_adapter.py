@@ -17,13 +17,13 @@ from agents import Agent, MaxTurnsExceeded, RunConfig, RunHooks, Runner, set_tra
 from agents.model_settings import ModelSettings as SDKModelSettings
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from agents.tool import tool_namespace
-from openai import AsyncOpenAI
+from openai import APIStatusError, AsyncOpenAI
 
 from trivae.capabilities.registry import CapabilityRegistry
 from trivae.config.limits import DEFAULT_MAX_TOOL_ROUNDS
 from trivae.config.model_capabilities import ReasoningEffort, resolve_context_window, resolve_reasoning_effort
 from trivae.config.settings import ModelSettings, load_settings
-from trivae.query.completion import CompletionObservation, CompletionResult
+from trivae.query.completion import CompletionObservation, CompletionProviderError, CompletionResult
 from trivae.query.evidence import (
     ToolResultProjectionError,
     ToolResultRecord,
@@ -144,6 +144,27 @@ def _provider_transport_observation(
     }
     if exception_type is not None:
         observation["exception_type"] = exception_type
+    return observation
+
+
+def _provider_http_error_observation(error: APIStatusError, *, stream: bool) -> dict[str, object]:
+    """HTTP 在建立 stream 前被拒绝时，同样保存状态、请求 ID 和公开错误分类。"""
+
+    observation = _provider_transport_observation(
+        error,
+        response_id=None,
+        finish_reason=None,
+        chunk_count=0,
+        usage=None,
+        completed=False,
+        exception_type=type(error).__name__,
+    )
+    observation["transport"] = "chat_completions_stream" if stream else "chat_completions"
+    # 复用 SDK 已解析的分类字段；异常正文和完整响应不进入 Trace。
+    for name, value in (("error_code", error.code), ("error_type", error.type)):
+        identifier = _safe_provider_identifier(value)
+        if identifier is not None:
+            observation[name] = identifier
     return observation
 
 
@@ -362,11 +383,17 @@ class _ObservedChatCompletionsModel(OpenAIChatCompletionsModel):
     async def _fetch_response(self, *args: Any, **kwargs: Any) -> Any:
         """包装 SDK 的 raw response/stream，只增加 bounded 诊断回调。"""
 
-        response = await super()._fetch_response(*args, **kwargs)
         stream = kwargs.get("stream")
         if stream is None and len(args) > 8:
             stream = args[8]
         observer = _PROVIDER_RESPONSE_OBSERVER.get()
+        try:
+            response = await super()._fetch_response(*args, **kwargs)
+        except APIStatusError as exc:
+            # 此时没有 provider_stream，不能依赖 _ObservedProviderStream.__anext__ 记录错误。
+            if observer is not None:
+                observer(_provider_http_error_observation(exc, stream=stream is True))
+            raise
         if stream is True and isinstance(response, tuple) and len(response) == 2:
             initial_response, provider_stream = response
             return initial_response, _ObservedProviderStream(provider_stream)
@@ -1964,18 +1991,31 @@ class OpenAIAgentsRuntimeAdapter(AgentRuntime):
             reasoning_effort_override=reasoning_effort_override,
         )
         started = perf_counter()
-        response = await self._provider_client.chat.completions.create(
-            model=self._model_name,
-            messages=[
-                {"role": "system", "content": "Return only the requested JSON or concise text."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0,
-            # Router/Planner 都要求 JSON；显式 JSON mode 让 provider 不依赖裸 prompt 约束。
-            response_format=cast(Any, _FINAL_SYNTHESIS_RESPONSE_FORMAT),
-            max_tokens=self.completion_max_tokens,
-            reasoning_effort=cast(ReasoningEffort | Literal["none"] | None, request_projection["reasoning_effort"]),
-        )
+        try:
+            response = await self._provider_client.chat.completions.create(
+                model=self._model_name,
+                messages=[
+                    {"role": "system", "content": "Return only the requested JSON or concise text."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0,
+                # Router/Planner 都要求 JSON；显式 JSON mode 让 provider 不依赖裸 prompt 约束。
+                response_format=cast(Any, _FINAL_SYNTHESIS_RESPONSE_FORMAT),
+                max_tokens=self.completion_max_tokens,
+                reasoning_effort=cast(ReasoningEffort | Literal["none"] | None, request_projection["reasoning_effort"]),
+            )
+        except APIStatusError as exc:
+            # Router/Planner 已有 provider-neutral 失败观测通路；保留 HTTP 事实而不是只剩类型名。
+            raise CompletionProviderError(
+                f"provider completion failed (HTTP {exc.status_code})",
+                CompletionObservation(
+                    provider=self._provider_name,
+                    model=self._model_name,
+                    request=request_projection,
+                    latency_ms=(perf_counter() - started) * 1000,
+                    transport=_provider_http_error_observation(exc, stream=False),
+                ),
+            ) from exc
         # 只读取公开 choices/message 字段；不保存 SDK response 或 raw repr。
         choices = getattr(response, "choices", None)
         choice = choices[0] if isinstance(choices, (list, tuple)) and choices else None
