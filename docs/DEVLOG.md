@@ -456,3 +456,11 @@
 - Case 14 在约 855ms 内先发生 Router `APIStatusError`，后续 Runtime 也以同类型失败，零工具调用。原记录没有 HTTP 状态、分类或请求 ID，不能指定为认证、余额、限流或服务端问题。先用真实 SDK 请求构造→Application→normal Trace 的 HTTP 503 注入复现 `provider_observation` 缺失，再修复 `openai_adapter.py`：兼容模型在 stream 创建前捕获 HTTP 元数据，Router/Planner completion 通过已有 `CompletionProviderError` 传递同类安全观测。Runtime 原异常继续失败，没有新增重试或 fallback。测试的 503 不是旧错误状态推断。
 - 新增 `test_provider_failure_observability.py` 与非法/合法引号回归；相关 77 项通过，全量 pytest **1393 passed / 1 skipped（38.18s）**，Ruff (`src tests scripts`)、Mypy（148 源文件）、diff 检查及本次变更 Markdown 的本地目标链接检查通过。未修改原有测试断言。
 - 证据提取和原片段重放保存在 ignored `data/evaluation/eval-v1-failure-audit-20261029/diagnosis.json`；报告 `docs/EVAL_RUNTIME_FAILURES_20261029.md`，同步 Eval v1 入口与面试文档事实更正。0 次模型请求，未创建评测工作库或改写历史数据，Baseline 仍是 14/16 成功。本轮修好的是今后 HTTP 失败的诊断缺口；Provider 非法 JSON 尚未通过真实重跑验证解决，旧 HTTP 原因需服务商历史记录才能继续确认。
+
+## 2026-10-29 · Eval v1 Prompt A/B 正式量化评测
+
+- 对照 2026-10-28 优化前 Prompt A 与新增证据约束 Prompt B。固定 Eval v1 全部16个 Case、冻结消息快照、DeepSeek Flash、7个检索工具、运行预算及 Judge v2.1；Capability v2 未参与。新增运行的代码版本一致；历史结果逐项核对 Prompt 身份、模型、快照、工具、预算和 Trace，按时间选每题每组最早两次，不按评分选取。事实清单在新回答生成前根据 GT 和原始消息冻结，共38项；逐条核验最终答案语义、引用绑定与原始证据，Case 15c 未触发并从分母排除。
+- 复用22个历史有效 Agent Run 和22份 Judge Review；新增44次 Agent 执行，其中42个新答案进入64次有效矩阵、另2次因 `TOOL_RESULT_BUDGET_EXHAUSTED` 失败且各补跑一次，原 Trace 保留。新增42次 Judge API Review；最终A/B各32次有效答案、64份 Review。Case 03/14 原历史失败没有复用，本轮完成补齐。首轮 Judge CLI 本地 artifact 预检失败后改用现有 v2.1 投影流程；CLI 失败没有形成 Review 或 Judge API 请求。
+- 完成率 A/B 均为9/32（28.1%，变化0.0个百分点）；关键事实覆盖率 A 52.8% → B 45.9%（-6.9个百分点）。Case 14 覆盖率 50%→100%、完成1/2→2/2；Case 10 覆盖75%→25%，Case 12 75%→50%。Judge Trace 诊断显示 citation mismatch 12→3，但 unsupported assertion 34→39、temporal/scope error 均26；结论是候选 Prompt 有局部改善但未证明总体增益。
+- 64次入选运行 A/B 平均总 Token 分别3,129,976 / 2,903,089，工具调用均值4.75 / 4.19；同 Case 重复结果完成判断一致20/32组。44次新增 Agent 执行 usage 共 input 3,788,048（其中 cache hit 1,167,360）、output 194,048。按调用时间和 DeepSeek 官方离峰价估算边际 Agent 成本约 US$0.513，不是账单回读；42次新增 ChatGPT OAuth Judge 的模型 Token 为1,906,507 input / 43,470 output，无单独 API 账单数据。
+- 完整报告、逐项事实评定、来源映射、回答/Trace/Judge 和复算脚本留在 ignored `data/evaluation/prompt-ab-eval-v1-20261029/`，不提交原始群聊和运行数据。仅更新状态与本开发日志；未改业务代码、Agent Prompt 或评审标准，也未运行测试套件。报告生成复算64行矩阵及核心比例，`git diff --check` 通过。
