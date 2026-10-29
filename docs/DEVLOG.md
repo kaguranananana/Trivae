@@ -449,3 +449,10 @@
 - 依据当前 `config/models.yaml`、配置解析和 CLI 入口核对默认模型：普通查询 `gpt-plus`，Evaluation Agent `deepseek-flash`，离线 Judge `gpt-plus`；记录 Shell 对 `.env` 的优先级及旧 `TRIVAE_MODEL_PROVIDER` / `TRIVAE_MODEL_NAME` 直接配置兼容路径。更新 README、上手、配置、架构、评测和状态入口。
 - 将旧 Stage / Pending、Provider 迁移配置、2026-10-23 诊断建议和旧评测命令显式标为历史快照；保留其原始实验结论。同步修正 LangSmith 示例中的工作库定位和 Evaluation DB 路径，并修复归档 PRD 的相对链接。没有改产品代码、测试、评测数据或实验结果。
 - 验证：33 个变更或当前入口 Markdown 文件的本地链接与标题锚点检查 0 个问题；`git diff --check` 通过。全仓 540 个 Markdown 的附加扫描发现两份 `data/interview_raw/` 原始面经资料引用的 52 个本地图片目标不存在；附件不在仓库中，本次未改写原始资料。未运行测试或真实模型请求。
+
+## 2026-10-29 · 排查 Eval v1 两次失败并补齐 HTTP 诊断
+
+- 核对原始 Run、Trace 与日志，Case 03 实际是“长任务跨会话记住进度”，不是面试校准文档误写的“笔试经历”。保存的正文在 `不是` 后出现未转义英文双引号，后续 `不` 位于 Unicode 偏移 40；标准 `json.loads` 与当前增量解析器按 1/2/7/42 字符切片均在同一位置失败。两项检索工具均完成；旧/当前代码均有 JSON mode，第一轮的 HTTP 200 不能当作失败的第二轮响应状态。没有修改解析规则或 Prompt。
+- Case 14 在约 855ms 内先发生 Router `APIStatusError`，后续 Runtime 也以同类型失败，零工具调用。原记录没有 HTTP 状态、分类或请求 ID，不能指定为认证、余额、限流或服务端问题。先用真实 SDK 请求构造→Application→normal Trace 的 HTTP 503 注入复现 `provider_observation` 缺失，再修复 `openai_adapter.py`：兼容模型在 stream 创建前捕获 HTTP 元数据，Router/Planner completion 通过已有 `CompletionProviderError` 传递同类安全观测。Runtime 原异常继续失败，没有新增重试或 fallback。测试的 503 不是旧错误状态推断。
+- 新增 `test_provider_failure_observability.py` 与非法/合法引号回归；相关 77 项通过，全量 pytest **1393 passed / 1 skipped（38.18s）**，Ruff (`src tests scripts`)、Mypy（148 源文件）、diff 检查及本次变更 Markdown 的本地目标链接检查通过。未修改原有测试断言。
+- 证据提取和原片段重放保存在 ignored `data/evaluation/eval-v1-failure-audit-20261029/diagnosis.json`；报告 `docs/EVAL_RUNTIME_FAILURES_20261029.md`，同步 Eval v1 入口与面试文档事实更正。0 次模型请求，未创建评测工作库或改写历史数据，Baseline 仍是 14/16 成功。本轮修好的是今后 HTTP 失败的诊断缺口；Provider 非法 JSON 尚未通过真实重跑验证解决，旧 HTTP 原因需服务商历史记录才能继续确认。
