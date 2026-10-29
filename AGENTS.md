@@ -25,3 +25,10 @@ Trellis historical documents are a knowledge archive, not mandatory coding workf
 
 - 所有项目导学、项目面经、面试题库、STAR 口播、简历事实摘要和 Claim 核验材料统一存放在根目录的 `interview-docs/`。
 - 新增、删除或重命名面试文档时，同步更新 `interview-docs/README.md` 的文档索引。
+
+## 评测数据库生命周期
+
+- 正式 Suite 评测使用 `trivae eval run --record-dir ... --freeze-manifest <master>/freeze.json`。该入口校验冻结身份后，为每次运行创建独立 APFS 写时复制工作库；不要先用 SQLite backup 生成长期工作副本再运行。
+- `create_application` 初始化会写 Canonical WAL/schema、semantic WAL/schema、Conversation、Trace 和 Evaluation 表。评测不能共享 master 或另一个实验的工作库；Application 关闭且 Run、Result、Trace 和实验清单已持久化后才能清理工作库。
+- 手写实验脚本需要 Application 时，复用 `trivae.evaluation.workspace.EvaluationWorkspace` 并在结果持久化后调用 `mark_results_persisted()`。Clone 不可用时明确失败，不退回普通整库复制。
+- Run 配置、结果、Trace、评分及 freeze/snapshot/index 身份写入实验记录目录或其独立 Evaluation DB。调试时可显式传 `--keep-workspace`；过期副本由 `trivae eval cleanup-workspaces --manifest <master>/freeze.json` 回收。不得清理 master freeze、线上库或历史结果。

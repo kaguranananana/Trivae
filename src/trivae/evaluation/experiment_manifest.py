@@ -30,7 +30,9 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
                        database: Path, freeze_path: Path, output_dir: Path, repetitions: int,
                        judge_version: str, selected_cases: Sequence[str] | None = None,
                        model_settings: ModelSettings | None = None,
-                       allow_prompt_variant: bool = False) -> dict[str, Any]:
+                       allow_prompt_variant: bool = False,
+                       workspace_storage: Mapping[str, object] | None = None,
+                       evaluation_database_path: Path | None = None) -> dict[str, Any]:
     try:
         if allow_prompt_variant and (suite.suite_id, suite.version) != ("eval", 1):
             raise EvaluationContractError("prompt variants are supported only for recorded eval@v1 experiments")
@@ -89,12 +91,17 @@ def prepare_experiment(*, suite: EvaluationSuite, cases: Mapping[str, Evaluation
         manifest: dict[str, Any] = {
             "schema_version": 1, "status": "running", "created_at": utc_now(), "suite": suite.to_dict(),
             "cases": [case.to_dict() for case in selected], "freeze_id": frozen["freeze_id"],
+            "freeze_manifest_version": frozen["schema_version"],
             "snapshot": frozen["snapshot"], "index_state": frozen["index_state"], "git_commit": commit,
             "variant": variant.to_dict(), "runtime_settings": settings.to_safe_dict(),
             "router_settings": router_settings, "judge_version": judge_version,
             "python": platform.python_version(), "openai_agents_version": metadata.version("openai-agents"),
             "repetitions": repetitions, "runs": [],
         }
+        if workspace_storage is not None:
+            manifest["workspace_storage"] = dict(workspace_storage)
+        if evaluation_database_path is not None:
+            manifest["evaluation_database"] = str(evaluation_database_path.resolve())
         if selected_cases is not None:
             manifest["selected_cases"] = [reference.identity for reference in selection]
         if allow_prompt_variant:
@@ -113,8 +120,11 @@ def write_manifest(output_dir: Path, manifest: Mapping[str, Any]) -> None:
 
 
 def finish_experiment(output_dir: Path, manifest: dict[str, Any], runs: tuple[EvaluationRun, ...], *,
-                      error_type: str | None = None) -> None:
-    manifest["status"] = "failed" if error_type else "completed"
+                      error_type: str | None = None,
+                      status: str | None = None) -> None:
+    if status not in (None, "completed", "failed", "interrupted"):
+        raise EvaluationContractError("experiment terminal status is invalid")
+    manifest["status"] = status or ("failed" if error_type else "completed")
     manifest["completed_at"] = utc_now()
     manifest["error_type"] = error_type
     manifest["runs"] = [{"run_id": r.run_id, "case": f"{r.case_id}@v{r.case_version}", "trace_id": r.trace_id,

@@ -434,3 +434,10 @@
 
 - 用户人工比较 Prompt Candidate 与原 Baseline 回答后，基于实际回答偏好决定采纳 Candidate；四行约束已由 `fix(agent): preserve evidence strength and source scope` 合入当前 `main` 并推送。该人工产品决定覆盖六题模型辅助评审当时给出的不采纳建议，不改写原对照结果。
 - 保留 Case 10 任务满足度 4→2、可信度 3→2 与 Case 01 范围/因果外推等已观察风险；采纳不代表问题已修复，也不构成总体质量提升或统计结论。原始 Run、Trace、回答和 Review 仍用于后续核验。
+
+## 2026-10-29 · 正式评测使用临时 APFS 工作库
+
+- `trivae eval run` 的正式模式改为接收 master `freeze.json` 并通过 `EvaluationWorkspace` 创建独立 APFS `clonefile`。冻结身份和 Canonical/词法/语义版本在克隆前后核验；未有 full-copy fallback。`clone-data` 也使用该克隆函数，保留给需要持久工作副本的离线流程。
+- 核实 `create_application` 会写 Canonical 与 semantic WAL/schema，以及 Conversation、Trace、Evaluation、feedback 存储；因此正式实验不共享 master 或其他实验数据库。Composition Root 会在可写初始化前拒绝 manifest 标记为 master 的 Canonical/semantic 文件。Evaluation DB 默认放入 record 目录，Run/Result 每题写入 SQLite，关闭 Application 前原子写出 Run 与完整 Trace，终态 manifest 持久化后清理临时 Canonical/semantic 工作库及辅助文件。已持久化普通失败清理；中断或结果未持久化时保留恢复副本，默认7天过期，lease 避免误删活动任务。
+- 测试覆盖正常/失败/中断、并发隔离、freeze 版本漂移、失败时拒绝普通复制、symlink 清理边界、master 直接打开拒绝以及 CLI 的 Run/Trace 落盘。全量 pytest 1391 passed/1 skipped，Ruff (`src tests scripts`)、Mypy（148源码文件）、`git diff --check` 通过。没有 Agent/Judge 模型请求，也没有改历史评测结果。
+- 实测现存 `frozen-20261028-validated` 主快照，数据库 `du -A` 逻辑约3.526GiB。SQLite backup 临时工作库令 `df` 可用空间 22.308→18.762GiB（-3.546GiB）；移除后22.295GiB。APFS clone逻辑大小仍约3.526GiB，但建立并通过 `create_application` 初始化时最低约22.293GiB；临时副本清理后22.296GiB。测量期间 `df` 有十余MiB背景波动，但没有持续多GiB增长。完整测量、身份及限制见 `evaluation/experiments/storage-management-20261029/report.md`。

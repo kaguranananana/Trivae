@@ -202,8 +202,8 @@ def build_parser() -> argparse.ArgumentParser:
     eval_run_parser.add_argument(
         "--database",
         type=Path,
-        default=Path("data/trivae.sqlite3"),
-        help="SQLite Canonical Store path",
+        default=None,
+        help="Canonical database for exploratory runs; formal runs use the supplied master freeze",
     )
     eval_run_parser.add_argument(
         "--evaluation-database",
@@ -215,10 +215,12 @@ def build_parser() -> argparse.ArgumentParser:
     eval_run_parser.add_argument("--case-list", type=Path,
                                  help="JSON array of exact Case identities to run within the Suite")
     eval_run_parser.add_argument("--record-dir", type=Path, help="Create a formal experiment record")
-    eval_run_parser.add_argument("--freeze-manifest", type=Path, help="Manifest in the working data clone")
+    eval_run_parser.add_argument("--freeze-manifest", type=Path, help="Validated frozen master manifest for a formal run")
     eval_run_parser.add_argument("--judge-version", default="none", help="Judge identity or none")
     eval_run_parser.add_argument("--allow-prompt-variant", action="store_true",
                                  help="Allow a named prompt candidate while keeping other eval@v1 conditions fixed")
+    eval_run_parser.add_argument("--keep-workspace", action="store_true",
+                                 help="Retain the temporary database clone for debugging until workspace expiry")
     eval_freeze = evaluation_subparsers.add_parser("freeze-data", help="Freeze private canonical and index databases")
     eval_freeze.add_argument("--database", type=Path, required=True)
     eval_freeze.add_argument("--semantic-index", type=Path, default=None)
@@ -226,6 +228,10 @@ def build_parser() -> argparse.ArgumentParser:
     eval_clone = evaluation_subparsers.add_parser("clone-data", help="Create a working copy of a frozen master")
     eval_clone.add_argument("--manifest", type=Path, required=True)
     eval_clone.add_argument("--output-dir", type=Path, required=True)
+    eval_cleanup = evaluation_subparsers.add_parser("cleanup-workspaces", help="Remove expired managed evaluation workspaces")
+    eval_cleanup.add_argument("--manifest", type=Path, required=True, help="Validated frozen master manifest")
+    eval_cleanup.add_argument("--max-age-days", type=float, default=7.0,
+                              help="Expiry for abandoned workspaces; retained debug copies have their own expiry")
     eval_candidates = evaluation_subparsers.add_parser("suite-candidates", help="Prepare unreviewed Cases on new data")
     eval_candidates.add_argument("--suite", type=Path, required=True)
     eval_candidates.add_argument("--cases-dir", type=Path, required=True)
@@ -639,6 +645,36 @@ def _write_create_only_json(path: Path, payload: object) -> None:
             stream.write("\n")
     except FileExistsError as exc:
         raise EvaluationContractError(f"evaluation artifact already exists: {path.name}") from exc
+
+
+def _write_json_checkpoint(path: Path, payload: object) -> None:
+    """Atomically refresh a recovery projection while an experiment is still running."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    try:
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    except OSError as exc:
+        raise EvaluationContractError(f"evaluation recovery projection cannot be written: {path.name}") from exc
+
+
+def _persist_formal_run_artifacts(application: TrivaeApplication, record_dir: Path) -> tuple[EvaluationRun, ...]:
+    """Copy durable Run and full Trace projections out before a temporary database is removed."""
+
+    from trivae.evaluation.store import SQLiteEvaluationStore
+
+    store = cast(SQLiteEvaluationStore, application.evaluation_store)
+    runs = store.list_runs()
+    _write_json_checkpoint(record_dir / "runs.json", [run.to_dict() for run in runs])
+    trace_directory = record_dir / "traces"
+    trace_directory.mkdir(parents=True, exist_ok=True)
+    for index, run in enumerate(runs, start=1):
+        if run.trace_id is None:
+            raise EvaluationContractError("formal run has no persisted Trace identity")
+        trace = application.read_trace(run.trace_id)
+        _write_json_checkpoint(trace_directory / f"trace-{index:03d}.json", asdict(trace))
+    return runs
 
 
 def _run_retrieval_packet_command(args: argparse.Namespace) -> int:
@@ -1155,6 +1191,20 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
             print(json.dumps(clone_frozen(args.manifest, args.output_dir), ensure_ascii=False))
             return 0
 
+        if args.evaluation_command == "cleanup-workspaces":
+            from datetime import timedelta
+
+            from trivae.evaluation.workspace import cleanup_stale_workspaces
+
+            if args.max_age_days < 0:
+                raise EvaluationContractError("--max-age-days must not be negative")
+            report = cleanup_stale_workspaces(
+                args.manifest,
+                max_age=timedelta(days=args.max_age_days),
+            )
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 1 if report["errors"] else 0
+
         if args.evaluation_command == "suite-candidates":
             from trivae.evaluation.suite_maintenance import rebase_suite
             result = rebase_suite(suite=EvaluationSuite.from_json(args.suite), cases=_load_cases(args.cases_dir),
@@ -1304,69 +1354,113 @@ def _run_evaluation_command(args: argparse.Namespace) -> int:
                 except (OSError, json.JSONDecodeError) as exc:
                     raise EvaluationContractError("selected Case list cannot be read") from exc
                 selected_cases = [ref.identity for ref in select_suite_references(suite, selection)]
-            if (args.record_dir is None) != (args.freeze_manifest is None):
-                raise EvaluationContractError("--record-dir and --freeze-manifest must be supplied together")
-            if args.allow_prompt_variant and (args.record_dir is None or (suite.suite_id, suite.version) != ("eval", 1)):
+            formal = args.record_dir is not None or args.freeze_manifest is not None
+            if formal and (args.record_dir is None or args.freeze_manifest is None):
+                raise EvaluationContractError("formal evaluation requires both --record-dir and a frozen master --freeze-manifest")
+            if args.allow_prompt_variant and (not formal or (suite.suite_id, suite.version) != ("eval", 1)):
                 raise EvaluationContractError("--allow-prompt-variant requires a recorded eval@v1 experiment")
-            manifest = None
-            if args.record_dir is not None:
-                from trivae.evaluation.experiment_manifest import prepare_experiment
-                if args.evaluation_database is None or args.evaluation_database.exists():
-                    raise EvaluationContractError("formal evaluation requires a new independent --evaluation-database")
-                manifest = prepare_experiment(
-                    suite=suite, cases=cases, variant=variant, database=args.database,
-                    freeze_path=args.freeze_manifest, output_dir=args.record_dir,
-                    repetitions=args.repeat, judge_version=args.judge_version, selected_cases=selected_cases,
-                    model_settings=agent_settings, allow_prompt_variant=args.allow_prompt_variant,
+
+            if formal:
+                from trivae.evaluation.experiment_manifest import finish_experiment, prepare_experiment
+                from trivae.evaluation.frozen_data import _validated_master
+                from trivae.evaluation.store import SQLiteEvaluationStore
+                from trivae.evaluation.workspace import EvaluationWorkspace
+
+                if args.record_dir.exists():
+                    raise EvaluationContractError("formal experiment record directory already exists")
+                _, master_database, _ = _validated_master(args.freeze_manifest)
+                if args.database is not None and args.database.resolve() != master_database.resolve():
+                    raise EvaluationContractError("formal --database must identify the database in --freeze-manifest")
+                evaluation_database = args.evaluation_database or args.record_dir / "evaluation.sqlite3"
+                if evaluation_database.exists():
+                    raise EvaluationContractError("formal evaluation requires a new independent Evaluation database")
+
+                workspace = EvaluationWorkspace.create(
+                    args.freeze_manifest,
+                    keep_debug_copy=args.keep_workspace,
                 )
+                with workspace:
+                    manifest = None
+                    checkpoint_persisted = False
 
-            async def evaluate_suite() -> tuple[tuple[EvaluationRun, ...], list[dict[str, object]]]:
-                """Run the Suite and copy complete Run/Trace projections into the private record."""
+                    async def evaluate_formal_suite() -> tuple[EvaluationRun, ...]:
+                        nonlocal checkpoint_persisted
+                        async with create_application(
+                            workspace.database_path,
+                            agent_settings=agent_settings,
+                            evaluation_database_path=evaluation_database,
+                            semantic_index_path=workspace.semantic_index_path,
+                        ) as application:
+                            try:
+                                if selected_cases is not None:
+                                    runs = await application.evaluate_suite(
+                                        suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
+                                    )
+                                else:
+                                    runs = await application.evaluate_suite(
+                                        suite, cases, variant, repetitions=args.repeat,
+                                    )
+                                return runs
+                            finally:
+                                # Persist all completed Run and Trace records before closing and deleting the clone.
+                                _persist_formal_run_artifacts(application, args.record_dir)
+                                checkpoint_persisted = True
 
-                async with create_application(
-                    args.database,
-                    agent_settings=agent_settings,
-                    evaluation_database_path=args.evaluation_database,
-                ) as application:
-                    if selected_cases is not None:
-                        runs = await application.evaluate_suite(
-                            suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
+                    try:
+                        manifest = prepare_experiment(
+                            suite=suite,
+                            cases=cases,
+                            variant=variant,
+                            database=workspace.database_path,
+                            freeze_path=workspace.freeze_path,
+                            output_dir=args.record_dir,
+                            repetitions=args.repeat,
+                            judge_version=args.judge_version,
+                            selected_cases=selected_cases,
+                            model_settings=agent_settings,
+                            allow_prompt_variant=args.allow_prompt_variant,
+                            workspace_storage=workspace.record_storage(),
+                            evaluation_database_path=evaluation_database,
                         )
-                    else:
-                        runs = await application.evaluate_suite(suite, cases, variant, repetitions=args.repeat)
-                    traces: list[dict[str, object]] = []
-                    if args.record_dir is not None:
-                        for run in runs:
-                            if run.trace_id is None:
-                                raise EvaluationContractError("formal run has no persisted Trace identity")
-                            traces.append(asdict(application.read_trace(run.trace_id)))
-                    return runs, traces
+                        runs = asyncio.run(evaluate_formal_suite())
+                        finish_experiment(args.record_dir, manifest, runs)
+                        workspace.mark_results_persisted()
+                    except BaseException as exc:
+                        if manifest is not None:
+                            saved: tuple[EvaluationRun, ...] = ()
+                            if evaluation_database.is_file():
+                                store = SQLiteEvaluationStore(evaluation_database)
+                                try:
+                                    saved = store.list_runs()
+                                finally:
+                                    store.close()
+                            interruption = isinstance(exc, (KeyboardInterrupt, asyncio.CancelledError))
+                            finish_experiment(
+                                args.record_dir,
+                                manifest,
+                                saved,
+                                error_type=type(exc).__name__,
+                                status="interrupted" if interruption else "failed",
+                            )
+                            if checkpoint_persisted:
+                                workspace.mark_results_persisted()
+                        raise
+            else:
+                database = args.database or Path("data/trivae.sqlite3")
 
-            try:
-                runs, traces = asyncio.run(evaluate_suite())
-            except Exception as exc:
-                if manifest is not None:
-                    from trivae.evaluation.experiment_manifest import finish_experiment
-                    from trivae.evaluation.store import SQLiteEvaluationStore
-                    saved: tuple[EvaluationRun, ...] = ()
-                    if args.evaluation_database.is_file():
-                        store = SQLiteEvaluationStore(args.evaluation_database)
-                        try:
-                            saved = store.list_runs()
-                        finally:
-                            store.close()
-                    finish_experiment(args.record_dir, manifest, saved, error_type=type(exc).__name__)
-                raise
-            if manifest is not None:
-                from trivae.evaluation.experiment_manifest import finish_experiment
-                # The independent Evaluation DB and working Canonical DB remain authoritative;
-                # these bounded JSON projections make each Run and full Trace portable with the record.
-                _write_create_only_json(args.record_dir / "runs.json", [run.to_dict() for run in runs])
-                trace_directory = args.record_dir / "traces"
-                trace_directory.mkdir()
-                for index, trace in enumerate(traces, start=1):
-                    _write_create_only_json(trace_directory / f"trace-{index:02d}.json", trace)
-                finish_experiment(args.record_dir, manifest, runs)
+                async def evaluate_exploratory_suite() -> tuple[EvaluationRun, ...]:
+                    async with create_application(
+                        database,
+                        agent_settings=agent_settings,
+                        evaluation_database_path=args.evaluation_database,
+                    ) as application:
+                        if selected_cases is not None:
+                            return await application.evaluate_suite(
+                                suite, cases, variant, repetitions=args.repeat, selected_cases=selected_cases,
+                            )
+                        return await application.evaluate_suite(suite, cases, variant, repetitions=args.repeat)
+
+                runs = asyncio.run(evaluate_exploratory_suite())
             print(
                 json.dumps(
                     {"suite": suite.identity, "variant": variant.to_dict(), "runs": [run.to_dict() for run in runs]},

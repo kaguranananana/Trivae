@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import inspect
+import json
 import logging
 import sqlite3
 import uuid
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Literal, cast
@@ -62,6 +63,7 @@ from trivae.evaluation import (
     ControlledVariant,
     DatasetSnapshot,
     EvaluationCaseBundle,
+    EvaluationContractError,
     EvaluationRun,
     EvaluationRunner,
     EvaluationStore,
@@ -1103,6 +1105,25 @@ class TrivaeApplication:
         await self.aclose()
 
 
+def _reject_frozen_master_write(database_path: Path, manifest_file_field: str, label: str) -> None:
+    """Prevent writable Application stores from opening a database declared as a frozen master."""
+
+    manifest_path = database_path.parent / "freeze.json"
+    if not manifest_path.exists():
+        return
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EvaluationContractError("cannot inspect freeze manifest before writable Application startup") from exc
+    if (isinstance(manifest, Mapping)
+            and manifest.get("role") == "master"
+            and manifest.get(manifest_file_field) == database_path.name):
+        raise EvaluationContractError(
+            f"create_application initializes writable {label} stores and cannot use a frozen master; "
+            "create an EvaluationWorkspace first"
+        )
+
+
 def create_application(
     database_path: Path,
     agent_runtime: AgentRuntime | None = None,
@@ -1125,20 +1146,26 @@ def create_application(
     if agent_runtime is not None and agent_settings is not None:
         raise ValueError("provide either agent_runtime or agent_settings, not both")
 
-    # 在 stdio 仍是真实终端的阶段预热 tqdm multiprocessing lock：
-    # 所有 CLI 命令路径共用本工厂，而 chat 的 TUI 分支在 TrivaeChatApp.run()
-    # 中才会把 sys.stderr 替换成 _PrintCapture(fileno()==-1)；提前建锁使后续
-    # 嵌入模型加载不再触发 CPython 3.14 resource_tracker 的坏 fd 缺陷窗口。
-    warm_tqdm_multiprocessing_lock()
     resolved_database_path = database_path.resolve()
     resolved_semantic_path = (
         semantic_index_path or database_path.with_name(f"{database_path.stem}.semantic.sqlite3")
     ).resolve()
     if resolved_semantic_path == resolved_database_path:
         raise ValueError("semantic index must use a separate database path")
-    if semantic_index is not None and semantic_index.database_path.resolve() == resolved_database_path:
-        raise ValueError("semantic index must use a separate database path")
+    if semantic_index is not None:
+        resolved_semantic_index_path = semantic_index.database_path.resolve()
+        if resolved_semantic_index_path == resolved_database_path:
+            raise ValueError("semantic index must use a separate database path")
+    else:
+        resolved_semantic_index_path = resolved_semantic_path
+    _reject_frozen_master_write(resolved_database_path, "canonical_file", "Canonical")
+    _reject_frozen_master_write(resolved_semantic_index_path, "semantic_file", "semantic-index")
 
+    # 在 stdio 仍是真实终端的阶段预热 tqdm multiprocessing lock：
+    # 所有 CLI 命令路径共用本工厂，而 chat 的 TUI 分支在 TrivaeChatApp.run()
+    # 中才会把 sys.stderr 替换成 _PrintCapture(fileno()==-1)；提前建锁使后续
+    # 嵌入模型加载不再触发 CPython 3.14 resource_tracker 的坏 fd 缺陷窗口。
+    warm_tqdm_multiprocessing_lock()
     store = SQLiteCanonicalStore(database_path)
     importer = SharedImporter(store)
     read_repository = SQLiteCanonicalReadRepository(database_path)

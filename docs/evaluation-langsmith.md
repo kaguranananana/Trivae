@@ -27,16 +27,12 @@ trivae eval --help
 
 ## 冻结真实数据及生成候选题
 
-SQLite backup 保存 Canonical（包含词法索引）和独立语义索引的真实文件。两者分别备份后校验 Canonical、词法和语义修订号，以及语义索引的数据库身份；不一致即失败。必须保留整个主快照目录，后续实验使用工作副本：Application 会在工作库写入会话和 Trace，不能直接运行主快照。
+SQLite backup 用于一次性建立 Canonical（包含词法索引）和独立语义索引的 master freeze。两者分别备份后校验 Canonical、词法和语义修订号，以及语义索引的数据库身份；不一致即失败。保留整个 master 目录。正式 `eval run` 会为每次实验创建并清理 APFS 写时复制工作库；Application 会初始化 WAL/schema 并保存 Conversation/Trace，因此不能直接运行 master 或共享其他实验的工作库。只读查询程序可用 SQLite `mode=ro` 共享 master。
 
 ```bash
 # 输出目录必须不存在。语义索引应与所用 Canonical 同修订；仅词法实验可不传语义索引。
 trivae eval freeze-data --database data/trivae.sqlite3 \
   --semantic-index data/trivae.semantic.sqlite3 --output-dir data/evaluation/frozen-new
-trivae eval clone-data --manifest data/evaluation/frozen-new/freeze.json \
-  --output-dir data/evaluation/work-baseline
-trivae eval clone-data --manifest data/evaluation/frozen-new/freeze.json \
-  --output-dir data/evaluation/work-candidate
 
 # 在新快照上保留问题，但不把旧 Ground Truth 移花接木。
 trivae eval suite-candidates --suite evaluation/suites/regression-v1.json \
@@ -57,19 +53,17 @@ trivae eval cases validate data/evaluation/reviewed-cases
 
 ## 正式运行和比较
 
-原 `trivae eval run` 仍可用于本地探索。要保留正式实验条件，使用两份来自同一冻结主库的工作副本、分别独立的 Evaluation 数据库、版本化 Suite/Case、显式 Variant 和实验目录：
+正式运行直接复用同一份冻结 master。每次命令都会先校验快照身份，再建立隔离的临时 APFS 工作库；Baseline 与 Candidate 各自运行时会自动获得不同的数据库副本。Evaluation DB 默认保存在实验记录目录，Run 和完整 Trace 也会在临时库关闭前导出：
 
 ```bash
 trivae eval run --suite data/evaluation/new-regression-candidates/suite.json \
   --cases-dir data/evaluation/new-regression-candidates/cases \
   --variant data/evaluation/my-baseline-variant.json \
-  --database data/evaluation/work-baseline/trivae.sqlite3 \
-  --evaluation-database data/evaluation/baseline-runs.sqlite3 \
-  --freeze-manifest data/evaluation/work-baseline/freeze.json \
+  --freeze-manifest data/evaluation/frozen-new/freeze.json \
   --record-dir data/evaluation/baseline-record --judge-version none
 ```
 
-Candidate 用另一份工作副本、Evaluation 数据库、Variant 和 record 目录运行。Variant 的 `code_version` 必须匹配当前干净 Git commit，`provider`/`model` 必须匹配实际环境；其余声明的 Prompt、工具、检索和预算也应如实填写。配置按已有 `evaluation/variants/` 格式建立；版本需要改变时创建新 Variant 身份。`experiment.json` 记录 Suite、完整 Case 版本、冻结 ID、索引状态、Git commit、声明的 Variant、实际非密钥模型/Router设置、Python/SDK 和 Judge 版本。运行异常会保留已落盘的 Run 与失败状态。`--judge-version none` 表示未运行 Judge，不会生成 Judge 评分。
+Candidate 使用同一 master freeze，另选 Variant、record 目录和 Evaluation DB。也可显式指定 `--evaluation-database`，但路径必须是尚不存在的独立数据库。Variant 的 `code_version` 必须匹配当前干净 Git commit，`provider`/`model` 必须匹配实际环境；其余声明的 Prompt、工具、检索和预算也应如实填写。`experiment.json` 记录 Suite、完整 Case 版本、freeze/schema/snapshot/index 身份、冻结文件位置、Git commit、存储策略、声明的 Variant、实际非密钥模型/Router 设置、Python/SDK 和 Judge 版本。Run/Result 保存在 Evaluation DB 和 `runs.json`；完整 Trace 保存在 `traces/`。持久化完成并关闭所有 SQLite 连接后临时数据库自动清理。`--keep-workspace` 为调试显式保留副本；过期副本可用 `trivae eval cleanup-workspaces --manifest <freeze.json>` 回收。`--judge-version none` 表示未运行 Judge，不会生成 Judge 评分。
 
 ```bash
 trivae eval compare-experiments \

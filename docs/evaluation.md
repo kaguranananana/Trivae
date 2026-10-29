@@ -92,6 +92,20 @@ uv run trivae eval compare --help
 
 真实模型评测需要准备自己的合法数据、匹配该数据的 Snapshot / Case / Suite，以及与当前运行配置一致的 Variant。仓库中的设计 Seed 或历史 Variant 不能直接作为任意新数据的质量基准。`eval run` 会调用所配置的 Provider，模型请求的额度和费用按实际 Provider 处理。
 
+正式实验应直接把 master freeze 交给统一入口；入口先核验 freeze、Canonical/词法/语义版本，再在 freeze 同卷创建独立 APFS 写时复制工作库。macOS `clonefile` 不可用时会失败，不会悄悄复制整份数据库。Canonical Store 和语义索引 Store 会切换 WAL 并初始化 schema；Conversation、Trace 与 Evaluation Store 也会写入 schema，因此实验之间不能共享一个 Application 数据库。`create_application` 会拒绝直接打开 manifest 标记为 master 的 Canonical 或 semantic 文件。
+
+```bash
+uv run trivae eval run --suite evaluation/suites/my-suite.json \
+  --cases-dir evaluation/cases/my-suite \
+  --variant evaluation/variants/my-variant.json \
+  --freeze-manifest data/evaluation/frozen-my-data/freeze.json \
+  --record-dir data/evaluation/my-experiment --judge-version none
+```
+
+`evaluation.sqlite3` 默认保存在实验记录目录，也可通过 `--evaluation-database` 指定独立的持久路径。Runner 逐步写入 Run/Result；关闭 Application 前把 Run 与完整 Trace 投影原子写入记录目录，成功后自动删除临时 Canonical/semantic 工作库及其中的 Conversation、Trace 数据和辅助存储。正常结束与已持久化的失败都会清理；中断或结果落盘失败会保留带 lease 的恢复副本，默认 7 天后过期。`--keep-workspace` 可显式保留调试副本，`trivae eval cleanup-workspaces --manifest <freeze.json>` 可查看并回收已过期副本。并发运行会各自获得独立目录和数据库。
+
+需要在代码里编排自定义实验时，使用 `trivae.evaluation.workspace.EvaluationWorkspace`；在 Run、Result、Trace、评分和实验记录均已持久化之后调用 `mark_results_persisted()`。不要让 `create_application` 指向 master freeze，也不要以 `du` 的逻辑大小推断 APFS 实际回收空间；空间变化需同时记录目录大小与 `df` 可用量。
+
 Case 格式与历史评测工具入口见 [evaluation/README.md](../evaluation/README.md)；应用边界、来源检查和预算机制见 [系统架构](architecture.md)。公开实验材料前，还应检查其中的问题、Reference、ReviewPacket、Trace 和来源摘录是否包含私人数据。
 
 ## CJK 字面检索对照的解释边界
