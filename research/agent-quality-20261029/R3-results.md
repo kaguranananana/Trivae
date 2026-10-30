@@ -18,3 +18,5 @@
 ## R4：严格事实覆盖与来源存在分开
 
 audit_failure_stages.py复用原coverage labels，148个适用criterion/run pair：A覆盖38/74，B33/74（按事实加权，与原报告Case等权52.8%/45.9%不是同一指标）；未覆盖但目标已在答案source的A3/B4，已在replayed capability但模型可见性不全的A3/B3，剩余A30/B34未在所重放lexical/semantic结果观察到目标。后者不能直接标成FTS缺陷，因为还可能涉及其他context工具、已知来源之外的替代证据或问题中的认知属性。输出保留v1/v2草稿，v2显式支持无固定target ID的标准（本批未触发）。这再次否定R1把来源ID相交叫作语义采用的口径。
+
+附：16个Case的diagnostic_expectations.alternatives均复制Case01文案，15个跨题字段不合题意；26份实际投影Judge输入不包含该字段，当前Runtime输入构造也未读取它。未据此认定本轮评分失真，未改冻结Case，留待数据集新版本修正；独立记录case-metadata-audit.json。

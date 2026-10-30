@@ -13,3 +13,9 @@ R2新Failure为独立研究记录，不把R6当成协议修复；后续R6若开�
 ### 进入独立Host候选真实验证
 
 51调用广泛检查与完整回归通过后，进入新Variant semantic-host-retention-candidate（642896de）。原Case10失败不补跑、不回填；新实验不是JSON修复，沿用严格解析。固定七份现有完整R2 Candidate及一个原失败计划槽作基准，新候选4题各两次；最终质量对比须单列七个可评分基准和一个原协议失败，不假装八对完整Review。新增运行分两批01/07、08/10，各4个Run，使用相同master和独立Workspace，预算仍128k/32k。后续若观察到Provider/解析失败，保存失败且不补跑。
+
+### 真实8份Review完成
+
+R6新增8/8交付、8/8Judge完成，34次DeepSeek HTTP/8次Judge；连同R2累计107/23，余143/9。两轴联合≥3的信号cap-only基准2/8计划槽→full-rank4/8；原始逻辑3/8。4题/每题两次只支持局部信号，不是总体收益证据。07出现task2/rel3和task4/rel2，两份均未过联合阈值，需要保留退化风险。
+
+暴露核验：07的第一份虽然调用semantic，但投影100条、omitted_hit=0；第二份根本没有semantic调用。Host排序仅在semantic hit删除时改变可见集合，因此07的质量差异不能直接归因于Host修复；同样不能把其他不触发该路径的好分数归功于修复。最终汇总按Run记录实际semantic hit裁剪和检索请求，区分A/B分组与处理是否生效。

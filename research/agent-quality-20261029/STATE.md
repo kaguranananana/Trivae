@@ -2,6 +2,25 @@
 
 分支：`research/agent-quality-20261029`（自 main 创建）。状态目录：`research/agent-quality-20261029/`。
 
+## 最新结论与恢复入口（2026-10-30，本轮已收束）
+
+- 完整交付：[REPORT.md](REPORT.md)；面试材料在根interview-docs目录。Z Code原R1的8脚本/11JSON仍未跟踪且未编辑/暂存，11份JSON尺寸与接管清单相同。
+- 两处工程修复留在本地研究分支：e5f53ac4容量优先序、642896de贯穿Host预算；56cfd2c5修复真实SDK httpx2计数；7bfd5576为独立Prompt实验入口。没有推送、合主、部署或重启。主Prompt仍是原B，R7候选未采纳。
+- R2：16计划Run，15有效答案/15 Review，含1次Case10非法JSON失败；R6：8/8答案和Review；R7：4计划Run，3有效答案/3 Review，含1次预算失败。另保留2个早期中断尝试，共30次实际尝试、28计划槽、26份完整答案/新Review。复用基准不重复计为新请求。
+- 已验证：51个原ANN池选中chunk不变，rank1整块丢失19→0，Capability已知目标8→18（+10/-0）；同一新Envelope过旧/新Host，48可比较、3两侧均原控制预算不足，目标可见10→14（+4/-0）。不是总体召回率或答案准确率。
+- 真实4题双轴≥3辅助信号：原逻辑3/8、仅cap-rank2/8、完整rank4/8；样本小且07有低task风险。R6仅3/8 Run实际触发semantic hit删除，不把未生效路径的分数变化归功于修复。
+- R7首轮联合提及0/4→4/4，交付4/4→3/4，双轴≥3仍1/4，按预注册门槛停止，不执行01/10额外控制，不调同题Prompt。产品Prompt文件不改。
+- **整项预算：已用DeepSeek122/250、OAuth Judge26/32，剩128/6。** budget.json、LEDGER.md的148行和HTTP原件相符；初版httpx漏计的9次已从Trace追记，未重置额度。Token已填：119个Agent请求有Usage、3未知；26个Judge全部有Usage。禁止把旧AB的185/42或本轮基准复用混为新预算。
+- 最终代码验证1398 passed/1 skipped（37.49s）、相关43、Ruff与Mypy148源码、diff通过。当前没有本轮Agent/Judge/离线实验在运行。原数据、失败、未采纳候选、保留工作库均未清理。
+
+### 后续继续时
+
+以原工作区的本文件、budget.json、LEDGER.md及ignored data/evaluation/agent-quality-codex-20261030/为准。干净codex实验worktree只是代码环境，运行时--research-state-dir指向原工作区；不要从旧工作树或旧Setup段恢复250/32。不要重跑已完成的64历史AB、R2/R6基准或填补失败槽。
+
+最优先的新实验是Q6批次控制准入与预算内最终合成合同：R7保存了31409结果Token/剩591后失败的真实Case。先按原Trace做确定性复现，不扩大预算、不压低估算、不加重试。其次做Claim级人工裁决和来源/任务/时效属性验证。Q13非法JSON仍是明确失败，原完整正文不全，不能声称修好。Q8“无查询时间”已被64/64实际输入否定；精确tokenizer校准、Capability未跑题、Router/轮数收益仍未验证，不自动延续旧清单。
+
+以下Setup、整合与逐轮续记保留为历史，出现冲突以上方结论及代码/原始结果为准。
+
 ## 当前进度
 
 - 2026-10-29 Setup 轮完成：分支与状态目录就绪，四个状态文件（budget.json / LEDGER.md / STATE.md / QUESTION_POOL.md）已建立，测试命令与评测入口已验证，环境事实已记录。尚未开展任何真实模型请求。
@@ -111,3 +130,5 @@ R6离线最终：51次同Envelope旧/新Host对照，48可比较、3两侧均原
 R6真实阶段已启动（新Variant，642896de）：host-01-07和host-08-10两批，每题两次，共8个新Run；复用R2 Candidate七个完整答案与一个原失败槽作基准。旧Case10不补跑。原R2 15份Judge在补齐。后续继续检查这两批record目录和budget/LEDGER，原R1材料仍保留未暂存。
 
 R2最终：15/15有效答案Judge已完成，联合两轴≥3 Baseline3/8计划槽、cap-rank2/8（成功答案2/7），不是旧严格completion指标。该阶段实际Agent73/Judge15。R6新增8/8已交付且无新增运行失败，8份Judge进行中；本轮总实时预算以budget为准。R7已预注册仅一条比较联合检索Prompt候选（未运行），最多先4Run/4Judge，只有重复正向才进4个非比较控制；总Judge15+8+8=31≤32。产品Prompt仍严格等于保存的B，无修改。
+
+R6最终真实8/8交付、8份Review，34 Agent/8 Judge；截至此阶段累计107/23，余143/9。联合Judge≥3信号2/8计划槽→4/8，原逻辑3/8，不能宣称总体提升。07有低task风险，但其两个Run没有触发semantic hit裁剪（一个100条无省略、另一个无semantic），已加入实际处理暴露审计。R7首片已启动joint-07、joint-08各两次，复用R6对应基准；4新Judge上限，产品Prompt仍未改。

@@ -14,12 +14,17 @@ RESEARCH = Path(__file__).resolve().parent
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--include-host", action="store_true")
+    parser.add_argument("--include-joint", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     records = {"original": ["baseline-08", "baseline-08-complete02", "baseline-rest"],
                "capacity_rank": ["candidate-08-complete", "candidate-rest"]}
     if args.include_host:
         records["capacity_and_host_rank"] = ["host-01-07", "host-08-10"]
+    if args.include_joint:
+        records["joint_query_prompt"] = ["joint-07", "joint-08"]
+        if (OUT / "joint-controls/runs.json").exists():
+            records["joint_query_prompt"].append("joint-controls")
     reviews = {}
     for path in OUT.glob("judge-*/*/review.json"):
         review = json.loads(path.read_text())
@@ -44,12 +49,22 @@ def main():
                 if completed and review is None:
                     raise RuntimeError(f"completed run lacks a review: {run['run_id']}")
                 passed = task is not None and reliability is not None and task >= 3 and reliability >= 3
+                trace = next(json.loads(path.read_text()) for path in (OUT / directory / "traces").glob("*.json")
+                             if json.loads(path.read_text())["trace_id"] == run["trace_id"])
+                calls = [e["payload"] for e in trace["timeline"] if e["operation"] == "tool.call.started"]
+                clipped_semantic = [e["payload"] for e in trace["timeline"]
+                                    if e["operation"] == "runtime.tool.completed"
+                                    and e["payload"]["tool_name"] == "semantic_search"
+                                    and e["payload"].get("omitted_hit_messages", 0) > 0]
+                stats["semantic_hit_clip_runs"] += bool(clipped_semantic)
                 stats["reviewed"] += review is not None
                 stats["joint_axis_threshold_pass"] += passed
                 row = {"arm": arm, "case": run["case_id"], "repeat": ordinal[run["case_id"]],
                        "run_id": run["run_id"], "record_dir": directory,
                        "terminal_status": run["terminal_status"], "task": task, "reliability": reliability,
                        "joint_axis_threshold_pass": passed,
+                       "semantic_hit_clip": bool(clipped_semantic),
+                       "retrieval_requests": [{"tool": c["tool_name"], "request": c["request"]} for c in calls],
                        "diagnostic_types": dict(Counter(d["type"] for d in review.get("diagnostics", []))) if review else {}}
                 rows.append(row)
                 cases[run["case_id"]].append(row)
@@ -64,10 +79,11 @@ def main():
     recovery = json.loads((OUT / "request-count-recovery.json").read_text())
     agent = recovery["known_total"] + sum(e["role"] == "agent" for e in sends.values())
     judge = sum(e["role"] == "judge" for e in sends.values())
-    by_phase = {"R2": Counter(agent=recovery["known_total"]), "R6": Counter()}
+    by_phase = {"R2": Counter(agent=recovery["known_total"]), "R6": Counter(), "R7": Counter()}
     for event in sends.values():
-        phase = "R6" if any(part.startswith(("http-host-", "judge-host-"))
-                            for part in Path(event["record_file"]).parts) else "R2"
+        parts = Path(event["record_file"]).parts
+        phase = ("R7" if any(part.startswith(("http-joint-", "judge-joint-")) for part in parts) else
+                 "R6" if any(part.startswith(("http-host-", "judge-host-")) for part in parts) else "R2")
         by_phase[phase][event["role"]] += 1
     budget = json.loads((RESEARCH / "budget.json").read_text())
     assert 250 - budget["deepseekRemaining"] == agent, (budget, agent)

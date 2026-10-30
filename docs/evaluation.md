@@ -113,3 +113,9 @@ Case 格式与历史评测工具入口见 [evaluation/README.md](../evaluation/R
 ## CJK 字面检索对照的解释边界
 
 2026-10-20的[独立CJK实验](../evaluation/experiments/cjk-bigram-v1/report.md)将字面完整性、top10排序和真实Agent分开。LIKE会在原文NUL处截断，完整正文Oracle改用`instr(lower(text), lower(term))`；首版证据保留，修正版Reference先冻结再复测。mixed-script分隔符等价、ASCII exact token和单字限制都必须独立说明。实验中的99.993%是44个固定中文/混排Query的全深度字面micro覆盖，不能称为Agent准确率。面试材料见[CJK检索实验-简历与面试.md](../interview-docs/CJK检索实验-简历与面试.md)。
+
+## 2026-10-30质量研究续研的指标解释
+
+本轮使用独立实验Suite复用固定Eval v1 Case/GT，检索保留顺序可作为受控变量；旧eval@v1的固定合同及64Run矩阵保持原样。原ANN pool的51调用对照检查候选、Capability和模型可见性；新真实4题×两次检查用户答案，并复用后续基准，不把复用Review计为新请求。固定输入中的目标消息可见不等于语义事实采用；normal Trace没有证明的内容保持unknown。
+
+“Judge双轴≥3”仅是0–4辅助评分的联合阈值，不包含旧逐事实门槛，不能和原28.1%严格完成率混用。原逻辑、仅容量rank、完整rank的该信号为3/8、2/8、4/8，仍有协议失败、低task和处理未触发的Run，不能发布总体质量提升。单句比较查询候选未采纳。全部26份新Review保持provisional，未改GT或人类裁决状态。详见[研究报告](../research/agent-quality-20261029/REPORT.md)及其原始记录入口。

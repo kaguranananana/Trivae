@@ -24,6 +24,8 @@
 - [Evaluation评测闭环与面试讲解-20261028.md](Evaluation评测闭环与面试讲解-20261028.md)：Eval v1 真实 Baseline、Judge v2/v2.1 校准、单轮 Prompt 对照实验、2 分钟口述、Bad Case、追问与可核验简历要点。
 - [Evaluation校准审阅-20261028.md](Evaluation校准审阅-20261028.md)：16 Case 的 Judge v2 原分、v2.1 Baseline 复评、模型辅助校准建议和待人工确认的裁决入口。
 
+- [Agent质量研究-证据与口播-20261030.md](Agent质量研究-证据与口播-20261030.md)：中断恢复、两层证据裁剪修复、受控A/B与未采纳Prompt的事实边界及一分钟口播。
+
 ## 归档约定
 
 - 后续生成的项目导学、项目面经、面试题库、STAR 口播、简历事实摘要和 Claim 核验材料均放在本目录。
