@@ -107,3 +107,7 @@ R3/R4续记：原64Run的首个模型可见上下文64/64已有正确查询时�
 R6进行中：真实Case08证明R2修复只闭合Capability容量，Host预算仍会按时间丢高rank目标。源Envelope已通过Workspace隔离重放并冻结；固定预算10933，旧Host75条/目标0，新Host80条/目标1。43项相关回归通过，完整回归与51调用同Envelope旧/新Host检查正在运行；实现仅修改primary优先序传递与slot省略顺序。R2全套真实矩阵仍在56cfd2c5干净worktree运行，不混入R6。R5联合查询离线Kimi/DeepSeek分别1422/2495命中、各前100目标0；联合79条目标2；MCP/Skills分别前100目标0、联合87条目标1。暂不改Prompt，保留独立方向。
 
 R6离线最终：51次同Envelope旧/新Host对照，48可比较、3两侧均原控制预算不足；GT可见10→14（+4/-0），无新增投影错误。完整1398 passed/1 skipped（37.49s）、Mypy148/Ruff/diff通过。R2真实16计划Run→Baseline8 completed、Candidate7 completed+1 Case10非法JSON（Unicode295），不补跑；15份答案Judge进行中。实际累计Agent73请求，Judge实时以budget为准。R6代码仅工程层已验证，尚无真实答案质量收益结论。
+
+R6真实阶段已启动（新Variant，642896de）：host-01-07和host-08-10两批，每题两次，共8个新Run；复用R2 Candidate七个完整答案与一个原失败槽作基准。旧Case10不补跑。原R2 15份Judge在补齐。后续继续检查这两批record目录和budget/LEDGER，原R1材料仍保留未暂存。
+
+R2最终：15/15有效答案Judge已完成，联合两轴≥3 Baseline3/8计划槽、cap-rank2/8（成功答案2/7），不是旧严格completion指标。该阶段实际Agent73/Judge15。R6新增8/8已交付且无新增运行失败，8份Judge进行中；本轮总实时预算以budget为准。R7已预注册仅一条比较联合检索Prompt候选（未运行），最多先4Run/4Judge，只有重复正向才进4个非比较控制；总Judge15+8+8=31≤32。产品Prompt仍严格等于保存的B，无修改。

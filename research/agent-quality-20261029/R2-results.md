@@ -27,3 +27,7 @@
 从两侧APFS保留工作库恢复3条完整/部分Trace，按Router已完成Usage、Runtime model.turn及已返回tool.call证明逐请求确认9次HTTP（Baseline6、Candidate3），其中2个流中断也计入；max_retries=0，无未见响应的孤立request-start。追记九行账本，剩余241/32。原导出Trace不足的部分直接从保留库原始trace_events逐条导出到interruption-traces，不覆写旧Run。
 
 Baseline Case08重复1已完成，保留并复用；Baseline重复2和Candidate重复1没有完整答案，保留为中断尝试，不当作答案失败率或质量评分。完成后续模型计划前以已重建账本为基准，计数器覆盖真实默认SDK后才恢复。
+
+### R2全部Review已完成
+
+15/15有效答案有Judge v2.1（Baseline8、Candidate7），另一次Candidate10为Provider非法JSON，无Review、不补跑。Judge两轴同时≥3的信号Baseline3/8、Candidate2/8个计划槽（按已交付答案为2/7）；这不是原64Run的“Judge+固定事实门槛”完成率。Case08四份可信度均2；01为3/2、3/2→4/3、4/2；07为4/3、4/2→4/2、4/3；10为3/3、4/3→3/2、协议失败。仅容量优先序修复没有证明总体答案收益，01局部改善并存10风险。该阶段73 Agent实际HTTP、15 Judge；后续R6正在累计，不能把metrics-r2快照的全任务实时HTTP当成仅R2成本。

@@ -9,3 +9,7 @@
 R2真实阶段共16个计划Run，Baseline8/8完成，Candidate7/8完成；Case10的另一次在Unicode295因字符串内未转义英文引号失败（parser已关闭字符串、期待逗号/右花括号，却收到“手”）。这是与历史Case03同类的Provider非法JSON症状，原最终正文没有完整落盘，不能声称完整标准parser重放；正常解析规则与JSON mode不改，没有补跑或放宽。73次累计DeepSeekHTTP包含这次失败和先前两个中断流，剩余177；15份完整回答按原v2.1评审中，不给失败Run编分。
 
 R2新Failure为独立研究记录，不把R6当成协议修复；后续R6若开展真实实验，使用新Variant身份，原失败Run仍保留，不回填旧矩阵，也不重跑原Baseline。所有当前实验与额度见STATE/LEDGER/budget。
+
+### 进入独立Host候选真实验证
+
+51调用广泛检查与完整回归通过后，进入新Variant semantic-host-retention-candidate（642896de）。原Case10失败不补跑、不回填；新实验不是JSON修复，沿用严格解析。固定七份现有完整R2 Candidate及一个原失败计划槽作基准，新候选4题各两次；最终质量对比须单列七个可评分基准和一个原协议失败，不假装八对完整Review。新增运行分两批01/07、08/10，各4个Run，使用相同master和独立Workspace，预算仍128k/32k。后续若观察到Provider/解析失败，保存失败且不补跑。

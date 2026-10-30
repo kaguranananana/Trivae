@@ -14,11 +14,20 @@ def main():
     parser.add_argument("--arm", choices=("baseline", "candidate"), required=True)
     parser.add_argument("--http-record-dir", type=Path, required=True)
     parser.add_argument("--research-state-dir", type=Path, required=True)
+    parser.add_argument("--prompt-file", type=Path, help="Explicit experimental prompt; never changes the tracked product prompt")
     known, remaining = parser.parse_known_args()
     if known.arm == "baseline":
         import trivae.retrieval.semantic.retrieval as retrieval
 
         retrieval.SemanticRetrieval = baseline_class("003642b3")
+    if known.prompt_file is not None:
+        import trivae.query.runtime.openai_adapter as adapter
+        import trivae.query.runtime.prompt as prompt
+
+        text = known.prompt_file.read_text(encoding="utf-8")
+        prompt.SYSTEM_PROMPT = text
+        adapter.SYSTEM_PROMPT = text
+        print(f"PROMPT_OVERRIDE_ACTIVE chars={len(text)}", flush=True)
     install_meter("agent", known.arm, known.http_record_dir, research=known.research_state_dir)
     from trivae.interfaces.cli import main as cli_main
 
