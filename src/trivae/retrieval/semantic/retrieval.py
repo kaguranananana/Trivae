@@ -283,8 +283,8 @@ class SemanticRetrieval:
             ),
             primary_message_ids=literal_message_ids + tuple(
                 message_id
-                for message_id in primary_message_ids
-                if message_id not in literal_ids
+                for message_id in ranked_message_ids
+                if message_id in primary_message_ids and message_id not in literal_ids
             ),
         )
 

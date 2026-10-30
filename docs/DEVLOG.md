@@ -464,3 +464,12 @@
 - 完成率 A/B 均为9/32（28.1%，变化0.0个百分点）；关键事实覆盖率 A 52.8% → B 45.9%（-6.9个百分点）。Case 14 覆盖率 50%→100%、完成1/2→2/2；Case 10 覆盖75%→25%，Case 12 75%→50%。Judge Trace 诊断显示 citation mismatch 12→3，但 unsupported assertion 34→39、temporal/scope error 均26；结论是候选 Prompt 有局部改善但未证明总体增益。
 - 64次入选运行 A/B 平均总 Token 分别3,129,976 / 2,903,089，工具调用均值4.75 / 4.19；同 Case 重复结果完成判断一致20/32组。44次新增 Agent 执行 usage 共 input 3,788,048（其中 cache hit 1,167,360）、output 194,048。按调用时间和 DeepSeek 官方离峰价估算边际 Agent 成本约 US$0.513，不是账单回读；42次新增 ChatGPT OAuth Judge 的模型 Token 为1,906,507 input / 43,470 output，无单独 API 账单数据。
 - 完整报告、逐项事实评定、来源映射、回答/Trace/Judge 和复算脚本留在 ignored `data/evaluation/prompt-ab-eval-v1-20261029/`，不提交原始群聊和运行数据。仅更新状态与本开发日志；未改业务代码、Agent Prompt 或评审标准，也未运行测试套件。报告生成复算64行矩阵及核心比例，`git diff --check` 通过。
+
+## 2026-10-30 · 接管Agent质量研究，修复两层语义证据保留顺序（阶段记录）
+
+- 交叉读取Z Code主会话/末端actor和487工具记录，恢复原8脚本/11JSON，未移动、暂存、覆写或清理；原工作流因GLM额度1005取消，本轮Agent/Judge此前0消耗。恢复与状态保存在research/agent-quality-20261029。
+- 复用51个ANN pool，基准逐项匹配原输出；semantic retrieval容量裁剪按literal→rank保留，外部仍时间序，100条边界不变。最高dense排名整块丢失19→0、capability目标8→18（+10/-0）。R1的26条S3经正式canonical区间核实7真损失/6仅parent/13数值区间误判。
+- R2真实16Run暴露Host再次按时间尾裁：真实Envelope10933预算下目标已到Capability，却未到模型；贯穿primary优先序后75→80条、目标0→1。51调用同Envelope独立Host对照，48可比较、3两侧均控制预算不足，GT模型可见10→14（+4/-0），不合并为全链路召回率或准确率。实现改retrieval.py/evidence.py，无新检索组件、重试、预算扩张或解析兼容。
+- 纠正测量：原64首轮模型输入64/64已有时间锚；52个time/scope诊断辅助拆为41范围/4来源日期/7历史当当前。02b理由有误但属性要求仍未满足，未改旧分数；R1来源相交非语义采用，13/14为辅助复核非人工，1.31非严格tokenizer测量。
+- 初版研究计数器漏过安装SDK的httpx2，立即中断并从原Trace恢复9次HTTP（含2未完成流）；补记并新增默认SDK真实client类的Mock回归，计数器同时覆盖实际httpx2与OAuth httpx。R2累计73实际DeepSeekHTTP，Baseline8/8/Candidate7/8，另1 Case10未转义引号在Unicode295失败，不补跑、不放宽解析；15份完成答案的v2.1 Judge正在补齐。错误、计数修复、工作库及Trace均保留。
+- 全量1398 passed/1 skipped（37.49s）、相关43通过、Ruff与Mypy148源码、diff检查通过。e5f53ac4/56cfd2c5仅本地提交，原R1未跟踪材料不混入提交；干净codex实验worktree用于正式门禁，固定Suite合同未放松。后续完成R6真实对照和评审，再更新最终结论；目前不主张总体答案质量提升。

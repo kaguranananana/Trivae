@@ -38,9 +38,14 @@ async def main():
     connection = sqlite3.connect(f"file:{FROZEN_DB}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     prepared = []
+    excluded = []
     try:
         for item in manifest["runs"]:
             run = module._load_run(args.record_dir / "evaluation.sqlite3", item["run_id"])
+            if run.terminal_status != "completed":
+                excluded.append({"run_id": run.run_id, "terminal_status": run.terminal_status,
+                                 "reason": "No completed answer; do not invent a Judge review"})
+                continue
             payload, limitations = module.prepare_projection_input(
                 run=run, record_dir=args.record_dir, database=FROZEN_DB,
                 bundle_dir=BUNDLE, snapshot=snapshot, connection=connection,
@@ -49,9 +54,11 @@ async def main():
     finally:
         connection.close()
     if args.dry_run:
-        print(json.dumps({"eligible": len(prepared), "projection_limitations": [p[2] for p in prepared]}))
+        print(json.dumps({"eligible": len(prepared), "excluded": excluded,
+                          "projection_limitations": [p[2] for p in prepared]}))
         return
     args.output.mkdir(parents=True, exist_ok=False)
+    (args.output / "excluded-runs.json").write_text(json.dumps(excluded, indent=2) + "\n")
     load_environment_file(None)
     settings = load_settings(model_id="gpt-plus", role="judge", config_path=ROOT / "config/models.yaml")
     assert settings.provider == "chatgpt-plan", "Judge must use the authorized OAuth profile"

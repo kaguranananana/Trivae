@@ -17,6 +17,7 @@ from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
 
+from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
 from trivae.data.storage.sqlite_read import SQLiteCanonicalReadRepository
 from trivae.retrieval.semantic.contracts import SemanticIndexCandidate, SemanticIndexIdentity, SemanticQuery
 from trivae.retrieval.semantic.retrieval import SemanticRetrieval
@@ -67,6 +68,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-ref", default="003642b3")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--host-projection", action="store_true", help="Compare old/new Host on the same ranked envelope")
     args = parser.parse_args()
     old_class = baseline_class(args.baseline_ref)
     calls = json.loads((RESEARCH / "rounds/outputs/replay-calls.json").read_text())
@@ -77,6 +79,7 @@ def main():
         for item in json.loads((STUDY / f"source-map-{arm}.json").read_text())["selected"]:
             maps[item["run_id"]] = item["source"]
     requests = {}
+    runtime_calls = {}
     for cid, case in study["cases"].items():
         for arm, runs in case["runs"].items():
             for idx, run in enumerate(runs):
@@ -85,6 +88,12 @@ def main():
                 events = json.loads((ROOT / trace).read_text())["timeline"]
                 requests[f"{arm}{idx}-{cid}"] = [
                     e["payload"]["request"] for e in events
+                    if e["operation"] == "tool.call.started" and e["payload"]["tool_name"] == "semantic_search"
+                ]
+                completed = {e["payload"]["tool_call_id"]: e["payload"] for e in events
+                             if e["operation"] == "runtime.tool.completed"}
+                runtime_calls[f"{arm}{idx}-{cid}"] = [
+                    completed[e["operation_id"]] for e in events
                     if e["operation"] == "tool.call.started" and e["payload"]["tool_name"] == "semantic_search"
                 ]
     repo = SQLiteCanonicalReadRepository(FROZEN / "trivae.sqlite3")
@@ -119,11 +128,20 @@ def main():
     stats = Counter()
     output = []
     positions = Counter()
+    host_stats = Counter()
+    host_rows = []
+    if args.host_projection:
+        from probe_host_budget import baseline_module
+
+        import trivae.query.evidence as new_host
+
+        old_host = baseline_module()
     for call in calls:
         if call["tool"] != "semantic":
             continue
         label = call["label"]
         request = requests[label][positions[label]]
+        runtime = runtime_calls[label][positions[label]]
         positions[label] += 1
         candidates = []
         for saved in call["pool_rows"]:
@@ -144,6 +162,49 @@ def main():
         assert old.hits == new.hits, "Candidate must not change selected chunks"
         assert len(new_ids) <= 100
         gt = evidence_by_case[call["case"]]
+        if args.host_projection:
+            envelope = ToolEnvelope(
+                status="partial" if new.partial else "ok", data=new,
+                meta={"truncated": new.truncated, "total_hits": new.total_hits,
+                      "returned_messages": new.returned_messages}, error=None,
+            )
+            visible_by_arm = {}
+            metrics_by_arm = {}
+            projection_errors = {}
+            budget = runtime["tool_result_budget"]["effective_per_call_tool_result_budget"]
+            for arm_name, module in [("old", old_host), ("new", new_host)]:
+                record = module.build_tool_result_record(
+                    run_id=runtime["run_id"], tool_call_id=runtime["tool_call_id"],
+                    tool_result_id=f"{runtime['tool_call_id']}/result", tool_name="semantic_search",
+                    envelope=envelope, scope=ExecutionScope(max_results=100),
+                )
+                try:
+                    payload = module.project_tool_result_for_model(envelope, record, token_budget=budget)
+                except module.ToolResultProjectionError as exc:
+                    # Some recorded calls had only enough budget for a control error.
+                    # Keep this outcome explicit; never treat it as an empty retrieval.
+                    projection_errors[arm_name] = str(exc)
+                    visible_by_arm[arm_name] = set()
+                    continue
+                handles = module._projected_source_ids(payload["data"])
+                visible_by_arm[arm_name] = {
+                    item.message.internal_message_id for i, item in enumerate(record.message_items)
+                    if f"m{record.model_scope_id}-{i + 1}" in handles
+                }
+                metrics_by_arm[arm_name] = payload["model_projection"]
+            before, after = visible_by_arm["old"], visible_by_arm["new"]
+            host_stats["calls"] += 1
+            host_stats["comparable_calls"] += not projection_errors
+            host_stats["old_projection_errors"] += "old" in projection_errors
+            host_stats["new_projection_errors"] += "new" in projection_errors
+            host_stats["changed_calls"] += before != after
+            host_stats["old_gt_occurrences"] += len(gt & before)
+            host_stats["new_gt_occurrences"] += len(gt & after)
+            host_stats["gained_gt_occurrences"] += len((gt & after) - before)
+            host_stats["lost_gt_occurrences"] += len((gt & before) - after)
+            host_rows.append({"label": label, "budget": budget, "old_ids": sorted(before), "new_ids": sorted(after),
+                              "gained_gt": sorted((gt & after) - before), "lost_gt": sorted((gt & before) - after),
+                              "metrics": metrics_by_arm, "projection_errors": projection_errors})
         cores = []
         for hit in old.hits:
             candidate = next(c for c in candidates if c.chunk_id == hit.chunk_id)
@@ -172,8 +233,10 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x") as stream:
         json.dump({"baseline_ref": args.baseline_ref, "stats": dict(stats), "gt_corrections": corrections,
-                   "calls": output}, stream, ensure_ascii=False, indent=2)
+                   "calls": output, "host_stats": dict(host_stats), "host_calls": host_rows}, stream, ensure_ascii=False, indent=2)
     print(json.dumps(dict(stats), indent=2))
+    if args.host_projection:
+        print("Host comparison:", json.dumps(dict(host_stats), indent=2))
 
 
 if __name__ == "__main__":

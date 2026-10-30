@@ -10,3 +10,11 @@
 - Q9已有数字：B工具4.75→4.19、正文2326→2403字符、输出4289→4394 token。不支持“B只是回答更短”解释；观察到检索行为量差异，不把相关性升级成Prompt引起遗漏的因果结论。
 
 决策：不以修改评测标准获取分数增益；保留时间/范围诊断细节，优先验证R2已有可复现工程断层。累计DeepSeek0/250、Judge0/32。
+
+## Q8假设进一步证伪：时间锚已送达模型
+
+新脚本audit_time_context.py读取原64Run的第一条model.turn/model_visible_context，64/64都有“本次查询的参考时间为2026-10-28T12:00:00+08:00”。源码runner.py:170–183本来就把Case.time_context注入recent_messages。此前只搜SYSTEM_PROMPT/动态instructions而推断“模型缺少查询时点”是不完整的链路分析；本轮不重复注入已存在的信息，不花模型预算验证重复时间锚。原静态观察保留，但其推论被实际请求输入否定。
+
+## R4：严格事实覆盖与来源存在分开
+
+audit_failure_stages.py复用原coverage labels，148个适用criterion/run pair：A覆盖38/74，B33/74（按事实加权，与原报告Case等权52.8%/45.9%不是同一指标）；未覆盖但目标已在答案source的A3/B4，已在replayed capability但模型可见性不全的A3/B3，剩余A30/B34未在所重放lexical/semantic结果观察到目标。后者不能直接标成FTS缺陷，因为还可能涉及其他context工具、已知来源之外的替代证据或问题中的认知属性。输出保留v1/v2草稿，v2显式支持无固定target ID的标准（本批未触发）。这再次否定R1把来源ID相交叫作语义采用的口径。

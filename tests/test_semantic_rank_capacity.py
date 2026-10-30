@@ -5,6 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from tests.test_semantic_retrieval import _DeterministicProvider
+from trivae.capabilities.contracts import ExecutionScope, ToolEnvelope
+from trivae.query.evidence import build_tool_result_record, project_tool_result_for_model
 from trivae.retrieval.semantic.contracts import SemanticIndexCandidate, SemanticQuery
 from trivae.retrieval.semantic.retrieval import SemanticRetrieval
 from trivae.retrieval.structured import MessageProjection
@@ -68,3 +70,17 @@ def test_semantic_capacity_preserves_rank_before_chronological_display(literal_i
         assert result.hits[0].dense_rank == 12
     else:
         assert "s:m0" not in ids
+
+    envelope = ToolEnvelope(status="partial", data=result, meta={"truncated": True}, error=None)
+    record = build_tool_result_record(
+        run_id="rank-test", tool_call_id="rank-test/tool-call/1", tool_result_id="rank-test/result",
+        tool_name="semantic_search", envelope=envelope, scope=ExecutionScope(max_results=100),
+    )
+    projected = project_tool_result_for_model(envelope, record, token_budget=5000)
+    by_handle = {f"m{record.model_scope_id}-{i + 1}": item.message.internal_message_id
+                 for i, item in enumerate(record.message_items)}
+    visible = {by_handle[source["source_id"]] for source in projected["provenance"]["message_sources"]}
+    assert projected["model_projection"]["omitted_hit_messages"] > 0
+    assert {f"s:m{i}" for i in range(110, 120)} <= visible
+    if literal_in_oldest:
+        assert "s:m0" in visible
