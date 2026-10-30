@@ -88,3 +88,14 @@
 - `.gitignore` 中无 `research` 相关条目（`grep -n -E "research|evaluation/experiments" .gitignore` 无匹配，exit=1）。
 - `git check-ignore -v research/agent-quality-20261029/budget.json research/agent-quality-20261029/STATE.md` exit=1：**未被忽略**。
 - `git status --porcelain` 显示 `?? research/`：目录为未跟踪状态，**研究文档可以随本分支提交**。
+
+## Codex接管续记 · 2026-10-30（覆盖上文过时的“下一步”）
+
+- 恢复事实见RECOVERY-20261030.md；Z Code R1已有八脚本/十一JSON，原件保留，未重新初始化工作流。当前无其他在跑的实验。
+- R2容量断层：两项真实机制回归先红后绿；候选只把字面之外核心的保留顺序从时间改为检索排名，容量仍100、外部顺序仍时间。51次保存ANN池的精确离线A/B进行中，复用旧embedding；先前单独baseline审计因与配对审计重复而停止，无结果冒充完成。
+- 当前完整验证1395 passed/1 skipped（39.64s）、Ruff通过、Mypy148源码通过、diff检查通过。候选尚未获答案质量验证，不标总体有效。
+- R3已完成：评测信号口径审计，见R3-results.md。02b原rationale不准确但冻结属性要求仍未满足，未改原分数；52条time/scope辅助分类41范围/4来源日期/7历史当当前，停止“统一日期锚定可解决52条”假设；R1 L6非语义采用、Q4非人工裁决、Q5非精确tokenizer。
+- 预算从本轮会话/文件交叉恢复为已用0 Agent、0 Judge，剩余250/32；HTTP准入计数脚本以MockTransport验证失败计数和超额前拒绝，通过，未产生真实网络请求。后续每次实际推理HTTP先登记并扣减；最终状态以budget.json+LEDGER+ignored http-events.jsonl核对。
+- 不自动push/合并/部署。不暂存Z Code已有rounds文件。下一步等待51次离线配对结束，若已知目标无退化且净增，再启动小规模真实对照。
+
+R2离线最终：51/51 baseline与原件一致，1007 selected chunk完全相同；top dense rank整块丢失19→0，GT消息按调用出现8→18（+10/-0），literal IDs无变化。26条旧S3精确核验7真容量损失/6仅parent/13数字区间误判。真实入口两次本地预检（固定eval合同、dirty Git）失败，均0HTTP；准备在本地阶段提交的干净worktree继续。预算仍250/32。
