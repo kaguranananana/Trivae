@@ -99,3 +99,5 @@
 - 不自动push/合并/部署。不暂存Z Code已有rounds文件。下一步等待51次离线配对结束，若已知目标无退化且净增，再启动小规模真实对照。
 
 R2离线最终：51/51 baseline与原件一致，1007 selected chunk完全相同；top dense rank整块丢失19→0，GT消息按调用出现8→18（+10/-0），literal IDs无变化。26条旧S3精确核验7真容量损失/6仅parent/13数字区间误判。真实入口两次本地预检（固定eval合同、dirty Git）失败，均0HTTP；准备在本地阶段提交的干净worktree继续。预算仍250/32。
+
+2026-10-30真实首批接线修复：httpx2默认SDK漏计，立即停止；从保留工作库逐请求确认并追记9HTTP，含2中断流；剩余241/32。原始interruption-traces和request-count-recovery.json保留在Codex ignored目录，Baseline08有1个完成Run可复用，其余中断不评分。计数器修复覆盖实际httpx2+httpx，3回归通过，后续不再复跑已完成Baseline08重复1。独立干净实验worktree位于~/.codex/worktrees/trivae-agent-quality-20261030，保留源R1文件不动；正式数据工作库仍由EvaluationWorkspace管理。

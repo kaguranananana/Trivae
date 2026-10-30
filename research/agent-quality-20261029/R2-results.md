@@ -19,3 +19,11 @@
 补充精确S3核验：audit_projection_gaps.py逐项复核Z Code的26条S3记录，正式canonical区间证明7条为真实core容量损失、6条仅在parent但不在selected child、13条为数字区间假阳性。由此保留Z Code末端“7条真断层”的发现，否定把26条都当投影Bug。该离线精确核验0模型请求。
 
 第二次真实入口预检两臂因工作区包含原始R1未跟踪材料及本轮改动，被干净Git门禁拒绝；未形成Run/HTTP，原日志保留。已完成的代码与确定性验证可创建本地阶段提交；使用该提交的独立干净实验worktree继续，原始R1文件不移动/不暂存，不关闭该门禁。
+
+## 首批真实调用中断与计数恢复
+
+干净实验worktree=e5f53ac4，独立Suite/原Case与GT/冻结库。CLI全局env-file位置错误的本地预检两份日志也保留，0HTTP；更正为eval级参数后启动首批。发现Trace有HTTP而账本未扣，立即SIGINT两侧。根因是安装的OpenAI SDK默认client继承httpx2.AsyncClient，初版计数器只包httpx；原Mock显式替换为httpx而漏测真实默认类。修复同时覆盖实际SDK的httpx2和OAuth的httpx，新增默认SDK client与两套失败/预算阻止回归，3 passed。SDK测试初稿把最后一个配额误期待为001，按250总额修正fixture为首个配额，并保留扣减和唯一账本断言。
+
+从两侧APFS保留工作库恢复3条完整/部分Trace，按Router已完成Usage、Runtime model.turn及已返回tool.call证明逐请求确认9次HTTP（Baseline6、Candidate3），其中2个流中断也计入；max_retries=0，无未见响应的孤立request-start。追记九行账本，剩余241/32。原导出Trace不足的部分直接从保留库原始trace_events逐条导出到interruption-traces，不覆写旧Run。
+
+Baseline Case08重复1已完成，保留并复用；Baseline重复2和Candidate重复1没有完整答案，保留为中断尝试，不当作答案失败率或质量评分。完成后续模型计划前以已重建账本为基准，计数器覆盖真实默认SDK后才恢复。

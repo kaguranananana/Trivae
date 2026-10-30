@@ -8,6 +8,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import httpx
+import httpx2
 
 RESEARCH = Path(__file__).resolve().parent
 
@@ -54,38 +55,45 @@ def install_meter(role: str, label: str, output: Path, *, research: Path = RESEA
                "label": label, "host": request.url.host, "path": request.url.path})
         return request_id
 
-    async_send = httpx.AsyncClient._send_single_request
-    sync_send = httpx.Client._send_single_request
-
-    async def metered_async(client, request):
-        request_id = admit(request)
-        try:
-            response = await async_send(client, request)
-        except Exception as exc:
+    def wrap_async(send):
+        async def metered_async(client, request):
+            request_id = admit(request)
+            try:
+                response = await send(client, request)
+            except Exception as exc:
+                if request_id:
+                    event({"event": "transport_failed", "id": request_id, "type": type(exc).__name__})
+                raise
             if request_id:
-                event({"event": "transport_failed", "id": request_id, "type": type(exc).__name__})
-            raise
-        if request_id:
-            event({"event": "headers_received", "id": request_id, "status": response.status_code})
-        return response
+                event({"event": "headers_received", "id": request_id, "status": response.status_code})
+            return response
+        return metered_async
 
-    def metered_sync(client, request):
-        request_id = admit(request)
-        try:
-            response = sync_send(client, request)
-        except Exception as exc:
+    def wrap_sync(send):
+        def metered_sync(client, request):
+            request_id = admit(request)
+            try:
+                response = send(client, request)
+            except Exception as exc:
+                if request_id:
+                    event({"event": "transport_failed", "id": request_id, "type": type(exc).__name__})
+                raise
             if request_id:
-                event({"event": "transport_failed", "id": request_id, "type": type(exc).__name__})
-            raise
-        if request_id:
-            event({"event": "headers_received", "id": request_id, "status": response.status_code})
-        return response
+                event({"event": "headers_received", "id": request_id, "status": response.status_code})
+            return response
+        return metered_sync
 
-    httpx.AsyncClient._send_single_request = metered_async
-    httpx.Client._send_single_request = metered_sync
+    # Installed OpenAI SDK defaults to httpx2; OAuth uses httpx. Both are actual
+    # active transports, not speculative compatibility paths.
+    originals = []
+    for library in (httpx, httpx2):
+        originals.append((library, library.AsyncClient._send_single_request, library.Client._send_single_request))
+        library.AsyncClient._send_single_request = wrap_async(originals[-1][1])
+        library.Client._send_single_request = wrap_sync(originals[-1][2])
 
     def restore():
-        httpx.AsyncClient._send_single_request = async_send
-        httpx.Client._send_single_request = sync_send
+        for library, async_send, sync_send in originals:
+            library.AsyncClient._send_single_request = async_send
+            library.Client._send_single_request = sync_send
 
     return restore

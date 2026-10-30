@@ -17,3 +17,17 @@
 ## 登记记录
 
 （暂无。今晚第一次真实请求发生后，从此处开始追加行。）
+
+### 2026-10-30 计数器接线修复前的追记（非预扣；如实保留失误）
+
+OpenAI SDK使用httpx2，初版只计httpx；发现后立即SIGINT两侧，保留工作库及partial Trace。按三个完整/部分Trace的Router Usage与已返回工具调用逐请求重建9次；两个未完流也计入，0重试，无只开始未见响应的未知请求。证据request-count-recovery.json及interruption-traces。
+
+| 2026-10-30T10:23:14+08:00 | Codex R2 | recovered-agent-001/baseline/router | DeepSeek deepseek-flash | 1 | {"cached_input_tokens": 128, "input_tokens": 352, "output_tokens": 337, "reasoning_tokens": 266, "total_tokens": 689} | n/a | completed; trace-abd175fb11aa4c5a9333472c2e9facd9 sequence 5 |
+| 2026-10-30T10:23:15+08:00 | Codex R2 | recovered-agent-002/baseline/agent_stream | DeepSeek deepseek-flash | 1 | {"cached_input_tokens": 10368, "input_tokens": 10520, "output_tokens": 232, "requests": 1, "total_tokens": 10752} | n/a | completed; trace-abd175fb11aa4c5a9333472c2e9facd9 sequence 7 |
+| 2026-10-30T10:24:07+08:00 | Codex R2 | recovered-agent-003/baseline/agent_stream | DeepSeek deepseek-flash | 1 | {"cached_input_tokens": 5632, "input_tokens": 38858, "output_tokens": 2367, "requests": 1, "total_tokens": 41225} | n/a | completed; trace-abd175fb11aa4c5a9333472c2e9facd9 sequence 24 |
+| 2026-10-30T10:24:24+08:00 | Codex R2 | recovered-agent-004/baseline/router | DeepSeek deepseek-flash | 1 | {"cached_input_tokens": 128, "input_tokens": 352, "output_tokens": 218, "reasoning_tokens": 156, "total_tokens": 570} | n/a | completed; trace-fc49426027274db6be32efaadeb7d4ed sequence 5 |
+| 2026-10-30T10:24:24+08:00 | Codex R2 | recovered-agent-005/baseline/agent_stream | DeepSeek deepseek-flash | 1 | {"cached_input_tokens": 10368, "input_tokens": 10520, "output_tokens": 543, "requests": 1, "total_tokens": 11063} | n/a | completed; trace-fc49426027274db6be32efaadeb7d4ed sequence 7 |
+| 2026-10-30T10:25:13+08:00 | Codex R2 | recovered-agent-006/baseline/agent_stream | DeepSeek deepseek-flash | 1 | unknown（partial stream） | n/a | interrupted_after_streamed_tool_calls; trace-fc49426027274db6be32efaadeb7d4ed sequence 23 |
+| 2026-10-30T10:23:15+08:00 | Codex R2 | recovered-agent-007/candidate/router | DeepSeek deepseek-flash | 1 | {"cached_input_tokens": 128, "input_tokens": 352, "output_tokens": 359, "reasoning_tokens": 290, "total_tokens": 711} | n/a | completed; trace-46742347d7ed4cc78cbd45472cf8c0aa sequence 5 |
+| 2026-10-30T10:23:15+08:00 | Codex R2 | recovered-agent-008/candidate/agent_stream | DeepSeek deepseek-flash | 1 | {"cached_input_tokens": 10368, "input_tokens": 10520, "output_tokens": 255, "requests": 1, "total_tokens": 10775} | n/a | completed; trace-46742347d7ed4cc78cbd45472cf8c0aa sequence 7 |
+| 2026-10-30T10:24:08+08:00 | Codex R2 | recovered-agent-009/candidate/agent_stream | DeepSeek deepseek-flash | 1 | unknown（partial stream） | n/a | interrupted_after_streamed_tool_calls; trace-46742347d7ed4cc78cbd45472cf8c0aa sequence 23 |
