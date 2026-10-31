@@ -2198,6 +2198,15 @@ def project_tool_result_for_model(
         }
         slots.sort(key=lambda slot: slot[1]["source_id"] not in reply_handles)
     literal_ids = _semantic_literal_ids(envelope.data) if isinstance(envelope.data, SemanticRetrievalResult) else set()
+    if isinstance(envelope.data, SemanticRetrievalResult):
+        # 上游已按字面证据/检索排名保留核心；预算裁剪继续此优先序，展示仍沿 canonical 顺序。
+        primary_rank = {message_id: rank for rank, message_id in enumerate(envelope.data.primary_message_ids)}
+        source_rank = {
+            f"m{record.model_scope_id}-{index + 1}": primary_rank[item.message.internal_message_id]
+            for index, item in enumerate(record.message_items)
+            if item.message.internal_message_id in primary_rank
+        }
+        slots.sort(key=lambda slot: source_rank.get(str(slot[1]["source_id"]), len(primary_rank)))
     # 已核验命中保留最初的有界原文；否则先缩到 32 字再省略其他来源会丢掉正文中段的查询词。
     protected_source_ids = {
         f"m{record.model_scope_id}-{index + 1}"

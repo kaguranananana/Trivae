@@ -149,6 +149,7 @@ class SemanticRetrieval:
         recovered_ranges: list[ContextRange] = []
         accepted_message_ids: set[str] = set()
         preferred_message_ids: dict[str, None] = {}
+        ranked_message_ids: dict[str, None] = {}
         for recovered in ranked_candidates:
             candidate = recovered.candidate
             messages = recovered.messages
@@ -158,6 +159,7 @@ class SemanticRetrieval:
             if message_ids <= accepted_message_ids:
                 continue
             accepted_message_ids.update(message_ids)
+            ranked_message_ids.update(dict.fromkeys(message.internal_message_id for message in matching_messages))
             # 按重排后的候选和 occurrence 顺序保存真实字面证据，后续容量裁剪优先保留它们。
             preferred_message_ids.update(dict.fromkeys(recovered.literal_message_ids))
             # 邻居窗口的两端必须是真实命中，避免拿其他发送者作为受限 context 的 anchor。
@@ -197,7 +199,8 @@ class SemanticRetrieval:
             # 保留 semantic 的 bounded context 语义，同时不越过 ToolResultRecord 的 item bound。
             limit=min(max(limit, limit * 32), MAX_CONTEXT_EXPANSION_MESSAGES),
             scope=query,
-            preferred_primary_message_ids=tuple(preferred_message_ids),
+            # 字面证据优先，其余核心沿用检索排名；时间排序只用于展示，不能反向淘汰高排名命中。
+            preferred_primary_message_ids=tuple(dict.fromkeys((*preferred_message_ids, *ranked_message_ids))),
             # 请求上下文时，语义命中的明确回复与词法命中使用相同的关系恢复策略。
             include_direct_replies=True,
         )
@@ -280,8 +283,8 @@ class SemanticRetrieval:
             ),
             primary_message_ids=literal_message_ids + tuple(
                 message_id
-                for message_id in primary_message_ids
-                if message_id not in literal_ids
+                for message_id in ranked_message_ids
+                if message_id in primary_message_ids and message_id not in literal_ids
             ),
         )
 
