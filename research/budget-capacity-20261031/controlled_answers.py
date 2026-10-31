@@ -176,11 +176,29 @@ async def run(args):
     def wrap(send):
         async def capture(client, request):
             if request.method == "POST" and request.url.path.endswith("/chat/completions"):
-                ordinal[0] += 1
                 body = json.loads(request.content)
+                # Scripted prefix turns generated no reasoning. DeepSeek requires
+                # the field on assistant tool turns even in this no-tools final
+                # request. Explicit empty fields describe that fixture truthfully;
+                # never invent reasoning or alter real Provider turns.
+                for message in body["messages"]:
+                    if message.get("role") == "assistant" and message.get("tool_calls"):
+                        assert "reasoning_content" not in message
+                        message["reasoning_content"] = ""
+                content = json.dumps(body, ensure_ascii=False).encode()
+                headers = dict(request.headers)
+                headers["content-length"] = str(len(content))
+                request = type(request)(request.method, request.url, headers=headers,
+                                        content=content, extensions=request.extensions)
+                ordinal[0] += 1
                 assert len(request.content) + body.get("max_tokens", 16384) + 10000 < 1000000, "input/output exceeds verified context"
                 write(args.output / f"request-{ordinal[0]:03}.json", body)
-            return await send(client, request)
+            response = await send(client, request)
+            if response.status_code >= 400:
+                await response.aread()
+                write(args.output / f"http-error-{ordinal[0]:03}.json", {"status": response.status_code,
+                                                                     "body": response.text})
+            return response
         return capture
     for lib in (httpx, httpx2):
         lib.AsyncClient._send_single_request = wrap(lib.AsyncClient._send_single_request)
@@ -242,6 +260,8 @@ async def run(args):
                                         "artifact": json.loads(serialize_answer_artifact(final.artifact)) if final.artifact else None})
             write(out / "events.json", events)
             print(f"{args.pool} {case.case_id} {result.termination} {result.usage}", flush=True)
+            if result.error is not None and result.error.diagnostic_type == "BadRequestError":
+                raise RuntimeError("Provider rejected the experimental protocol; stop before the next case")
         finally:
             await runtime.aclose()
 
