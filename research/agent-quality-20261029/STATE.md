@@ -2,6 +2,10 @@
 
 分支：`research/agent-quality-20261029`（自 main 创建）。状态目录：`research/agent-quality-20261029/`。
 
+## 版本归档与远端同步（2026-10-31）
+
+用户已授权提交并推送最近研究成果，目标为当前分支的origin/research/agent-quality-20261029；不合并main、不部署。七份不含内嵌群聊原文的R1脚本按原文归档，说明见[rounds/README.md](rounds/README.md)。原Q4脚本、十一份JSON及计数锁原位保留并纳入忽略规则；没有清理或重写原始研究文件。下文“原19文件未跟踪”“未推送”描述的是10月30日收尾时的历史状态，当前同步情况以Git为准。没有新增实验或模型请求，预算仍128/6。
+
 ## 最新结论与恢复入口（2026-10-30，本轮已收束）
 
 - 完整交付：[REPORT.md](REPORT.md)；面试材料在根interview-docs目录。Z Code原R1的8脚本/11JSON仍未跟踪且未编辑/暂存，11份JSON尺寸与接管清单相同。

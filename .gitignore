@@ -46,6 +46,11 @@ data/*.sqlite3-shm
 data/*.sqlite3.import-once.lock
 # 真实 retrieval packet/标签/审计队列包含私有聊天正文，只允许本地保存。
 data/evaluation/
+# Agent质量研究的原始重放结果与内嵌群聊原文的裁决脚本仅本地保留。
+research/agent-quality-20261029/rounds/outputs/
+research/agent-quality-20261029/rounds/scripts/R1_q4_adjudication.py
+# 实验HTTP计数器的进程锁不是研究结果。
+research/agent-quality-20261029/.request-meter.lock
 # TUI /export 产出包含会话与聊天内容，仅本地保存。
 data/exports/
 # 日报正文、模型输入及邮件状态包含私有群聊材料，只在本机保存。
