@@ -13,7 +13,8 @@ from trivae.retrieval.structured import MessageProjection
 
 
 @pytest.mark.parametrize("literal_in_oldest", [False, True])
-def test_semantic_capacity_preserves_rank_before_chronological_display(literal_in_oldest):
+@pytest.mark.parametrize("expansion_limit", [100, 200, 500])
+def test_semantic_capacity_preserves_rank_before_chronological_display(literal_in_oldest, expansion_limit):
     messages = tuple(MessageProjection(
         internal_message_id=f"s:m{i}", session_id="s", source_message_id=f"m{i}",
         sender_user_id="u", sender_platform_id=None, sender_uin=None, sender_name="User",
@@ -57,19 +58,20 @@ def test_semantic_capacity_preserves_rank_before_chronological_display(literal_i
                 message_count=10, effective_chars=160, distance=rank / 100, dense_rank=rank,
             ) for rank in range(1, 13))
 
-    retrieval = SemanticRetrieval(Repository(), Store(), _DeterministicProvider(), database_identity="test")
+    retrieval = SemanticRetrieval(Repository(), Store(), _DeterministicProvider(), database_identity="test", expansion_message_limit=expansion_limit)
     result = retrieval.search(SemanticQuery(query="question", limit=12, context_before=0, context_after=0))
     ids = {m.internal_message_id for m in result.expanded_messages}
-    assert len(ids) == 100
+    assert len(ids) == min(120, expansion_limit)
     assert {f"s:m{i}" for i in range(110, 120)} <= ids
-    assert result.partial and result.truncated
+    assert result.partial == (expansion_limit == 100)
+    assert result.truncated == (expansion_limit == 100)
     assert len(result.hits) == 12
     assert list(result.expanded_messages) == sorted(result.expanded_messages, key=lambda m: m.timestamp)
     if literal_in_oldest:
         assert "s:m0" in ids
         assert result.hits[0].dense_rank == 12
     else:
-        assert "s:m0" not in ids
+        assert ("s:m0" in ids) == (expansion_limit > 100)
 
     envelope = ToolEnvelope(status="partial", data=result, meta={"truncated": True}, error=None)
     record = build_tool_result_record(

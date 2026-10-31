@@ -8,7 +8,6 @@ from time import perf_counter
 
 from trivae.config.limits import MAX_AUTOMATIC_CONTEXT_SOURCE_HITS
 from trivae.retrieval.context import (
-    MAX_CONTEXT_EXPANSION_MESSAGES,
     ContextExpander,
     ContextRange,
 )
@@ -62,7 +61,11 @@ class SemanticRetrieval:
         database_identity: str,
         chunker: SemanticChunker | None = None,
         context_expander: ContextExpander | None = None,
+        expansion_message_limit: int = 100,
     ) -> None:
+        if expansion_message_limit <= 0:
+            raise ValueError("semantic expansion_message_limit must be positive")
+        self.expansion_message_limit = expansion_message_limit
         self.repository = repository
         self.store = store
         self.provider = provider
@@ -197,7 +200,7 @@ class SemanticRetrieval:
             before=query.context_before,
             after=query.context_after,
             # 保留 semantic 的 bounded context 语义，同时不越过 ToolResultRecord 的 item bound。
-            limit=min(max(limit, limit * 32), MAX_CONTEXT_EXPANSION_MESSAGES),
+            limit=min(max(limit, limit * 32), self.expansion_message_limit),
             scope=query,
             # 字面证据优先，其余核心沿用检索排名；时间排序只用于展示，不能反向淘汰高排名命中。
             preferred_primary_message_ids=tuple(dict.fromkeys((*preferred_message_ids, *ranked_message_ids))),
