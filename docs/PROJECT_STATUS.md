@@ -19,7 +19,7 @@ Trivae 将 QQ 群聊导入、检索、Agent 调查和来源回溯接成一个本
 - **两次运行失败排查**：2026-10-29 重放 Case 03（长任务跨会话进度）的保存正文，确认未转义引号使 JSON 在 Unicode 偏移 40 失败，标准解析器与增量解析器一致；Provider 非法输出尚未通过真实重跑验证解决。Case 14 在检索前发生两阶段 `APIStatusError`，原 HTTP 状态不可恢复。已补齐兼容 Provider 流建立前及 Router/Planner completion 的状态、请求 ID 和错误分类观测；未新增重试、放宽解析或改 Baseline。见[排查记录](EVAL_RUNTIME_FAILURES_20261029.md)。
 - **当前主 Prompt**：2026-10-29 用户人工比较回答后，采纳了四行证据强度与来源范围约束。6 Case Candidate/Baseline 对照两侧各完成 6/6；模型辅助 Review 指出 Case 07/12 有局部改善、Case 10 漏掉手机远控 Codex/微信实践、Case 01 仍有范围/因果外推。用户选择采纳不等于六题实验证明总体质量提升；这些结果及取舍均保留在 [开发日志](DEVLOG.md) 与 [Evaluation 说明](evaluation.md)。
 - **正式 Prompt A/B 评测（2026-10-29）**：Eval v1 全部16题、A/B各两次，共64个有效 Agent 运行与64份 Judge v2.1 Review；复用22个历史 Run 和22份 Review，新增42个有效 Agent 结果、42次 Judge，另有2次预算耗尽尝试各重跑一次并保留失败 Trace。按固定门槛，任务完成率 A/B 均为9/32（28.1%）；关键事实覆盖率52.8%→45.9%（-6.9个百分点），未验证 Candidate B 带来总体质量提升。Case 14 有局部改善，Case 10/12 有事实遗漏。完整报告及逐项覆盖审定在本机 ignored `data/evaluation/prompt-ab-eval-v1-20261029/REPORT.md`，原始 Run、Trace、Judge 与来源映射也留在该目录。
-- **最近一次完整代码验证记录**：本次失败诊断修复后 1393 passed / 1 skipped（38.18s），Ruff、148 个源码文件的 Mypy 与 diff 检查通过；记录见 [运行失败排查](EVAL_RUNTIME_FAILURES_20261029.md)及[开发日志](DEVLOG.md)。该记录是代码验证，不是答案质量评测。
+- **最近一次完整代码验证记录**：2026-10-31选择性合入与文档清理后，main完整测试1395 passed / 1 skipped（37.82s），Ruff、Mypy（148源码文件）与diff检查通过。独立预算研究分支为1402 passed / 1 skipped（39.42s）；这些是代码验证，不是答案准确率。
 
 ## R2 / R6 产品修复（2026-10-31）
 
