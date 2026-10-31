@@ -109,4 +109,6 @@ uv run python research/budget-capacity-20261031/controlled_answers.py run --plan
 
 - DeepSeek新增11次推理HTTP尝试：6次实验夹具/诊断400，5次正式合成；累计133/250，剩117。Judge新增2次推理HTTP尝试：1成功、1ConnectError；累计28/32，剩4。恢复评审的模型目录GET失败独立记录，不冒充推理POST。新HTTP、Usage、161条累计账本及余额一致，旧148条账本前缀逐字未变。
 - 私有新输出保留所有失败、标准JSON错误定位、Claim审阅材料和请求正文。成功APFS库按生命周期回收；初次准备失败的本任务工作库`run-29fisd_l`在保存失败清单与修正后plan/结果后，通过EvaluationWorkspace标记持久化再回收。没有清理其他工作区、历史实验、master、原Trace或个人文件。
-- 研究分支完整测试1402 passed / 1 skipped（39.42s），相关50 passed；Ruff、Mypy148、diff检查通过。main产品合入验证1395 passed / 1 skipped，代码与最终检查以Git记录为准。
+- 研究分支完整测试1402 passed / 1 skipped（39.42s），相关50 passed；Ruff、Mypy148、diff检查通过。main最终再次完整验证1395 passed / 1 skipped（37.82s），Ruff与Mypy148通过；文档摘要及验证记录已推送main。
+
+- 原研究分支也已同步117/4累计账本，避免从旧分支的128/6历史余额继续请求；没有修改其他工作区。独立实验分支保留全部复现代码，main不跟踪research目录。
