@@ -54,6 +54,12 @@ DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
 
 显式增加 `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET` 前，应确认所选 Provider / 模型的 context 能力，并同时考虑单次结果上限和 Run 总上限。不要把历史本机环境的预算数值复制为仓库默认配置。ChatGPT 订阅模式不会发送服务端输出 Token 上限；回答细节仍取决于提示、实际召回证据和模型生成。
 
+动态预算中，单次 ceiling 为 `min(context × 50%, 128000)`，整轮共享池为 `min(context × 25%, 256000)`；显式 `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET` 优先于共享公式。当前能力注册表登记 GPT Plus 500000、官方 DeepSeek Flash 1000000，因此没有环境覆盖时共享池分别为125000、250000。历史研究的128000 context / 32000 shared 是显式实验条件，不是当前产品统一默认。显式共享值不会自动与上下文、历史消息和输出空间做总量校正，配置者仍需一起核对；单次上限与整轮共享池是两层约束。
+
+Token 扩容也不会扩大检索数量：语义默认10、最多20个选中Chunk，ANN候选池最多1000，当前消息展开最多100且还受Top-K×32约束；普通消息模型摘录默认600字符，长消息需显式分页读取（每页最多8000字符）。显式上下文仍最多100条，其他工具各有独立数量限制。Host 的UTF8字节/3是估算，不等于Provider账单Usage。
+
+2026-10-31预算实验保持产品默认不变。固定51个池的消息100→200只多保留一次已知目标，500没有继续增加；固定Envelope的共享32K→64K补回核心证据，128K只增加少量邻居。三题受控真实合成32/64K均交付2/3，尚无总体答案质量提升证据；详见[独立研究报告](https://github.com/kaguranananana/Trivae/blob/codex/budget-capacity-20261031/research/budget-capacity-20261031/REPORT.md)。实验配置不构成生产调参建议。
+
 ## Sign in with ChatGPT
 
 ```sh
