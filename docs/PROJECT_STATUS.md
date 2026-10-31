@@ -30,6 +30,8 @@ Trivae 将 QQ 群聊导入、检索、Agent 调查和来源回溯接成一个本
 
 ## 当前可确认的限制
 
+- **预算扩容研究（2026-10-31）**：独立分支固定51个ANN池，消息100/200/500的已知目标出现18/19/19；固定100条Envelope的条件Host重放，32/64/128K目标可见14/18/18，投影错误3/0/0。三题固定历史工具前缀后真实DeepSeek合成，32/64K均正式交付2/3：32K有控制准入失败，64K有Provider非法JSON失败。5次真实合成315202 Token；小样本没有证明总体答案质量提升。产品消息100与Token预算默认不变；历史32K不是当前统一默认，本机显式200K覆盖也未编辑。完整输入、失败和账本留在独立分支及本机ignored数据；见[预算实验报告](https://github.com/kaguranananana/Trivae/blob/codex/budget-capacity-20261031/research/budget-capacity-20261031/REPORT.md)。Judge仅1份完成，网络失败与6项Codex原文核验均明列，未冒充独立人工裁决。研究分支验证1402 passed / 1 skipped、Ruff、Mypy148通过。
+
 - 没有广泛人工裁决的代表性质量 Benchmark，也没有穷尽全语料的 Reference；Judge Review 保持 provisional。六题 Prompt 对照和 16 Case Baseline 只支持各自的样本与条件。
 - 工具结果与查询范围均受预算和分页边界限制。检索命中不保证全库穷尽；Finalizer 能验证来源身份、可访问范围和结构，但不证明自然语言结论必然被引用语义支持。
 - Web 当前面向本机使用，未提供公网多用户认证或租户隔离。模型调用会把问题、上下文和相关工具结果发送到所配置的 Provider；ChatGPT OAuth 路径不自动回退到收费 API key。
