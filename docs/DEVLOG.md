@@ -464,3 +464,11 @@
 - 完成率 A/B 均为9/32（28.1%，变化0.0个百分点）；关键事实覆盖率 A 52.8% → B 45.9%（-6.9个百分点）。Case 14 覆盖率 50%→100%、完成1/2→2/2；Case 10 覆盖75%→25%，Case 12 75%→50%。Judge Trace 诊断显示 citation mismatch 12→3，但 unsupported assertion 34→39、temporal/scope error 均26；结论是候选 Prompt 有局部改善但未证明总体增益。
 - 64次入选运行 A/B 平均总 Token 分别3,129,976 / 2,903,089，工具调用均值4.75 / 4.19；同 Case 重复结果完成判断一致20/32组。44次新增 Agent 执行 usage 共 input 3,788,048（其中 cache hit 1,167,360）、output 194,048。按调用时间和 DeepSeek 官方离峰价估算边际 Agent 成本约 US$0.513，不是账单回读；42次新增 ChatGPT OAuth Judge 的模型 Token 为1,906,507 input / 43,470 output，无单独 API 账单数据。
 - 完整报告、逐项事实评定、来源映射、回答/Trace/Judge 和复算脚本留在 ignored `data/evaluation/prompt-ab-eval-v1-20261029/`，不提交原始群聊和运行数据。仅更新状态与本开发日志；未改业务代码、Agent Prompt 或评审标准，也未运行测试套件。报告生成复算64行矩阵及核心比例，`git diff --check` 通过。
+
+
+## 2026-10-31：选择性合入 R2 / R6 证据保留修复
+
+- 同步 origin 后确认 main 为 `15ed0aef`，两修复均未合入。仅提取 Semantic 核心排序、Host 投影优先序和产品回归测试；ContextExpander 已支持 preferred priority，无须改动。研究材料继续保存在原研究分支，R7 Prompt 不采纳。
+- 清理采用不合入研究文件的方式；私有重放输出、内嵌聊天裁决脚本和计数锁原位保留并补充忽略规则。没有删除 Trace、冻结库、历史结果、账本或其他工作区。
+- 验证：完整 pytest 1395 passed / 1 skipped（39.81s），相关回归 31 passed，Ruff / Mypy148 通过；额外断言保护模型来源顺序、预算及 canonical record 不变。产品预算和模型配置不变。
+- 下一步：在独立分支重放 100/200/500 消息容量及 32K/64K/128K 工具共享预算，先核对真实剩余额度与模型能力，再选择少量真实对照。
