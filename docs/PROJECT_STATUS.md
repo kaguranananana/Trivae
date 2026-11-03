@@ -1,6 +1,6 @@
 # Trivae 当前状态
 
-> 核验日期：2026-10-31。此页是当前状态摘要，不替代源码、测试和受跟踪配置。机器上的 Shell 环境与未跟踪 `.env` 可能改变实际运行值；本页不记录本机密钥或私有数据配置。
+> 核验日期：2026-11-04。此页是当前状态摘要，不替代源码、测试和受跟踪配置。机器上的 Shell 环境与未跟踪 `.env` 可能改变实际运行值；本页不记录本机密钥或私有数据配置。
 
 ## 项目定位
 
@@ -11,6 +11,7 @@ Trivae 将 QQ 群聊导入、检索、Agent 调查和来源回溯接成一个本
 - **数据与检索**：支持 QQChatExporter JSON（V5 / 0.1.0 字段形态），将消息保存在 SQLite Canonical Store；FTS5 和 sqlite-vec 是派生索引。语义向量使用本地 Qwen3 Embedding。图片、文件等媒体保留结构和来源，不执行 OCR 或语音转写。
 - **查询链路**：Web UI / HTTP API、CLI/TUI 和 Evaluation 通过共享 Application/QueryOrchestrator；Router 选择 Standard 或 Planned 路径，Planner 提供软指导，两者共用 Agent Runtime。Runtime 可使用词法、语义、近期消息、上下文、成员与只读 SQL 能力。Finalizer 校验来源和范围，Application 持久化会话与 Trace。各层职责和限制见 [系统架构](architecture.md)。
 - **模型配置**：受跟踪默认值见 [`config/models.yaml`](../config/models.yaml)：普通查询 `gpt-plus`（ChatGPT OAuth，`gpt-6.1-sol`，medium）；Evaluation Agent `deepseek-flash`；离线 Judge `gpt-plus`。`TRIVAE_MODELS_CONFIG` 可替换注册表，普通查询可用 `TRIVAE_MODEL_ID` 选择 profile；旧直接配置 `TRIVAE_MODEL_PROVIDER` / `TRIVAE_MODEL_NAME` 仍可覆盖 profile。CLI 从 `.env` 注入未设置的变量，Shell 值优先。实际生效值以当前进程为准，完整顺序见 [配置指南](configuration.md)。
+- **群聊邮件晚报（本机状态）**：2026-11-04 核验时，`com.trivae.import-once` 与 `com.trivae.daily-digest` 均已加载。11-03 晚报于 11-04 00:32（北京时间）获 SMTP 接受；本次导入退出码 0，新增 21,520 条、错误 0、待索引 0，语义索引以增量方式完成。此次停更的直接原因是两个已安装任务未加载，同时 QCE API 令牌过期；用户在 QCE 控制台更新令牌后接口返回 HTTP 200。恢复过程没有启动 QQ。重新加载后的自然 10:00/22:00 周期尚未验收；SMTP 接受不代表收件箱已确认。运行记录与报告保存在 ignored `data/digests/20261104-000710-7e037d8d/`。
 - **正式评测**：`trivae eval run` 接收 master `freeze.json`，校验冻结身份后在同卷创建隔离 APFS 工作库。Canonical 和语义索引会写 WAL/schema，不能共享 master 或其他 Application 工作库。结果与 Trace 持久化后才清理临时副本；Clone 不可用时明确失败。当前命令与生命周期见 [Evaluation 文档](evaluation.md#本地验证入口)。`clone-data` 用于需要长期保留的独立数据副本，不是正式运行入口的前置步骤。
 
 ## 当前评测证据
