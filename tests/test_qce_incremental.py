@@ -64,6 +64,24 @@ def test_sleep_gap_uses_last_success_not_lookback(backup, monkeypatch):
     assert backup.read_json(backup.STATE_PATH)['progress']['100']['end_time'] == 999_100
 
 
+def test_group_initial_start_applies_only_before_first_success(backup, monkeypatch):
+    cfg = backup.read_json(backup.CONFIG_PATH)
+    cfg['initial_start_time'] = 700_000
+    cfg['groups'][0]['initial_start_time'] = 500_000
+    cfg['groups'].append({'id': '200', 'initial_start_time': 400_000})
+    backup.CONFIG_PATH.write_text(json.dumps(cfg))
+    backup.STATE_PATH.write_text(json.dumps({'version': 1, 'progress': {'200': {'end_time': 900_000}}}))
+    starts = []
+
+    def export(base, token, group_id, name, start, end, cfg, **kwargs):
+        starts.append((group_id, start))
+        return 'task-1', Path('result.json'), 0
+
+    monkeypatch.setattr(backup, 'export_group', export)
+    assert backup.main() == 0
+    assert starts == [('100', 500_000), ('200', 898_200)]
+
+
 def test_export_failure_keeps_success_cursor(backup, monkeypatch):
     """任务异常明确非零退出，失败群仍停留在原成功水位。"""
     original = {'version': 1, 'progress': {'100': {'end_time': 100_000}}}
@@ -143,6 +161,24 @@ def test_auth_error_is_not_retried(backup, monkeypatch):
     with pytest.raises(RuntimeError, match='401'):
         backup.original_wait_for_qce('local', 'token', 10)
     assert len(calls) == 1
+
+
+def test_qce_http_success_while_qq_is_offline_does_not_export(backup, monkeypatch):
+    """QCE 仍能读离线缓存并报告 completed，但本轮不能据此确认成功水位。"""
+    original = {'version': 1, 'progress': {'100': {'end_time': 100_000}}}
+    backup.STATE_PATH.write_text(json.dumps(original))
+    monkeypatch.setattr(backup, 'wait_for_qce', backup.original_wait_for_qce)
+    calls = []
+
+    def api(base, token, method, endpoint, body=None):
+        calls.append((method, endpoint))
+        return {'napcat': {'online': False}}
+
+    monkeypatch.setattr(backup, 'api', api)
+    with pytest.raises(RuntimeError, match='QQ 登录已离线'):
+        backup.main()
+    assert calls == [('GET', '/api/system/info')]
+    assert backup.read_json(backup.STATE_PATH) == original
 
 
 def test_pipeline_import_failure_is_not_success(backup, monkeypatch):
