@@ -65,6 +65,8 @@ def validate_config(cfg):
             raise ValueError("groups.id 必须是 QQ 群号")
         if group_id in seen:
             raise ValueError(f"群号重复: {group_id}")
+        if "initial_start_time" in group and type(group["initial_start_time"]) is not int:
+            raise ValueError(f"群 {group_id} 的 initial_start_time 必须为 Unix 秒")
         seen.add(group_id)
     for key in ("initial_lookback_hours", "overlap_minutes", "settle_minutes",
                 "wait_for_api_minutes", "task_timeout_minutes"):
@@ -104,7 +106,9 @@ def wait_for_qce(base, token, max_minutes):
     deadline = time.monotonic() + max_minutes * 60
     while True:
         try:
-            api(base, token, "GET", "/api/tasks")
+            info = api(base, token, "GET", "/api/system/info")
+            if info["napcat"]["online"] is not True:
+                raise RuntimeError("QCE API 可用，但 NapCat 的 QQ 登录已离线；本轮不导出、不推进水位")
             return
         except QCEUnavailable as exc:
             remaining = deadline - time.monotonic()
@@ -220,12 +224,13 @@ def main():
         progress = state["progress"]
         now = int(time.time())
         end = now - cfg["settle_minutes"] * 60
+        default_start = cfg.get("initial_start_time", now - cfg["initial_lookback_hours"] * 3600)
         jobs = []
         for group in cfg["groups"]:
             gid = str(group["id"]).strip()
             previous = progress.get(gid, {}).get("end_time")
             # 只有第一次使用初始起点，以后始终从上次成功水位减去重叠区间补齐。
-            start = (cfg.get("initial_start_time", now - cfg["initial_lookback_hours"] * 3600)
+            start = (group.get("initial_start_time", default_start)
                      if previous is None else previous - cfg["overlap_minutes"] * 60)
             pending = progress.get(gid, {}).get("pending")
             if pending:

@@ -5,7 +5,7 @@
 一次运行依次执行：
 
 1. 加进程锁后读取每群成功水位，计算到当前时间前 15 分钟的窗口。
-2. 从上次成功水位前 30 分钟开始导出，跨过休眠或离线积压，不限于最近一天。
+2. 通过本机 QCE 的 `/api/system/info` 确认 `napcat.online=true`，再从上次成功水位前 30 分钟开始导出，跨过休眠或离线积压，不限于最近一天。NapCat 离线时 QCE 仍可能返回缓存并将空导出标为成功，因此离线会明确报错并保留原水位。
 3. 记录 QCE 返回的 taskId；等待完成并核对 JSON、群号和消息条数后，原子提交该群水位。零条消息同样有效。
 4. 等待新文件满足原导入器的 60 秒静置要求，再执行 `trivae import-once --update-indexes`。
 5. 入库和索引成功，且所有群已补至本轮截止时间后，晚间由原有入口唤起独立日报。
@@ -22,7 +22,7 @@ cp scripts/qce-incremental/config.example.json scripts/qce-incremental/config.js
 .venv/bin/python scripts/qce-incremental/incremental_backup.py --dry-run
 ```
 
-- `groups`：群号和群名。
+- `groups`：群号和群名。新加入的群可单独设置 `initial_start_time`（Unix 秒），例如沿用该群最后一条已入库消息的时间。该群首次成功后改用其导出水位。
 - `initial_lookback_hours: 72`：没有成功水位时的默认首次回溯长度。
 - `initial_start_time`：可选的首次 Unix 秒级起点；存在时覆盖首次回溯长度。首次有成功水位后不再使用。
 - `overlap_minutes: 30`：重叠扫描边界，降低短暂延迟同步风险。
