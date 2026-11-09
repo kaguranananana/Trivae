@@ -7,13 +7,22 @@ description: "验证 Trivae 的群聊检索、消息上下文补读、引用来�
 
 Trivae 的用户查询入口有 Web UI / HTTP API 和 `trivae chat`（交互 CLI/TUI）。它们与 Evaluation 共用 Application 查询链路。默认用现有 pytest 驱动真实 SDK 工具、查询链路和 ASGI 路由，并直接运行 Evaluation CLI。按 [功能地图](features/README.md) 核对覆盖范围。
 
+## 日常开发验证
+
+**先验收本次改动，再跑固定回归。** 由单个 Agent 按以下顺序执行，优先使用合成数据和无需模型调用的检查。
+
+1. 先看实际代码与配置差异，确定受影响的用户入口、预期行为和需要守住的边界，再找到对应的测试与断言。
+2. 优先复用现有测试。缺少能证明本次行为的断言时，补充最小的针对性测试并实际运行。按验收目标选择能提供证据的最低成本层级。
+3. 完成功能验收后运行 `verify.sh`，检查已有核心链路。固定检查通过只证明已覆盖的行为没有回归。新功能的完成结论须有本次改动的验收证据。
+
+新增功能领域或用户入口时，按需把值得重复执行的验证旅程加入 Feature Map。普通改动在既有测试中完成验收即可。
+
 ## Launch
 
 在仓库根目录安装锁定的开发依赖。首次安装可能下载 Python 或依赖包。
 
 ```bash
 uv sync --locked --inexact --extra dev
-.agents/skills/verify-trivae/verify.sh
 ```
 
 脚本每次创建空的临时目录。pytest fixture 生成 QQ 导出，应用在隔离 SQLite 中初始化 schema、导入消息并按用例构建索引。以 `/api/readiness` 返回数据库 `ready` 和合成查询测试通过核验可用性。Web API 通过进程内 ASGI transport 驱动，无需启动监听端口、构建前端或登录 OAuth。语义用例使用固定向量的 embedding provider 与真实 sqlite-vec，无需安装或下载真实 embedding 模型。
@@ -30,10 +39,27 @@ uv run --offline --no-sync --no-env-file trivae --help
 
 ## Drive
 
-- 用 [功能地图](features/README.md) 定位验证入口。默认脚本运行其中列出的检索、上下文、引用、Evaluation 和 Web API 回归。
+验收本次改动后，在仓库根目录执行核心回归。
+
+```bash
+.agents/skills/verify-trivae/verify.sh
+```
+
+- 用 [功能地图](features/README.md) 定位已有验证入口。脚本运行其中列出的检索、上下文、引用、Evaluation 和 Web API 回归。
 - 主查询旅程由 `test_sdk_loop_source_handle_reply_citation_and_trace` 驱动。固定 SDK 模型输出先搜索，再用返回的 `source_id` 补读远距离回复，最后提交带引用的答案。检查最终来源绑定与持久化 Trace。
-- Case 校验复用 `trivae eval cases validate`，读取 `evaluation/cases/` 顶层的 Seed Case。固定模型和固定向量只替换现有模型边界。
-- 正式 Suite 和 Benchmark 使用冻结数据及 Variant。需要单独验证真实模型或真实数据时，遵循 [Evaluation 文档](../../../docs/evaluation.md) 的隔离工作库流程。默认检查不需要生产数据库、master freeze、Holdout 或 Judge。
+- Case 校验复用 `trivae eval cases validate`，读取 `evaluation/cases/` 顶层的 Seed Case，验证 Case 格式与合同。
+
+### 验证边界
+
+| 层级 | 能支持的结论 |
+| --- | --- |
+| 单元测试 | 给定输入下的局部逻辑、边界和错误语义。 |
+| 集成测试 | 实际组件之间的行为，例如 SQLite 索引与原文回查，或 ASGI 路由、流协议和会话持久化。固定向量验证索引链路，浏览器和 TUI 交互各需单独验收。 |
+| 固定 SDK 查询链路 | 用脚本模型给定工具调用和答案，验证生产 SDK、工具、Finalizer 与 Trace 的连接。模型自主选工具、真实语义排序与答案质量仍需独立证据。 |
+| 真实模型 E2E | 验证指定模型、配置、入口和样本上的完整运行，包含真实工具选择与答案。仅在验收依赖真实模型行为时选少量目标用例，结论限于实跑样本。 |
+| Benchmark | 在固定 Case、数据快照、Variant 和评审条件下做可比较的质量或性能评估。仅在需要这类对照时执行。 |
+
+涉及真实数据的正式 Suite 与 Benchmark 按 [Evaluation 文档](../../../docs/evaluation.md) 使用隔离工作库。
 
 ## Evidence
 
@@ -43,7 +69,7 @@ uv run --offline --no-sync --no-env-file trivae --help
 - `cases.log` 保存 Case 校验返回的状态与 Case identity。
 - `pytest.log` 与 `pytest.xml` 保存用例状态、失败断言及退出结果。核对 Case 清单、真实查询链路的来源 ID、Trace 参数与持久化检查对应的测试结果。
 
-报告时列出实际入口、通过或失败的用例和证据目录。Web API 回归只覆盖 ASGI 路由与流协议。模型选择、真实向量召回、答案语义质量、浏览器渲染和交互 TUI 需要各自的验证入口。
+报告时分开列出本次改动的验收证据、固定回归结果和证据目录。若有未覆盖的验收项，明确列出缺口。
 
 ## Cleanup
 
