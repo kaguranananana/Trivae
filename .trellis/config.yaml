@@ -1,5 +1,5 @@
 # Trellis Configuration
-# Project-level settings for the Trellis workflow system
+# Retained for explicit use of legacy Trellis tooling. See AGENTS.md for current development rules.
 #
 # All values have sensible defaults. Only override what you need.
 

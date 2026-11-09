@@ -50,7 +50,7 @@ DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
 
 对于“全部范围”的建议、技巧、经验或观点综合，Runtime 默认要求先充分召回主题词命中，再按具体缺口补读长消息、回复或不同表达的证据；最终回答展开有来源支持的具体做法、示例、适用条件和注意事项。简短提问不等于要求简短回答，重复表述与证据元数据可以精简，独立有用的信息不应只压成几个标签。明确要求简答时仍遵从用户要求。
 
-仓库默认工具轮数上限与当前本机统一为6轮，默认8次执行回合可容纳6轮工具和最终综合。真实Provider、环境加载、直接构造配置和注入模型共用同一个轮次默认值；已有 `.env` 显式设置的值仍优先，原来写了3的配置需要自行改为6，保存后重启 Web。上限按问题需要使用，材料足够可提前完成，不要求简单问题固定检索6轮。
+工具轮默认值见 [limits.py](../src/trivae/config/limits.py)；[settings.py](../src/trivae/config/settings.py) 解析环境覆盖。已有 Shell 或 `.env` 显式设置的轮数不会随仓库默认值变化。工具轮与 SDK 回合的区别见 [Runtime 架构](architecture.md#routerplanner-与统一-runtime)。
 
 显式增加 `TRIVAE_RUN_TOOL_EVIDENCE_BUDGET` 前，应确认所选 Provider / 模型的 context 能力，并同时考虑单次结果上限和 Run 总上限。不要把历史本机环境的预算数值复制为仓库默认配置。ChatGPT 订阅模式不会发送服务端输出 Token 上限；回答细节仍取决于提示、实际召回证据和模型生成。
 

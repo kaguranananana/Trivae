@@ -1,7 +1,7 @@
 ---
 name: implement
 description: |
-  Code implementation expert for the Trellis channel runtime. Understands specs and task artifacts, then implements features. No git commit allowed.
+  Legacy implement prompt for explicit Trellis channel use; not part of Trivae's current development workflow.
 provider: claude
 labels: [trellis, implement]
 ---

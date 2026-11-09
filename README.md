@@ -8,9 +8,7 @@ Trivae 帮助你从持续积累的群聊历史中定位事实、找回资源、�
 
 `Python 3.12+` · `FastAPI` · `Vue 3` · `OpenAI Agents SDK` · `SQLite FTS5` · `sqlite-vec`
 
-[快速开始](#快速开始) · [系统架构](#系统架构) · [当前状态](docs/PROJECT_STATUS.md) · [配置指南](docs/configuration.md) · [Evaluation](docs/evaluation.md)
-
-当前实现与配置以源码和 `config/models.yaml` 为准；当前架构、运行配置、评测方法和进度分别见[系统架构](docs/architecture.md)、[配置指南](docs/configuration.md)、[Evaluation](docs/evaluation.md)和[项目状态](docs/PROJECT_STATUS.md)。带日期的实验记录及 `.trellis/` 规格用于追溯当时的事实和设计；其阶段状态与待办不是当前进度。
+[快速开始](#快速开始) · [系统架构](docs/architecture.md) · [当前状态](docs/PROJECT_STATUS.md) · [配置指南](docs/configuration.md) · [Evaluation](docs/evaluation.md)
 
 ## 产品预览
 
@@ -55,54 +53,7 @@ Trivae 帮助你从持续积累的群聊历史中定位事实、找回资源、�
 
 ## 系统架构
 
-```mermaid
-flowchart TB
-    Export[QQ 导出 JSON] --> Import[导入与规范化]
-    Import --> Store[(SQLite Canonical Store)]
-    Store --> Index[FTS5 / sqlite-vec 派生索引]
-
-    Client[Web UI / HTTP API / CLI] --> App[统一 Application]
-    Eval[Evaluation] -->|生产 Query| App
-    App --> Query[QueryOrchestrator]
-    Query --> Router[Router]
-    Router -->|Standard| Runtime[统一 Agent Runtime]
-    Router -->|Planned| Planner[Planner]
-    Planner -->|软执行指导| Runtime
-    Runtime --> Tools[检索与只读查询工具]
-    Tools --> Store
-    Tools --> Index
-    Query -->|校验 Runtime 最终候选| Finalizer[Evidence / Citation 校验]
-    Finalizer --> Answer[AnswerArtifact]
-    Answer -->|Application 原子提交| History[(会话持久化)]
-    History -->|经 Application 投影| UI[回答与引用展示]
-    Query -.-> Trace[Trace：执行事实与失败归因]
-    Tools -.-> Trace
-    Trace -.-> Eval
-```
-
-Router 决定是否先调用 Planner，不选择检索策略；Planner 不执行工具。工具由共享 Runtime 调用，Finalizer 由 QueryOrchestrator 执行，客户端和评测使用同一条应用链路。[详细架构](docs/architecture.md)说明各层职责、工具与提交边界。
-
-## 技术设计亮点
-
-### 1. 原始事实与检索投影分离
-
-Canonical Store 保存规范化消息、导出记录位置与来源关系，FTS5 和向量库可以重建。重复导入、冲突和批次错误都有记录；语义索引跟踪模型、切块身份和来源状态，通过变更位置日志更新受影响范围，并在输入一致时复用向量。这样既能追查“这条消息从哪里来”，也能判断“当前索引是否还能用”。
-
-### 2. 让群聊问题选择合适的工具
-
-精确资源名适合 FTS5，近义讨论适合向量召回，计数与排名适合有界只读 SQL。语义索引使用时间感知的 Parent / Child 对话块，命中后回读 Canonical 消息；上下文扩展补充短消息的来龙去脉。多路检索通过 Agent 选择与组合工具实现，不承诺每次固定执行全文与向量融合。
-
-### 3. 规划、执行与预算各有边界
-
-Standard 与 Planned 共用 Runtime，便于在相同条件下单独评价 Planner 的作用。计划是执行指导；工具轮、结果内容预算和绝对回合上限约束调查范围。流式输出、取消和异常保留阶段诊断，Trace 记录实际过程，避免只根据最终文本判断执行成功。
-
-### 4. 来源校验与答案质量分开判断
-
-来源绑定到本轮工具结果与允许访问的数据范围，模型不能自行生成可信作者、时间或来源身份。局部无效引用可按现有合同移除并标记 `degraded`；范围或来源归属等可信边界冲突会阻止交付。程序验证来源有效性与覆盖事实，结论是否被证据充分支持仍需质量评审。
-
-### 5. 评测覆盖完整生产 Query
-
-Evaluation 固定数据 Snapshot、Case 与受控 Variant，复用 Application 查询并读取答案、引用和 Trace；工程检查、质量轴和运行成本分别记录。Reference 标明 `exhaustive / partial / unknown`，机器辅助标注保留 provisional 身份。当前主 Prompt 已采纳四行证据强度与来源范围约束，这是用户基于回答偏好的产品选择；六题对照不证明总体质量提升。开发样本、测试通过率或 Token 减少也不能写成产品准确率。[评测方法与当前边界](docs/evaluation.md) · [长期评测与 LangSmith](docs/evaluation-langsmith.md)
+导入管线将群聊事实写入 SQLite Canonical Store，全文和向量索引可以重建。Web、CLI/TUI 和 Evaluation 共用查询链路：按问题决定是否先规划，由同一个 Runtime 调用工具，再校验来源并提交会话。应用调用链、工具和数据边界见[系统架构](docs/architecture.md)，如何区分工程检查与答案质量见[评测方法](docs/evaluation.md)。
 
 ## 快速开始
 

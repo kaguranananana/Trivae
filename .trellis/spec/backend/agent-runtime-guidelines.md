@@ -1,5 +1,7 @@
 # Agent Runtime and Query Execution Guidelines
 
+> 历史实现与决策记录。下文的默认 3 工具轮属于旧配置；现行默认值与覆盖方式见 [配置指南](../../../docs/configuration.md)，调用链见 [系统架构](../../../docs/architecture.md#routerplanner-与统一-runtime)。
+
 ## Host final-response eligibility (2026-10-22)
 
 Runtime动态instructions在存在工具历史时，直接复用Evidence/Finalizer的`has_verified_zero_result_evidence`告知模型当前no_result资格；每次工具返回后重新计算，不复制一套SQL形态或空检索判定。通用Prompt说明不能替代当前工具历史的实际资格事实。

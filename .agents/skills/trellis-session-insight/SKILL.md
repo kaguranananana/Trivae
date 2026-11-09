@@ -40,9 +40,7 @@ If none of these apply, don't call `mem`. It is a tool, not a ceremony.
 Treat the output as **raw material**, not a deliverable. Once you have it, decide based on the live conversation:
 
 - **Quote inline in your reply** if a specific past exchange answers the user's current question — and cite the session-id / phase so the user can verify.
-- **Update `<task>/prd.md` or `<task>/design.md`** if `mem` surfaced a load-bearing decision that should have been written down but wasn't. Surface the proposed edit to the user first.
-- **Append to a task-local notes file** (e.g. `<task>/notes.md` or extending an existing one) if the finding belongs to the current task's record but doesn't fit the PRD.
-- **Update `.trellis/spec/`** if the finding is a project-wide convention or gotcha that would help future tasks. Run the `trellis-update-spec` skill for that — `session-insight` ends at the discovery.
+- **Use `trellis-update-spec` if a verified finding changes current guidance.** Keep the original task record as historical evidence.
 - **Just absorb it** for the next few turns and answer better, without writing anything. This is often the right move for one-off recall.
 
 Trellis does not prescribe a single destination. Forcing every recall into a fixed file makes the file grow into noise. Let the situation decide.
@@ -78,4 +76,4 @@ Phase slicing (`--phase brainstorm|implement|all`) cuts the session at `task.py 
 
 - `mem` does not edit code or update files. Any write-back is your decision in the moment.
 - `mem` is read-only on the platform JSONL stores. It does not push or sync to remote.
-- This skill does not replace `trellis-update-spec` (which is the right tool for promoting a finding into project-wide guidance) or the platform-native task / spec workflow.
+- Past sessions explain decisions and failures at the time. Verify any claim about current behavior against source and tests before applying it.

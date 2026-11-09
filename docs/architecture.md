@@ -16,10 +16,9 @@ flowchart TB
     CLI[CLI / TUI] --> App
     Eval[EvaluationRunner] -->|复用 query| App
     App --> Query[QueryOrchestrator]
-    Query --> Router[Router]
-    Router -->|Standard| Runtime[统一 Agent Runtime]
-    Router -->|Planned| Planner[Planner]
-    Planner -->|软执行指导| Runtime
+    Query <-->|路由决策| Router[Router]
+    Query <-->|Planned：获取软指导| Planner[Planner]
+    Query -->|两路共用| Runtime[统一 Agent Runtime]
     Runtime -->|工具调用| Tools[检索与查询工具]
     Tools --> Canonical
     Tools --> Index
@@ -79,15 +78,15 @@ Canonical Store 是事实来源。FTS5 和 sqlite-vec 是可重建的派生索�
 
 ## Router、Planner 与统一 Runtime
 
-Router 只决定是否值得预先规划，输出 `standard_execution` 或 `planned_execution`。它先做规则判断，再按配置对模糊问题调用决策 Provider；可选的 Jev 与 shadow 模式属于独立配置与实验入口。Router 不选择检索算法、SQL 或具体工具参数。
+`TrivaeApplication.query` 调用 `QueryOrchestrator.run`。编排器从 `RuleRouter.route` 获取 `standard_execution` 或 `planned_execution`；评测显式指定路径时跳过 Router。Router 先做规则判断，再按配置对模糊问题调用决策 Provider；它不选择检索算法、SQL 或工具参数。
 
-Planner 在 Planned 路径进入 Runtime 前运行一次，生成有界的结构化调查指导。计划会过滤不可用工具并校验字段，但不会成为机械执行的工作流，也没有独立的循环执行器或自动重规划。规划不可用时，现有合同允许同一 Runtime 继续，并保留明确诊断。
+编排器只在 Planned 路径调用一次 `SoftPlanner.plan`，将返回的计划渲染为软指导，连同原有查询范围传入共享 Runtime。Planner 校验结构、过滤不可用工具，不直接调用工具或重规划。返回结构化规划失败时，编排器记录诊断并以无计划继续；编排器收到未处理的 Planner 异常时会向上传播。
 
-Runtime 基于 OpenAI Agents SDK 承载单 Agent 工具循环。Trivae 持有上下文、工具适配、结果预算、取消、事件和最终合成边界。工具轮预算与 SDK 的绝对回合上限分别约束调查和异常失控：到达正常工具轮预算后进入最终合成，绝对上限仍属于失败边界。流式客户端看到的是项目事件投影，而不是 SDK 内部对象。
+Runtime 基于 OpenAI Agents SDK 承载单 Agent 工具循环。Trivae 持有上下文、工具适配、结果预算、取消、事件和最终合成边界。同一模型回合的多个工具调用计一轮；达到工具轮预算后，已发出的调用仍完成，之后进入无工具的最终合成。SDK 的绝对回合上限是独立失败边界。默认值和覆盖方式见 [配置指南](configuration.md#配置加载与模型profile)。流式客户端看到的是项目事件投影。
 
 预算同时约束单次工具结果和本轮累计证据内容。截断与省略会作为事实记录；共享预算接近耗尽时，Runtime 返回显式的预算停止结果并阻止超预算投影。模型可能因此看不到更多命中，有界输出也不能保证全量检索或充分回答。
 
-实现与回归入口：[orchestrator.py](../src/trivae/query/orchestrator.py)、[planner.py](../src/trivae/query/planner.py)、[openai_adapter.py](../src/trivae/query/runtime/openai_adapter.py)、[Runtime 测试](../tests/test_agent_runtime.py)。
+实现与回归入口：[orchestrator.py](../src/trivae/query/orchestrator.py)、[router.py](../src/trivae/query/router.py)、[planner.py](../src/trivae/query/planner.py)、[openai_adapter.py](../src/trivae/query/runtime/openai_adapter.py)、[查询编排与工具轮回归](../tests/test_query_execution_core.py)。
 
 ## 证据、引用与提交
 

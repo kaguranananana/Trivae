@@ -1,35 +1,18 @@
-# Backend Development Guidelines
+# Backend Development Guidelines（历史）
 
-> Python 后端工程规范（M1 ingestion、M2/M3 retrieval/capability、M4a runtime baseline、M4 Query Execution Core、M5 Evidence/Citation、M5b Conversation persistence 与 M6 Trace/Observability 已落地；Stage 1.10 Implementation / Real-run Calibration 与 HTTP Product Interaction 仍待推进）。
-> M1 的 SQLite、导入和目录可执行契约见各专题规范；M4 Query/Runtime、M5 Evidence、M5b Conversation、M6 Trace 与 CLI Product Experience 的具体代码模式见对应指南/Stage 1.9 record，其余 Evaluation/Product Plane 仍按后续任务补充。
+> 这里索引旧后端规范和设计记录。阶段状态、默认配置和约束以各记录当时的背景理解。当前开发约定见 [AGENTS.md](../../../AGENTS.md)，实现入口见 [系统架构](../../../docs/architecture.md) 与 [配置指南](../../../docs/configuration.md)。
 
----
-
-## 工程原则（必读）
-
-- 项目级长期原则：[../project/engineering-principles.md](../project/engineering-principles.md)
-- 架构状态（哪些不能自行决定）：[../project/architecture.md](../project/architecture.md)
-
-## 指南索引
-
-| Guide | 内容 | 状态 |
-|-------|------|------|
-| [Directory Structure](./directory-structure.md) | 目录与文件组织（当前阶段） | 已填（Stage 1.11 概念 layout 与 M1 实际 ingestion layout） |
-| [Error Handling](./error-handling.md) | 错误处理原则 | 已填 |
-| [Logging Guidelines](./logging-guidelines.md) | 日志与可观测性原则 | 已填 |
-| [Quality Guidelines](./quality-guidelines.md) | 测试与质量要求 | 已填 |
-| [Agent Runtime Guidelines](./agent-runtime-guidelines.md) | M4 Query、Router/Planner、DeepSeek、SDK Tool、streaming、source identity / temporal evidence 与工程收口契约 | 已填；Planner Evaluation closed 2026-10-03 |
-| [ChatGPT Plan Guidelines](./chatgpt-plan-guidelines.md) | 官方 OAuth、账号隔离、受限 Responses、额度终止与 Provider 观测契约 | 已实现；真实验证记录见接入任务 |
-| [Temporal Overview Guidelines](./temporal-overview-guidelines.md) | `get_recent_messages` 容量、keyset continuation、coverage、projection 与 Host 时间事实 | 已填 2026-08-28 |
-| [Database Guidelines](./database-guidelines.md) | 数据库相关规范 | 已填 M1 SQLite、M2 Retrieval/FTS5 与 M5b Conversation Store contract；Semantic/Vector 与 migration/deployment 仍 Pending |
-| [Forwarded Message Guidelines](./forwarded-message-guidelines.md) | QQ 合并转发的派生检索、容器范围、双时间与 Citation 来源 | 已实现；真实验证见合并转发任务 |
-| [Semantic Incremental](./semantic-incremental-guidelines.md) | 位置日志、安全重切、精确向量复用及 SQLite-vec 原子发布 | 已实现并有 Fake/真实 Qwen 全量对照 |
-| [QCE Auto Import](./auto-import-guidelines.md) | 稳定快照、持久增量、失败补偿、CLI 与 launchd 日历调度 | 已接既有索引构建器；生产启用与检索验收见任务记录 |
-| [Product Experience Guidelines](./product-experience-guidelines.md) | CLI/Application source、scope、readiness、feedback、history 与 renderer contract | 已填 2026-08-25 |
-
----
-
-## 语言约定
-
-- 项目规范文档：中文；代码、命令、标识符：英文原文。
-- 所有后续代码遵循本层各指南文件。
+| Guide | 内容 |
+| --- | --- |
+| [Directory Structure](./directory-structure.md) | 历史目录与文件组织 |
+| [Error Handling](./error-handling.md) | 错误处理原则 |
+| [Logging Guidelines](./logging-guidelines.md) | 日志与可观测性原则 |
+| [Quality Guidelines](./quality-guidelines.md) | 测试与质量要求 |
+| [Agent Runtime Guidelines](./agent-runtime-guidelines.md) | M4 Query、Router/Planner、DeepSeek、SDK Tool、streaming、source identity / temporal evidence 与工程收口契约 |
+| [ChatGPT Plan Guidelines](./chatgpt-plan-guidelines.md) | 官方 OAuth、账号隔离、受限 Responses、额度终止与 Provider 观测契约 |
+| [Temporal Overview Guidelines](./temporal-overview-guidelines.md) | `get_recent_messages` 容量、keyset continuation、coverage、projection 与 Host 时间事实 |
+| [Database Guidelines](./database-guidelines.md) | 数据库相关规范 |
+| [Forwarded Message Guidelines](./forwarded-message-guidelines.md) | QQ 合并转发的派生检索、容器范围、双时间与 Citation 来源 |
+| [Semantic Incremental](./semantic-incremental-guidelines.md) | 位置日志、安全重切、精确向量复用及 SQLite-vec 原子发布 |
+| [QCE Auto Import](./auto-import-guidelines.md) | 稳定快照、持久增量、失败补偿、CLI 与 launchd 日历调度 |
+| [Product Experience Guidelines](./product-experience-guidelines.md) | CLI/Application source、scope、readiness、feedback、history 与 renderer contract |

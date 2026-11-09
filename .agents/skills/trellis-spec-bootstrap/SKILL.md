@@ -1,9 +1,11 @@
 ---
 name: trellis-spec-bootstrap
-description: "Bootstrap project-specific Trellis coding specs with a platform-neutral single-agent workflow. Use when creating or refreshing .trellis/spec guidelines, analyzing a codebase with GitNexus, ABCoder, or source inspection, decomposing package/layer spec work, and writing real codebase-backed spec docs without placeholder text."
+description: "Optional workflow for explicitly requested Trellis spec bootstrapping. Trivae keeps its existing Trellis specs as historical records."
 ---
 
 # Trellis Spec Bootstrap
+
+Trivae's existing `.trellis/spec/` tree is historical. Use the generic workflow below only when explicitly asked to bootstrap specs; keep current Trivae guidance in its existing docs and preserve historical records.
 
 Use this skill to create or refresh `.trellis/spec/` guidelines from the real codebase. One capable agent owns the full loop: analyze the repository, choose the spec boundaries, write the docs, and verify the result. The workflow does not depend on a specific host, CLI, or agent brand.
 

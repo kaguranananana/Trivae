@@ -63,9 +63,9 @@ Planner Utility 使用 forced standard / forced planned 路径：绕过 Router �
 
 当前已实现并经过确定性测试的能力包括：版本化 Case / Suite、Snapshot 校验、Controlled Variant、生产链路 Runner、独立 Evaluation Store、工程检查、ReviewPacket、盲配对和失败归因。真实运行覆盖过索引构建、检索对照、Planner 调查和 Prompt 候选验证，但不同实验的样本、模型与标注强度并不相同。
 
-截至 2026-10-29，当前主 Prompt 已采纳四行证据强度与来源范围约束。这是用户人工比较回答后作出的产品选择，不代表六题配对结果证明总体质量提高。该对照中，Case 07/12 有局部可信度分数改善；Case 10 遗漏手机远控 Codex/微信实例，Case 01 仍有范围与因果外推。当前代码包含 Candidate，问题仍是需要继续观察的样本风险。版本、评审与取舍记录见 [项目状态](PROJECT_STATUS.md) 和 [DEVLOG](DEVLOG.md)。
+2026-10-29 采纳证据强度与来源范围约束，是用户人工比较回答后作出的产品选择，不代表六题配对结果证明总体质量提高。该对照中，Case 07/12 有局部可信度分数改善；Case 10 遗漏手机远控 Codex/微信实例，Case 01 仍有范围与因果外推。见[取舍记录](DEVLOG.md#2026-10-29--人工比较后采纳四行证据约束)；当前 Prompt 查 [prompt.py](../src/trivae/query/runtime/prompt.py)。
 
-Eval v1 是 2026-10-28 的 16 Case 历史基线：Agent 成功 14/16，2 个运行失败；14 个成功答案完成 v2.1 模型辅助 Review，尚无人类裁决。该次 Agent profile 与当前普通查询默认 profile 不同，不能据此代表当前模型效果。完整分母和限制见 [项目状态](PROJECT_STATUS.md)。
+[Eval v1](eval-v1.md) 是 2026-10-28 的历史基线；其分母、运行失败和模型辅助 Review 的限制均见原报告。该次 Agent profile 与当前普通查询默认 profile 不同，不能据此代表当前模型效果。
 
 ### 历史候选结果
 

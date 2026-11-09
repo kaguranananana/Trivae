@@ -520,3 +520,9 @@
 - 负例在合成模型输出中注入伪造引用，浏览器找不到预期的来源，脚本非零退出并留存失败截图。未修改产品源码；新增的 `playwright-core` 是锁定的前端开发依赖，复用本机 Chrome。
 - 新增 `verify-agent.sh --run` 真实模型 Smoke 入口，强制额外费用许可、显式 HTTPS Provider 配置、单条合成 Case、最多4模型轮次/2工具轮次、单轮1200输出Token、120秒超时；未实际请求真实 Provider，费用未知，不能当作Benchmark。
 - 回归：前端 Vitest 80 passed，ESLint 通过，构建通过；旧 `verify.sh` 的35 pytest和13 Seed Case合同通过。证据在 ignored `data/evaluation/verify-trivae/browser.*/` 和 `run.*/`。
+
+## 2026-11-09 · 精简当前文档并标清 Trellis 历史边界
+
+- `AGENTS.md` 要求解释现行实现时核对源码和测试；README 与状态页移除重复架构、配置和实验过程，详情指向现行指南与原始记录。后端 Spec 索引去掉过时 Stage 和必读要求，旧任务、ADR、Failure Case、实验结果与回放路径均保留。
+- 核对 `limits.py`、`settings.py` 和 SDK Runtime：仓库默认 6 工具轮、8 SDK 回合，显式配置可覆盖，同一回合的多个工具调用只计一轮。旧 Provider 任务的 3 轮和 DeepSeek 默认仅适用于历史设计；现行 profile 默认由 `models.yaml` 选择。核对 `TrivaeApplication.query` → `QueryOrchestrator.run`：Router 返回路径，编排器只为 Planned 调一次 Planner，两路共享 Runtime。
+- 查询编排、Runtime、模型配置和 Planner 工程回归共 83 项通过；隔离配置加载确认默认与显式轮数覆盖。564 个受跟踪 Markdown 的本地链接与标题锚点检查修复 1 处失效锚点，未新增坏链；106 处既有缺失图片引用均在原始面试资料。Diff 检查通过，未改产品代码或测试，未调用真实模型。

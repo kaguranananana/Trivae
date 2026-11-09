@@ -1,7 +1,7 @@
 ---
 name: check
 description: |
-  Code quality auditor for the Trellis channel runtime. Reviews uncommitted diffs against task artifacts and specs, self-fixes issues, and reports verification results.
+  Legacy check prompt for explicit Trellis channel use; not part of Trivae's current development workflow.
 provider: claude
 labels: [trellis, check]
 ---
