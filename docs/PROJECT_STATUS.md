@@ -11,7 +11,7 @@
 ## 最近验证与限制
 
 - **2026-11-09 验证入口**：[verify-trivae](../.agents/skills/verify-trivae/SKILL.md) 的 Chrome → Vue → FastAPI → SDK → SQLite 正向场景通过，伪造引用负例按预期失败。该浏览器验证固定模型决策；同日 80 项前端测试、35 项固定回归与 13 个 Seed Case 合同通过。真实模型 Smoke 入口尚未实跑。见[验证记录](DEVLOG.md#2026-11-09--将-verification-skill-改为真实功能验收)。
-- **最近记载的完整后端回归**：[2026-11-04 导出修复](DEVLOG.md#2026-11-04--qce-离线空导出与新群接续)记录 1404 passed / 1 skipped，Ruff 与 Mypy 通过；这是当时的验证结果。
+- **最近的完整后端回归**：[2026-11-09 主分支集成](DEVLOG.md#2026-11-09--集成已验收改动并修复-ci-前置条件)使用干净的 Python 3.12 开发环境，1397 passed / 1 skipped，Ruff 与 Mypy 通过。
 - **答案质量**：检索受查询范围、分页和预算限制。引用校验可以验证来源身份与范围，语义支持度仍需评审。缺少广泛人工裁决的代表性 Benchmark；[Eval v1](eval-v1.md) 和 [Prompt A/B](DEVLOG.md#2026-10-29--eval-v1-prompt-ab-正式量化评测)只支持各自实验条件下的结论。
 - **部署与输入**：Web 面向本机使用，未提供公网多用户认证或租户隔离。模型调用会把相关输入发给配置的 Provider。媒体保留结构和来源，当前未做 OCR 或语音转写。
 

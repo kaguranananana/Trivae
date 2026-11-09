@@ -526,3 +526,9 @@
 - `AGENTS.md` 要求解释现行实现时核对源码和测试；README 与状态页移除重复架构、配置和实验过程，详情指向现行指南与原始记录。后端 Spec 索引去掉过时 Stage 和必读要求，旧任务、ADR、Failure Case、实验结果与回放路径均保留。
 - 核对 `limits.py`、`settings.py` 和 SDK Runtime：仓库默认 6 工具轮、8 SDK 回合，显式配置可覆盖，同一回合的多个工具调用只计一轮。旧 Provider 任务的 3 轮和 DeepSeek 默认仅适用于历史设计；现行 profile 默认由 `models.yaml` 选择。核对 `TrivaeApplication.query` → `QueryOrchestrator.run`：Router 返回路径，编排器只为 Planned 调一次 Planner，两路共享 Runtime。
 - 查询编排、Runtime、模型配置和 Planner 工程回归共 83 项通过；隔离配置加载确认默认与显式轮数覆盖。564 个受跟踪 Markdown 的本地链接与标题锚点检查修复 1 处失效锚点，未新增坏链；106 处既有缺失图片引用均在原始面试资料。Diff 检查通过，未改产品代码或测试，未调用真实模型。
+
+## 2026-11-09 · 集成已验收改动并修复 CI 前置条件
+
+- 将 QCE 离线修复及恢复记录、验证 Skill 和文档治理移植到 main。容量参数、研究脚本、请求账本和实验产物仍保留在研究分支。
+- 复现既有 main CI 缺少 tqdm 导致测试收集失败。补齐 dev 依赖。两项使用替身 Application 的评测 CLI 测试各自配置虚拟密钥。预热回归固定使用 spawn 锁，在默认 fork 的环境也会触发它要验证的 resource tracker 路径。
+- Python 3.12 干净开发环境全量 1397 passed / 1 skipped。修正 spawn 复现后，默认 fork 模式下 21 项预热和评测回归通过。Ruff、Mypy、前端 80 项测试、ESLint、构建、Chrome 隔离 E2E 和文档链接检查均通过。浏览器证据保留在本机 ignored `data/evaluation/verify-trivae/main-integration.aOsBcF/`。
