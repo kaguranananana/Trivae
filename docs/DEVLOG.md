@@ -532,3 +532,4 @@
 - 将 QCE 离线修复及恢复记录、验证 Skill 和文档治理移植到 main。容量参数、研究脚本、请求账本和实验产物仍保留在研究分支。
 - 复现既有 main CI 缺少 tqdm 导致测试收集失败。补齐 dev 依赖。两项使用替身 Application 的评测 CLI 测试各自配置虚拟密钥。预热回归固定使用 spawn 锁，在默认 fork 的环境也会触发它要验证的 resource tracker 路径。
 - Python 3.12 干净开发环境全量 1397 passed / 1 skipped。修正 spawn 复现后，默认 fork 模式下 21 项预热和评测回归通过。Ruff、Mypy、前端 80 项测试、ESLint、构建、Chrome 隔离 E2E 和文档链接检查均通过。浏览器证据保留在本机 ignored `data/evaluation/verify-trivae/main-integration.aOsBcF/`。
+- 首次云端运行通过依赖安装，随后确认 Linux runner 不支持本套件的 APFS 与 macOS 行为，普通包安装也没有提供仓库内模型配置和脚本所需的 `.venv`。CI 改用 macOS runner，在仓库内建立 `.venv` 并以 editable 模式安装开发依赖。工作流语法检查通过，本机按同样的目录和安装方式再次验证 1397 passed / 1 skipped，Ruff、Mypy 通过。
