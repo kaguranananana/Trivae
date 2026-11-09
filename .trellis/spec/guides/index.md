@@ -1,6 +1,6 @@
 # Thinking Guides
 
-> **Purpose**: Expand your thinking to catch things you might not have considered.
+> Optional Trellis-era checklists. Current Trivae development rules are in [AGENTS.md](../../../AGENTS.md).
 
 ---
 

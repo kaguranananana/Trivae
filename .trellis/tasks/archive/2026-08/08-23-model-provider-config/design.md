@@ -1,5 +1,7 @@
 # Model Provider Configuration — Technical Design
 
+> 2026-08 历史设计。下文保留当时的 Provider 范围和默认轮数；现行配置查 [配置指南](../../../../../docs/configuration.md) 与其链接的源码。
+
 ## Change boundary
 
 最小行为差距位于 `config/settings.py` 与 `query/runtime/openai_adapter.py`：配置模型
