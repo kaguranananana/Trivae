@@ -1,80 +1,68 @@
 ---
 name: verify-trivae
-description: "验证 Trivae 的群聊检索、消息上下文补读、引用来源、Web 查询 API 和 Evaluation 合同。修改这些链路或排查回归时，用既有 pytest、生产 SDK 工具与 trivae CLI 在隔离的合成数据上执行确定性验证。"
+description: "Trivae 真实功能验收：需要用户视角、浏览器操作或真实模型工具决策证据时使用。提供隔离 Chrome→Vue→FastAPI→SDK→SQLite 的零 LLM 浏览器 E2E，以及显式付费、有限轮次的真实 Agent Smoke。普通 pytest 由 Codex 按改动选择；原固定回归脚本按需保留。"
 ---
 
-# 验证 Trivae
+# Verify Trivae：按需的真实功能验收
 
-Trivae 的用户查询入口有 Web UI / HTTP API 和 `trivae chat`（交互 CLI/TUI）。它们与 Evaluation 共用 Application 查询链路。默认用现有 pytest 驱动真实 SDK 工具、查询链路和 ASGI 路由，并直接运行 Evaluation CLI。按 [功能地图](features/README.md) 核对覆盖范围。
+**职责不是替 Codex 重跑已有 pytest。** 优先从本次变更识别无法由现有单元/集成测试覆盖的用户行为，再选择下述入口。单 Agent 操作，不并行派发子 Agent；验证失败必须保留证据并报告。代码、测试和运行事实优先于 Feature Map。
 
-## 日常开发验证
+## 选择入口（默认不自动运行昂贵流程）
 
-**先验收本次改动，再跑固定回归。** 由单个 Agent 按以下顺序执行，优先使用合成数据和无需模型调用的检查。
+| 任务改动 | 适当验证 | 是否真实 LLM |
+| --- | --- | --- |
+| 普通后端逻辑、数据库契约 | Codex 自行挑选/补充相关 pytest；必要时全量 pytest、Ruff、Mypy | 否 |
+| Vue UI、浏览器状态、流式答案、来源弹窗或前后端集成 | **`verify-web.sh`**：真实 Chrome + 正式静态 Vue + FastAPI HTTP + SQLite + SDK 模型替身 | **否** |
+| Prompt、工具描述、Agent 自主决策、模型兼容行为 | **`verify-agent.sh --run`**：仅在用户明确允许真实调用/成本时运行单 Case | **是** |
+| 检索、答案质量的量化对照 | 复用既有 Evaluation / Benchmark / 冻结 Snapshot，不由本 Skill 重建 | 视实验而定 |
+| 核心查询链路固定回归 | 原 `verify.sh`，按需选择，不代替本次改动的验收 | 否 |
 
-1. 先看实际代码与配置差异，确定受影响的用户入口、预期行为和需要守住的边界，再找到对应的测试与断言。
-2. 优先复用现有测试。缺少能证明本次行为的断言时，补充最小的针对性测试并实际运行。按验收目标选择能提供证据的最低成本层级。
-3. 完成功能验收后运行 `verify.sh`，检查已有核心链路。固定检查通过只证明已覆盖的行为没有回归。新功能的完成结论须有本次改动的验收证据。
+新功能先明确具体可观察的验收结果，缺少对应测试就补最小断言。**固定测试全绿不代表新功能正常，浏览器 E2E 通过也不代表真实模型能自主选择工具。** 改动扩展到新用户入口时，才按需扩展功能地图或脚本；不需要每个修复都修改本 Skill。
 
-新增功能领域或用户入口时，按需把值得重复执行的验证旅程加入 Feature Map。普通改动在既有测试中完成验收即可。
+## A. 浏览器 E2E（推荐的新增能力）
 
-## Launch
+前提：Mac 装有 Google Chrome；`pnpm -C web install --frozen-lockfile`；已准备 `uv sync --locked --inexact --extra dev`。Playwright 使用 `web` 中锁定的 `playwright-core` 及本机 Chrome，不下载另一套浏览器，也不调用任何 LLM。
 
-在仓库根目录安装锁定的开发依赖。首次安装可能下载 Python 或依赖包。
-
-```bash
-uv sync --locked --inexact --extra dev
-```
-
-脚本每次创建空的临时目录。pytest fixture 生成 QQ 导出，应用在隔离 SQLite 中初始化 schema、导入消息并按用例构建索引。以 `/api/readiness` 返回数据库 `ready` 和合成查询测试通过核验可用性。Web API 通过进程内 ASGI transport 驱动，无需启动监听端口、构建前端或登录 OAuth。语义用例使用固定向量的 embedding provider 与真实 sqlite-vec，无需安装或下载真实 embedding 模型。
-
-## Doctor
-
-脚本先做只读 CLI 探测。出现启动问题时，在仓库根目录单独运行同一命令。
+在仓库根目录运行：
 
 ```bash
-uv run --offline --no-sync --no-env-file trivae --help
+.agents/skills/verify-trivae/verify-web.sh
 ```
 
-应退出 0 并列出 `chat`、`web`、`eval` 等子命令。它确认当前项目环境能导入 CLI。数据库和应用是否可用由后续 readiness 及查询测试核验。缺少可执行文件时检查上面的依赖安装步骤。
+脚本自动：创建临时 QQ 导出与独立 SQLite → 用 **真实 Trivae Application、SDK Tool、Finalizer、Trace** 启动本机 FastAPI → 构建 Vue 静态前端 → Chrome 访问真实 HTTP 服务 → 选择「回复实验」群聊、提问 → 验证带来源的回答、弹窗、源消息原文回读与持久化 Trace → 截图、记录 HTTP 及 JS 错误 → 停服务、删除临时数据库。
 
-## Drive
+只替换不可控的**模型决策边界**：`ScriptedModel` 固定词法检索、补读远距离回复和带引用答案，`FixedRouter` 不调用 Router Provider。**不 mock 前端 fetch，不替换后端 API，完全不读取用户真实群聊数据。** 这是浏览器/服务/检索/引用的真实 E2E，不证明真实 LLM 自主使用工具、语义排名质量或浏览器之外的 TUI 行为。
 
-验收本次改动后，在仓库根目录执行核心回归。
+验证断言本身的负例（预期非零退出码）：
+
+```bash
+.agents/skills/verify-trivae/verify-web.sh --negative-control
+```
+
+负例让隔离 ScriptedModel 提供无效引用，浏览器必须无法找到预期来源，测试失败。**不要让正常模式在负例中“通过”；也不要改产品逻辑来制造失败。** 运行结果保存在 `data/evaluation/verify-trivae/browser.*/`，含 `browser.log`、截图、`network-and-errors.json`、`server.log`、`build.log`。每次先报告实际命令与退出码，不从旧截图推断本次成功。
+
+## B. 真实 Agent Smoke（严格显式、有限费用）
+
+默认执行 `verify-agent.sh` **只输出使用说明，绝不调用 Provider**。必须有用户明确授权费用，并单独传入 API-compatible 模型的配置：
+
+```bash
+TRIVAE_VERIFY_ALLOW_SPEND=YES TRIVAE_VERIFY_API_KEY=... TRIVAE_VERIFY_BASE_URL=https://provider.example/v1 TRIVAE_VERIFY_PROVIDER=deepseek TRIVAE_VERIFY_MODEL=example-model .agents/skills/verify-trivae/verify-agent.sh --run
+```
+
+该入口只使用本脚本创建的合成群聊，强制 Standard Route，真实模型自行选择检索/补读工具，验证是否引用实际使用反馈原消息；限制 4 个模型轮次、2 个工具轮次、单轮最多 1200 输出 token，Provider SDK 重试禁用。120 秒超时。**这些只是调用量上限，不是金额上限**；输入 Token、Provider 价格按实际产生。结果只记录工具名称、引用的消息 ID、Trace ID 和状态，不记录密钥或私人语料。该 smoke 未在没有许可的情况下实跑，不得声称已验证真实 Provider。
+
+## C. 旧有确定性回归（保留但不作为 Skill 的主要价值）
 
 ```bash
 .agents/skills/verify-trivae/verify.sh
 ```
 
-- 用 [功能地图](features/README.md) 定位已有验证入口。脚本运行其中列出的检索、上下文、引用、Evaluation 和 Web API 回归。
-- 主查询旅程由 `test_sdk_loop_source_handle_reply_citation_and_trace` 驱动。固定 SDK 模型输出先搜索，再用返回的 `source_id` 补读远距离回复，最后提交带引用的答案。检查最终来源绑定与持久化 Trace。
-- Case 校验复用 `trivae eval cases validate`，读取 `evaluation/cases/` 顶层的 Seed Case，验证 Case 格式与合同。
+原脚本复用已存在的 35 个 pytest、13 个 Seed Case 格式检查、CLI 探测与清理，结果在 `data/evaluation/verify-trivae/run.*/`。它不会生成新测试，不运行完整 Benchmark 或真实 LLM。改动检索、上下文、引用、Evaluation 合同时可作为额外快速检查；不能据此声称 UI / Agent 效果正常。各功能覆盖详见 [功能地图](features/README.md)。
 
-### 验证边界
+## 验收与证据原则
 
-| 层级 | 能支持的结论 |
-| --- | --- |
-| 单元测试 | 给定输入下的局部逻辑、边界和错误语义。 |
-| 集成测试 | 实际组件之间的行为，例如 SQLite 索引与原文回查，或 ASGI 路由、流协议和会话持久化。固定向量验证索引链路，浏览器和 TUI 交互各需单独验收。 |
-| 固定 SDK 查询链路 | 用脚本模型给定工具调用和答案，验证生产 SDK、工具、Finalizer 与 Trace 的连接。模型自主选工具、真实语义排序与答案质量仍需独立证据。 |
-| 真实模型 E2E | 验证指定模型、配置、入口和样本上的完整运行，包含真实工具选择与答案。仅在验收依赖真实模型行为时选少量目标用例，结论限于实跑样本。 |
-| Benchmark | 在固定 Case、数据快照、Variant 和评审条件下做可比较的质量或性能评估。仅在需要这类对照时执行。 |
-
-涉及真实数据的正式 Suite 与 Benchmark 按 [Evaluation 文档](../../../docs/evaluation.md) 使用隔离工作库。
-
-## Evidence
-
-`verify.sh` 打印本轮证据目录 `data/evaluation/verify-trivae/run.*/`。每条日志包含执行的命令、输出和退出码。
-
-- `doctor.log` 保存 CLI 探测。
-- `cases.log` 保存 Case 校验返回的状态与 Case identity。
-- `pytest.log` 与 `pytest.xml` 保存用例状态、失败断言及退出结果。核对 Case 清单、真实查询链路的来源 ID、Trace 参数与持久化检查对应的测试结果。
-
-报告时分开列出本次改动的验收证据、固定回归结果和证据目录。若有未覆盖的验收项，明确列出缺口。
-
-## Cleanup
-
-脚本退出时删除本次临时目录及其中的 SQLite 文件，证据目录留存且已被 Git 忽略。确认输出中有 `Removed scratch`，临时目录已消失，并检查证据文件仍在。各次运行使用独立目录，不共享运行状态；无需停止本机已有的 Trivae 进程。
-
-## Helpers
-
-从仓库根目录运行 `.agents/skills/verify-trivae/verify.sh`。脚本只编排已有 CLI 和 pytest，并透传失败退出码。验证失败时先查看对应日志，再用功能地图中的测试节点复现。
+1. 先检查本次代码差异、真实入口及具体验收目标；不要只运行固定脚本便宣布完成。
+2. 最低成本验证优先：现有单元/集成测试 → 需要时浏览器 E2E → 用户同意后真实模型 E2E → 实验性 Benchmark。
+3. 报告哪些真实路径被操作、检查了哪些最终可见结果、运行命令/退出码/截图/Trace、哪些路径仍未验。避免把测试替身说成真实模型。
+4. 完整 Browser E2E 和真实 Provider Smoke 都只使用独立的合成数据。不要启动连接真实数据的服务，不要泄漏本机 `.env`，不修改 Benchmark 主库或正式冻结 Snapshot。
+5. 不为一次简单任务默认安装多 Agent 框架或触发全部验证；仅在覆盖面确实变化时更新 [功能地图](features/README.md)。
