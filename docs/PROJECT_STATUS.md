@@ -16,6 +16,7 @@ Trivae 将 QQ 群聊导入、检索、Agent 调查和来源回溯接成一个本
 
 ## 当前评测证据
 
+- **确定性验证入口（2026-11-09）**：[verify-trivae Skill](../.agents/skills/verify-trivae/SKILL.md) 复用既有 pytest 与 Case 校验 CLI，覆盖检索、上下文补读、引用校验、Evaluation 合同和 Web API。首次实跑 35 项通过、13 个 Seed Case 合同有效；临时 SQLite 已清理，日志与 JUnit 留在本机 `data/evaluation/verify-trivae/`。该入口使用合成数据与固定模型输出。
 - **Eval v1 历史 Baseline**：2026-10-28 的 16 Case 运行中，Agent 成功 14/16，另有 `AnswerDeltaParseError` 与 `APIStatusError` 两个运行失败。14 个成功答案均完成 Judge v2.1 Review；Review 是模型辅助、未人工裁决，不能当作总体准确率或代表当前普通查询默认模型。详细事实见 [Eval v1 记录](eval-v1.md)。
 - **两次运行失败排查**：2026-10-29 重放 Case 03（长任务跨会话进度）的保存正文，确认未转义引号使 JSON 在 Unicode 偏移 40 失败，标准解析器与增量解析器一致；Provider 非法输出尚未通过真实重跑验证解决。Case 14 在检索前发生两阶段 `APIStatusError`，原 HTTP 状态不可恢复。已补齐兼容 Provider 流建立前及 Router/Planner completion 的状态、请求 ID 和错误分类观测；未新增重试、放宽解析或改 Baseline。见[排查记录](EVAL_RUNTIME_FAILURES_20261029.md)。
 - **当前主 Prompt**：2026-10-29 用户人工比较回答后，采纳了四行证据强度与来源范围约束。6 Case Candidate/Baseline 对照两侧各完成 6/6；模型辅助 Review 指出 Case 07/12 有局部改善、Case 10 漏掉手机远控 Codex/微信实践、Case 01 仍有范围/因果外推。用户选择采纳不等于六题实验证明总体质量提升；这些结果及取舍均保留在 [开发日志](DEVLOG.md) 与 [Evaluation 说明](evaluation.md)。
