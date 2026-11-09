@@ -2230,6 +2230,7 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "tqdm" },
 ]
 semantic = [
     { name = "sentence-transformers" },
@@ -2254,6 +2255,7 @@ requires-dist = [
     { name = "sentence-transformers", marker = "extra == 'semantic'", specifier = ">=3,<6" },
     { name = "sqlite-vec", specifier = ">=0.1.9,<0.2" },
     { name = "textual", specifier = ">=2,<9" },
+    { name = "tqdm", marker = "extra == 'dev'", specifier = ">=4.70,<5" },
     { name = "uvicorn", specifier = ">=0.52.4" },
 ]
 provides-extras = ["semantic", "dev"]

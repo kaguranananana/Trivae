@@ -9,6 +9,7 @@ CPython 3.14 ``resource_tracker._launch()`` 不校验 fd 值就把 -1 传给
 
 from __future__ import annotations
 
+import multiprocessing
 import os
 import tempfile
 import unittest
@@ -71,6 +72,8 @@ class ProcessWarmupTests(unittest.TestCase):
     _MP_LOCK_MISSING = object()
 
     def setUp(self) -> None:
+        # 用 spawn 复现会启动 resource tracker 的锁；Linux 默认 fork 不走这条路径。
+        self.enterContext(mock.patch("multiprocessing.RLock", multiprocessing.get_context("spawn").RLock))
         # 保存并恢复 tqdm 类上的缓存锁属性：每个用例从"无缓存锁"出发，
         # 保证预热与建锁路径真实执行；其它测试也不会看到本文件创建的锁状态。
         self._original_mp_lock = getattr(TqdmDefaultWriteLock, "mp_lock", self._MP_LOCK_MISSING)

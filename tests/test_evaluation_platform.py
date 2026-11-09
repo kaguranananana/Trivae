@@ -449,6 +449,7 @@ def test_case_version_review_and_suite_rerun_cli(tmp_path, monkeypatch, capsys):
                                       store=self.store, snapshot_resolver=lambda: new_case.dataset_snapshot)
             return await runner.run_suite(s, cases, variant, repetitions=repetitions)
 
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "evaluation-test-fixture")
     monkeypatch.setattr(cli, "create_application", lambda *args, **kwargs: Application())
     command = ["eval", "run", "--suite", str(suite_path), "--variant", str(variant_path),
                "--cases-dir", str(versioned.parent), "--evaluation-database", str(db)]
@@ -499,6 +500,7 @@ def test_selected_cases_keep_suite_identity_and_reject_invalid_selection(tmp_pat
                                       store=self.store, snapshot_resolver=lambda: second.dataset_snapshot)
             return await runner.run_suite(s, cases, variant, repetitions=repetitions, selected_cases=selected_cases)
 
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "evaluation-test-fixture")
     monkeypatch.setattr(cli, "create_application", lambda *args, **kwargs: Application())
     command = ["eval", "run", "--suite", str(suite_path), "--variant", str(variant_path),
                "--cases-dir", str(cases_dir), "--evaluation-database", str(db), "--case-list", str(selection)]

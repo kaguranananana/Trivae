@@ -30,6 +30,7 @@ dev = [
     "mypy>=1.15,<2",
     "pytest>=8,<9",
     "ruff>=0.9,<1",
+    "tqdm>=4.70,<5",
 ]
 
 [project.scripts]
@@ -56,7 +57,7 @@ disallow_untyped_defs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-# tqdm 是 [semantic] extra 的传递依赖（无官方类型存根）；process_warmup 仅调用其公开类方法。
+# process_warmup 使用 tqdm 的公开类方法；开发回归也直接依赖 tqdm。
 module = "tqdm.*"
 ignore_missing_imports = true
 
