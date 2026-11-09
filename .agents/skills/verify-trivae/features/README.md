@@ -13,5 +13,7 @@
 | [引用校验](citations.md) | pytest、查询与 Finalizer | 来源身份、范围、绑定、无效引用诊断 |
 | [Evaluation 合同](evaluation.md) | trivae CLI、pytest | Case 校验、查询 Trace、失败运行持久化 |
 | [Web 查询 API](web-query.md) | pytest、进程内 ASGI | readiness、流终态、会话持久化与范围约束 |
+| [浏览器真实交互](browser-e2e.md) | Playwright + Chrome + 正式 FastAPI | 选择群聊、发送查询、渲染来源、点击原文、Trace 回读 |
+| [真实 Agent 决策 Smoke](agent-smoke.md) | 显式许可、真实 Provider、合成数据 | 模型自行选择工具并引用原消息；不代表 Benchmark |
 
 优先保留操作和结果的证据，例如工具输入、可观察的输出断言和 Trace 回读。遇到缺失的 fixture 前提时记录失败与复现路径。产品 Web 与 TUI 共用查询链路，但两者的界面交互要单独驱动和取证。

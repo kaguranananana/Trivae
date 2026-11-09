@@ -512,3 +512,11 @@
 - 新增 `.agents/skills/verify-trivae/` 的说明、可执行入口与五项功能地图。复用现有 pytest、SDK 查询链路、ASGI transport 和 Evaluation Case CLI。没有新增测试框架、合成语料副本或产品代码改动。
 - 按 Skill 执行锁定依赖安装和完整默认流程，CLI 探测成功，13 个顶层 Seed Case 合同有效，35 个定向测试通过（2.07 秒）。SDK 查询从全文命中补读远距离回复，最终引用绑定到 `qq:100:reply`，并从 SQLite 回读补读 Trace。Web 流协议使用进程内 ASGI 和固定 Runtime。未调用真实模型或运行正式 Benchmark。
 - 核对成功运行的日志、JUnit 和临时目录清理。额外用无效 pytest 参数验证失败退出码 4 向上透传，错误日志留存，临时目录已移除。本机证据分别在 `data/evaluation/verify-trivae/run.vMxhTg/` 和 `data/evaluation/verify-trivae/run.aUAKFv/`。
+
+## 2026-11-09 · 将 Verification Skill 改为真实功能验收
+
+- 根据现有 Codex 已运行上千 pytest、前端 Vitest 和完整代码回归的实际情况，保留旧 `verify.sh` 作为可选固定回归，不再宣称它能验证所有新功能。更新 Skill 选路与 Feature Map。
+- 新增 `verify-web.sh` 和 `scripts/fixture_server.py` / `browser_e2e.mjs`。隔离合成 QQ 群数据和临时 SQLite，FastAPI 托管真实 Vue 构建，Playwright 驱动本机 Chrome 选择范围、发送问题、验证带来源的答案、点击原文、从 API 回读持久化 Conversation 和 Trace。只替换 LLM 决策边界，外部浏览器请求被阻止。正向实跑通过，临时数据库清理。
+- 负例在合成模型输出中注入伪造引用，浏览器找不到预期的来源，脚本非零退出并留存失败截图。未修改产品源码；新增的 `playwright-core` 是锁定的前端开发依赖，复用本机 Chrome。
+- 新增 `verify-agent.sh --run` 真实模型 Smoke 入口，强制额外费用许可、显式 HTTPS Provider 配置、单条合成 Case、最多4模型轮次/2工具轮次、单轮1200输出Token、120秒超时；未实际请求真实 Provider，费用未知，不能当作Benchmark。
+- 回归：前端 Vitest 80 passed，ESLint 通过，构建通过；旧 `verify.sh` 的35 pytest和13 Seed Case合同通过。证据在 ignored `data/evaluation/verify-trivae/browser.*/` 和 `run.*/`。

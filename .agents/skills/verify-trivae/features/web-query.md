@@ -24,3 +24,7 @@ Web 界面提交问题和续问时调用 `POST /api/query/stream`，会话列表
 
 - Web 测试注入固定 Runtime，核验 HTTP 路由、流协议和会话持久化。SDK 检索与来源绑定走各自的查询用例。
 - 浏览器渲染、前端交互和真实监听端口均需要独立运行。
+
+## Browser E2E 入口
+
+Web API 测试本身只走进程内 ASGI、不打开 Vue。修改前端 UI、引用弹窗或浏览器交互时，应另外执行 [浏览器 E2E](browser-e2e.md)，它驱动真实 Chrome 和本地隔离 FastAPI。
