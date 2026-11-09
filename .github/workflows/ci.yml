@@ -16,8 +16,9 @@ jobs:
           cache: pip
       - name: Install project and quality tools
         run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install -e ".[dev]"
+          python -m pip install uv==0.11.16
+          # setup-python 的 macOS 构建没有启用 SQLite 扩展加载。
+          uv sync --locked --extra dev --managed-python --python 3.12.13
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       # 只运行确定性的仓库级测试，不读取真实聊天数据或调用 DeepSeek Evaluation。
       - name: Run tests

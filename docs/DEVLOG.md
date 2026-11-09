@@ -533,3 +533,4 @@
 - 复现既有 main CI 缺少 tqdm 导致测试收集失败。补齐 dev 依赖。两项使用替身 Application 的评测 CLI 测试各自配置虚拟密钥。预热回归固定使用 spawn 锁，在默认 fork 的环境也会触发它要验证的 resource tracker 路径。
 - Python 3.12 干净开发环境全量 1397 passed / 1 skipped。修正 spawn 复现后，默认 fork 模式下 21 项预热和评测回归通过。Ruff、Mypy、前端 80 项测试、ESLint、构建、Chrome 隔离 E2E 和文档链接检查均通过。浏览器证据保留在本机 ignored `data/evaluation/verify-trivae/main-integration.aOsBcF/`。
 - 首次云端运行通过依赖安装，随后确认 Linux runner 不支持本套件的 APFS 与 macOS 行为，普通包安装也没有提供仓库内模型配置和脚本所需的 `.venv`。CI 改用 macOS runner，在仓库内建立 `.venv` 并以 editable 模式安装开发依赖。工作流语法检查通过，本机按同样的目录和安装方式再次验证 1397 passed / 1 skipped，Ruff、Mypy 通过。
+- macOS 云端默认解释器未启用 SQLite 扩展加载，导致 sqlite-vec 初始化失败。CI 改用与本机验证一致的 uv 管理 Python 3.12.13 和锁定依赖。本机验证真实 sqlite-vec 加载、工作流 Shell 语法和 27 项相关回归通过。
