@@ -639,16 +639,20 @@ async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: 
                     )
                     store.save_run(run)
                     store.save_review(review)
-                    review_file.write_text(json.dumps(review.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-                    ts = review.axis_scores["task_satisfaction"].score
-                    ar = review.axis_scores["answer_reliability"].score
+                    review_dict = review.to_dict()
+                    review_file.write_text(json.dumps(review_dict, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                    qa = review_dict["quality_axes"]
+                    ts = qa["task_satisfaction"]["score"]
+                    ar = qa["answer_reliability"]["score"]
                     print(
                         f"[judge] ({idx:02d}/{len(queue)}) {arm}/{cid}: task={ts} rel={ar} "
-                        f"diags={len(review.diagnostics)} ({dt}s)",
+                        f"diags={len(review_dict.get('diagnostics', []))} ({dt}s)",
                         flush=True,
                     )
                     last_exc = None
                     break
+                except (AttributeError, TypeError, KeyError, NameError):
+                    raise
                 except Exception as exc:
                     last_exc = exc
                     msg = str(exc)
@@ -691,15 +695,23 @@ def _summarize_arm(arm: str, arm_dir: Path, judge_dir: Path, case_ids: list[str]
     sem_trunc_runs = sum(1 for _, s, _ in rows if (s.get("telemetry") or {}).get("semantic_truncation_affected"))
 
     judged = [(cid, s, rev) for cid, s, rev in rows if rev is not None]
-    ts_scores = [rev["axis_scores"]["task_satisfaction"]["score"] for _, _, rev in judged if isinstance(rev["axis_scores"]["task_satisfaction"]["score"], int)]
-    ar_scores = [rev["axis_scores"]["answer_reliability"]["score"] for _, _, rev in judged if isinstance(rev["axis_scores"]["answer_reliability"]["score"], int)]
+    ts_scores = [
+        rev["quality_axes"]["task_satisfaction"]["score"]
+        for _, _, rev in judged
+        if isinstance(rev["quality_axes"]["task_satisfaction"]["score"], int)
+    ]
+    ar_scores = [
+        rev["quality_axes"]["answer_reliability"]["score"]
+        for _, _, rev in judged
+        if isinstance(rev["quality_axes"]["answer_reliability"]["score"], int)
+    ]
     dual_ge3 = sum(
         1
         for _, _, rev in judged
-        if isinstance(rev["axis_scores"]["task_satisfaction"]["score"], int)
-        and isinstance(rev["axis_scores"]["answer_reliability"]["score"], int)
-        and rev["axis_scores"]["task_satisfaction"]["score"] >= 3
-        and rev["axis_scores"]["answer_reliability"]["score"] >= 3
+        if isinstance(rev["quality_axes"]["task_satisfaction"]["score"], int)
+        and isinstance(rev["quality_axes"]["answer_reliability"]["score"], int)
+        and rev["quality_axes"]["task_satisfaction"]["score"] >= 3
+        and rev["quality_axes"]["answer_reliability"]["score"] >= 3
     )
     diag_types: Counter[str] = Counter()
     diag_sev: Counter[str] = Counter()
@@ -767,10 +779,10 @@ def _generate_report(baseline_dir: Path, candidate_dir: Path, judge_dir: Path, o
         br = json.loads(br_p.read_text(encoding="utf-8")) if br_p.exists() else None
         cr = json.loads(cr_p.read_text(encoding="utf-8")) if cr_p.exists() else None
 
-        bts = br["axis_scores"]["task_satisfaction"]["score"] if br else None
-        bar = br["axis_scores"]["answer_reliability"]["score"] if br else None
-        cts = cr["axis_scores"]["task_satisfaction"]["score"] if cr else None
-        car = cr["axis_scores"]["answer_reliability"]["score"] if cr else None
+        bts = br["quality_axes"]["task_satisfaction"]["score"] if br else None
+        bar = br["quality_axes"]["answer_reliability"]["score"] if br else None
+        cts = cr["quality_axes"]["task_satisfaction"]["score"] if cr else None
+        car = cr["quality_axes"]["answer_reliability"]["score"] if cr else None
 
         sem_affected = bool(
             (bs.get("telemetry") or {}).get("semantic_truncation_affected")
