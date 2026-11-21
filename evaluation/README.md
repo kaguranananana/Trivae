@@ -4,7 +4,7 @@
 
 这里保存 version-controlled 的 Case、Suite 和 Controlled Variant 定义，不保存聊天正文、完整 Trace 或运行结果。
 
-Capability Suite v2 的清单、隐私边界、证据审核与真实试运行见 [capability-evaluation-v2.md](../docs/capability-evaluation-v2.md)。其原始题目和参考消息保留在本机私有评测目录，不能从公开目录推断其已人工审核。
+当前冻结快照（`frozen-20261028-validated`）上的真实用户评测集为 [eval-v1.json](suites/eval-v1.json)（16 题历史基线，见 [eval-v1.md](../docs/eval-v1.md)）与 [eval-v2.json](suites/eval-v2.json)（24 题扩展集：16 题原集 + 8 题去重精选）。早期 2026-10-28 废弃草稿与重命名前候选已清理；原始题目与参考消息保留在 Git 忽略的本机私有评测目录，不能从公开清单推断其已人工审核。
 
 ## Planner Evaluation 最终工程收口快照（2026-10-03）
 

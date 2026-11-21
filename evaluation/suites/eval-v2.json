@@ -1,0 +1,105 @@
+{
+  "suite_id": "eval",
+  "version": 2,
+  "kind": "core",
+  "description": "Versioned set of 24 real-user evaluation questions on frozen-20261028-validated (16 eval@v1 + 8 screened non-overlapping natural-user cases); private questions, reference facts and evidence remain in ignored local storage.",
+  "created_at": "2026-11-22T00:53:55+08:00",
+  "cases": [
+    {
+      "case_id": "cap1-01-reconnect",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-02-regression",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-03-task-progress",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-04-subscriptions",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-05-agent-eval",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-06-rag",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-07-mcp-skills",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-08-kimi-deepseek",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-09-memory",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-10-mobile",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-11-trellis",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-12-agent-tools",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-13-project-interview",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-14-agent-interview",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-15-open-source",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-16-workflows",
+      "version": 2
+    },
+    {
+      "case_id": "cap1-17-context-cost",
+      "version": 1
+    },
+    {
+      "case_id": "cap1-18-multi-agent",
+      "version": 1
+    },
+    {
+      "case_id": "cap1-19-code-review",
+      "version": 1
+    },
+    {
+      "case_id": "cap1-20-codex-cursor",
+      "version": 1
+    },
+    {
+      "case_id": "cap1-21-agent-deploy",
+      "version": 1
+    },
+    {
+      "case_id": "cap1-22-coding-assessment",
+      "version": 1
+    },
+    {
+      "case_id": "cap1-23-rag-interview",
+      "version": 1
+    },
+    {
+      "case_id": "cap1-24-recent-models",
+      "version": 1
+    }
+  ]
+}

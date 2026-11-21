@@ -534,3 +534,9 @@
 - Python 3.12 干净开发环境全量 1397 passed / 1 skipped。修正 spawn 复现后，默认 fork 模式下 21 项预热和评测回归通过。Ruff、Mypy、前端 80 项测试、ESLint、构建、Chrome 隔离 E2E 和文档链接检查均通过。浏览器证据保留在本机 ignored `data/evaluation/verify-trivae/main-integration.aOsBcF/`。
 - 首次云端运行通过依赖安装，随后确认 Linux runner 不支持本套件的 APFS 与 macOS 行为，普通包安装也没有提供仓库内模型配置和脚本所需的 `.venv`。CI 改用 macOS runner，在仓库内建立 `.venv` 并以 editable 模式安装开发依赖。工作流语法检查通过，本机按同样的目录和安装方式再次验证 1397 passed / 1 skipped，Ruff、Mypy 通过。
 - macOS 云端默认解释器未启用 SQLite 扩展加载，导致 sqlite-vec 初始化失败。CI 改用与本机验证一致的 uv 管理 Python 3.12.13 和锁定依赖。本机验证真实 sqlite-vec 加载、工作流 Shell 语法和 27 项相关回归通过。
+
+## 2026-11-22 · 筛选构建 24 题 `eval@v2` 并清理废弃候选快照题目
+
+- 在同一冻结快照 `frozen-20261028-validated`（864,615 条消息，revision 98835）上新增 24 题套件 `evaluation/suites/eval-v2.json`（仅身份清单）与本机 ignored 私有包 `data/evaluation/eval-v2-20261122/`：原样保留 `eval@v1` 全部 16 题（`cap1-01@v2`–`cap1-16@v2`），并从原 `capability-user-first-20261028` 余下 15 题中按消息去重与证据质量筛选补充 8 题（`cap1-17@v1`–`cap1-24@v1`），回读冻结库补齐会话名、回复元数据与邻近上下文；淘汰 7 题撞车或证据偏薄候选。
+- 清理已废弃或重复的 2026-10-28 候选快照题目：移除受跟踪的 `capability-user-first-candidate-v1.json`、`capability-v2.json`、`evaluation/capability-v2/catalog.json`、`capability-v1.json`、`regression-v1.json`、`evaluation/catalog/curated-v1.json` 及对应两份废弃说明文档，同步更新 `evaluation/README.md`、`docs/evaluation-langsmith.md` 与 `docs/eval-v1.md`；移除本机 ignored 对应废弃/重命名前草稿与 stub 夹具目录。保留 `frozen-20261028-validated` 主快照、`eval@v1` 及其全部历史评测运行/结果，以及测试依赖的 Seed/Benchmark/Planner-Utility 套件。
+- 验证：`trivae eval cases validate` 通过 24/24 `eval@v2` 与 13/13 顶层 Seed Case；`audit_evidence` 对冻结主库核验 24/24 Case、78 条来源（73 唯一消息、8 会话）与 546 条上下文全部一致；定向 pytest（`test_evaluation.py`、`test_evaluation_platform.py`、`test_capability_judge.py`、`test_router_utility.py`、`test_cli.py`）80 passed（2.12s）；更新文档链接检查 0 断链；0 模型请求。下一步可推进 JSON 解析容错及 `eval@v2` 端到端对照实验。

@@ -2,7 +2,7 @@
 
 Trivae 负责执行、Snapshot 校验、确定性检查和本地记录；LangSmith 只用于查看外部导入的实验、独立评分和复核。正常查询与 `eval run` 不访问 LangSmith；只有显式执行 `langsmith-sync`、`langsmith-resolve` 或 `langsmith-review-sync` 才联网。OpenAI Agents SDK 原有的 tracing 禁用保持不变，诊断使用 Trivae 自己的 Trace。
 
-Capability Suite v2 的证据核验、待审分母、真实试运行及操作说明见 [capability-evaluation-v2.md](capability-evaluation-v2.md)。
+当前冻结快照（`frozen-20261028-validated`）的真实用户评测集说明见 [eval-v1.md](eval-v1.md)（16 题基线 `eval@v1` 与 24 题扩展集 `eval@v2`）。早期 `capability@v1`/`v2`、`regression@v1` 与 `capability-user-first-candidate@v1` 草稿题集已清理。
 
 官方参考：[导入外部实验](https://docs.langchain.com/langsmith/upload-existing-experiments)、[实验 Run 查询](https://reference.langchain.com/python/langsmith/_openapi_client/resources/datasets/experiment_runs/ExperimentRunsResource/query)、[Feedback](https://reference.langchain.com/python/langsmith/client/Client/create_feedback)。对照 `langsmith` 0.14.13 的 SDK 实际接口并用其回读验收；产品代码使用对应的官方 HTTP API 和已有 `httpx`，无需新增 SDK 依赖。没有引入 LangChain、LangGraph 或第二个运行时。
 
@@ -17,13 +17,11 @@ trivae eval --help
 
 导入按命令选择的题目、参考信息、答案、各维度评分及结构化 Trace 的阶段/操作/状态/耗时。`--metadata-only` 不上传问题、参考和答案；`--content` 可指定单独准备的文本 JSON。不会上传 `.env`、API Key、SQLite 文件或 Trace event 的原始 payload。只检查显式配置的密钥是否出现在导出内容中，不声称自动识别所有敏感文本。LangSmith 不可用只会使同步命令失败，不改变已经保存的本地评测结果。
 
-## 两套集合和历史身份
+## 评测集合与历史身份
 
-- `regression-v1.json`：3 条 Development 题，基于已有直接回复遗漏、修复和验证证据。它不是全部历史问题的机械合集；低成本确定性回归仍在现有测试中。
-- `capability-v1.json`：6 条已暴露 Development 题，覆盖跨群引用、时间窗、综合与错误推断。旧参考证据有人工裁定，但只适用于原 Snapshot，且不保证完整枚举。
-- `curated-v1.json`：每题的目的、加入原因、历史证据和审核边界。
+当前用于正式对比的冻结快照题集为 `evaluation/suites/eval-v1.json`（16 题）与 `evaluation/suites/eval-v2.json`（24 题）。
 
-原 Development 37、Calibration 10 和已暴露 Holdout 18 保持原状；后者不是新的盲测。两套集合引用原 Case 版本，不改变原 benchmark 或旧实验。原题和当前数据 Snapshot 不一致时禁止直接重跑并冒充同一实验；应生成新候选、重新核验参考证据。
+原 Development 37、Calibration 10 和已暴露 Holdout 18 保持原状；后者不是新的盲测。原题和当前数据 Snapshot 不一致时禁止直接重跑并冒充同一实验；应生成新候选、重新核验参考证据。
 
 ## 冻结真实数据及生成候选题
 
@@ -35,21 +33,21 @@ trivae eval freeze-data --database data/trivae.sqlite3 \
   --semantic-index data/trivae.semantic.sqlite3 --output-dir data/evaluation/frozen-new
 
 # 在新快照上保留问题，但不把旧 Ground Truth 移花接木。
-trivae eval suite-candidates --suite evaluation/suites/regression-v1.json \
-  --cases-dir evaluation/cases/benchmark/dev --freeze-manifest data/evaluation/frozen-new/freeze.json \
-  --output-dir data/evaluation/new-regression-candidates
-trivae eval cases validate data/evaluation/new-regression-candidates/cases
+trivae eval suite-candidates --suite evaluation/suites/eval-v2.json \
+  --cases-dir data/evaluation/eval-v2-20261122/cases --freeze-manifest data/evaluation/frozen-new/freeze.json \
+  --output-dir data/evaluation/new-eval-candidates
+trivae eval cases validate data/evaluation/new-eval-candidates/cases
 ```
 
-候选 Case 有新的 `candidate-*` 身份，`review:pending`，参考 Findings 被清空；仍可做探索运行，但不能据此声称答案准确。能力集同样可将 `--suite` 换成 `capability-v1.json`。手工或 Agent 可以收集参考证据，记录来源与方法；只有实际完成核验的证据才可标记 `adjudicated=true`。把审核结果保存为新 Case 版本，再新建 Suite 版本引用它们，保留候选和旧 Suite。目录按用户需要放在 Git 忽略的 `data/evaluation/`，或经审阅后放进版本库；不要提交数据库文件。
+候选 Case 有新的 `candidate-*` 身份，`review:pending`，参考 Findings 被清空；仍可做探索运行，但不能据此声称答案准确。手工或 Agent 可以收集参考证据，记录来源与方法；只有实际完成核验的证据才可标记 `adjudicated=true`。把审核结果保存为新 Case 版本，再新建 Suite 版本引用它们，保留候选和旧 Suite。目录按用户需要放在 Git 忽略的 `data/evaluation/`，或经审阅后放进版本库；不要提交数据库文件。
 
 ```bash
-trivae eval cases new-version --source data/evaluation/new-regression-candidates/cases/candidate-dev-context-archify.json \
-  --output data/evaluation/reviewed-cases/candidate-dev-context-archify-v2.json
+trivae eval cases new-version --source data/evaluation/new-eval-candidates/cases/candidate-cap1-01-reconnect.json \
+  --output data/evaluation/reviewed-cases/candidate-cap1-01-reconnect-v2.json
 trivae eval cases validate data/evaluation/reviewed-cases
 ```
 
-`new-version` 为创建型操作，不覆盖原文件，并将 Case provenance 标为待审核。若用 `--snapshot <freeze.json>` 直接创建新版本，旧参考证据会被清空。新增 Findings 时，Evidence/Finding 的 snapshot_id 和 scope_identity 必须与 Case 一致；原有 ReviewPolicy 和 ReferenceProvenance 契约见现存 Case JSON。人工核验后明确写入真实来源、核验方法和状态，不将模型生成内容称为人工 Ground Truth。将审核后的版本纳入新 Suite，并更新 `curated-v1.json` 的目的、来源、历史表现及状态；不修改已发布 Case 版本。
+`new-version` 为创建型操作，不覆盖原文件，并将 Case provenance 标为待审核。若用 `--snapshot <freeze.json>` 直接创建新版本，旧参考证据会被清空。新增 Findings 时，Evidence/Finding 的 snapshot_id 和 scope_identity 必须与 Case 一致；原有 ReviewPolicy 和 ReferenceProvenance 契约见现存 Case JSON。人工核验后明确写入真实来源、核验方法和状态，不将模型生成内容称为人工 Ground Truth。将审核后的版本纳入新 Suite，不修改已发布 Case 版本。
 
 ## 正式运行和比较
 

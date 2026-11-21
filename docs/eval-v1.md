@@ -148,3 +148,7 @@ LangSmith remains an optional explicit metadata-only export, using the existing
 ## 两次失败的后续排查（2026-10-29）
 
 核对原始 Trace 后，第 3 题实际为“长任务跨会话记住进度”：答案正文的未转义英文双引号在 Unicode 偏移 40 提前结束字符串，标准 JSON 解析器与当前增量解析器均在同一位置失败。第 14 题在 Router 和 Runtime 请求阶段均报 `APIStatusError`，尚未调用工具；原始 HTTP 状态未保存，无法据此认定余额、限流或认证故障。现已补齐兼容 Provider 在流建立前与 completion 请求失败时的 HTTP 诊断；未补跑两题或修改 Baseline，仍为 14/16 成功。完整证据与修复边界见[运行失败排查](EVAL_RUNTIME_FAILURES_20261029.md)。
+
+## 扩展题集 `eval@v2`（2026-11-22）
+
+在同一冻结快照（`frozen-20261028-validated`，864,615 条消息，revision 98835）上新增 24 题扩展套件 [eval-v2.json](../evaluation/suites/eval-v2.json)：保留原 `eval@v1` 全部 16 题（`cap1-01@v2`–`cap1-16@v2`），并从原 30 题自然用户候选中按去重与证据质量筛选补充 8 题（`cap1-17@v1`–`cap1-24@v1`）。私有题面、参考事实与回读上下文位于本机 ignored `data/evaluation/eval-v2-20261122/`；同期清理已废弃的 2026-10-28 候选草稿与重命名前重复目录。
