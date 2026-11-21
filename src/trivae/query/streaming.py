@@ -9,6 +9,7 @@ from typing import Any, Literal, cast
 
 from trivae.observability.contracts import NormalizedQueryEvent
 from trivae.query.evidence import ToolResultRecord
+from trivae.query.json_repair import repair_unescaped_json_quotes
 from trivae.query.runtime.contracts import ModelBehaviorError, RuntimeEvent
 
 _TOOL_DETAIL_MAX_ITEMS = 20
@@ -337,6 +338,17 @@ class AnswerArtifactDeltaParser:
         self._received_chars = 0
         self._chunk_number = 0
         self._recent_public_text = ""
+        self._last_completed_value_was_string = False
+
+    def can_defer_unescaped_quote_error(self) -> bool:
+        """仅在 value 字符串闭合后遇到非法后继时允许延迟到回合结束尝试引号修复。"""
+
+        if self._mode != "json" or self._in_string or not self._frames:
+            return False
+        frame = self._frames[-1]
+        if frame.kind == "object":
+            return self._last_completed_value_was_string and frame.state in {"comma_or_end", "key"}
+        return self._last_completed_value_was_string and frame.state in {"comma_or_end", "value"}
 
     def feed(self, chunk: str) -> str:
         """消费一个 provider chunk，并返回本 chunk 新解码出的用户正文。"""
@@ -506,6 +518,7 @@ class AnswerArtifactDeltaParser:
     def _start_value(self, character: str) -> None:
         """依据首字符启动 string/container/primitive，不解析无关字段的业务值。"""
 
+        self._last_completed_value_was_string = False
         path = self._current_value_path()
         if character == '"':
             # Finalizer 接受两种正式候选 schema：content_blocks[*].text 与 claims[*].text。
@@ -547,6 +560,7 @@ class AnswerArtifactDeltaParser:
         if frame.kind == "array" and frame.state not in {"value_or_end", "comma_or_end"}:
             raise AnswerDeltaParseError("answer JSON array closed before its value completed")
         self._frames.pop()
+        self._last_completed_value_was_string = False
         self._complete_value()
 
     def _start_string(self, role: Literal["key", "value"], *, is_target: bool) -> None:
@@ -646,6 +660,7 @@ class AnswerArtifactDeltaParser:
         if self._string_is_target:
             self._target_count += 1
         self._string_is_target = False
+        self._last_completed_value_was_string = True
         self._complete_value()
 
     def _complete_primitive(self) -> None:
@@ -661,6 +676,7 @@ class AnswerArtifactDeltaParser:
             raise AnswerDeltaParseError("answer JSON contains an invalid primitive") from exc
         if isinstance(decoded, (dict, list, str)):
             raise AnswerDeltaParseError("answer JSON primitive parser received a compound value")
+        self._last_completed_value_was_string = False
         self._complete_value()
 
     def _current_value_path(self) -> tuple[_JsonPathPart, ...]:
@@ -721,6 +737,10 @@ class QueryStreamAdapter:
         self._saw_content_delta = False
         self._turn_had_tool = False
         self._pending_answer_fragments: list[str] = []
+        # 保留当前 turn 原始 delta，仅在字符串内未转义引号触发解析异常时于回合结束做受限修复。
+        self._raw_turn_chunks: list[str] = []
+        self._deferred_parse_error: AnswerDeltaParseError | None = None
+        self._recovered_turn_json = False
         # Thinking 生命周期由 adapter 显式跟踪，确保每个模型回合形成独立过程段。
         self._thinking_active = False
         # 当前开放段已接收到的 delta 可见性；summary 与 provider reasoning 不合并成同一段。
@@ -738,6 +758,9 @@ class QueryStreamAdapter:
             self._turn_had_tool = False
             self._pending_answer_fragments = []
             self._provisional_turn_text = []
+            self._raw_turn_chunks = []
+            self._deferred_parse_error = None
+            self._recovered_turn_json = False
             self._start_thinking(event.sequence)
             return
         if event.type in {"tool_started", "tool_completed"}:
@@ -781,7 +804,17 @@ class QueryStreamAdapter:
                 return
             self._complete_thinking(event.sequence)
             self._saw_content_delta = True
-            content = self._answer_parser.feed(event.text)
+            self._raw_turn_chunks.append(event.text)
+            if self._deferred_parse_error is not None:
+                return
+            try:
+                content = self._answer_parser.feed(event.text)
+            except AnswerDeltaParseError as exc:
+                if self._answer_parser.can_defer_unescaped_quote_error():
+                    # 只对"字符串值内未转义双引号"形状延迟到回合结束统一修复；若修复失败仍抛原异常。
+                    self._deferred_parse_error = exc
+                    return
+                raise
             if not content:
                 return
             if self._provisional_answer_streaming:
@@ -799,6 +832,8 @@ class QueryStreamAdapter:
             return
         if event.type == "turn_completed":
             self._complete_thinking(event.sequence)
+            if self._deferred_parse_error is not None and not self._turn_had_tool:
+                self._resolve_deferred_json_recovery(event.sequence)
             self._flush_answer_turn(event.sequence)
             return
         if event.type == "usage_update" and event.usage:
@@ -807,9 +842,40 @@ class QueryStreamAdapter:
         if event.type in {"completed", "failed", "aborted"}:
             self._complete_thinking(event.sequence)
             if event.type == "completed" and self._saw_content_delta:
-                self._answer_parser.finish()
+                if self._deferred_parse_error is not None:
+                    self._resolve_deferred_json_recovery(event.sequence)
+                elif not self._recovered_turn_json:
+                    self._answer_parser.finish()
                 # SDK-independent injected runtimes may omit turn_completed；terminal boundary仍需 flush。
                 self._flush_answer_turn(event.sequence)
+
+    def _resolve_deferred_json_recovery(self, source_sequence: int) -> None:
+        """回合结束时验证受限引号修复；不可修复时重抛原 AnswerDeltaParseError 保留诊断。"""
+
+        error = self._deferred_parse_error
+        self._deferred_parse_error = None
+        if error is None:
+            return
+        repaired = repair_unescaped_json_quotes("".join(self._raw_turn_chunks))
+        if repaired is None:
+            raise error
+        repaired_text, _ = repaired
+        recovery_parser = AnswerArtifactDeltaParser()
+        decoded = recovery_parser.feed(repaired_text) + recovery_parser.finish()
+        self._recovered_turn_json = True
+        if self._provisional_answer_streaming:
+            emitted = "".join(self._provisional_turn_text)
+            if decoded.startswith(emitted) and len(decoded) > len(emitted):
+                suffix = decoded[len(emitted) :]
+                self._provisional_turn_text.append(suffix)
+                self._emit(
+                    "answer.delta",
+                    content=suffix,
+                    provisional=True,
+                    source_sequence=source_sequence,
+                )
+            return
+        self._pending_answer_fragments = [decoded] if decoded else []
 
     def _start_thinking(
         self,

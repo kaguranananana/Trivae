@@ -19,6 +19,7 @@ from trivae.config.limits import (
     MAX_STRUCTURED_RESULT_ITEMS,
     MAX_TOOL_RESULT_MESSAGE_ITEMS,
 )
+from trivae.query.json_repair import repair_unescaped_json_quotes
 from trivae.retrieval.context import MessageContextResult
 from trivae.retrieval.identity import FindMembersResult
 from trivae.retrieval.semantic.contracts import SemanticRetrievalResult
@@ -3434,23 +3435,57 @@ def finalize_answer_gracefully(
 ) -> FinalizationResult:
     """先走 strict finalizer，局部错误才进入有界 deterministic recovery。"""
 
+    repaired_quotes_count = 0
+    effective_output = output
     try:
         # 正常路径完全复用既有 strict validation，避免 graceful 路径改变合法答案语义。
         artifact = finalize_answer(
-            output,
+            effective_output,
             run_id=run_id,
             tool_results=tool_results,
             scope=scope,
             accepted_run_ids=accepted_run_ids,
         )
-    except AnswerFinalizationError as strict_error:
+    except AnswerFinalizationError as initial_error:
+        strict_error = initial_error
+        if (
+            strict_error.code == "INVALID_ANSWER_ARTIFACT"
+            and isinstance(output, str)
+            and output.strip().startswith("{")
+        ):
+            repaired = repair_unescaped_json_quotes(output)
+            if repaired is not None:
+                effective_output, repaired_quotes_count = repaired
+                try:
+                    artifact = finalize_answer(
+                        effective_output,
+                        run_id=run_id,
+                        tool_results=tool_results,
+                        scope=scope,
+                        accepted_run_ids=accepted_run_ids,
+                    )
+                except AnswerFinalizationError as repaired_strict_error:
+                    strict_error = repaired_strict_error
+                else:
+                    validated_citations = sum(len(item.sources) for item in artifact.evidence_items)
+                    diagnostics = FinalizationDiagnostics(
+                        status="valid",
+                        user_answer_preserved=True,
+                        degradation_codes=("repaired_unescaped_json_quotes",),
+                        normalization_count=repaired_quotes_count,
+                        validated_citation_count=validated_citations,
+                    )
+                    return FinalizationResult(artifact=artifact, diagnostics=diagnostics)
         # trusted provenance/scope/empty answer 不是可恢复的局部 schema 问题。
         if strict_error.code in _FATAL_GRACEFUL_CODES or strict_error.code == "INVALID_FINAL_OUTPUT":
             return _recovery_error_result(strict_error)
         state = _FinalizationRecoveryState()
         state.add_code("strict_validation_failed")
+        if repaired_quotes_count:
+            state.add_code("repaired_unescaped_json_quotes")
+            state.normalization_count += repaired_quotes_count
         try:
-            normalized_output = output.strip() if isinstance(output, str) else output
+            normalized_output = effective_output.strip() if isinstance(effective_output, str) else effective_output
             if not isinstance(normalized_output, str) or not normalized_output:
                 return _recovery_error_result(strict_error)
             if normalized_output.startswith("{"):

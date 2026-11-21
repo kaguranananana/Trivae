@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Iterable, Literal
 from trivae.observability.contracts import FailureInfo
 from trivae.query.contracts import QueryDiagnostic, QueryRequest, QueryResult
 from trivae.query.evidence import MAX_CONTENT_BLOCKS, FinalizationErrorInfo, finalize_answer_gracefully
+from trivae.query.json_repair import repair_unescaped_json_quotes
 from trivae.query.planner import Planner, PlannerResult, render_plan_guidance
 from trivae.query.router import RouteDecision, Router
 from trivae.query.runtime.contracts import AgentRunRequest, AgentRuntime, RuntimeEvent, RuntimeResult
@@ -45,8 +46,11 @@ class QueryOrchestrator:
         try:
             decoded = json.loads(output)
         except (TypeError, ValueError):
-            # 非 JSON 会由 finalizer 按既有 contract 处理；这里仅缺少 candidate 诊断，不改变结果。
-            return {}
+            repaired = repair_unescaped_json_quotes(output)
+            if repaired is None:
+                # 非 JSON 会由 finalizer 按既有 contract 处理；这里仅缺少 candidate 诊断，不改变结果。
+                return {}
+            decoded = json.loads(repaired[0])
         if not isinstance(decoded, Mapping) or not isinstance(decoded.get("claims"), list):
             return {}
         claims = decoded["claims"]
