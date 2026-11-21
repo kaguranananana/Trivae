@@ -296,7 +296,7 @@ async def _run_arm_async(arm: str, record_dir: Path, case_filter: list[str] | No
 
     variant = ControlledVariant(
         variant_id=f"eval-v2-ab-{arm}",
-        role="baseline" if arm == "baseline" else "candidate",
+        role="last_stable" if arm == "baseline" else "candidate",
         code_version=commit,
         provider="deepseek",
         model="deepseek-flash",
@@ -352,14 +352,20 @@ async def _run_arm_async(arm: str, record_dir: Path, case_filter: list[str] | No
 
                 for attempt in range(1, 4):
                     try:
-                        runs = await app.evaluate_case(
-                            case, variant, suite_id=suite.suite_id, suite_version=suite.version, repetitions=1
+                        runs = await app.evaluate_suite(
+                            suite, cases, variant, repetitions=1, selected_cases=[case.identity]
                         )
                         run = runs[-1]
                         raised_exc = None
                         break
+                    except (TypeError, AttributeError, NameError, SyntaxError, ImportError):
+                        raise
                     except BaseException as exc:
                         raised_exc = exc
+                        print(
+                            f"[{arm}] error on {case.case_id} (attempt {attempt}): {type(exc).__name__}: {str(exc)[:200]}",
+                            flush=True,
+                        )
                         if _is_transient_transport_error(exc) and attempt < 3:
                             with retry_log.open("a", encoding="utf-8") as fh:
                                 fh.write(
@@ -426,7 +432,7 @@ async def _run_arm_async(arm: str, record_dir: Path, case_filter: list[str] | No
                         else run.query_result.get("runtime_error")
                     ),
                     "has_lossless_artifact": artifact is not None,
-                    "usage": None if run is None else run.measurements.get("usage"),
+                    "usage": None if run is None else run.operational_measurements.get("usage"),
                     "latency_seconds": elapsed,
                     "telemetry": telemetry,
                     "recorded_at": _now_iso(),
