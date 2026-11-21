@@ -535,6 +535,14 @@
 - 首次云端运行通过依赖安装，随后确认 Linux runner 不支持本套件的 APFS 与 macOS 行为，普通包安装也没有提供仓库内模型配置和脚本所需的 `.venv`。CI 改用 macOS runner，在仓库内建立 `.venv` 并以 editable 模式安装开发依赖。工作流语法检查通过，本机按同样的目录和安装方式再次验证 1397 passed / 1 skipped，Ruff、Mypy 通过。
 - macOS 云端默认解释器未启用 SQLite 扩展加载，导致 sqlite-vec 初始化失败。CI 改用与本机验证一致的 uv 管理 Python 3.12.13 和锁定依赖。本机验证真实 sqlite-vec 加载、工作流 Shell 语法和 27 项相关回归通过。
 
+## 2026-11-22 · 大规模真实库语义索引增量更新实测
+
+- 新增 [benchmark_semantic_incremental_large.py](../scripts/benchmark_semantic_incremental_large.py)，通过 `EvaluationWorkspace` 在独立 APFS 克隆工作库（基于主冻结快照 `frozen-20261028-validated`：`864,615` 条规范消息 + `16,621` 条转发、`104,741` 个语义分块）上实测真实日常追增批次 `*_20261028_10*.json`（8 份真实 QCE 导出，接收 `1,555` 条、新增 `1,386` 条、去重 `169` 条、冲突 `3` 条，入库 `0.51–0.80 s`）。全程使用正式 `Qwen/Qwen3-Embedding-0.6B`（Apple M4 16GB `mps:0` `bfloat16`，`batch_size=8`，离线缓存 `HF_HUB_OFFLINE=1`）与真实 `sqlite-vec 0.1.9`，主冻结库、线上库与原始文件均未修改，工作库在结果持久化后已回收。
+- 实测增量更新（最终 `866,001` 规范 + `16,728` 转发 = `882,729` 条消息、`104,935` 分块）：仅重切 7 群 35 个时间连通段（`3,601` 条消息、`429` 个受影响分块），移入复用池 `235` 个旧块，实际仅新算 `197` 个 Embedding（28 batches），复用 `104,738` 个旧向量，**向量复用率 / 计算节省率 `99.812%`**。同会话配对下暖模型增量耗时 `223.56 s`（`3.73 min`，其中编码 `142.60 s`、写入 `3.76 s`、转发清单与事务校验等其余开销 `77.20 s`），冷启动 `231.30 s`（`3.86 min`，含模型加载 `10.69 s`）；无变更二次更新 `2.04 s`（0 模型调用）。
+- 一致性核验：全库真实流式扫描分块（`132.69 s`）逐字段比对全部 `104,935 / 104,935` 个分块 100% 一致（0 缺失、0 字段差异）；全部 `197` 个新增向量独立重算比对 `float32` 最大绝对误差 `7.42e-09`；`integrity_report` 为 `valid`；真实语义检索烟雾返回 5 条命中（`top_score=0.888338`）并恢复 72 条原文。
+- 全量重建对照：在全库流式分块上做 `16 × 64 = 1,024` 块系统分层连续窗口采样（保持真实相邻分块 padding、长输入 `>2048` 隔离与 `sqlite-vec` 写入），实测吞吐 `3.29 chunks/s`（`303.85 ± 110.51 ms/chunk`），外推全库 `104,935` 块暖模型全量重建约 `8.89 h`（95% CI `7.18–10.61 h`，相对暖模型增量约 `143.2×`），与只读核对本机 `auto_import_runs` 历史 78.9 万 / 79.7 万条两次真实全量重建墙钟（`7.94 h` / `7.43 h`）一致。同时识别出本地千级追增为分钟级而非秒级，且 `~62–77 s` 固定开销来自转发清单全库扫描。
+- 验证：实测脚本 `ruff check` 与 `py_compile` 通过，端到端完整实跑 exit 0（总时长 `1,252.7 s`）；未修改产品源码。完整报告见 [report.md](../evaluation/experiments/semantic-incremental-large-20261122/report.md)，面试口径与简历替换见 [增量语义索引大库实测-简历与面试.md](../interview-docs/增量语义索引大库实测-简历与面试.md)，私有原始 JSON 留存 ignored `data/evaluation/semantic-incremental-large-20261122/benchmark_result.json`。
+
 ## 2026-11-22 · 筛选构建 24 题 `eval@v2` 并清理废弃候选快照题目
 
 - 在同一冻结快照 `frozen-20261028-validated`（864,615 条消息，revision 98835）上新增 24 题套件 `evaluation/suites/eval-v2.json`（仅身份清单）与本机 ignored 私有包 `data/evaluation/eval-v2-20261122/`：原样保留 `eval@v1` 全部 16 题（`cap1-01@v2`–`cap1-16@v2`），并从原 `capability-user-first-20261028` 余下 15 题中按消息去重与证据质量筛选补充 8 题（`cap1-17@v1`–`cap1-24@v1`），回读冻结库补齐会话名、回复元数据与邻近上下文；淘汰 7 题撞车或证据偏薄候选。
