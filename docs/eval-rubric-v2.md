@@ -1,5 +1,7 @@
 # Eval rubric v2
 
+> Note: `eval-rubric-v3` (three orthogonal axes, enriched deduplicated inputs, tiered adjudication priority, and position-swapped blind pairwise comparison) is documented in [eval-rubric-v3.md](eval-rubric-v3.md). `eval-rubric-v2` and `eval-rubric-v2.1` remain immutable for reproducing historical reviews.
+
 Judge v2 is the versioned review rubric for saved Agent answers. Its version identifier is `eval-rubric-v2`; the previous five-axis rules remain available as `JUDGE_V1_PROMPT` and historical v1 Review records stay under `eval-rubric-v1`.
 
 ## v2.1 calibration

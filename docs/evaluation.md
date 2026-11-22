@@ -39,7 +39,7 @@ Finalizer 可能保留正文并移除局部无效引用，形成可交付的 `de
 | `overclaim_unsupported_inference` | 是否把提及升级为推荐、意愿升级为实际使用等 |
 | `user_facing_readability` | 最终回答是否清楚、可用 |
 
-这些维度不会被自动压成一个“准确率”。默认尚未评审的质量轴保留 `not_reviewed`；LLM Judge 是可注入的离线辅助评审端口，不能凭空生成已验证结论。
+这些维度不会被自动压成一个“准确率”。默认尚未评审的质量轴保留 `not_reviewed`；LLM Judge 是可注入的离线辅助评审端口，不能凭空生成已验证结论。离线能力评审现行标准为三正交维度 + 分级复核 + 换位盲比的 [Eval rubric v3](eval-rubric-v3.md)（历史双维标准见 [Eval rubric v2](eval-rubric-v2.md)）。
 
 ## Reference 的完整度决定结论强度
 

@@ -467,79 +467,32 @@ def _build_blind_judge_payload(
     packet: dict[str, Any],
     artifact: dict[str, Any],
     con: sqlite3.Connection,
+    rubric_version: str = "eval-rubric-v2.1",
 ) -> dict[str, Any]:
-    """Rehydrate cited messages directly from read-only frozen SQLite matching capability_judge.prepare_review_input."""
+    """Delegate directly to capability_judge.build_review_payload (single source of truth)."""
+    from trivae.evaluation.capability_judge import build_review_payload
 
-    messages: dict[str, dict[str, Any]] = {}
-    for item in artifact.get("evidence_items", []):
-        for source in item.get("sources", []):
-            ref = source.get("reference", {})
-            if ref.get("type") != "message":
-                continue
-            mid = ref["internal_message_id"]
-            if mid in messages:
-                continue
-            row = con.execute(
-                "SELECT internal_message_id,session_id,timestamp,sender_user_id,content_text,"
-                "reply_to_source_message_id FROM messages WHERE internal_message_id=?",
-                (mid,),
-            ).fetchone()
-            if row is None:
-                row = con.execute(
-                    "SELECT internal_message_id,session_id,timestamp,sender_user_id,content_text,"
-                    "reply_to_source_message_id,root_message_id,parent_message_id,path,original_timestamp "
-                    "FROM forwarded_messages WHERE internal_message_id=?",
-                    (mid,),
-                ).fetchone()
-            if row is None or row["session_id"] != ref["session_id"]:
-                raise RuntimeError(f"cited source cannot be verified in frozen DB: {mid}")
-            record = dict(row)
-            root_id = record.get("root_message_id", mid)
-            root = con.execute(
-                "SELECT internal_message_id,session_id,timestamp,sender_user_id,content_text,"
-                "reply_to_source_message_id FROM messages WHERE internal_message_id=?",
-                (root_id,),
-            ).fetchone()
-            if root is None:
-                raise RuntimeError(f"cited source root missing: {root_id}")
-            before = con.execute(
-                "SELECT internal_message_id,session_id,timestamp,sender_user_id,content_text,"
-                "reply_to_source_message_id FROM messages WHERE session_id=? AND timestamp<? "
-                "ORDER BY timestamp DESC,internal_message_id DESC LIMIT 3",
-                (root["session_id"], root["timestamp"]),
-            ).fetchall()
-            after = con.execute(
-                "SELECT internal_message_id,session_id,timestamp,sender_user_id,content_text,"
-                "reply_to_source_message_id FROM messages WHERE session_id=? AND timestamp>? "
-                "ORDER BY timestamp,internal_message_id LIMIT 3",
-                (root["session_id"], root["timestamp"]),
-            ).fetchall()
-            record["context"] = [dict(x) for x in [*reversed(before), root, *after]]
-            messages[mid] = record
-
-    return {
-        "case_id": case.case_id,
-        "case_version": case.version,
-        "as_of": case.time_context,
-        "question": case.query,
-        "reference": {
-            "user_need": truth["user_need"],
-            "must_answer": truth["must_answer"],
-            "evidence_status": truth["evidence_status"],
-            "candidate_facts": truth["candidate_facts"],
-            "evidence_limitations": truth["evidence_limitations"],
-            "reasonable_other_answers": truth["reasonable_other_answers"],
-            "reference_messages": packet["evidence"],
-        },
-        "answer": artifact,
-        "cited_messages": list(messages.values()),
-    }
+    return build_review_payload(
+        case=case,
+        truth=truth,
+        packet=packet,
+        artifact=artifact,
+        con=con,
+        rubric_version=rubric_version,
+        check_scope=True,
+    )
 
 
-async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: Path, case_filter: list[str] | None) -> None:
+async def _run_judge_async(
+    baseline_dir: Path,
+    candidate_dir: Path,
+    output_dir: Path,
+    case_filter: list[str] | None,
+    rubric_version: str = "eval-rubric-v3",
+) -> None:
     from trivae.config.dotenv import load_environment_file
     from trivae.config.settings import load_settings
-    from trivae.evaluation.capability_judge import RUBRIC_VERSION_V2_1, judge_prompt_for, parse_review
+    from trivae.evaluation.capability_judge import axes_for_rubric, judge_prompt_for, parse_review
     from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationRun, EvaluationSuite
     from trivae.evaluation.store import SQLiteEvaluationStore
     from trivae.query.runtime.model_completion import complete_json, completion_record
@@ -547,6 +500,8 @@ async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: 
     load_environment_file(None)
     settings = load_settings(model_id="gpt-plus", role="judge", config_path=MODELS_CONFIG)
     assert settings.provider == "chatgpt-plan", f"unexpected judge provider: {settings.provider}"
+    expected_axes = axes_for_rubric(rubric_version)
+    system_prompt = judge_prompt_for(rubric_version)
 
     suite = EvaluationSuite.from_json(SUITE_PATH)
     cases = {
@@ -557,6 +512,10 @@ async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: 
     ev_by_id = {c["case_id"]: c for c in json.loads((BUNDLE_DIR / "evidence.json").read_text(encoding="utf-8"))["cases"]}
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "rubric.json").write_text(
+        json.dumps({"rubric_version": rubric_version, "axes": list(expected_axes)}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     store = SQLiteEvaluationStore(output_dir / "evaluation.sqlite3")
     con = sqlite3.connect(FROZEN_DB.resolve().as_uri() + "?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
@@ -610,7 +569,12 @@ async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: 
             run = EvaluationRun.from_dict(run_data)
             artifact = json.loads((cdir / "answer_artifact.json").read_text(encoding="utf-8"))
             payload = _build_blind_judge_payload(
-                case=cases[cid], truth=gt_by_id[cid], packet=ev_by_id[cid], artifact=artifact, con=con
+                case=cases[cid],
+                truth=gt_by_id[cid],
+                packet=ev_by_id[cid],
+                artifact=artifact,
+                con=con,
+                rubric_version=rubric_version,
             )
             out_case.mkdir(parents=True, exist_ok=True)
             (out_case / "input.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -621,9 +585,9 @@ async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: 
                     t0 = time.perf_counter()
                     completion = await complete_json(
                         settings,
-                        system_prompt=judge_prompt_for(RUBRIC_VERSION_V2_1),
+                        system_prompt=system_prompt,
                         user_prompt=json.dumps(payload, ensure_ascii=False),
-                        session_id=f"{run.run_id}-a{attempt}",
+                        session_id=f"{run.run_id}-{rubric_version}-a{attempt}",
                     )
                     dt = round(time.perf_counter() - t0, 2)
                     (out_case / "response.json").write_text(
@@ -634,18 +598,19 @@ async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: 
                     review = parse_review(
                         completion.content,
                         run_id=run.run_id,
-                        judge_identity=f"{settings.provider}:{completion.model}:{RUBRIC_VERSION_V2_1}",
-                        rubric_version=RUBRIC_VERSION_V2_1,
+                        judge_identity=f"{settings.provider}:{completion.model}:{rubric_version}",
+                        rubric_version=rubric_version,
                     )
                     store.save_run(run)
                     store.save_review(review)
                     review_dict = review.to_dict()
                     review_file.write_text(json.dumps(review_dict, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                     qa = review_dict["quality_axes"]
-                    ts = qa["task_satisfaction"]["score"]
-                    ar = qa["answer_reliability"]["score"]
+                    axis_str = " ".join(f"{ax}={qa[ax]['score']}" for ax in expected_axes)
+                    prio = review_dict.get("adjudication_priority")
+                    prio_str = f" prio={prio}" if prio else ""
                     print(
-                        f"[judge] ({idx:02d}/{len(queue)}) {arm}/{cid}: task={ts} rel={ar} "
+                        f"[judge] ({idx:02d}/{len(queue)}) {arm}/{cid}: {axis_str}{prio_str} "
                         f"diags={len(review_dict.get('diagnostics', []))} ({dt}s)",
                         flush=True,
                     )
@@ -674,6 +639,151 @@ async def _run_judge_async(baseline_dir: Path, candidate_dir: Path, output_dir: 
         store.close()
 
 
+async def _run_pairwise_async(
+    baseline_dir: Path,
+    candidate_dir: Path,
+    output_dir: Path,
+    case_filter: list[str] | None,
+) -> None:
+    """Run position-swapped blind pairwise comparisons (A=baseline,B=candidate and swapped) on paired completed cases."""
+    from trivae.config.dotenv import load_environment_file
+    from trivae.config.settings import load_settings
+    from trivae.evaluation.capability_judge import (
+        PAIRWISE_JUDGE_PROMPT,
+        PAIRWISE_RUBRIC_VERSION,
+        aggregate_position_swapped_pairwise,
+        parse_pairwise_judgment,
+        prepare_pairwise_input,
+    )
+    from trivae.evaluation.contracts import EvaluationCaseBundle, EvaluationSuite
+    from trivae.query.runtime.model_completion import complete_json, completion_record
+
+    load_environment_file(None)
+    settings = load_settings(model_id="gpt-plus", role="judge", config_path=MODELS_CONFIG)
+    assert settings.provider == "chatgpt-plan", f"unexpected judge provider: {settings.provider}"
+
+    suite = EvaluationSuite.from_json(SUITE_PATH)
+    cases = {
+        c.case_id: c
+        for c in (EvaluationCaseBundle.from_json(p) for p in sorted((BUNDLE_DIR / "cases").glob("*.json")))
+    }
+    gt_by_id = {c["case_id"]: c for c in json.loads((BUNDLE_DIR / "ground-truth-v2.json").read_text(encoding="utf-8"))["cases"]}
+    ev_by_id = {c["case_id"]: c for c in json.loads((BUNDLE_DIR / "evidence.json").read_text(encoding="utf-8"))["cases"]}
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(FROZEN_DB.resolve().as_uri() + "?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+
+    target_ids = [ref.case_id for ref in suite.case_references]
+    if case_filter:
+        allowed = set(case_filter)
+        target_ids = [cid for cid in target_ids if cid in allowed]
+
+    try:
+        for idx, cid in enumerate(target_ids, 1):
+            b_art_path = baseline_dir / "cases" / cid / "answer_artifact.json"
+            c_art_path = candidate_dir / "cases" / cid / "answer_artifact.json"
+            if not (b_art_path.exists() and c_art_path.exists()):
+                print(f"[pairwise] ({idx:02d}/{len(target_ids)}) SKIP {cid} (not paired completed)", flush=True)
+                continue
+
+            out_case = output_dir / cid
+            agg_path = out_case / "aggregated.json"
+            if agg_path.exists():
+                print(f"[pairwise] ({idx:02d}/{len(target_ids)}) SKIP {cid} (already aggregated)", flush=True)
+                continue
+
+            out_case.mkdir(parents=True, exist_ok=True)
+            b_art = json.loads(b_art_path.read_text(encoding="utf-8"))
+            c_art = json.loads(c_art_path.read_text(encoding="utf-8"))
+
+            results: dict[str, dict[str, Any]] = {}
+            for order_name, arm_a, arm_b, art_a, art_b in (
+                ("forward-ab", "baseline", "candidate", b_art, c_art),
+                ("reverse-ba", "candidate", "baseline", c_art, b_art),
+            ):
+                judg_path = out_case / f"{order_name}.json"
+                if judg_path.exists():
+                    results[order_name] = json.loads(judg_path.read_text(encoding="utf-8"))
+                    continue
+                payload = prepare_pairwise_input(
+                    case=cases[cid],
+                    truth=gt_by_id[cid],
+                    packet=ev_by_id[cid],
+                    answer_a=art_a,
+                    answer_b=art_b,
+                    con=con,
+                    check_scope=True,
+                )
+                (out_case / f"input-{order_name}.json").write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                )
+                for attempt in range(1, 5):
+                    try:
+                        t0 = time.perf_counter()
+                        completion = await complete_json(
+                            settings,
+                            system_prompt=PAIRWISE_JUDGE_PROMPT,
+                            user_prompt=json.dumps(payload, ensure_ascii=False),
+                            session_id=f"pw-{cid}-{order_name}-a{attempt}",
+                        )
+                        dt = round(time.perf_counter() - t0, 2)
+                        (out_case / f"response-{order_name}.json").write_text(
+                            json.dumps(completion_record(completion), ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8",
+                        )
+                        assert completion.finish_reason in {"stop", "completed"}, completion.finish_reason
+                        parsed = parse_pairwise_judgment(
+                            completion.content,
+                            case_id=cid,
+                            arm_a=arm_a,
+                            arm_b=arm_b,
+                            judge_identity=f"{settings.provider}:{completion.model}:{PAIRWISE_RUBRIC_VERSION}",
+                        )
+                        judg_path.write_text(json.dumps(parsed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                        results[order_name] = parsed
+                        print(
+                            f"[pairwise] ({idx:02d}/{len(target_ids)}) {cid} {order_name}: "
+                            f"winner={parsed['overall_winner_arm']} ({dt}s)",
+                            flush=True,
+                        )
+                        break
+                    except (AttributeError, TypeError, KeyError, NameError):
+                        raise
+                    except Exception as exc:
+                        msg = str(exc)
+                        if "usage_limit_exceeded" in msg or "quota" in msg.lower():
+                            print(f"[pairwise] QUOTA LIMIT hit on {cid}/{order_name}; stopping cleanly.", flush=True)
+                            raise
+                        if attempt < 4:
+                            await asyncio.sleep(5 * attempt)
+                        else:
+                            raise
+
+            if "forward-ab" in results and "reverse-ba" in results:
+                agg = aggregate_position_swapped_pairwise(results["forward-ab"], results["reverse-ba"])
+                agg_path.write_text(json.dumps(agg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                print(
+                    f"[pairwise] ({idx:02d}/{len(target_ids)}) {cid} AGGREGATED: "
+                    f"overall={agg['overall_winner']} consistent={agg['overall_consistent']}",
+                    flush=True,
+                )
+    finally:
+        con.close()
+
+
+def _detect_review_axes(reviews: list[dict[str, Any]]) -> tuple[str, ...]:
+    from trivae.evaluation.capability_judge import CAPABILITY_AXES_V2, CAPABILITY_AXES_V3
+
+    for rev in reviews:
+        qa = rev.get("quality_axes", {})
+        if set(qa) == set(CAPABILITY_AXES_V3):
+            return CAPABILITY_AXES_V3
+        if set(qa) == set(CAPABILITY_AXES_V2):
+            return CAPABILITY_AXES_V2
+    return CAPABILITY_AXES_V2
+
+
 def _summarize_arm(arm: str, arm_dir: Path, judge_dir: Path, case_ids: list[str]) -> dict[str, Any]:
     rows = []
     for cid in case_ids:
@@ -695,30 +805,41 @@ def _summarize_arm(arm: str, arm_dir: Path, judge_dir: Path, case_ids: list[str]
     sem_trunc_runs = sum(1 for _, s, _ in rows if (s.get("telemetry") or {}).get("semantic_truncation_affected"))
 
     judged = [(cid, s, rev) for cid, s, rev in rows if rev is not None]
-    ts_scores = [
-        rev["quality_axes"]["task_satisfaction"]["score"]
-        for _, _, rev in judged
-        if isinstance(rev["quality_axes"]["task_satisfaction"]["score"], int)
-    ]
-    ar_scores = [
-        rev["quality_axes"]["answer_reliability"]["score"]
-        for _, _, rev in judged
-        if isinstance(rev["quality_axes"]["answer_reliability"]["score"], int)
-    ]
-    dual_ge3 = sum(
+    axes = _detect_review_axes([rev for _, _, rev in judged])
+    axis_stats: dict[str, Any] = {}
+    for axis in axes:
+        scores = [
+            rev["quality_axes"][axis]["score"]
+            for _, _, rev in judged
+            if isinstance(rev["quality_axes"][axis]["score"], int)
+        ]
+        unknowns = sum(1 for _, _, rev in judged if rev["quality_axes"][axis]["score"] == "unknown")
+        axis_stats[axis] = {
+            "mean": round(sum(scores) / len(scores), 3) if scores else None,
+            "ge3": sum(1 for x in scores if x >= 3),
+            "unknown": unknowns,
+            "dist": dict(sorted(Counter(scores).items())),
+        }
+
+    all_axes_ge3 = sum(
         1
         for _, _, rev in judged
-        if isinstance(rev["quality_axes"]["task_satisfaction"]["score"], int)
-        and isinstance(rev["quality_axes"]["answer_reliability"]["score"], int)
-        and rev["quality_axes"]["task_satisfaction"]["score"] >= 3
-        and rev["quality_axes"]["answer_reliability"]["score"] >= 3
+        if all(
+            isinstance(rev["quality_axes"][ax]["score"], int) and rev["quality_axes"][ax]["score"] >= 3
+            for ax in axes
+        )
     )
+    needs_adj = sum(1 for _, _, rev in judged if rev.get("needs_adjudication"))
+    prio_dist = Counter(rev.get("adjudication_priority") or "unspecified" for _, _, rev in judged)
+
     diag_types: Counter[str] = Counter()
     diag_sev: Counter[str] = Counter()
+    diag_dim: Counter[str] = Counter()
     for _, _, rev in judged:
         for d in rev.get("diagnostics", []):
             diag_types[d["type"]] += 1
             diag_sev[d["severity"]] += 1
+            diag_dim[d["primary_dimension"]] += 1
 
     in_tok = sum(int(((s.get("usage") or {}).get("input_tokens")) or 0) for _, s, _ in rows)
     out_tok = sum(int(((s.get("usage") or {}).get("output_tokens")) or 0) for _, s, _ in rows)
@@ -737,17 +858,16 @@ def _summarize_arm(arm: str, arm_dir: Path, judge_dir: Path, case_ids: list[str]
         "semantic_search_runs": sem_runs,
         "semantic_truncation_affected_runs": sem_trunc_runs,
         "judged": len(judged),
-        "task_satisfaction_mean": round(sum(ts_scores) / len(ts_scores), 3) if ts_scores else None,
-        "task_satisfaction_ge3": sum(1 for x in ts_scores if x >= 3),
-        "task_satisfaction_dist": dict(sorted(Counter(ts_scores).items())),
-        "answer_reliability_mean": round(sum(ar_scores) / len(ar_scores), 3) if ar_scores else None,
-        "answer_reliability_ge3": sum(1 for x in ar_scores if x >= 3),
-        "answer_reliability_dist": dict(sorted(Counter(ar_scores).items())),
-        "dual_axis_ge3": dual_ge3,
-        "dual_axis_ge3_rate_of_judged": round(dual_ge3 / len(judged), 4) if judged else None,
-        "dual_axis_ge3_rate_of_total": round(dual_ge3 / total, 4) if total else None,
+        "axes": list(axes),
+        "axis_stats": axis_stats,
+        "all_axes_ge3": all_axes_ge3,
+        "all_axes_ge3_rate_of_judged": round(all_axes_ge3 / len(judged), 4) if judged else None,
+        "all_axes_ge3_rate_of_total": round(all_axes_ge3 / total, 4) if total else None,
+        "needs_adjudication": needs_adj,
+        "adjudication_priority_dist": dict(prio_dist),
         "diagnostic_types": dict(diag_types),
         "diagnostic_severities": dict(diag_sev),
+        "diagnostic_primary_dimensions": dict(diag_dim),
         "usage": {
             "input_tokens": in_tok,
             "cached_input_tokens": cached_tok,
@@ -757,7 +877,13 @@ def _summarize_arm(arm: str, arm_dir: Path, judge_dir: Path, case_ids: list[str]
     }
 
 
-def _generate_report(baseline_dir: Path, candidate_dir: Path, judge_dir: Path, output_dir: Path) -> None:
+def _generate_report(
+    baseline_dir: Path,
+    candidate_dir: Path,
+    judge_dir: Path,
+    output_dir: Path,
+    pairwise_dir: Path | None = None,
+) -> None:
     from trivae.evaluation.contracts import EvaluationSuite
 
     suite = EvaluationSuite.from_json(SUITE_PATH)
@@ -765,6 +891,7 @@ def _generate_report(baseline_dir: Path, candidate_dir: Path, judge_dir: Path, o
 
     base_summary = _summarize_arm("baseline", baseline_dir, judge_dir, case_ids)
     cand_summary = _summarize_arm("candidate", candidate_dir, judge_dir, case_ids)
+    axes = tuple(base_summary["axes"])
 
     per_case = []
     paired_both = []
@@ -779,11 +906,6 @@ def _generate_report(baseline_dir: Path, candidate_dir: Path, judge_dir: Path, o
         br = json.loads(br_p.read_text(encoding="utf-8")) if br_p.exists() else None
         cr = json.loads(cr_p.read_text(encoding="utf-8")) if cr_p.exists() else None
 
-        bts = br["quality_axes"]["task_satisfaction"]["score"] if br else None
-        bar = br["quality_axes"]["answer_reliability"]["score"] if br else None
-        cts = cr["quality_axes"]["task_satisfaction"]["score"] if cr else None
-        car = cr["quality_axes"]["answer_reliability"]["score"] if cr else None
-
         sem_affected = bool(
             (bs.get("telemetry") or {}).get("semantic_truncation_affected")
             or (cs.get("telemetry") or {}).get("semantic_truncation_affected")
@@ -793,29 +915,31 @@ def _generate_report(baseline_dir: Path, candidate_dir: Path, judge_dir: Path, o
             or int((cs.get("telemetry") or {}).get("semantic_calls") or 0) > 0
         )
 
-        entry = {
+        b_scores = {ax: (br["quality_axes"][ax]["score"] if br else None) for ax in axes}
+        c_scores = {ax: (cr["quality_axes"][ax]["score"] if cr else None) for ax in axes}
+        deltas = {
+            ax: (c_scores[ax] - b_scores[ax])
+            if (isinstance(b_scores[ax], int) and isinstance(c_scores[ax], int))
+            else None
+            for ax in axes
+        }
+
+        entry: dict[str, Any] = {
             "case_id": cid,
             "baseline_status": bs["terminal_status"],
             "candidate_status": cs["terminal_status"],
-            "baseline_task": bts,
-            "baseline_rel": bar,
-            "candidate_task": cts,
-            "candidate_rel": car,
-            "delta_task": (cts - bts) if (isinstance(bts, int) and isinstance(cts, int)) else None,
-            "delta_rel": (car - bar) if (isinstance(bar, int) and isinstance(car, int)) else None,
+            "baseline_scores": b_scores,
+            "candidate_scores": c_scores,
+            "deltas": deltas,
             "semantic_used": sem_used,
             "semantic_truncation_affected": sem_affected,
             "baseline_quote_parse_fail": bool((bs.get("telemetry") or {}).get("answer_parse_failed")),
             "candidate_quote_repaired": bool((cs.get("telemetry") or {}).get("quote_repaired")),
-            "baseline_sem_calls": int((bs.get("telemetry") or {}).get("semantic_calls") or 0),
-            "candidate_sem_calls": int((cs.get("telemetry") or {}).get("semantic_calls") or 0),
-            "baseline_sem_omitted_hits": int((bs.get("telemetry") or {}).get("semantic_host_omitted_hits") or 0),
-            "candidate_sem_omitted_hits": int((cs.get("telemetry") or {}).get("semantic_host_omitted_hits") or 0),
             "baseline_diags": len(br.get("diagnostics", [])) if br else None,
             "candidate_diags": len(cr.get("diagnostics", [])) if cr else None,
         }
         per_case.append(entry)
-        if isinstance(bts, int) and isinstance(bar, int) and isinstance(cts, int) and isinstance(car, int):
+        if all(isinstance(b_scores[ax], int) and isinstance(c_scores[ax], int) for ax in axes):
             paired_both.append(entry)
             if sem_used:
                 sem_used_paired.append(entry)
@@ -826,37 +950,56 @@ def _generate_report(baseline_dir: Path, candidate_dir: Path, judge_dir: Path, o
         n = len(items)
         if n == 0:
             return {"count": 0}
-        b_ts = sum(x["baseline_task"] for x in items) / n
-        c_ts = sum(x["candidate_task"] for x in items) / n
-        b_ar = sum(x["baseline_rel"] for x in items) / n
-        c_ar = sum(x["candidate_rel"] for x in items) / n
-        b_dual = sum(1 for x in items if x["baseline_task"] >= 3 and x["baseline_rel"] >= 3)
-        c_dual = sum(1 for x in items if x["candidate_task"] >= 3 and x["candidate_rel"] >= 3)
-        return {
-            "count": n,
-            "baseline_task_mean": round(b_ts, 3),
-            "candidate_task_mean": round(c_ts, 3),
-            "delta_task_mean": round(c_ts - b_ts, 3),
-            "baseline_rel_mean": round(b_ar, 3),
-            "candidate_rel_mean": round(c_ar, 3),
-            "delta_rel_mean": round(c_ar - b_ar, 3),
-            "baseline_dual_ge3": b_dual,
-            "candidate_dual_ge3": c_dual,
-            "task_win_tie_loss": [
-                sum(1 for x in items if x["delta_task"] > 0),
-                sum(1 for x in items if x["delta_task"] == 0),
-                sum(1 for x in items if x["delta_task"] < 0),
-            ],
-            "rel_win_tie_loss": [
-                sum(1 for x in items if x["delta_rel"] > 0),
-                sum(1 for x in items if x["delta_rel"] == 0),
-                sum(1 for x in items if x["delta_rel"] < 0),
-            ],
+        out: dict[str, Any] = {"count": n, "axes": {}}
+        for ax in axes:
+            b_mean = sum(x["baseline_scores"][ax] for x in items) / n
+            c_mean = sum(x["candidate_scores"][ax] for x in items) / n
+            out["axes"][ax] = {
+                "baseline_mean": round(b_mean, 3),
+                "candidate_mean": round(c_mean, 3),
+                "delta_mean": round(c_mean - b_mean, 3),
+                "win_tie_loss": [
+                    sum(1 for x in items if x["deltas"][ax] > 0),
+                    sum(1 for x in items if x["deltas"][ax] == 0),
+                    sum(1 for x in items if x["deltas"][ax] < 0),
+                ],
+            }
+        out["baseline_all_axes_ge3"] = sum(
+            1 for x in items if all(x["baseline_scores"][ax] >= 3 for ax in axes)
+        )
+        out["candidate_all_axes_ge3"] = sum(
+            1 for x in items if all(x["candidate_scores"][ax] >= 3 for ax in axes)
+        )
+        return out
+
+    pairwise_summary: dict[str, Any] | None = None
+    if pairwise_dir and pairwise_dir.exists():
+        overall_c: Counter[str] = Counter()
+        axis_c: dict[str, Counter[str]] = {}
+        consistent_overall = 0
+        total_pw = 0
+        for cid in case_ids:
+            agg_p = pairwise_dir / cid / "aggregated.json"
+            if not agg_p.exists():
+                continue
+            agg = json.loads(agg_p.read_text(encoding="utf-8"))
+            total_pw += 1
+            overall_c[str(agg["overall_winner"])] += 1
+            if agg.get("overall_consistent"):
+                consistent_overall += 1
+            for ax, item in agg.get("axes", {}).items():
+                axis_c.setdefault(ax, Counter())[str(item["winner"])] += 1
+        pairwise_summary = {
+            "total_paired": total_pw,
+            "overall_consistent": consistent_overall,
+            "overall_winner_counts": dict(overall_c),
+            "axes_winner_counts": {ax: dict(c) for ax, c in axis_c.items()},
         }
 
-    report = {
+    report: dict[str, Any] = {
         "generated_at": _now_iso(),
         "suite": suite.identity,
+        "axes": list(axes),
         "baseline": base_summary,
         "candidate": cand_summary,
         "paired_completed_both": _slice_stats(paired_both),
@@ -864,12 +1007,16 @@ def _generate_report(baseline_dir: Path, candidate_dir: Path, judge_dir: Path, o
         "semantic_truncation_affected_paired": _slice_stats(sem_affected_paired),
         "per_case": per_case,
     }
+    if pairwise_summary is not None:
+        report["pairwise"] = pairwise_summary
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "ab-summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "per_case"}, ensure_ascii=False, indent=2))
 
 
 def main() -> int:
+    from trivae.evaluation.capability_judge import RUBRIC_VERSION_V3, RUBRIC_VERSIONS
+
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -882,21 +1029,45 @@ def main() -> int:
     p_judge.add_argument("--baseline-dir", type=Path, required=True)
     p_judge.add_argument("--candidate-dir", type=Path, required=True)
     p_judge.add_argument("--output-dir", type=Path, required=True)
+    p_judge.add_argument("--rubric-version", choices=RUBRIC_VERSIONS, default=RUBRIC_VERSION_V3)
     p_judge.add_argument("--cases", nargs="*")
+
+    p_pw = sub.add_parser("pairwise")
+    p_pw.add_argument("--baseline-dir", type=Path, required=True)
+    p_pw.add_argument("--candidate-dir", type=Path, required=True)
+    p_pw.add_argument("--output-dir", type=Path, required=True)
+    p_pw.add_argument("--cases", nargs="*")
 
     p_rep = sub.add_parser("report")
     p_rep.add_argument("--baseline-dir", type=Path, required=True)
     p_rep.add_argument("--candidate-dir", type=Path, required=True)
     p_rep.add_argument("--judge-dir", type=Path, required=True)
     p_rep.add_argument("--output-dir", type=Path, required=True)
+    p_rep.add_argument("--pairwise-dir", type=Path)
 
     args = parser.parse_args()
     if args.cmd == "run-arm":
         asyncio.run(_run_arm_async(args.arm, args.record_dir, args.cases))
     elif args.cmd == "judge":
-        asyncio.run(_run_judge_async(args.baseline_dir, args.candidate_dir, args.output_dir, args.cases))
+        asyncio.run(
+            _run_judge_async(
+                args.baseline_dir,
+                args.candidate_dir,
+                args.output_dir,
+                args.cases,
+                rubric_version=args.rubric_version,
+            )
+        )
+    elif args.cmd == "pairwise":
+        asyncio.run(_run_pairwise_async(args.baseline_dir, args.candidate_dir, args.output_dir, args.cases))
     elif args.cmd == "report":
-        _generate_report(args.baseline_dir, args.candidate_dir, args.judge_dir, args.output_dir)
+        _generate_report(
+            args.baseline_dir,
+            args.candidate_dir,
+            args.judge_dir,
+            args.output_dir,
+            pairwise_dir=args.pairwise_dir,
+        )
     return 0
 
 

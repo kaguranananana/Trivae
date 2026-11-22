@@ -49,7 +49,7 @@ async def main_async(args: argparse.Namespace) -> None:
         truth_case = next(x for x in truth["cases"] if x["case_id"] == run.case_id)
         evidence_case = next(x for x in packet["cases"] if x["case_id"] == run.case_id)
         payload = prepare_review_input(case=case, truth=truth_case, packet=evidence_case, run=run,
-                                       database=args.database)
+                                       database=args.database, rubric_version=rubric_version)
         args.record_dir.mkdir(parents=True, exist_ok=False)
         (args.record_dir / "input.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
         configuration = {

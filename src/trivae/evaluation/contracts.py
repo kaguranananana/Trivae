@@ -1053,6 +1053,9 @@ class EvaluationResult:
         )
 
 
+ADJUDICATION_PRIORITIES = ("high", "medium", "low", "none")
+
+
 @dataclass(frozen=True)
 class EvaluationReview:
     """人工或辅助 Judge 的结构化质量轴评审。"""
@@ -1069,6 +1072,7 @@ class EvaluationReview:
     created_at: str
     comparison_id: str | None = None
     diagnostics: tuple[Mapping[str, object], ...] = ()
+    adjudication_priority: str | None = None
 
     def __post_init__(self) -> None:
         for field_name in ("review_id", "run_id", "rubric_version", "created_at"):
@@ -1085,6 +1089,8 @@ class EvaluationReview:
                 raise EvaluationContractError("review confidence must be between 0 and 1")
         if not isinstance(self.needs_adjudication, bool):
             raise EvaluationContractError("needs_adjudication must be boolean")
+        if self.adjudication_priority is not None and self.adjudication_priority not in ADJUDICATION_PRIORITIES:
+            raise EvaluationContractError("adjudication_priority is invalid")
         if not isinstance(self.diagnostics, tuple):
             raise EvaluationContractError("review diagnostics must be a tuple")
         object.__setattr__(self, "diagnostics", tuple(
@@ -1095,7 +1101,7 @@ class EvaluationReview:
         object.__setattr__(self, "comparison_id", _optional_text(self.comparison_id, "review comparison_id"))
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "review_id": self.review_id,
             "run_id": self.run_id,
             "reviewer_type": self.reviewer_type,
@@ -1109,6 +1115,9 @@ class EvaluationReview:
             "comparison_id": self.comparison_id,
             "diagnostics": [dict(item) for item in self.diagnostics],
         }
+        if self.adjudication_priority is not None:
+            payload["adjudication_priority"] = self.adjudication_priority
+        return payload
 
     @classmethod
     def from_dict(cls, value: object) -> EvaluationReview:
@@ -1130,6 +1139,7 @@ class EvaluationReview:
             comparison_id=payload.get("comparison_id"),
             diagnostics=tuple(_mapping(item, "review diagnostic")
                               for item in payload.get("diagnostics", ())),
+            adjudication_priority=payload.get("adjudication_priority"),
         )
 
 
