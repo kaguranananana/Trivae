@@ -16,7 +16,7 @@ models:
       type: chatgpt_oauth
 
 defaults:
-  query: gpt-plus
+  query: deepseek-flash
 
 evaluation:
   agent: deepseek-flash

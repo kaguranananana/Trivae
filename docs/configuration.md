@@ -10,7 +10,7 @@ CLI 的 `web`、`chat` 和 `eval` 入口默认读取当前工作目录的 `.env`
 
 | 用途 | 仓库默认 profile | 当前登记身份 |
 | --- | --- | --- |
-| 普通查询 | `defaults.query` → `gpt-plus` | ChatGPT OAuth，`gpt-6.1-sol`，medium |
+| 普通查询 | `defaults.query` → `deepseek-flash` | DeepSeek API key，`deepseek-flash` |
 | Evaluation Agent | `evaluation.agent` → `deepseek-flash` | DeepSeek API key，`deepseek-flash` |
 | 离线 Judge | `evaluation.judge` → `gpt-plus` | ChatGPT OAuth，`gpt-6.1-sol`，medium |
 
@@ -23,16 +23,15 @@ CLI 的 `web`、`chat` 和 `eval` 入口默认读取当前工作目录的 `.env`
 
 当前支持 `deepseek`、`opencode-go` 和 `chatgpt-plan`。API key profile 在注册表中明确 Provider、模型、base URL 和密钥环境变量；使用 `opencode-go` 时须提供该账号可用的端点和模型，不会借用 DeepSeek 配置。ChatGPT Plan 固定使用官方 Responses 端点和本地 OAuth Auth Store，不读取 API key。
 
-若需要不使用 OAuth 的常规查询，可在 `.env` 选择登记好的 DeepSeek profile：
+常规查询默认使用已登记的 DeepSeek profile，只需在 `.env` 填写密钥（也可显式设置 `TRIVAE_MODEL_ID` 覆盖默认）：
 
 ```dotenv
-TRIVAE_MODEL_ID=deepseek-flash
 DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
 ```
 
 | 变量 | 默认值 | 作用 |
 | --- | --- | --- |
-| `TRIVAE_MODEL_ID` | `config/models.yaml` 的 `defaults.query`（`gpt-plus`） | 普通查询选择已登记的 profile |
+| `TRIVAE_MODEL_ID` | `config/models.yaml` 的 `defaults.query`（`deepseek-flash`） | 普通查询选择已登记的 profile |
 | `TRIVAE_MODELS_CONFIG` | `config/models.yaml` | 替换模型 profile 注册表文件 |
 | `TRIVAE_MAX_TURNS` | `8` | SDK 执行轮数上限 |
 | `TRIVAE_MAX_TOOL_ROUNDS` | `6` | 工具轮数上限，材料足够时可提前完成 |
@@ -72,7 +71,7 @@ uv run trivae auth models --provider chatgpt
 
 身份凭证的 `iat` / `nbf` / `exp` 校验固定允许 10 秒时钟偏差；这是针对已实测约 3.5 秒的服务端/本机时间差，签名、issuer、audience、nonce 和时间校验仍保留。若仍提示 `not yet valid (iat)`，应检查系统自动校时；超过容差的凭证仍会被拒绝。浏览器的 “Authorization received” 只表示收到授权回调，最终是否登录成功以终端结果为准。
 
-仓库已登记的 ChatGPT OAuth profile 为 `gpt-plus`；普通查询默认已选择它。登录后可用 `auth models` 查看该账号可用的服务端模型，再编辑 `.env` 选择 profile：
+仓库已登记的 ChatGPT OAuth profile 为 `gpt-plus`。登录后可用 `auth models` 查看该账号可用的服务端模型，再编辑 `.env` 选择 profile：
 
 ```dotenv
 # 选择已配置的 ChatGPT OAuth profile；OAuth token 保留在本机 Auth Store。

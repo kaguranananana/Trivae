@@ -16,7 +16,8 @@ from trivae.query.runtime.model_completion import complete_json, completion_reco
 
 def test_repository_model_catalog_has_independent_query_agent_and_judge_defaults():
     catalog = load_model_catalog()
-    assert catalog.select("query").profile_id == "gpt-plus"
+    assert catalog.select("query").profile_id == "deepseek-flash"
+    assert catalog.select("query").auth_env == "DEEPSEEK_API_KEY"
     assert catalog.select("agent").profile_id == "deepseek-flash"
     assert catalog.select("judge").profile_id == "gpt-plus"
     assert catalog.select("judge").auth_type == "chatgpt_oauth"

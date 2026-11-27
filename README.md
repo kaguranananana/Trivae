@@ -57,15 +57,14 @@ cp .env.example .env
 
 ### 2. 配置模型
 
-仓库默认使用 `gpt-plus`（ChatGPT OAuth），可先执行 `uv run trivae auth login --provider chatgpt` 完成授权。
-
-也可以使用 API Key。以下是在 `.env` 中切换到已登记的 DeepSeek profile 的示例：
+仓库默认使用已登记的 DeepSeek profile（`deepseek-flash`），在 `.env` 中配置 API Key 即可使用：
 
 ```dotenv
-TRIVAE_MODEL_ID=deepseek-flash
 DEEPSEEK_API_KEY=<你的 DeepSeek API Key>
 TRIVIAE_ROUTER_JEV_ENABLED=false
 ```
+
+如使用 ChatGPT OAuth，可先执行 `uv run trivae auth login --provider chatgpt` 完成授权，并在 `.env` 中设置 `TRIVAE_MODEL_ID=gpt-plus`。
 
 这里的 `TRIVIAE_ROUTER_JEV_ENABLED` 是现有配置的历史拼写，用于关闭可选的独立 Router 实验；主模型仍正常工作。其他模型、配置优先级及排障说明见[配置指南](docs/configuration.md)。
 

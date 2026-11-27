@@ -127,13 +127,16 @@ class DotenvTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / ".env").write_text(
-                "TRIVAE_MODEL_API_KEY=from-file\nTRIVAE_MODEL_NAME=from-file\n",
+                "DEEPSEEK_API_KEY=from-file\nTRIVAE_MODEL_API_KEY=from-file\nTRIVAE_MODEL_NAME=from-file\n",
                 encoding="utf-8",
             )
-            with _working_directory(root), patch.dict(os.environ, {}, clear=True):
+            with _working_directory(root), patch.dict(
+                os.environ, {"DEEPSEEK_API_KEY": "from-process"}, clear=True
+            ):
                 settings = load_settings()
-                self.assertEqual(settings.model_profile, "gpt-plus")
-                self.assertEqual(settings.model_name, "gpt-6.1-sol")
+                self.assertEqual(settings.model_profile, "deepseek-flash")
+                self.assertEqual(settings.model_name, "deepseek-flash")
+                self.assertEqual(settings.api_key, "from-process")
 
 
 if __name__ == "__main__":

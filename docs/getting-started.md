@@ -11,7 +11,7 @@
 | Node.js | 建议 Node 22.12+（22 系列）或 24+；当前 Vite 7 / Vue 插件要求 `^20.19.0 \|\| >=22.12.0`，Vitest 4 的引擎范围不包含 Node 23 |
 | pnpm | 安装和构建 `web/`；仓库未固定 pnpm 版本，安装时保持现有锁文件 |
 | SQLite FTS5 | Python 所用 SQLite 必须支持 FTS5，构建全文索引时实际探测 |
-| 模型访问 | 仓库默认查询 profile 使用 ChatGPT OAuth；也可切换到已登记的 API key profile。语义向量由本机 Qwen 模型生成 |
+| 模型访问 | 仓库默认查询 profile 使用 DeepSeek API key（`deepseek-flash`）；也可切换到已登记的 ChatGPT OAuth profile。语义向量由本机 Qwen 模型生成 |
 
 首次加载 `Qwen/Qwen3-Embedding-0.6B` 需要下载模型，预留本地磁盘、内存与构建时间。CPU / GPU 和数据量会影响耗时，本文不承诺固定的首次启动时间。
 
@@ -36,19 +36,17 @@ pnpm -C web build
 cp .env.example .env
 ```
 
-仓库默认查询 profile `gpt-plus` 使用 ChatGPT OAuth。先登录并确认本机授权：
+仓库默认查询 profile `deepseek-flash` 使用 DeepSeek API key，在 `.env` 中填写自己的 key 即可（占位值）：
+
+```dotenv
+DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
+```
+
+如使用 ChatGPT OAuth profile（`gpt-plus`），先登录并确认本机授权，再在 `.env` 中设置 `TRIVAE_MODEL_ID=gpt-plus`：
 
 ```sh
 uv run trivae auth login --provider chatgpt
 uv run trivae auth status --provider chatgpt
-```
-
-如使用 API key profile，则在 `.env` 中选择 `deepseek-flash` 并填写自己的 key（占位值）：
-
-```dotenv
-# 从 config/models.yaml 中选择已登记的 profile。
-TRIVAE_MODEL_ID=deepseek-flash
-DEEPSEEK_API_KEY=<你的DeepSeek_API_key>
 ```
 
 Jev 是独立的可选 Router 实验。若只准备使用主模型，在 `.env` 中明确关闭它：
